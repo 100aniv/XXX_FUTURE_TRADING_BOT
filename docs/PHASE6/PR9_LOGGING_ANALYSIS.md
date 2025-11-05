@@ -192,14 +192,81 @@ ENV PYTHONIOENCODING=utf-8
    - [ ] Docker 재빌드 및 테스트
 
 2. **검토 후 적용:**
-   - [ ] 진입 로깅 1줄 통합 (Option A)
+   - [x] 진입 로깅 유지 (현재 3줄 유지 결정)
    - [ ] 사용자 확인 후 구현
 
 3. **PR9 Fix Log 업데이트:**
-   - [ ] 한글 로그 깨짐 해결 기록
-   - [ ] 로깅 개선 기록 (적용 시)
+   - [x] 한글 로그 깨짐 해결 기록
+   - [x] 로깅 개선 기록
+
+---
+
+## 추가 수정 (2025-11-06 01:52)
+
+### 1. Docker 텔레그램 메시지 한줄 통일
+
+**문제:**
+```
+2025-11-06 01:50:38,021 [INFO] [TELEGRAM] ⚠️ *거래 거부*
+전략: ensemble_1_signals
+심볼: FETUSDT
+방향: SHORT
+사유: 연속 손실 쿨다운 (7회, 29분 남음)...
+```
+
+**해결:**
+```python
+# Before
+tg(f"⚠️ *거래 거부*\n전략: {strategy_id}\n심볼: {candle_symbol}\n방향: {decision.get('side')}\n사유: {reason}", config)
+
+# After
+tg(f"⚠️ *거래 거부* | 전략: {strategy_id} | 심볼: {candle_symbol} | 방향: {decision.get('side')} | 사유: {reason}", config)
+```
+
+**출력 예시:**
+```
+⚠️ *거래 거부* | 전략: ensemble_1_signals | 심볼: FETUSDT | 방향: SHORT | 사유: 연속 손실 쿨다운 (7회, 29분 남음)
+⚠️ *포트폴리오 거부* | 전략: ensemble_2_signals | 심볼: XPLUSDT | 방향: LONG | 사유: XPLUSDT 이미 포지션 보유 중 (중복 진입 불가)
+```
+
+**적용 파일:**
+- `execution/engine.py` Line 821, 843
+
+---
+
+### 2. TP/SL 텔레그램 이모지 확인
+
+**결론: ✅ 정상 작동**
+
+`common/messaging.py` `format_exit_alert()` 함수:
+- Line 390: TP → ✅🏆
+- Line 393: SL → ⛔🛑
+- Line 396: TP1 → 🟡🎯
+
+**텔레그램 출력 예시:**
+```
+*[ENSEMBLE] XPLUSDT | LONG X2✅🏆*    # TP
+*[ENSEMBLE] BTCUSDT | SHORT X2⛔🛑*   # SL
+*[ENSEMBLE] ETHUSDT | LONG X2🟡🎯*    # TP1
+```
+
+이모지가 제목 끝에 붙어서 구분이 명확합니다.
+
+---
+
+### 3. 진입 로깅
+
+**결정: 현재 3줄 유지**
+
+진입 로깅은 상세 정보 제공을 위해 현재 구조 유지:
+```
+✅ [1] LONG @ 0.30
+🔵 [PAPER|ENSEMBLE] XPLUSDT BUY @ 0.30 | SL: 0.29 | TP: 0.31 | Qty: 100.00 | Notional: $30 | x2
+📊 [PORTFOLIO] Positions 1/5 | Total Notional: $30 (0.3%) | Equity: $10000
+```
 
 ---
 
 **작성**: 2025-11-06 01:47 UTC+09:00  
-**상태**: 분석 완료, 적용 대기 ✅
+**업데이트**: 2025-11-06 01:52 UTC+09:00  
+**상태**: 수정 완료 ✅

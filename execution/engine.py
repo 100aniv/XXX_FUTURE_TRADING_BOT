@@ -818,7 +818,7 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict):
             reject_cooldown[cooldown_key] = time.time()  # Fallback
             logger.warning(f"⛔ [{strategy_id}] {candle_symbol} 리스크 체크 실패 (쿨다운 {cooldown_seconds}초): {reason}")
             if mode in ['paper', 'live']:
-                tg(f"⚠️ *거래 거부*\n전략: {strategy_id}\n심볼: {candle_symbol}\n방향: {decision.get('side')}\n사유: {reason}", config)
+                tg(f"⚠️ *거래 거부* | 전략: {strategy_id} | 심볼: {candle_symbol} | 방향: {decision.get('side')} | 사유: {reason}", config)
             continue
         
         # ⭐ Portfolio Manager 체크 (멀티 심볼 환경)
@@ -840,7 +840,7 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict):
             reject_cooldown[cooldown_key] = time.time()  # Fallback
             logger.warning(f"⛔ [{strategy_id}] {candle_symbol} 포트폴리오 거부 (쿨다운 {cooldown_seconds}초): {portfolio_reason}")
             if mode in ['paper', 'live']:
-                tg(f"⚠️ *포트폴리오 거부*\n전략: {strategy_id}\n심볼: {candle_symbol}\n방향: {decision.get('side')}\n사유: {portfolio_reason}", config)
+                tg(f"⚠️ *포트폴리오 거부* | 전략: {strategy_id} | 심볼: {candle_symbol} | 방향: {decision.get('side')} | 사유: {portfolio_reason}", config)
             continue
         
         # 거래 실행
