@@ -1,0 +1,176 @@
+# ========================================
+# 보수형 설정 (Conservative)
+# 목표: 하루 2-5% 안정적 수익
+# 신호: 하루 10-20개
+# 승률: 65-75%
+# ========================================
+
+# --- TELEGRAM ---
+TELEGRAM_TOKEN=PUT_YOUR_TELEGRAM_BOT_TOKEN
+TELEGRAM_CHAT_ID=PUT_YOUR_CHAT_ID
+
+# --- ACCOUNT / RISK ---
+EQUITY_USDT=7000
+RISK_PER_TRADE=0.003    # 0.3% (보수적)
+
+# --- LEVERAGE ---
+MAX_LEVERAGE=5          # 낮은 레버리지
+MIN_LEVERAGE=2
+
+# --- SYMBOLS / TIMEFRAME ---
+SYMBOLS=BTCUSDT,ETHUSDT,BNBUSDT,SOLUSDT
+TIMEFRAME=15m           # 15분봉 (안정적)
+LOOKBACK=400
+
+# --- SIGNAL PARAMS ---
+RR=2.5                  # 높은 RR (보수적)
+ATR_MULT_SL=1.5         # 넓은 손절 (덜 흔들림)
+ATR_MULT_TRAIL=1.5
+COOLDOWN_CANDLES=5      # 긴 쿨다운 (신중한 진입)
+
+# --- OPTIONAL FEATURES ---
+ENABLE_TP_TRAIL=true
+TP1_RR=1.5
+TP2_RR=2.5
+TRAIL_AFTER_TP1=true
+
+ENABLE_REGIME_ALERT=true
+ENABLE_VOL_SPIKE_FILTER=true    # 필터 ON (안전)
+VOL_SPIKE_MULT=2.0
+VOL_MA_LEN=30
+
+ENABLE_MTF_CONFIRM=true         # 필터 ON
+HTF=1h                          # 큰 추세 확인
+REQUIRE_HTF_ALIGNED=true
+
+ENABLE_DAILY_RISK_GUARD=true
+DAILY_RISK_LIMIT_PCT=0.03       # 하루 3% 손실 제한
+
+ENABLE_GOAL_TRACKER=true
+DAILY_GOAL_PCT=0.05             # 하루 5% 목표
+
+ENABLE_FLASH_GUARD=true         # Flash Guard ON
+FLASH_WINDOW_SEC=30
+FLASH_PCT=0.015
+FLASH_PAUSE_CANDLES=2
+
+ENABLE_BEGINNER_EXPLAIN=true
+
+
+# ========================================
+# 공격형 설정 (Aggressive)
+# 목표: 하루 7-15% 공격적 수익
+# 신호: 하루 40-80개
+# 승률: 50-60%
+# ⚠️ 위험도 높음!
+# ========================================
+
+# --- TELEGRAM ---
+TELEGRAM_TOKEN=PUT_YOUR_TELEGRAM_BOT_TOKEN
+TELEGRAM_CHAT_ID=PUT_YOUR_CHAT_ID
+
+# --- ACCOUNT / RISK ---
+EQUITY_USDT=7000
+RISK_PER_TRADE=0.008    # 0.8% (공격적)
+
+# --- LEVERAGE ---
+MAX_LEVERAGE=10         # 높은 레버리지
+MIN_LEVERAGE=3
+
+# --- SYMBOLS / TIMEFRAME ---
+SYMBOLS=BTCUSDT,ETHUSDT,BNBUSDT,SOLUSDT,XRPUSDT,ADAUSDT,DOGEUSDT,MATICUSDT,AVAXUSDT,LINKUSDT
+TIMEFRAME=3m            # 3분봉 (빠른 매매)
+LOOKBACK=400
+
+# --- SIGNAL PARAMS ---
+RR=1.5                  # 낮은 RR (빠른 익절)
+ATR_MULT_SL=1.0         # 좁은 손절 (빠른 손절)
+ATR_MULT_TRAIL=1.0
+COOLDOWN_CANDLES=1      # 짧은 쿨다운 (많은 신호)
+
+# --- OPTIONAL FEATURES ---
+ENABLE_TP_TRAIL=true
+TP1_RR=0.8
+TP2_RR=1.5
+TRAIL_AFTER_TP1=true
+
+ENABLE_REGIME_ALERT=true
+ENABLE_VOL_SPIKE_FILTER=false   # 필터 OFF (더 많은 신호)
+VOL_SPIKE_MULT=3.0
+VOL_MA_LEN=20
+
+ENABLE_MTF_CONFIRM=true
+HTF=15m                         # 짧은 추세 확인
+REQUIRE_HTF_ALIGNED=false       # 필터 완화
+
+ENABLE_DAILY_RISK_GUARD=true
+DAILY_RISK_LIMIT_PCT=0.10       # 하루 10% 손실 제한
+
+ENABLE_GOAL_TRACKER=true
+DAILY_GOAL_PCT=0.15             # 하루 15% 목표
+
+ENABLE_FLASH_GUARD=false        # Flash Guard OFF
+FLASH_WINDOW_SEC=30
+FLASH_PCT=0.020
+FLASH_PAUSE_CANDLES=1
+
+ENABLE_BEGINNER_EXPLAIN=true
+
+
+# ========================================
+# 균형형 설정 (Balanced) - 현재 기본
+# 목표: 하루 5-8% 균형잡힌 수익
+# 신호: 하루 20-40개
+# 승률: 55-65%
+# ========================================
+
+# --- TELEGRAM ---
+TELEGRAM_TOKEN=PUT_YOUR_TELEGRAM_BOT_TOKEN
+TELEGRAM_CHAT_ID=PUT_YOUR_CHAT_ID
+
+# --- ACCOUNT / RISK ---
+EQUITY_USDT=7000
+RISK_PER_TRADE=0.005    # 0.5%
+
+# --- LEVERAGE ---
+MAX_LEVERAGE=7
+MIN_LEVERAGE=2
+
+# --- SYMBOLS / TIMEFRAME ---
+SYMBOLS=BTCUSDT,ETHUSDT,BNBUSDT,SOLUSDT,XRPUSDT,ADAUSDT
+TIMEFRAME=5m
+LOOKBACK=400
+
+# --- SIGNAL PARAMS ---
+RR=1.8
+ATR_MULT_SL=1.2
+ATR_MULT_TRAIL=1.2
+COOLDOWN_CANDLES=2
+
+# --- OPTIONAL FEATURES ---
+ENABLE_TP_TRAIL=true
+TP1_RR=1.0
+TP2_RR=1.8
+TRAIL_AFTER_TP1=true
+
+ENABLE_REGIME_ALERT=true
+ENABLE_VOL_SPIKE_FILTER=true
+VOL_SPIKE_MULT=2.0
+VOL_MA_LEN=30
+
+ENABLE_MTF_CONFIRM=true
+HTF=30m
+REQUIRE_HTF_ALIGNED=true
+
+ENABLE_DAILY_RISK_GUARD=true
+DAILY_RISK_LIMIT_PCT=0.05
+
+ENABLE_GOAL_TRACKER=true
+DAILY_GOAL_PCT=0.08
+
+ENABLE_FLASH_GUARD=true
+FLASH_WINDOW_SEC=30
+FLASH_PCT=0.012
+FLASH_PAUSE_CANDLES=1
+
+ENABLE_BEGINNER_EXPLAIN=true

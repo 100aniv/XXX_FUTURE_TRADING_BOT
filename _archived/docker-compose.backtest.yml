@@ -1,0 +1,66 @@
+version: '3.8'
+
+# 백테스트 전용 Docker Compose 설정
+# 경량 구성: PostgreSQL + 백테스트 러너만 실행
+
+services:
+  # PostgreSQL (백테스트용)
+  postgres:
+    image: postgres:16
+    container_name: backtest_postgres
+    environment:
+      POSTGRES_USER: trading_user
+      POSTGRES_PASSWORD: trading_pw_2024
+      POSTGRES_DB: trading_db
+      TZ: Asia/Seoul
+    volumes:
+      - ./pgdata_backtest:/var/lib/postgresql/data
+      - ./init_db.sql:/docker-entrypoint-initdb.d/init_db.sql
+    ports:
+      - "5434:5432"  # 기존 DB와 충돌 방지 (5434 사용)
+    restart: unless-stopped
+    networks:
+      - backtest-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U trading_user -d trading_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # 백테스트 러너
+  backtest-runner:
+    build:
+      context: .
+      dockerfile: Dockerfile.backtest
+    container_name: backtest_runner
+    environment:
+      - DATABASE_URL=postgresql://trading_user:trading_pw_2024@postgres:5432/trading_db
+      - TZ=Asia/Seoul
+    volumes:
+      # 백테스트 코드
+      - ./backtest:/app/backtest
+      # 데이터
+      - ./data:/app/data
+      # 결과 저장
+      - ./results:/app/results
+      - ./reports:/app/reports
+      # 전략 설정 파일
+      - ./config_scalp.txt:/app/config_scalp.txt
+      - ./config_intraday.txt:/app/config_intraday.txt
+      - ./config_swing.txt:/app/config_swing.txt
+      - ./config_trend.txt:/app/config_trend.txt
+      - ./config_reversion.txt:/app/config_reversion.txt
+      - ./config_breakout.txt:/app/config_breakout.txt
+      # 실행 스크립트
+      - ./run_backtest.py:/app/run_backtest.py
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - backtest-network
+    # 컨테이너를 계속 실행 상태로 유지 (명령어 실행 대기)
+    command: tail -f /dev/null
+
+networks:
+  backtest-network:
+    driver: bridge

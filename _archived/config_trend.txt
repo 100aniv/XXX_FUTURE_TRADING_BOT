@@ -1,0 +1,51 @@
+# ========================================
+# TREND 봇 (1시간봉) - 추세 추종
+# 목표: 강한 추세 구간 포착
+# 신호: 하루 5-15개
+# 승률: 60-70%
+# ========================================
+
+# TELEGRAM
+TELEGRAM_TOKEN=8028992679:AAFppWnFC20nTTtFIUVtrAJiYqDznJStaJE
+TELEGRAM_CHAT_ID=453694961
+
+# 봇 이름 및 전략 ID
+BOT_NAME=TREND
+STRATEGY_ID=trend
+
+# ACCOUNT / RISK
+EQUITY_USDT=7000
+RISK_PER_TRADE=0.005
+
+# LEVERAGE
+MAX_LEVERAGE=5
+MIN_LEVERAGE=2
+
+# SYMBOLS / TIMEFRAME
+SYMBOLS=BTCUSDT,ETHUSDT,BNBUSDT,SOLUSDT,XRPUSDT,ADAUSDT,DOGEUSDT
+TIMEFRAME=1h
+LOOKBACK=400
+
+# SIGNAL PARAMS
+RR=2.0
+ATR_MULT_SL=1.5
+
+# ========================================
+# 포지션 사이징 & 리스크 관리 ⭐ 신규
+# ========================================
+# 품질 가중치 (트렌드: 공격적)
+QUALITY_WEIGHT_MIN=0.6
+QUALITY_WEIGHT_MAX=1.5
+
+# 포지션 한도 (트렌드: 큰 크기)
+MAX_POSITION_VALUE=6000
+MIN_POSITION_VALUE=100
+
+# 심볼별 최대 노출
+MAX_EXPOSURE_PER_SYMBOL_PCT=0.4
+
+# 동시 포지션 수
+MAX_CONCURRENT_POSITIONS=3
+
+# 일일 손실 한도
+DAILY_LOSS_LIMIT_PCT=0.03

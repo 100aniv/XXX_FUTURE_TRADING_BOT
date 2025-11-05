@@ -1,0 +1,56 @@
+# ========================================
+# REVERSION 봇 (5분봉) - 평균회귀
+# 목표: 과매수/과매도 반전 포착
+# 신호: 하루 30-50개
+# 승률: 55-65%
+# ========================================
+
+# TELEGRAM
+TELEGRAM_TOKEN=8028992679:AAFppWnFC20nTTtFIUVtrAJiYqDznJStaJE
+TELEGRAM_CHAT_ID=453694961
+
+# 봇 이름 및 전략 ID
+BOT_NAME=REVERSION
+STRATEGY_ID=reversion
+
+# ACCOUNT / RISK
+EQUITY_USDT=7000
+RISK_PER_TRADE=0.004
+
+# LEVERAGE
+MAX_LEVERAGE=7
+MIN_LEVERAGE=2
+
+# SYMBOLS / TIMEFRAME
+SYMBOLS=BTCUSDT,ETHUSDT,BNBUSDT,SOLUSDT,XRPUSDT,ADAUSDT,DOGEUSDT
+TIMEFRAME=5m
+LOOKBACK=400
+
+# SIGNAL PARAMS
+RR=1.5
+ATR_MULT_SL=1.0
+
+# REVERSION SPECIFIC
+RSI_OVERSOLD=25
+RSI_OVERBOUGHT=75
+BB_STD=2.0
+
+# ========================================
+# 포지션 사이징 & 리스크 관리 ⭐ 신규
+# ========================================
+# 품질 가중치 (평균회귀: 표준)
+QUALITY_WEIGHT_MIN=0.75
+QUALITY_WEIGHT_MAX=1.25
+
+# 포지션 한도 (평균회귀: 중간 크기)
+MAX_POSITION_VALUE=3000
+MIN_POSITION_VALUE=30
+
+# 심볼별 최대 노출
+MAX_EXPOSURE_PER_SYMBOL_PCT=0.25
+
+# 동시 포지션 수
+MAX_CONCURRENT_POSITIONS=4
+
+# 일일 손실 한도
+DAILY_LOSS_LIMIT_PCT=0.04

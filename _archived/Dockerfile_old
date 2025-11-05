@@ -1,0 +1,17 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# 공통 모듈 복사
+COPY common/ common/
+COPY indicators/ indicators/
+
+COPY telegram_signal_bot.py .
+COPY signal_bot_trend.py .
+COPY signal_bot_reversion.py .
+COPY signal_bot_breakout.py .
+
+CMD ["python", "-u", "telegram_signal_bot.py"]

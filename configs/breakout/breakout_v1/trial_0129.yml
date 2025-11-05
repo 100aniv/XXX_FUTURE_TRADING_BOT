@@ -1,0 +1,306 @@
+accounting:
+  fee_bps: 5
+  fee_mode: taker
+  funding_model: avg_realized
+  slippage_model: atr_based
+backtest:
+  custom:
+    end_date: '2024-09-30'
+    start_date: '2024-01-01'
+  data_dir: data
+  data_file: BTCUSDT_5m_WFA_04_OOS_SUMMER_RANGE.csv
+  period: custom
+  periods:
+    one_year:
+      end_date: '2024-12-31'
+      start_date: '2024-01-01'
+    ten_years:
+      end_date: '2025-10-19'
+      start_date: '2015-01-01'
+    three_months:
+      end_date: '2025-10-22'
+      start_date: '2025-07-24'
+    three_years:
+      end_date: '2024-12-31'
+      start_date: '2022-01-01'
+  symbol: BTCUSDT
+  persist_signals: false
+capital:
+  initial: 10000
+cooldown_candles: 4
+enable_mtf_confirm: false
+htf: 4h
+enable_vol_spike_filter: true
+entries:
+  cooldown_candles: 1
+  min_rr_required: 1.4763523779952707
+  type: meanrev
+execution:
+  max_slippage_bp: 12
+  order_type: limit_post_only
+  retry:
+    backoff_ms: 200
+    max_attempts: 3
+exits:
+  stop:
+    k: 1.8
+    type: atr
+  take_profits:
+  - r_multiple: 1.0
+    size_pct: 30
+  - r_multiple: 2.0
+    size_pct: 40
+  time_exit_min: 360
+  trailing:
+    k: 3.037749279081499
+    move_to_break_even_at_r: 0.6242339679110256
+    type: atr
+exposure:
+  correlation_group_cap_pct: 1.0
+  symbol_groups:
+  - name: BTC-ETH
+    symbols:
+    - BTCUSDT
+    - ETHUSDT
+  - name: ALTS
+    symbols:
+    - SOLUSDT
+    - BNBUSDT
+    - XRPUSDT
+fees:
+  maker: 0.0002
+  slippage: 0.0005
+  taker: 0.0004
+filters:
+  atr_window: 14
+  htf: 1h
+  mtf_confirm: true
+  news_blackout_min: 40
+  regime_filter: false
+  require_trend_align: false
+  session_whitelist:
+  - London
+  volume_spike: true
+session_windows_utc:
+  London:
+  - start: 07:00
+    end: '11:00'
+  NY-open:
+  - start: '13:30'
+    end: '16:00'
+flash_guard:
+  enabled: true
+  pause_candles: 3
+  threshold_pct: 0.03
+  window_sec: 60
+indicators:
+  atr:
+    length: 14
+  bollinger:
+    length: 20
+    std: 2.0
+  ema:
+    fast: 9
+    mid: 21
+    slow: 50
+  macd:
+    fast: 12
+    signal: 9
+    slow: 26
+  rsi:
+    length: 14
+  volume:
+    ma_length: 30
+leverage:
+  cap: 5
+  default: 5
+  max: 5
+  min: 2
+lookback: 400
+mode: backtest
+strategy:
+  use_ensemble: false
+  selector: scalping
+notifications:
+  telegram:
+    enabled: true
+    system_name: TRADING
+reports:
+  html: false
+performance:
+  enable_profiling: false
+  log_level: INFO
+  poll_interval_sec: 5
+portfolio:
+  max_correlated_positions: 5
+  max_strategy_positions: 3
+  max_total_exposure: 0.8
+position_sizing:
+  max_position_value: 5000
+  min_position_value: 10
+  quality_weight_max: 1.3
+  quality_weight_min: 0.7
+require_htf_aligned: false
+risk:
+  daily_loss_limit: 0.98
+  leverage_cap: 5
+  liq_buffer_multiple_of_SL: 4
+  max_consecutive_losses: 4
+  max_daily_loss_pct: 2.0
+  max_exposure_per_symbol: 0.6
+  max_open_positions: 2
+  max_positions: 5
+  per_trade: 0.005
+  risk_per_trade_pct: 0.5
+strategies:
+  breakout:
+    atr_mult_sl: 1.5
+    cooldown_candles: 5
+    enabled: false
+    filters:
+      mtf_confirm: false
+      regime: false
+      volume_spike: false
+      session_whitelist:
+      - London
+      allow_short: true
+    risk_per_trade: 0.02
+    rr: 1.6
+    timeframe: 15m
+    volume_mult: 1.4599585829685728
+    bb_bounce_lower_now_mult: 1.0040844198965317
+    bb_bounce_lower_prev_mult: 1.0070632669263078
+  daytrade:
+    atr_mult_sl: 1.5
+    cooldown_candles: 5
+    enabled: true
+    filters:
+      mtf_confirm: false
+      regime: true
+      volume_spike: true
+    risk_per_trade: 0.015
+    rr: 3.0
+    rsi_long_min: 50
+    rsi_short_max: 55
+    allow_breakout: false
+    timeframe: 5m
+  ensemble:
+    alpha_winrate: 0.4
+    atr_mult_sl: 1.5
+    beta_rr: 0.2
+    consensus_bonus: 0.2
+    cooldown_candles: 3
+    delta_confidence: 0.15
+    epsilon_regime: 0.05
+    filters:
+      mtf_confirm: false
+      regime: true
+      volume_spike: true
+    gamma_sharpe: 0.2
+    performance_window_days: 30
+    risk_per_trade: 0.02
+    rr: 2.0
+    rr_bonus: 0.2
+    rr_bonus_threshold: 1.6
+    theta_long: 0.15
+    theta_short: 0.15
+    weights:
+      breakout: 2.0
+      daytrade: 2.5
+      reversion: 3.0
+      scalping: 2.0
+      swing: 2.2
+      trend: 1.5
+    window_sec: 10
+  reversion:
+    atr_mult_sl: 1.5
+    bb_lower_pct: 1.04
+    bb_upper_pct: 0.98
+    cooldown_candles: 10
+    enabled: true
+    filters:
+      mtf_confirm: false
+      regime: false
+      trend_context_required: true
+      allow_short: false
+      volume_spike: false
+    risk_per_trade: 0.01
+    rr: 2.0
+    rsi_threshold: 30
+    timeframe: 15m
+    volume_mult: 1.2
+  scalping:
+    atr_mult_sl: 1.5
+    cooldown_candles: 3
+    enabled: true
+    filters:
+      mtf_confirm: true
+      regime: true
+      volume_spike: true
+      volume_spike_guard: false
+      allow_short: false
+      session_whitelist:
+      - London
+      - NY-open
+    volume_mult: 1.5
+    bb_bounce_lower_now_mult: 1.0
+    bb_bounce_lower_prev_mult: 1.008
+    risk_per_trade: 0.01
+    rr: 1.6
+    timeframe: 5m
+  swing:
+    atr_mult_sl: 1.5
+    cooldown_candles: 5
+    enabled: false
+    filters:
+      mtf_confirm: true
+      regime: true
+      volume_spike: true
+    risk_per_trade: 0.02
+    rr: 2.2
+    timeframe: 1h
+  trend:
+    atr_mult_sl: 1.5
+    cooldown_candles: 5
+    enabled: false
+    filters:
+      mtf_confirm: false
+      regime: false
+      volume_spike: false
+    risk_per_trade: 0.025
+    rr: 2.5
+    timeframe: 4h
+symbols:
+  core:
+  - BTCUSDT
+  - ETHUSDT
+  manual:
+  - BTCUSDT
+  - ETHUSDT
+  - BNBUSDT
+  - SOLUSDT
+  - XRPUSDT
+  - ADAUSDT
+  - DOGEUSDT
+  - DOTUSDT
+  - AVAXUSDT
+  max_streams: 120
+  mode: manual
+  topN:
+    min_volume_24h: 30000000
+    n: 50
+    refresh_interval: 3600
+timeframe: 5m
+tp_sl:
+  enabled: false
+  atr_mult_sl: 1.8
+  atr_mult_tp: 3.0
+  atr_mult_trail: 2.5
+  enable_trailing: true
+  manual:
+    sl_pct: 0.015
+    tp_pct: 0.03
+  tp1_rr: 1.0
+  tp2_rr: 2.0
+  trail_after_tp1: true
+vol_spike_mult: 1.309343243453135

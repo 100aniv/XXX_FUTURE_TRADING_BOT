@@ -1,0 +1,111 @@
+# ⭐ 전략 파라미터 (백테스트/Paper/Live 공통)
+# 
+# 이 파일을 수정하면 모든 모드에서 동일하게 적용됩니다!
+# - 백테스트
+# - Paper Trading
+# - Live Trading
+
+# ============================================
+# Scalping 전략 (하루 10% 목표 → 30-50건/일)
+# ============================================
+scalping:
+  timeframe: 5m              # ⭐ 스캘핑은 5분봉
+  rr: 2.5                    # Risk/Reward 비율 (1.5 → 2.5, 수수료 대응!) ⭐
+  atr_mult_sl: 1.5           # 손절 ATR 배수
+  risk_per_trade: 0.01       # 거래당 리스크 (1.0%)
+  min_leverage: 2
+  max_leverage: 10
+  cooldown_candles: 3        # 쿨다운 (15분)
+  enable_regime_alert: false # 필터 완화
+  enable_vol_spike_filter: false # 필터 완화
+  enable_mtf_confirm: false  # 필터 완화
+  enable_trailing_stop: false
+
+# ============================================
+# Daytrade 전략
+# ============================================
+daytrade:
+  timeframe: 15m             # ⭐ 데이트레이드는 15분봉
+  rr: 3.0                    # Risk/Reward (2.0 → 3.0) ⭐
+  atr_mult_sl: 1.5           # 손절 ATR 배수
+  risk_per_trade: 0.015      # 리스크 (1.5%)
+  min_leverage: 2
+  max_leverage: 10
+  cooldown_candles: 3        # 쿨다운
+  enable_regime_alert: false # 필터 완화
+  enable_vol_spike_filter: false # 필터 완화
+  enable_mtf_confirm: false
+
+# ============================================
+# Swing 전략
+# ============================================
+swing:
+  timeframe: 1h              # ⭐ 스윙은 1시간봉
+  rr: 2.2
+  atr_mult_sl: 1.5
+  risk_per_trade: 0.02
+  min_leverage: 2
+  max_leverage: 10
+  cooldown_candles: 5        # 스윙은 더 긴 쿨다운
+  enable_regime_alert: true
+  enable_vol_spike_filter: true
+  enable_mtf_confirm: true   # MTF 확인 활성화
+
+# ============================================
+# Trend 전략
+# ============================================
+trend:
+  timeframe: 4h              # ⭐ 트렌드는 4시간봉
+  rr: 2.5
+  atr_mult_sl: 1.5
+  risk_per_trade: 0.025      # 2.5%
+  min_leverage: 2
+  max_leverage: 10
+  cooldown_candles: 5
+  enable_regime_alert: true
+  enable_vol_spike_filter: false  # 추세는 변동성 필터 끔
+  enable_mtf_confirm: true
+
+# ============================================
+# Reversion 전략
+# ============================================
+reversion:
+  timeframe: 15m             # ⭐ 리버전은 15분봉
+  rr: 1.8
+  atr_mult_sl: 1.2
+  risk_per_trade: 0.018
+  min_leverage: 2
+  max_leverage: 10
+  cooldown_candles: 3
+  enable_regime_alert: false  # 반전은 레짐 무시
+  enable_vol_spike_filter: true
+  enable_mtf_confirm: false
+
+# ============================================
+# Breakout 전략
+# ============================================
+breakout:
+  timeframe: 1h              # ⭐ 브레이크아웃은 1시간봉
+  rr: 2.0
+  atr_mult_sl: 1.5
+  risk_per_trade: 0.02
+  min_leverage: 2
+  max_leverage: 10
+  cooldown_candles: 5
+  enable_regime_alert: false
+  enable_vol_spike_filter: false
+  enable_mtf_confirm: false
+
+# ============================================
+# Ensemble 전략
+# ============================================
+ensemble:
+  rr: 2.0
+  atr_mult_sl: 1.5
+  risk_per_trade: 0.02
+  min_leverage: 2
+  max_leverage: 10
+  cooldown_candles: 3
+  enable_regime_alert: true
+  enable_vol_spike_filter: true
+  enable_mtf_confirm: false

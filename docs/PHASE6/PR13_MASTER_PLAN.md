@@ -1,0 +1,78 @@
+# PHASE6 — PR13 마스터 플랜: 베이시안 운영 튜닝 & 단계적 롤아웃
+
+## 배경/의도(Overview)
+페이퍼 모드에서 검증된 베이시안 튜닝을 운영 환경에 안전하게 적용합니다. 섀도우런→카나리→점진적 확대의 롤아웃 전략과 가드레일(리스크 한계/변동성/최소 거래수)을 갖춘 운영 최적화 파이프라인을 구축합니다. FlowGuardian READY 게이트는 항상 유지됩니다.
+
+## 목표(Goals)
+- 페이퍼 기반 최적 파라미터 산출(가중치/임계/보너스/출구 일부)
+- 섀도우 모드에서 안전성 검증 후 카나리 릴리즈
+- 가드레일 기반 자동 중단/롤백 체계
+
+## 범위(Scope, In)
+- 튜닝 파이프라인: 실험 구성(K회/시간창), 결과 집계, 오버레이 산출
+- 운영 롤아웃: 섀도우런→카나리(10%→30%→50%→100%) 단계 적용
+- 가드레일: DD 증가 한계, 최소 거래수, 분산/변동성 상승 한계, 에러율
+- A/B 비교: baseline vs tuned 결과 리포트
+
+## 제외(Out-of-Scope)
+- 신호 무결성/Redis(→ PR9)
+- 리스크 가드/프로퍼티 테스트 신규 추가(→ PR11)
+- 고급 가격 레벨/거래소 스펙(→ PR12)
+
+## 영향 파일(예상)
+- config.yml(ensemble.*, exits.*, tuning.* 키)
+- docs/PHASE6/PR_MASTER_INTEGRATION_TEST.md(수용 테스트)
+- 리포트/대시보드(선택)
+
+## 설정 키(제안)
+- tuning.enabled: bool(기본 false)
+- tuning.mode: "paper"|"shadow"|"canary"|"full"
+- tuning.trials: int, tuning.window_hours: int
+- rollout.canary.stages: [10,30,50,100]
+- guardrails.max_dd_delta_pct: float
+- guardrails.min_trades: int
+- guardrails.max_vol_increase_pct: float
+
+## FlowGuardian 게이트
+- READY 없이는 PAPER/LIVE 불가(게이트 준수)
+
+## 수용 기준(Acceptance)
+- 24시간 페이퍼 실험에서 baseline 대비 `score_total` ≥ 15% 향상
+- Sharpe-like(analytics.kpis) ≥ 12% 향상, MDD 증가는 ≤ 0.5%p
+- 최소 거래수 ≥ 80, 승률 하락 ≤ 0.5%p, 거래 수 변화 |Δ| ≤ 15%
+- 섀도우 모드: 8시간 이상 가드레일 위반 0건(DD 증가 한계, min_trades, 변동성 증가)
+- 카나리 단계(10%→30%→50%→100%): 각 단계 6시간 이상 가드레일 위반 0건 시에만 승격
+- logs/trial_0000.json/DB 동등성 유지, pre-commit 통과
+
+## 체크리스트(Checklist)
+- [ ] 페이퍼 실험 수행 및 최적 파라미터 산출
+- [ ] 섀도우 모드 검증(미체결/미체화)
+- [ ] 카나리 단계별 성공 기준 충족 시 승격
+- [ ] 가드레일 위반 시 자동 중단/롤백 동작
+- [ ] A/B 비교 리포트 작성
+
+## 테스트 플랜(Test Plan)
+- 페이퍼: N시간 K회 실험, 결과 분포/안정성 분석
+- 섀도우: 실시간 로그/DB 영향 평가(거래 미반영)
+- 카나리: 각 단계에서 가드레일 모니터링, 실패 시 롤백 검증
+- 최종: full 적용 후 일정 기간 안정성 관찰
+
+## 오류 수정 항목(Fix Log)
+- 발생 일시 | 증상 | 원인 | 수정 내역 | 재발 방지(테스트/가드)
+- 예: 2025-11-06 03:00 | 카나리 승격 후 DD 급증 | 가중 클램핑 누락 | max_weight_per_strategy 클램프 추가 | canary_guardrail_weight_clamp
+
+## 로그/DB 산출물(Artifacts)
+- logs/trial_0000.json: 실험/롤아웃 메타, 점수, 가드레일 이벤트
+- DB: 결정/거래/리스크 이벤트의 전후 비교
+
+## 배포/롤백(Release/Rollback)
+- 배포: tuning.mode 단계 변경으로 제어
+- 롤백: 이전 파라미터 오버레이/기본값으로 즉시 회귀
+
+## 리스크/완화(Risks & Mitigations)
+- 과적합 위험 → OOS 윈도/분산 페널티/최소 거래수 적용
+- 카나리 실패 → 자동 중단/롤백, 원인 로그
+- 구성 드리프트 → config.yml 단일 소스, 커밋 해시 고정
+
+## 릴리즈 노트(Release Notes)
+- 운영 최적화 파이프라인 및 단계적 롤아웃 도입. 전략 로직 자체 변경은 최소화.

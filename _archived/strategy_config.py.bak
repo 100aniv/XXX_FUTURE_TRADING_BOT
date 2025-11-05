@@ -1,0 +1,79 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+전략 설정 로더
+==============
+⚠️ Deprecated: strategy_params.yaml → config.yml 사용
+config.yml에서 전략 설정을 로드합니다.
+
+⭐ 중요: 모든 모드(backtest/paper/live)에서 config.yml 사용!
+"""
+from typing import Dict, Any
+from .config import load_yaml_config
+
+
+def load_strategy_params() -> Dict[str, Any]:
+    """
+    전략 파라미터 로드 (config.yml 사용)
+    
+    Returns:
+        dict: 전략별 파라미터
+        
+    Example:
+        >>> params = load_strategy_params()
+        >>> scalping_config = params['scalping']
+        >>> print(scalping_config['rr'])  # 2.5
+    """
+    # config.yml에서 strategies 섹션 읽기
+    config = load_yaml_config()
+    strategies = config.get('strategies', {})
+    
+    if not strategies:
+        # 기본값 반환 (하위 호환)
+        return {
+            'scalping': {'rr': 2.5, 'risk_per_trade': 0.01, 'cooldown_candles': 3},
+            'daytrade': {'rr': 3.0, 'risk_per_trade': 0.015, 'cooldown_candles': 3},
+            'swing': {'rr': 2.2, 'risk_per_trade': 0.02, 'cooldown_candles': 5},
+            'trend': {'rr': 2.5, 'risk_per_trade': 0.025, 'cooldown_candles': 5},
+            'reversion': {'rr': 1.8, 'risk_per_trade': 0.018, 'cooldown_candles': 3},
+            'breakout': {'rr': 2.0, 'risk_per_trade': 0.02, 'cooldown_candles': 5},
+        }
+    
+    return strategies
+
+
+def get_strategy_config(strategy_name: str) -> Dict[str, Any]:
+    """
+    특정 전략의 설정 가져오기 (config.yml 사용)
+    
+    Args:
+        strategy_name: 전략 이름 ('scalping', 'daytrade', etc.')
+    
+    Returns:
+        dict: 전략 설정
+        
+    Example:
+        >>> config = get_strategy_config('scalping')
+        >>> print(config['rr'])  # 2.5
+    """
+    all_params = load_strategy_params()
+    
+    if strategy_name not in all_params:
+        # 기본값 반환 (하위 호환)
+        return {'rr': 2.0, 'risk_per_trade': 0.01, 'cooldown_candles': 3}
+    
+    return all_params[strategy_name]
+
+
+if __name__ == '__main__':
+    # 테스트
+    params = load_strategy_params()
+    print("="*60)
+    print("📊 로드된 전략 설정")
+    print("="*60)
+    
+    for strategy, config in params.items():
+        print(f"\n{strategy.upper()}:")
+        print(f"  RR: {config['rr']}")
+        print(f"  Risk: {config['risk_per_trade']*100}%")
+        print(f"  Cooldown: {config['cooldown_candles']} 캔들")

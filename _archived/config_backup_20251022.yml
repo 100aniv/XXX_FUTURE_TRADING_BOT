@@ -1,0 +1,328 @@
+# ============================================
+# 트레이딩 시스템 통합 설정
+# ============================================
+# 이 파일 하나로 모든 모드(backtest/paper/live) 제어
+# 수정 후 재시작하면 즉시 반영
+# ============================================
+
+# ============================================
+# 실행 모드
+# ============================================
+mode: backtest  # backtest | paper | live
+
+# ============================================
+# 전략 선택
+# ============================================
+strategy:
+  selector: daytrade  # ensemble | scalping | daytrade | swing | trend | reversion | breakout
+  use_ensemble: false  # Ensemble 사용 여부 (false면 selector 전략만)
+
+# ============================================
+# 기본 설정
+# ============================================
+cooldown_candles: 3  # 기본 쿨다운 (전략별 override 가능)
+
+# MTF (Multi-Timeframe) 설정
+enable_mtf_confirm: false      # MTF 확인 활성화 (백테스트용: false)
+require_htf_aligned: false     # 상위 타임프레임 정렬 필요
+htf: 1h                        # 상위 타임프레임 (1h, 4h 등)
+
+# 거래량 필터
+enable_vol_spike_filter: false # 거래량 급증 필터
+vol_spike_mult: 3.0            # 거래량 배수 (평균 대비)
+
+# ============================================
+# 심볼 & 타임프레임
+# ============================================
+symbols:
+  mode: manual  # manual | top50 | top100 | all
+  
+  # manual 모드: 수동 리스트 (백테스트는 첫 번째만 사용)
+  manual:
+    - BTCUSDT
+    - ETHUSDT
+    - BNBUSDT
+    - SOLUSDT
+    - XRPUSDT
+  
+  # core: 항상 포함 (topN/all 모드에서도)
+  core:
+    - BTCUSDT
+    - ETHUSDT
+  
+  # topN 모드 설정
+  topN:
+    n: 50  # 상위 N개
+    min_volume_24h: 30000000  # 최소 거래량 (USDT)
+    refresh_interval: 3600  # 갱신 주기 (초, 1시간)
+  
+  # 가드레일
+  max_streams: 120  # 최대 구독 수 (안전장치)
+
+timeframe: 5m  # 1m | 3m | 5m | 15m | 30m | 1h | 4h
+lookback: 400  # 지표 계산용 캔들 개수
+
+# ============================================
+# 자본 & 리스크 관리
+# ============================================
+capital:
+  initial: 10000  # 초기 자본 (USDT)
+  
+risk:
+  per_trade: 0.01  # 거래당 리스크 (1% = 0.01)
+  # daily_loss_limit: 0.03  # Paper/Live용: 일일 손실 한도 (3% = 0.03)
+  daily_loss_limit: 0.99  # 백테스트용: 제한 없음 (백테스트는 무시됨)
+  max_positions: 5  # 최대 동시 포지션
+  # max_exposure_per_symbol: 0.3  # Paper/Live용: 심볼당 최대 노출 (30%)
+  max_exposure_per_symbol: 0.6  # 백테스트용: 완화 (60%)
+
+# ============================================
+# 포트폴리오 관리 (멀티 심볼)
+# ============================================
+portfolio:
+  max_total_exposure: 0.8  # 전체 포트폴리오 최대 노출 (80%)
+  max_strategy_positions: 3  # 전략당 최대 포지션 수
+  max_correlated_positions: 2  # 상관성 높은 심볼 동시 포지션 제한
+
+# ============================================
+# 레버리지
+# ============================================
+leverage:
+  min: 2
+  max: 10
+  default: 5
+
+# ============================================
+# 포지션 사이징
+# ============================================
+position_sizing:
+  quality_weight_min: 0.7  # 낮은 확신 시 감소
+  quality_weight_max: 1.3  # 높은 확신 시 증가
+  max_position_value: 5000  # 포지션 최대 가치 (USDT)
+  min_position_value: 10    # 포지션 최소 가치 (USDT)
+
+# ============================================
+# 수수료 & 슬리피지 (시뮬레이션)
+# ============================================
+fees:
+  maker: 0.0002  # 0.02%
+  taker: 0.0004  # 0.04%
+  slippage: 0.0005  # 0.05% (백테스트/Paper만)
+
+# ============================================
+# Flash Guard (급등락 방지)
+# ============================================
+flash_guard:
+  enabled: true
+  window_sec: 60  # 감지 시간 (초)
+  threshold_pct: 0.03  # 3% 이상 변동
+  pause_candles: 3  # 일시 중지 (캔들 수)
+
+# ============================================
+# 신호 필터 (기본값)
+# ============================================
+filters:
+  volume_spike: true  # 거래량 스파이크 필터
+  regime_filter: true  # 레짐 필터 (상승/하락/횡보)
+  mtf_confirm: true  # 멀티 타임프레임 확인
+
+# ============================================
+# 알림
+# ============================================
+notifications:
+  telegram:
+    enabled: true
+    system_name: TRADING  # 메시지 prefix
+
+# ============================================
+# 전략별 파라미터
+# ============================================
+strategies:
+  scalping:
+    enabled: false
+    timeframe: 5m
+    rr: 2.5  # Risk/Reward
+    atr_mult_sl: 1.5  # 손절 ATR 배수
+    risk_per_trade: 0.01
+    cooldown_candles: 3
+    filters:
+      regime: false  # 필터 완화 (거래 빈도 증가)
+      volume_spike: false
+      mtf_confirm: false
+  
+  daytrade:
+    enabled: false
+    timeframe: 15m
+    rr: 3.0
+    atr_mult_sl: 1.5
+    risk_per_trade: 0.015
+    cooldown_candles: 3
+    filters:
+      regime: false
+      volume_spike: false
+      mtf_confirm: false
+  
+  swing:
+    enabled: false
+    timeframe: 1h
+    rr: 2.2
+    atr_mult_sl: 1.5
+    risk_per_trade: 0.02
+    cooldown_candles: 5
+    filters:
+      regime: true
+      volume_spike: true
+      mtf_confirm: true
+  
+  trend:
+    enabled: true
+    timeframe: 4h
+    rr: 2.5
+    atr_mult_sl: 1.5
+    risk_per_trade: 0.025
+    cooldown_candles: 5
+    filters:
+      regime: false  # true → false (완화)
+      volume_spike: false
+      mtf_confirm: false  # true → false (완화)
+  
+  reversion:
+    enabled: false
+    timeframe: 15m
+    rr: 1.3  # 1.8 → 1.3 (승률 35% 활용)
+    atr_mult_sl: 1.0  # 1.2 → 1.0
+    risk_per_trade: 0.018
+    cooldown_candles: 3
+    filters:
+      regime: false
+      volume_spike: true
+      mtf_confirm: false
+  
+  breakout:
+    enabled: false
+    timeframe: 1h
+    rr: 2.0
+    atr_mult_sl: 1.5
+    risk_per_trade: 0.02
+    cooldown_candles: 5
+    filters:
+      regime: false
+      volume_spike: false
+      mtf_confirm: false
+  
+  ensemble:
+    # 기본 전략 파라미터
+    rr: 2.0
+    atr_mult_sl: 1.5
+    risk_per_trade: 0.02
+    cooldown_candles: 3
+    filters:
+      regime: true
+      volume_spike: true
+      mtf_confirm: false
+    
+    # 전략별 가중치 (기본값)
+    weights:
+      trend: 2.5
+      reversion: 2.0
+      breakout: 2.2
+      scalping: 1.8
+      daytrade: 2.3
+      swing: 2.1
+    
+    # 우선순위 계산 파라미터
+    alpha_winrate: 0.4      # 승률 가중치
+    beta_rr: 0.2            # RR 가중치
+    gamma_sharpe: 0.2       # 샤프 가중치
+    delta_confidence: 0.15  # 신뢰도 가중치
+    epsilon_regime: 0.05    # 레짐 가중치
+    
+    # 의사결정 임계값
+    theta_long: 0.15        # LONG 진입 임계값
+    theta_short: 0.15       # SHORT 진입 임계값
+    
+    # 보너스/패널티
+    consensus_bonus: 0.2    # 합의 보너스
+    rr_bonus_threshold: 1.6 # RR 보너스 임계값
+    rr_bonus: 0.2           # RR 보너스 값
+    
+    # 신호 수집
+    window_sec: 10          # 신호 수집 윈도우 (초)
+    performance_window_days: 30  # 성과 추적 기간 (일)
+
+# ============================================
+# 백테스트 설정 (mode=backtest일 때만)
+# ============================================
+backtest:
+  period: ten_years  # ten_years | one_year | three_years | custom
+  
+  # 프리셋 기간
+  periods:
+    ten_years:
+      start_date: "2015-01-01"
+      end_date: "2025-10-19"
+    one_year:
+      start_date: "2024-01-01"
+      end_date: "2024-12-31"
+    three_years:
+      start_date: "2022-01-01"
+      end_date: "2024-12-31"
+  
+  # Custom 기간 (period=custom일 때)
+  custom:
+    start_date: "2024-01-01"
+    end_date: "2024-12-31"
+  
+  # 데이터 위치
+  data_dir: data/historical
+
+# ============================================
+# TP/SL 계산 파라미터
+# ============================================
+tp_sl:
+ 
+  atr_mult_sl: 1.5    # 손절: ATR x 1.5
+  atr_mult_tp: 3.0    # 목표: ATR x 3.0
+  atr_mult_trail: 1.2 # Trailing: ATR x 1.2
+  
+  # Trailing 설정
+  enable_trailing: true
+  trail_after_tp1: true
+  tp1_rr: 1.0  # TP1 = 1R
+  tp2_rr: 2.0  # TP2 = 2R
+  
+  # 수동 TP/SL (고정값)
+  manual:
+    sl_pct: 0.015     # 1.5%
+    tp_pct: 0.03      # 3.0%
+
+
+# ============================================
+# 지표 파라미터
+# ============================================
+indicators:
+  ema:
+    fast: 9
+    mid: 21
+    slow: 50
+  rsi:
+    length: 14
+  macd:
+    fast: 12
+    slow: 26
+    signal: 9
+  bollinger:
+    length: 20
+    std: 2.0
+  atr:
+    length: 14
+  volume:
+    ma_length: 30
+
+# ============================================
+# 성능 & 디버그
+# ============================================
+performance:
+  poll_interval_sec: 5  # 폴링 간격
+  enable_profiling: false  # 성능 프로파일링
+  log_level: INFO  # DEBUG | INFO | WARNING | ERROR

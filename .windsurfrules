@@ -1,0 +1,54 @@
+[Objective]
+FlowGuardian(게이트) 모듈 추가.
+READY 플래그 없이는 PAPER/LIVE 실행 불가.
+새 파일/메서드 금지. 필요한 경우 interfaces.py 변경 PR 먼저 제안.
+
+[Files You May Edit]
+- core/interfaces.py
+- core/flow_guardian.py (신규 1개만 허용)
+- execution/engine.py (게이트 호출만 추가)
+- metrics/compute.py (계약 준수 내 범위)
+
+[Non-Goals]
+- 복잡한 파워쉘 명령어 조합 사용하지 않기(명령어가 복잡해지면 오류발생)
+- 전략 로직 변경 금지
+- 데이터 소스/브로커 어댑터 교체 금지
+- 기존 모듈 최대 활용 - 신규 파일 생성 안 함 (리팩토링시 예외, 참고하는 문서에 생성이 필요하다고 할때는 생성)
+-  불필요한 모듈 혹은 메소드 제거 - 기존 모듈과의 관계 현재 구현하려는 것, 전체 흐름 고려햇을때 사용하지 않는 것 제거
+- 하드코딩 제거 - 모든 로직 모듈화
+-  단일 책임 - 각 모듈의 역할 명확
+-  간결성 - main.py는 흐름 제어만
+-  기존 MD파일 활용 - 신규로 MD파일 생성 안함 기존 통합업데이트
+ - 설정값음 config.yml - 설정값 변경에 대한 파일은 config.yml 유일무이. 꼭 설정이 필요한 값에 대해 config.yml에. 중복 및 하드코딩 되지 않게
+
+[Constraints]
+- tests/flow/test_flow_guardian.py 통과 필수
+- pre-commit(ruff, black, mypy, vulture, coverage>85%) 통과
+- logs/trial_0000.json 생성 보장
+- DB score_total == JSON score_total
+
+[Refactor Workflow]
+리팩토링은 모듈 단위 PR로 진행하고, 다른 기능(게이트, DB, 튜닝)과 분리.
+변경 허용 파일 목록을 PR 본문에 명시. 비허용 파일 변경 불가.
+[Documentation Sync]
+리팩토링 시 아래 문서 동기화 필수:
+REFACTORING_문서아키텍처.md
+
+ 
+ 해당 모듈 REFACTORING_*.mdㅇㄹㅇㄹㄹㄴㅇㅇㄴㄴㄹㄹ
+REFACTORING_database_v1.md (DB 영향 시)
+REFACTORING_tuning_v1.md (튜닝 영향 시)ㅋㅇㄴㄹㄴㄹㄴㅇ
+
+ㄴㅇ
+ㄹ
+
+REFACTORING_flow_guardian_gate.md (게이트 기준·시나리오 영향 시)
+[Testing & Acceptance]
+unit/contract/flow/gate/tuning 테스트 매트릭스 적용.
+게이트 수용 기준: tests/flow/test_flow_guardian.py 통과, logs/trial_0000.json 생성, DB score_total == JSON score_total.
+pre-commit(ruff, black, mypy, vulture, coverage>85%) 통과.
+[Docker Policy]ㅇㄹ
+WS/DB/Redis 경로 영향 시 PAPER 프로파일 기준 10분 스모크(선택 권장).
+순수 파이썬 내부 로직 변경은 로컬 테스트로 대체 가능.
+[Config Policy]
+설정은 config.yml 단일 소스. 모드 결정은 config.mode > ENV TRADING_MODE > paper.

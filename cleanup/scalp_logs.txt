@@ -1,0 +1,7 @@
+﻿docker-compose : failed to read C:\Users\bback\OneDrive\Documents\future_alarm_bot\.env: line 54: key cannot contain a space
+위치 줄:1 문자:1
++ docker-compose logs --tail=500 scalp-bot 2>&1 | Out-File -FilePath sc ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (failed to r    ead ...contain a space:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 

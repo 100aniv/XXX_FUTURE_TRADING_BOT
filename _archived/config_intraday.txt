@@ -1,0 +1,81 @@
+# ========================================
+# 단타 봇 (5분봉) - 메인 전략
+# 목표: 균형잡힌 매매
+# 신호: 하루 30-60개
+# 승률: 55-62%
+# ========================================
+
+# --- TELEGRAM ---
+TELEGRAM_TOKEN=
+TELEGRAM_CHAT_ID=
+
+# 봇 이름 및 전략 ID
+BOT_NAME=INTRA
+STRATEGY_ID=daytrade
+
+# --- ACCOUNT / RISK ---
+EQUITY_USDT=7000
+RISK_PER_TRADE=0.004    # 0.4%
+
+# --- LEVERAGE ---
+MAX_LEVERAGE=7
+MIN_LEVERAGE=2
+
+# --- SYMBOLS / TIMEFRAME ---
+SYMBOLS=BTCUSDT,ETHUSDT,BNBUSDT,SOLUSDT,XRPUSDT,ADAUSDT,DOGEUSDT
+TIMEFRAME=5m            # 5분봉 단타
+LOOKBACK=400
+
+# --- SIGNAL PARAMS ---
+RR=1.6                  # 중간 RR
+ATR_MULT_SL=1.0         # 중간 손절
+ATR_MULT_TRAIL=1.0
+COOLDOWN_CANDLES=1      # 짧은 쿨다운
+
+# --- OPTIONAL FEATURES ---
+ENABLE_TP_TRAIL=true
+TP1_RR=0.9
+TP2_RR=1.6
+TRAIL_AFTER_TP1=true
+
+ENABLE_REGIME_ALERT=true
+ENABLE_VOL_SPIKE_FILTER=true    # 필터 ON (품질 유지)
+VOL_SPIKE_MULT=2.0
+VOL_MA_LEN=30
+
+ENABLE_MTF_CONFIRM=true         # MTF ON
+HTF=15m                         # 15분봉 추세 확인
+REQUIRE_HTF_ALIGNED=true
+
+ENABLE_DAILY_RISK_GUARD=true
+DAILY_RISK_LIMIT_PCT=0.05       # 하루 5% 손실 제한
+
+ENABLE_GOAL_TRACKER=true
+DAILY_GOAL_PCT=0.10             # 하루 10% 목표
+
+ENABLE_FLASH_GUARD=true         # Flash Guard ON
+FLASH_WINDOW_SEC=30
+FLASH_PCT=0.012
+FLASH_PAUSE_CANDLES=1
+
+ENABLE_BEGINNER_EXPLAIN=true
+
+# ========================================
+# 포지션 사이징 & 리스크 관리 ⭐ 신규
+# ========================================
+# 품질 가중치 (단타: 표준)
+QUALITY_WEIGHT_MIN=0.7
+QUALITY_WEIGHT_MAX=1.3
+
+# 포지션 한도 (단타: 중간 크기)
+MAX_POSITION_VALUE=3500
+MIN_POSITION_VALUE=30
+
+# 심볼별 최대 노출
+MAX_EXPOSURE_PER_SYMBOL_PCT=0.25
+
+# 동시 포지션 수
+MAX_CONCURRENT_POSITIONS=5
+
+# 일일 손실 한도
+DAILY_LOSS_LIMIT_PCT=0.05

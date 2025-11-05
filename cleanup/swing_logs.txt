@@ -1,0 +1,11 @@
+﻿docker-compose : failed to read C:\Users\bback\OneDrive\
+Documents\future_alarm_bot\.env: line 54: key cannot con
+tain a space
+위치 줄:1 문자:1
++ docker-compose logs --tail=500 swing-bot 2>&1 | Out-Fi
+le -FilePath sw ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (failed to  
+   read ...contain a space:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 

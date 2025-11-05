@@ -1,0 +1,662 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+앙상블 통합 봇 (Ensemble Decision Bot)
+====================================
+리팩토링 v2.0 - 실밥 리팩토링 (상세 주석)
+
+목적:
+- 3개 전략 신호(trend, reversion, breakout)를 가중치로 통합
+- 승률/RR/샤프/레짐 적합도 기반 우선순위 산정
+- trading.decisions에 최종 결정 저장 (멱등성 보장)
+
+구조:
+1. 신호 수집: monitoring.signals에서 최근 신호 조회
+2. 성과 로드: trading.trades에서 30일 실적 계산
+3. 가중치 계산: α*승률 + β*RR + γ*샤프 + δ*신뢰도 + ε*레짐
+4. 통합 점수: LONG/SHORT 점수 계산 후 의사결정
+5. 보너스 적용: 합의/RR 보너스, 연속손실 패널티
+6. DB 저장: trading.decisions에 멱등성 보장
+
+참고: docs/ENSEMBLE_ARCHITECTURE.md
+"""
+
+import os
+import sys
+import time
+import logging
+from datetime import datetime, timedelta
+from typing import Dict, List, Any, Optional, Tuple
+import psycopg2
+from psycopg2.extras import Json, RealDictCursor
+import json
+import random
+
+# ============================================
+# 1. LOGGING (로그 설정) - 공통 모듈 사용
+# ============================================
+from common.logger import setup_logger
+logger = setup_logger(__name__, log_type="signals")
+
+# ============================================
+# 2. DATABASE (공통 모듈 사용)
+# ============================================
+from common.database import get_db_connection, test_db_connection
+
+# DB 연결 테스트
+test_db_connection()
+
+# ============================================
+# 3. CONFIG (환경변수 설정)
+# ============================================
+# ⚠️ 리팩토링 대상: common/config.py로 이동
+# - load_ensemble_config() 함수로 분리
+# - .env 파일에서 모든 설정 로드
+# - 타입 변환 및 기본값 제공
+# ============================================
+# TODO: 이 전역 CFG는 함수 파라미터로 전달하도록 변경
+CFG = {
+    # 전략 가중치 (기본값) - 실전 성과 기반으로 조정됨 ⭐ 6개 전략
+    "weight_trend": float(os.getenv("WEIGHT_TREND", "2.5")),        # TREND: EMA+MACD 추세 추종 (1h)
+    "weight_reversion": float(os.getenv("WEIGHT_REVERSION", "2.0")), # REVERSION: RSI+BB 평균회귀 (5m)
+    "weight_breakout": float(os.getenv("WEIGHT_BREAKOUT", "2.2")),  # BREAKOUT: Donchian 돌파 (15m)
+    "weight_scalping": float(os.getenv("WEIGHT_SCALPING", "1.8")),  # SCALPING: BB+EMA 초단타 (1m) ⭐ 신규
+    "weight_daytrade": float(os.getenv("WEIGHT_DAYTRADE", "2.3")),  # DAYTRADE: 단타 (5m) ⭐ 신규
+    "weight_swing": float(os.getenv("WEIGHT_SWING", "2.1")),        # SWING: 스윙 (15m) ⭐ 신규
+    
+    # 신호 수집 윈도우
+    "signal_window_sec": int(os.getenv("SIGNAL_WINDOW_SEC", "10")),  # 캔들 종료 후 10초 이내 신호만
+    
+    # 우선순위 계산 파라미터
+    "alpha_winrate": float(os.getenv("ALPHA_WINRATE", "0.4")),  # 승률 가중치
+    "beta_rr": float(os.getenv("BETA_RR", "0.2")),  # RR 가중치
+    "gamma_sharpe": float(os.getenv("GAMMA_SHARPE", "0.2")),  # 샤프 가중치
+    "delta_confidence": float(os.getenv("DELTA_CONFIDENCE", "0.15")),  # 신뢰도 가중치
+    "epsilon_regime": float(os.getenv("EPSILON_REGIME", "0.05")),  # 레짐 적합도 가중치
+    
+    # 보너스/패널티
+    "htf_regime_bonus": float(os.getenv("HTF_REGIME_BONUS", "0.2")),
+    "consensus_bonus": float(os.getenv("CONSENSUS_BONUS", "0.2")),  # 2개 전략 동의 시
+    "consecutive_loss_penalty": float(os.getenv("CONSECUTIVE_LOSS_PENALTY", "-0.3")),
+    "rr_bonus_threshold": float(os.getenv("RR_BONUS_THRESHOLD", "1.6")),
+    "rr_bonus": float(os.getenv("RR_BONUS", "0.2")),
+    
+    # 의사결정 임계값
+    "theta_long": float(os.getenv("THETA_LONG", "0.15")),
+    "theta_short": float(os.getenv("THETA_SHORT", "0.15")),
+    
+    # 탐험 파라미터 (epsilon-greedy)
+    "epsilon_explore": float(os.getenv("EPSILON_EXPLORE", "0.05")),  # 5% 확률로 랜덤
+    "explore_threshold": float(os.getenv("EXPLORE_THRESHOLD", "0.05")),  # 상위 점수와 5% 이내
+    
+    # 성과 추적 기간
+    "performance_window_days": int(os.getenv("PERFORMANCE_WINDOW_DAYS", "30")),
+    
+    # 폴링 간격
+    "poll_interval_sec": int(os.getenv("POLL_INTERVAL_SEC", "5")),
+    
+    # 텔레그램 (선택)
+    "telegram_token": os.getenv("TELEGRAM_TOKEN", ""),
+    "telegram_chat_id": os.getenv("TELEGRAM_CHAT_ID", ""),
+}
+
+logger.info(f"설정: 가중치(6개 전략)")
+logger.info(f"  - TREND={CFG['weight_trend']}, REVERSION={CFG['weight_reversion']}, BREAKOUT={CFG['weight_breakout']}")
+logger.info(f"  - SCALPING={CFG['weight_scalping']}, DAYTRADE={CFG['weight_daytrade']}, SWING={CFG['weight_swing']}")
+logger.info(f"설정: 파라미터(α={CFG['alpha_winrate']}, β={CFG['beta_rr']}, γ={CFG['gamma_sharpe']}, δ={CFG['delta_confidence']}, ε={CFG['epsilon_regime']})")
+
+# ============================================
+# 4. PERFORMANCE METRICS (성과 메트릭 로드)
+# ============================================
+# ✅ 리팩토링 후: strategies/ensemble.py로 이동
+# - load_strategy_performance() → 순수 함수로 유지
+# - DB 연결은 외부에서 주입
+# - 승률/RR/샤프 계산
+# - 초기값 제공 (데이터 없을 시)
+# ============================================
+def load_strategy_performance(conn) -> Dict[str, Dict[str, float]]:
+    """
+    최근 30일 전략별 성과 메트릭 로드
+    반환: { 'trend': {'winrate': 0.55, 'rr_mean': 1.2, 'sharpe': 0.8, ...}, ... }
+    """
+    sql = """
+    SELECT 
+        strategy_id,
+        COUNT(*) as total_trades,
+        AVG(CASE WHEN pnl > 0 THEN 1.0 ELSE 0.0 END) as winrate,
+        AVG(CASE WHEN pnl > 0 THEN pnl ELSE 0 END) / NULLIF(AVG(CASE WHEN pnl < 0 THEN -pnl ELSE 0 END), 0) as profit_factor,
+        AVG(pnl_pct) as avg_pnl_pct,
+        STDDEV(pnl_pct) as stddev_pnl_pct,
+        SUM(pnl) as total_pnl
+    FROM trading.trades
+    WHERE ts_open >= NOW() - INTERVAL '%s days'
+      AND status = 'CLOSED'
+    GROUP BY strategy_id
+    """
+    
+    try:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(sql, (CFG['performance_window_days'],))
+            rows = cur.fetchall()
+            
+            perf = {}
+            for row in rows:
+                strategy_id = row['strategy_id']
+                
+                # 샤프 비율 계산 (간이)
+                sharpe = 0.0
+                if row['stddev_pnl_pct'] and row['stddev_pnl_pct'] > 0:
+                    sharpe = row['avg_pnl_pct'] / row['stddev_pnl_pct']
+                
+                perf[strategy_id] = {
+                    'winrate': row['winrate'] or 0.0,
+                    'profit_factor': row['profit_factor'] or 1.0,
+                    'rr_mean': row['profit_factor'] or 1.0,  # RR 대용
+                    'sharpe': sharpe,
+                    'total_trades': row['total_trades'] or 0,
+                    'total_pnl': row['total_pnl'] or 0.0,
+                }
+            
+            # 초기값 (거래 없는 전략)
+            for strategy_id in ['trend', 'reversion', 'breakout']:
+                if strategy_id not in perf:
+                    perf[strategy_id] = {
+                        'winrate': 0.5,  # 중립
+                        'profit_factor': 1.0,
+                        'rr_mean': 1.0,
+                        'sharpe': 0.0,
+                        'total_trades': 0,
+                        'total_pnl': 0.0,
+                    }
+            
+            logger.info(f"📊 성과 메트릭 로드 완료: {json.dumps(perf, indent=2)}")
+            return perf
+    
+    except Exception as e:
+        logger.error(f"성과 메트릭 로드 실패: {e}")
+        # 기본값 반환 (6개 전략)
+        default_perf = {'winrate': 0.5, 'rr_mean': 1.0, 'sharpe': 0.0, 'total_trades': 0, 'total_pnl': 0.0}
+        return {
+            'trend': default_perf.copy(),
+            'reversion': default_perf.copy(),
+            'breakout': default_perf.copy(),
+            'scalping': default_perf.copy(),   # ⭐ 신규
+            'daytrade': default_perf.copy(),   # ⭐ 신규
+            'swing': default_perf.copy(),      # ⭐ 신규
+        }
+
+# ============================================
+# 5. SIGNAL COLLECTION (신호 수집)
+# ============================================
+# ✅ 리팩토링 후: strategies/ensemble.py로 이동
+# - fetch_recent_signals() → 순수 함수로 유지
+# - DB 연결은 외부에서 주입
+# ============================================
+def fetch_recent_signals(conn, symbol: str, timeframe: str, candle_closed_at: datetime) -> List[Dict]:
+    """
+    특정 캔들 시각 기준 ±window 내 신호 수집
+    """
+    window = timedelta(seconds=CFG['signal_window_sec'])
+    start_time = candle_closed_at - window
+    end_time = candle_closed_at + window
+    
+    sql = """
+    SELECT 
+        signal_id, strategy_id, bot_id, symbol, timeframe,
+        candle_closed_at, direction, confidence,
+        entry_price, sl_price, tp_price, atr, leverage, features,
+        created_at
+    FROM monitoring.signals
+    WHERE symbol = %s
+      AND timeframe = %s
+      AND candle_closed_at BETWEEN %s AND %s
+    ORDER BY created_at DESC
+    """
+    
+    try:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(sql, (symbol, timeframe, start_time, end_time))
+            rows = cur.fetchall()
+            
+            signals = []
+            for row in rows:
+                sig = dict(row)
+                # JSONB 파싱
+                if sig['features']:
+                    sig['features'] = dict(sig['features'])
+                signals.append(sig)
+            
+            return signals
+    
+    except Exception as e:
+        logger.error(f"신호 수집 실패: {e}")
+# ============================================
+# 6. STANDARDIZATION (표준화)
+# ============================================
+# ✅ 리팩토링 후: strategies/ensemble.py로 이동
+# - standardize() → 순수 함수 (common/calculations.py 고려)
+# ============================================
+def standardize(values: List[float]) -> List[float]:
+    """
+    Z-score 표준화 (평균 0, 표준편차 1)
+    """
+    if len(values) == 0:
+        return []
+    
+    mean = sum(values) / len(values)
+    variance = sum((x - mean) ** 2 for x in values) / len(values)
+    stddev = variance ** 0.5
+    
+    if stddev == 0:
+        return [0.0] * len(values)
+    
+    return [(x - mean) / stddev for x in values]
+
+# ============================================
+# 7. REGIME FIT (레짐 적합도)
+# ============================================
+# ✅ 리팩토링 후: strategies/ensemble.py로 이동
+# - calc_regime_fit() → 순수 함수로 유지
+# - 전략별 레짐 적합도 계산 로직
+# ============================================
+def calc_regime_fit(strategy_id: str, features: Dict) -> float:
+    """
+    시장 레짐에 대한 전략 적합도 (0~1)
+    - TREND: 추세장(상승/하락) 유리
+    - REVERSION: 횡보장, 중간 변동성 유리
+    - BREAKOUT: 고변동성, 급등락 구간 유리
+    - SCALPING: 저변동성, 유동성 높을 때 유리
+    - DAYTRADE: 중간 변동성, 추세+횡보 유리
+    - SWING: 명확한 추세, 중고 변동성 유리
+    """
+    if not features:
+        return 0.5  # 중립
+    
+    regime = features.get('regime', '중립')
+    atr_pct = features.get('atr_pct', 0.0)
+    
+    # 변동성 기준
+    volatility_score = min(atr_pct / 0.03, 1.0)  # 3% 이상이면 1.0
+    
+    # 전략별 적합도
+    if strategy_id == 'trend':
+        # TREND: 추세장(상승/하락), 낮은 변동성
+        if regime in ('상승장', '하락장'):
+            return 0.8 * (1.0 - volatility_score * 0.5)  # 변동성 낮을수록 유리
+        return 0.4
+    
+    elif strategy_id == 'reversion':
+        # REVERSION: 횡보장, 중간 변동성
+        if regime == '횡보장':
+            return 0.8
+        elif regime in ('상승장', '하락장'):
+            return 0.6
+        return 0.5
+    
+    elif strategy_id == 'breakout':
+        # BREAKOUT: 변동성 높을수록 유리
+        return volatility_score
+    
+    elif strategy_id == 'scalping':
+        # SCALPING: 저변동성, 횡보장 유리 (빠른 진출입)
+        if regime == '횡보장':
+            return 0.7 * (1.0 - volatility_score * 0.3)
+        return 0.5 * (1.0 - volatility_score * 0.5)
+    
+    elif strategy_id == 'daytrade':
+        # DAYTRADE: 중간 변동성, 모든 레짐에서 균형잡힌 성과
+        mid_vol = 1.0 - abs(volatility_score - 0.5) * 2  # 0.5에 가까울수록 1.0
+        return 0.6 + 0.2 * mid_vol
+    
+    elif strategy_id == 'swing':
+        # SWING: 명확한 추세, 중고 변동성 유리
+        if regime in ('상승장', '하락장'):
+            return 0.75 * (0.5 + volatility_score * 0.5)  # 변동성 적당히 있을 때
+        return 0.4
+    
+    return 0.5
+
+# ============================================
+# 8. WEIGHT CALCULATION (가중치 계산)
+# ============================================
+# 리팩토링 시: ensemble.py로 분리
+# - 성과 메트릭 표준화 후 가중치 산출
+# - 기본 가중치 + 동적 가중치 결합
+# - 정규화로 합계 1.0 보장
+# ============================================
+def calculate_weights(signals: List[Dict], perf: Dict[str, Dict]) -> Dict[str, float]:
+    """
+    각 전략의 가중치 계산
+    공식: α*승률 + β*RR + γ*샤프 + δ*신뢰도 + ε*레짐 + 기본가중치*0.1
+    """
+    strategy_ids = ['trend', 'reversion', 'breakout']
+    
+    # 1. 성과 메트릭 추출
+    winrates = [perf[sid]['winrate'] for sid in strategy_ids]
+    rr_means = [perf[sid]['rr_mean'] for sid in strategy_ids]
+    sharpes = [perf[sid]['sharpe'] for sid in strategy_ids]
+    
+    # 2. 표준화
+    z_winrates = standardize(winrates)
+    z_rr_means = standardize(rr_means)
+    z_sharpes = standardize(sharpes)
+    
+    # 3. 신호별 가중치 계산
+    weights = {}
+    raw_weights = []
+    
+    for i, sid in enumerate(strategy_ids):
+        # 해당 전략의 신호 찾기
+        sig = next((s for s in signals if s['strategy_id'] == sid), None)
+        
+        if not sig:
+            weights[sid] = 0.0
+            raw_weights.append(0.0)
+            continue
+        
+        # 신뢰도 (DB에서 Decimal 타입으로 올 수 있음)
+        confidence = float(sig.get('confidence', 0.5))
+        
+        # 레짐 적합도
+        regime_fit = calc_regime_fit(sid, sig.get('features', {}))
+        
+        # 점수 계산
+        raw_weight = (
+            CFG['alpha_winrate'] * z_winrates[i] +
+            CFG['beta_rr'] * z_rr_means[i] +
+            CFG['gamma_sharpe'] * z_sharpes[i] +
+            CFG['delta_confidence'] * confidence +
+            CFG['epsilon_regime'] * regime_fit
+        )
+        
+        # 기본 가중치 추가 (설정값)
+        base_weight = {
+            'trend': CFG['weight_trend'],
+            'reversion': CFG['weight_reversion'],
+            'breakout': CFG['weight_breakout'],
+        }.get(sid, 1.0)
+        
+        raw_weight += base_weight * 0.1  # 기본 가중치를 10% 반영
+        
+        raw_weights.append(max(0.0, raw_weight))
+    
+    # 4. 정규화
+    total = sum(raw_weights)
+    if total > 0:
+        for i, sid in enumerate(strategy_ids):
+            weights[sid] = raw_weights[i] / total
+    else:
+        # 모두 0이면 균등 분배
+        for sid in strategy_ids:
+            weights[sid] = 1.0 / len(strategy_ids)
+    
+    return weights
+
+# ============================================
+# 9. ENSEMBLE SCORE (통합 점수 계산)
+# ============================================
+# 리팩토링 시: ensemble.py로 분리
+# - LONG/SHORT/FLAT 점수 계산
+# - 최종 점수 = LONG - SHORT
+# - 임계값 비교로 의사결정
+# ============================================
+def calculate_ensemble_score(signals: List[Dict], weights: Dict[str, float]) -> Tuple[str, float, Dict]:
+    """
+    통합 점수 계산
+    반환: (chosen_side, score, details)
+    """
+    side_scores = {'LONG': 0.0, 'SHORT': 0.0, 'FLAT': 0.0}
+    
+    for sig in signals:
+        strategy_id = sig['strategy_id']
+        direction = sig['direction']
+        confidence = float(sig.get('confidence', 0.5))  # DB에서 Decimal로 올 수 있음
+        weight = weights.get(strategy_id, 0.0)
+        
+        # 방향별 점수 누적
+        if direction == 'LONG':
+            side_scores['LONG'] += weight * confidence
+        elif direction == 'SHORT':
+            side_scores['SHORT'] += weight * confidence
+        else:  # FLAT
+            side_scores['FLAT'] += weight * confidence
+    
+    # 최종 점수 (LONG은 양수, SHORT는 음수)
+    score = side_scores['LONG'] - side_scores['SHORT']
+    
+    # 의사결정
+    chosen_side = 'FLAT'
+    if score > CFG['theta_long']:
+        chosen_side = 'LONG'
+    elif score < -CFG['theta_short']:
+        chosen_side = 'SHORT'
+    
+    details = {
+        'side_scores': side_scores,
+        'final_score': score,
+        'theta_long': CFG['theta_long'],
+        'theta_short': CFG['theta_short'],
+    }
+    
+    return chosen_side, score, details
+
+# ============================================
+# 10. BONUSES/PENALTIES (보너스/패널티)
+# ============================================
+# ✅ 리팩토링 후: strategies/ensemble.py로 이동
+# - apply_bonuses() → 순수 함수로 유지
+# ============================================
+def apply_bonuses(signals: List[Dict], score: float, chosen_side: str) -> float:
+    """
+    추가 보너스/패널티 적용
+    """
+    adjusted_score = score
+    
+    # 1. 합의 보너스 (2개 이상 전략이 같은 방향)
+    same_direction_count = sum(1 for s in signals if s['direction'] == chosen_side)
+    if same_direction_count >= 2:
+        adjusted_score += CFG['consensus_bonus'] if chosen_side == 'LONG' else -CFG['consensus_bonus']
+        logger.info(f"  → 합의 보너스 적용: {same_direction_count}개 전략 동의 (+{CFG['consensus_bonus']})")
+    
+    # 2. RR 보너스
+    high_rr_count = 0
+    for sig in signals:
+        if sig.get('features'):
+            # TP/SL 거리 계산하여 RR 추정 (DB에서 Decimal로 올 수 있음)
+            entry = float(sig.get('entry_price', 0) or 0)
+            sl = float(sig.get('sl_price', 0) or 0)
+            tp = float(sig.get('tp_price', 0) or 0)
+            
+            if entry and sl and tp and sl != entry:
+                if sig['direction'] == 'LONG':
+                    rr = (tp - entry) / (entry - sl)
+                else:  # SHORT
+                    rr = (entry - tp) / (sl - entry)
+                
+                if rr >= CFG['rr_bonus_threshold']:
+                    high_rr_count += 1
+    
+    if high_rr_count > 0:
+        rr_adjustment = CFG['rr_bonus'] * high_rr_count
+        adjusted_score += rr_adjustment if chosen_side == 'LONG' else -rr_adjustment
+        logger.info(f"  → RR 보너스 적용: {high_rr_count}개 신호 RR≥{CFG['rr_bonus_threshold']} (+{rr_adjustment:.2f})")
+    
+    # TODO: 연속 손실 패널티, HTF 레짐 보너스 등 추가 가능
+    
+    return adjusted_score
+
+# ============================================
+# 11. SAVE DECISION (결정 저장)
+# ============================================
+# ✅ 리팩토링 후: strategies/ensemble.py로 이동
+# - save_decision() → DB 저장 함수
+# - 외부에서 호출 가능하도록 export
+# ============================================
+def save_decision(conn, symbol: str, timeframe: str, candle_closed_at: datetime,
+                  chosen_side: str, score: float, weights: Dict, from_signals: List[str], reason: str) -> bool:
+    """
+    통합 결정 저장 (멱등성 보장)
+    """
+    from uuid import uuid4
+    
+    decision_id = str(uuid4())
+    chosen_size = abs(score)  # 포지션 크기 (0~1)
+    
+    sql = """
+    INSERT INTO trading.decisions (
+        decision_id, symbol, timeframe, candle_closed_at,
+        chosen_side, chosen_size, score, weights, from_signals, reason
+    ) VALUES (
+        %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
+    )
+    ON CONFLICT (symbol, timeframe, candle_closed_at)
+    DO NOTHING
+    RETURNING decision_id;
+    """
+    
+    try:
+        with conn.cursor() as cur:
+            cur.execute(sql, (
+                decision_id, symbol, timeframe, candle_closed_at,
+                chosen_side, chosen_size, score,
+                Json(weights), Json(from_signals), reason
+            ))
+            result = cur.fetchone()
+            conn.commit()
+            
+            if result:
+                logger.info(f"✅ 결정 저장: {symbol} {chosen_side} @ {candle_closed_at} (score={score:.3f})")
+                return True
+            else:
+                logger.debug(f"⏭️  중복 스킵: {symbol} @ {candle_closed_at}")
+                return False
+    
+    except Exception as e:
+        logger.error(f"❌ 결정 저장 실패: {e}")
+        conn.rollback()
+        return False
+
+# ============================================
+# 12. MAIN PROCESSING (메인 처리 루프)
+# ============================================
+# ✅ 리팩토링 후: strategies/ensemble.py로 이동
+# - process_pending_signals() → 전체 플로우 함수
+# - 외부 스크립트에서 호출 (main() 제거)
+# ============================================
+def process_pending_signals(conn):
+    """
+    미처리 신호 처리
+    """
+    # 1. 성과 메트릭 로드
+    perf = load_strategy_performance(conn)
+    
+    # 2. 최근 신호 조회 (아직 결정 안 된 것)
+    sql = """
+    SELECT DISTINCT symbol, timeframe, candle_closed_at
+    FROM monitoring.signals
+    WHERE created_at >= NOW() - INTERVAL '1 minute'
+      AND NOT EXISTS (
+          SELECT 1 FROM trading.decisions d
+          WHERE d.symbol = monitoring.signals.symbol
+            AND d.timeframe = monitoring.signals.timeframe
+            AND d.candle_closed_at = monitoring.signals.candle_closed_at
+      )
+    ORDER BY candle_closed_at DESC
+    LIMIT 10
+    """
+    
+    try:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(sql)
+            pending = cur.fetchall()
+            
+            if not pending:
+                return
+            
+            logger.info(f"📥 미처리 신호 {len(pending)}건 발견")
+            
+            for row in pending:
+                symbol = row['symbol']
+                timeframe = row['timeframe']
+                candle_closed_at = row['candle_closed_at']
+                
+                logger.info(f"\n{'='*60}")
+                logger.info(f"처리 중: {symbol} {timeframe} @ {candle_closed_at}")
+                
+                # 3. 신호 수집
+                signals = fetch_recent_signals(conn, symbol, timeframe, candle_closed_at)
+                
+                if not signals:
+                    logger.warning(f"  → 신호 없음")
+                    continue
+                
+                logger.info(f"  → 신호 {len(signals)}개 수집: {[s['strategy_id'] for s in signals]}")
+                
+                # 4. 가중치 계산
+                weights = calculate_weights(signals, perf)
+                logger.info(f"  → 가중치: {json.dumps(weights, indent=2)}")
+                
+                # 5. 통합 점수 계산
+                chosen_side, score, details = calculate_ensemble_score(signals, weights)
+                logger.info(f"  → 초기 점수: {score:.3f}, 선택: {chosen_side}")
+                
+                # 6. 보너스/패널티 적용
+                adjusted_score = apply_bonuses(signals, score, chosen_side)
+                logger.info(f"  → 최종 점수: {adjusted_score:.3f}")
+                
+                # 7. 이유 작성
+                reason_parts = [
+                    f"가중치: {weights}",
+                    f"측정값: {details['side_scores']}",
+                    f"최종점수: {adjusted_score:.3f}",
+                ]
+                reason = " | ".join(reason_parts)
+                
+                # 8. 결정 저장
+                from_signals = [s['signal_id'] for s in signals]
+                save_decision(conn, symbol, timeframe, candle_closed_at,
+                             chosen_side, adjusted_score, weights, from_signals, reason)
+    
+    except Exception as e:
+        logger.error(f"처리 중 오류: {e}")
+        import traceback
+        traceback.print_exc()
+
+# ============================================
+# 13. MAIN LOOP (메인 루프)
+# ============================================
+# 리팩토링 시: main.py로 분리
+# - 무한 루프로 신호 폴링
+# - Ctrl+C로 종료
+# - 에러 발생 시 재시작
+# ============================================
+# ⚠️ REMOVED: MAIN (봇 실행)
+# ============================================
+# 제거 예정: 별도 실행 파일로 분리
+# - ensemble_runner.py 또는 trading_manager.py에서 호출
+# - while 폴링 루프는 외부에서 관리
+# - 이 파일은 순수 로직 모듈로 변경
+# ============================================
+# TODO: 아래 main() 함수는 strategies/ensemble.py 완성 후 제거
+def main():
+    logger.info("="*60)
+    logger.info("앙상블 통합 봇 시작")
+    logger.info("="*60)
+    
+    while True:
+        try:
+            with get_db_connection() as conn:
+                process_pending_signals(conn)
+            
+            time.sleep(CFG['poll_interval_sec'])
+        
+        except KeyboardInterrupt:
+            logger.info("\n종료 신호 수신")
+            break
+        except Exception as e:
+            logger.error(f"메인 루프 오류: {e}")
+            time.sleep(CFG['poll_interval_sec'])
+
+# TODO: 아래 실행 블록도 제거 예정
+if __name__ == "__main__":
+    main()

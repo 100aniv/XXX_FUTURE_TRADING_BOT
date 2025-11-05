@@ -1,0 +1,944 @@
+version: '3.8'
+
+# ============================================
+# Trading Bot System v3.0 (3-Mode)
+# ============================================
+# 3가지 독립 컨테이너:
+#   1. trading_bot_sim (백테스트)
+#   2. trading_bot_paper (페이퍼 트레이딩)
+#   3. trading_bot_live (실거래)
+# ============================================
+
+name: xxx_trading_bot
+
+services:
+  # ============================================
+  # PostgreSQL Database
+  # ============================================
+  db_postgres:
+    image: postgres:16
+    container_name: trading_db_postgres
+    environment:
+      POSTGRES_USER: trading_user
+      POSTGRES_PASSWORD: trading_pw_2024
+      POSTGRES_DB: trading_db
+      TZ: Asia/Seoul
+    volumes:
+      - ./pgdata:/var/lib/postgresql/data
+      - ./init_db.sql:/docker-entrypoint-initdb.d/init_db.sql
+    ports:
+      - "5433:5432"
+    restart: unless-stopped
+    networks:
+      - xxx_trading_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U trading_user -d trading_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ============================================
+  # Tuning Scheduler (adaptive schedules per strategy)
+  # ============================================
+  tuning_scheduler:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: tuning_scheduler
+    profiles:
+      - tuning
+    env_file:
+      - .env
+    environment:
+      - TZ=Asia/Seoul
+      - PYTHONPATH=/app
+      - DATABASE_URL=postgresql://trading_user:trading_pw_2024@db_postgres:5432/trading_db
+      - OPTUNA_STORAGE=${OPTUNA_STORAGE:-postgresql://trading_user:trading_pw_2024@db_postgres:5432/trading_db}
+      - TUNE_WINDOW_DAYS=${TUNE_WINDOW_DAYS:-7}
+      - ENABLE_TELEGRAM=${ENABLE_TELEGRAM:-true}
+      - TELEGRAM_TOKEN=${TELEGRAM_TOKEN:-}
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID:-}
+      - SYSTEM_NAME=TUNING_SCHED
+      - PYTHONUNBUFFERED=1
+    command: python -u common/tuning_scheduler.py
+    volumes:
+      - ./config.yml:/app/config.yml
+      - ./configs:/app/configs
+      - ./logs:/app/logs
+      - ./db:/app/db
+    depends_on:
+      db_postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - xxx_trading_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U trading_user -d trading_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ============================================
+  # Redis (parameter broadcast/cache)
+  # ============================================
+  redis:
+    image: redis:7
+    container_name: trading_redis
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - ./redisdata:/data
+    restart: unless-stopped
+    networks:
+      - xxx_trading_network
+
+  # ============================================
+  # Trading Bot - BACKTEST Mode
+  # ============================================
+  trading_bot_backtest:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: trading_bot_backtest
+    profiles:
+      - backtest
+    restart: "no"  # ← 백테스트는 재시작 안 함 (한 번만 실행)
+    env_file:
+      - .env
+    environment:
+      # Database (db_postgres 서비스)
+      - DATABASE_URL=postgresql://trading_user:trading_pw_2024@db_postgres:5432/trading_db
+      - REDIS_URL=redis://redis:6379/0
+      
+      # Strategy & Mode
+      - STRATEGY_SELECTOR=${STRATEGY_SELECTOR:-ensemble}
+      - TRADING_MODE=backtest
+      
+      # Risk Management
+      - EQUITY_USDT=${EQUITY_USDT:-10000}
+      - RISK_PER_TRADE=${RISK_PER_TRADE:-0.01}
+      - DAILY_LOSS_LIMIT_PCT=${DAILY_LOSS_LIMIT_PCT:-0.03}
+      - MAX_CONCURRENT_POSITIONS=${MAX_CONCURRENT_POSITIONS:-5}
+      - MAX_EXPOSURE_PER_SYMBOL_PCT=${MAX_EXPOSURE_PER_SYMBOL_PCT:-0.3}
+      
+      # Symbols
+      - SYMBOLS=${SYMBOLS:-BTCUSDT,ETHUSDT}
+      - TIMEFRAME=${TIMEFRAME:-5m}
+      - LOOKBACK=${LOOKBACK:-400}
+      
+      # Binance API (LIVE mode only)
+      - BINANCE_API_KEY=${BINANCE_API_KEY:-}
+      - BINANCE_SECRET=${BINANCE_SECRET:-}
+      
+      # Telegram (optional)
+      - ENABLE_TELEGRAM=${ENABLE_TELEGRAM:-false}
+      - TELEGRAM_TOKEN=${TELEGRAM_TOKEN:-}
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID:-}
+      - SYSTEM_NAME=${SYSTEM_NAME:-TRADING}
+      
+      # Strategy Parameters
+      - RR=${RR:-1.8}
+      - ATR_MULT_SL=${ATR_MULT_SL:-1.2}
+      - MAX_LEVERAGE=${MAX_LEVERAGE:-10}
+      - MIN_LEVERAGE=${MIN_LEVERAGE:-2}
+      
+      # TP/SL
+      - ENABLE_TP_TRAIL=${ENABLE_TP_TRAIL:-true}
+      - TP1_RR=${TP1_RR:-1.0}
+      - TP2_RR=${TP2_RR:-2.0}
+      - TRAIL_AFTER_TP1=${TRAIL_AFTER_TP1:-true}
+      
+      # Filters
+      - COOLDOWN_CANDLES=${COOLDOWN_CANDLES:-3}
+      - ENABLE_REGIME_ALERT=${ENABLE_REGIME_ALERT:-true}
+      - ENABLE_VOL_SPIKE_FILTER=${ENABLE_VOL_SPIKE_FILTER:-true}
+      - ENABLE_MTF_CONFIRM=${ENABLE_MTF_CONFIRM:-true}
+      
+      # Flash Guard
+      - ENABLE_FLASH_GUARD=${ENABLE_FLASH_GUARD:-true}
+      - FLASH_WINDOW_SEC=${FLASH_WINDOW_SEC:-60}
+      - FLASH_PCT=${FLASH_PCT:-0.03}
+      
+      # Polling
+      - POLL_INTERVAL_SEC=${POLL_INTERVAL_SEC:-5}
+      
+    command: python -u main.py
+    volumes:
+      - ./config.yml:/app/config.yml  # ⭐ 설정 파일 마운트
+      - ./logs:/app/logs
+    depends_on:
+      db_postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    networks:
+      - xxx_trading_network
+    healthcheck:
+      test: ["CMD-SHELL", "ps aux | grep 'python.*main.py' || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ============================================
+  # Trading Bot - PAPER Mode (Ensemble)
+  # ============================================
+  # PR7-2: 앙상블 Paper 모드 (1컨테이너로 6전략 동시 실행)
+  # ============================================
+  trading_bot_paper_ensemble:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: trading_bot_paper_ensemble
+    profiles:
+      - paper  # 기본 Paper 프로파일
+      - paper-ensemble  # 앙상블 전용 프로파일
+    env_file:
+      - .env
+    environment:
+      # Timezone (한국 시간)
+      - TZ=Asia/Seoul
+      
+      # Database
+      - DATABASE_URL=postgresql://trading_user:trading_pw_2024@db_postgres:5432/trading_db
+      - REDIS_URL=redis://redis:6379/0
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      
+      # Strategy & Mode
+      - TRADING_MODE=paper
+      # ⭐ 환경변수로 앙상블 모드 강제 (config.yml 오버라이드)
+      - USE_ENSEMBLE=true
+      - STRATEGY_SELECTOR=null
+      
+      # Risk Management
+      - EQUITY_USDT=50000
+      - RISK_PER_TRADE=0.01
+      - DAILY_LOSS_LIMIT_PCT=0.03
+      - MAX_CONCURRENT_POSITIONS=5
+      - MAX_EXPOSURE_PER_SYMBOL_PCT=0.3
+      - LOOKBACK=100
+      
+      # Telegram
+      - ENABLE_TELEGRAM=${ENABLE_TELEGRAM:-true}
+      - TELEGRAM_TOKEN=${TELEGRAM_TOKEN:-}
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID:-}
+      - SYSTEM_NAME=ENSEMBLE_PAPER
+      
+      # Encoding
+      - PYTHONIOENCODING=utf-8
+      - LANG=C.UTF-8
+      - PYTHONUNBUFFERED=1
+      
+    command: python -u main.py
+    depends_on:
+      db_postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    restart: unless-stopped
+    volumes:
+      - ./config.yml:/app/config.yml  # ⭐ use_ensemble=true, selector=null 설정
+      - ./logs:/app/logs
+    networks:
+      - xxx_trading_network
+    healthcheck:
+      test: ["CMD-SHELL", "ps aux | grep 'python.*main.py' || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ============================================
+  # 개별 전략 Paper 모드 (격리 디버깅용)
+  # ============================================
+  trading_bot_paper_scalping:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: trading_bot_paper_scalping
+    profiles:
+      - paper-scalping  # 개별 scalping 프로파일 (격리 디버깅용)
+    env_file:
+      - .env
+    environment:
+      # Timezone (한국 시간)
+      - TZ=Asia/Seoul
+      
+      # Database
+      - DATABASE_URL=postgresql://trading_user:trading_pw_2024@db_postgres:5432/trading_db
+      - REDIS_URL=redis://redis:6379/0
+      
+      # Strategy & Mode
+      - TRADING_MODE=paper
+      - CONFIG_PATH=configs/scalping/active.yml
+      
+      # Risk Management
+      - EQUITY_USDT=50000
+      - RISK_PER_TRADE=${RISK_PER_TRADE:-0.01}
+      - DAILY_LOSS_LIMIT_PCT=${DAILY_LOSS_LIMIT_PCT:-0.03}
+      - MAX_CONCURRENT_POSITIONS=${MAX_CONCURRENT_POSITIONS:-5}
+      - MAX_EXPOSURE_PER_SYMBOL_PCT=${MAX_EXPOSURE_PER_SYMBOL_PCT:-0.3}
+      
+      # Symbols: config.yml의 symbols.mode가 우선 적용됨 (manual 20개)
+      # - SYMBOLS=${SYMBOLS:-BTCUSDT,ETHUSDT}  # ❌ 제거 (config.yml 사용)
+      - LOOKBACK=${LOOKBACK:-100}
+      
+      # Telegram
+      - ENABLE_TELEGRAM=${ENABLE_TELEGRAM:-true}
+      - TELEGRAM_TOKEN=${TELEGRAM_TOKEN:-}
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID:-}
+      
+      # Encoding
+      - PYTHONIOENCODING=utf-8
+      - LANG=C.UTF-8
+      - PYTHONUNBUFFERED=1
+      
+    command: python -u main.py
+    depends_on:
+      db_postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    restart: unless-stopped
+    volumes:
+      - ./config.yml:/app/config.yml  # ⭐ config.yml 마운트 (manual 20개 심볼)
+      - ./configs:/app/configs        # ⭐ active.yml 적용을 위한 configs 마운트
+      - ./logs:/app/logs
+    networks:
+      - xxx_trading_network
+    healthcheck:
+      test: ["CMD-SHELL", "ps aux | grep 'python.*main.py' || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  trading_bot_paper_daytrade:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: trading_bot_paper_daytrade
+    profiles:
+      - paper-daytrade  # 개별 daytrade 프로파일 (격리 디버깅용)
+    env_file:
+      - .env
+    environment:
+      # Timezone
+      - TZ=Asia/Seoul
+      
+      # Database
+      - DATABASE_URL=postgresql://trading_user:trading_pw_2024@db_postgres:5432/trading_db
+      - REDIS_URL=redis://redis:6379/0
+      
+      # Strategy & Mode
+      - TRADING_MODE=paper
+      - CONFIG_PATH=configs/daytrade/active.yml
+      
+      # Risk Management
+      - EQUITY_USDT=50000
+      - RISK_PER_TRADE=0.01
+      - DAILY_LOSS_LIMIT_PCT=0.03
+      - MAX_CONCURRENT_POSITIONS=5
+      - MAX_EXPOSURE_PER_SYMBOL_PCT=0.3
+      - LOOKBACK=100
+      
+      # Telegram
+      - ENABLE_TELEGRAM=${ENABLE_TELEGRAM:-true}
+      - TELEGRAM_TOKEN=${TELEGRAM_TOKEN:-}
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID:-}
+      
+      # Encoding
+      - PYTHONIOENCODING=utf-8
+      - LANG=C.UTF-8
+      - PYTHONUNBUFFERED=1
+      
+    command: python -u main.py
+    depends_on:
+      db_postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    restart: unless-stopped
+    volumes:
+      - ./config.yml:/app/config.yml
+      - ./configs:/app/configs
+      - ./logs:/app/logs
+    networks:
+      - xxx_trading_network
+    healthcheck:
+      test: ["CMD-SHELL", "ps aux | grep 'python.*main.py' || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  trading_bot_paper_trend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: trading_bot_paper_trend
+    profiles:
+      - paper-trend  # 개별 trend 프로파일 (격리 디버깅용)
+    env_file:
+      - .env
+    environment:
+      # Timezone
+      - TZ=Asia/Seoul
+      
+      # Database
+      - DATABASE_URL=postgresql://trading_user:trading_pw_2024@db_postgres:5432/trading_db
+      - REDIS_URL=redis://redis:6379/0
+      
+      # Strategy & Mode
+      - TRADING_MODE=paper
+      - CONFIG_PATH=configs/trend/active.yml
+      
+      # Risk Management
+      - EQUITY_USDT=50000
+      - RISK_PER_TRADE=0.01
+      - DAILY_LOSS_LIMIT_PCT=0.03
+      - MAX_CONCURRENT_POSITIONS=5
+      - MAX_EXPOSURE_PER_SYMBOL_PCT=0.3
+      - LOOKBACK=100
+      
+      # Telegram
+      - ENABLE_TELEGRAM=${ENABLE_TELEGRAM:-true}
+      - TELEGRAM_TOKEN=${TELEGRAM_TOKEN:-}
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID:-}
+      
+      # Encoding
+      - PYTHONIOENCODING=utf-8
+      - LANG=C.UTF-8
+      - PYTHONUNBUFFERED=1
+      
+    command: python -u main.py
+    depends_on:
+      db_postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    restart: unless-stopped
+    volumes:
+      - ./config.yml:/app/config.yml
+      - ./configs:/app/configs
+      - ./logs:/app/logs
+    networks:
+      - xxx_trading_network
+    healthcheck:
+      test: ["CMD-SHELL", "ps aux | grep 'python.*main.py' || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  trading_bot_paper_reversion:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: trading_bot_paper_reversion
+    profiles:
+      - paper-reversion  # 개별 reversion 프로파일 (격리 디버깅용)
+    env_file:
+      - .env
+    environment:
+      # Timezone
+      - TZ=Asia/Seoul
+      
+      # Database
+      - DATABASE_URL=postgresql://trading_user:trading_pw_2024@db_postgres:5432/trading_db
+      - REDIS_URL=redis://redis:6379/0
+      
+      # Strategy & Mode
+      - TRADING_MODE=paper
+      - CONFIG_PATH=configs/reversion/active.yml
+      
+      # Risk Management
+      - EQUITY_USDT=50000
+      - RISK_PER_TRADE=0.01
+      - DAILY_LOSS_LIMIT_PCT=0.03
+      - MAX_CONCURRENT_POSITIONS=5
+      - MAX_EXPOSURE_PER_SYMBOL_PCT=0.3
+      - LOOKBACK=100
+      
+      # Telegram
+      - ENABLE_TELEGRAM=${ENABLE_TELEGRAM:-true}
+      - TELEGRAM_TOKEN=${TELEGRAM_TOKEN:-}
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID:-}
+      
+      # Encoding
+      - PYTHONIOENCODING=utf-8
+      - LANG=C.UTF-8
+      - PYTHONUNBUFFERED=1
+      
+    command: python -u main.py
+    depends_on:
+      db_postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    restart: unless-stopped
+    volumes:
+      - ./config.yml:/app/config.yml
+      - ./configs:/app/configs
+      - ./logs:/app/logs
+    networks:
+      - xxx_trading_network
+    healthcheck:
+      test: ["CMD-SHELL", "ps aux | grep 'python.*main.py' || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  trading_bot_paper_breakout:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: trading_bot_paper_breakout
+    profiles:
+      - paper-breakout  # 개별 breakout 프로파일 (격리 디버깅용)
+    env_file:
+      - .env
+    environment:
+      # Timezone
+      - TZ=Asia/Seoul
+      
+      # Database
+      - DATABASE_URL=postgresql://trading_user:trading_pw_2024@db_postgres:5432/trading_db
+      - REDIS_URL=redis://redis:6379/0
+      
+      # Strategy & Mode
+      - TRADING_MODE=paper
+      - CONFIG_PATH=configs/breakout/active.yml
+      
+      # Risk Management
+      - EQUITY_USDT=50000
+      - RISK_PER_TRADE=0.01
+      - DAILY_LOSS_LIMIT_PCT=0.03
+      - MAX_CONCURRENT_POSITIONS=5
+      - MAX_EXPOSURE_PER_SYMBOL_PCT=0.3
+      - LOOKBACK=100
+      
+      # Telegram
+      - ENABLE_TELEGRAM=${ENABLE_TELEGRAM:-true}
+      - TELEGRAM_TOKEN=${TELEGRAM_TOKEN:-}
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID:-}
+      
+      # Encoding
+      - PYTHONIOENCODING=utf-8
+      - LANG=C.UTF-8
+      - PYTHONUNBUFFERED=1
+      
+    command: python -u main.py
+    depends_on:
+      db_postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    restart: unless-stopped
+    volumes:
+      - ./config.yml:/app/config.yml
+      - ./configs:/app/configs
+      - ./logs:/app/logs
+    networks:
+      - xxx_trading_network
+    healthcheck:
+      test: ["CMD-SHELL", "ps aux | grep 'python.*main.py' || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  trading_bot_paper_swing:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: trading_bot_paper_swing
+    profiles:
+      - paper-swing  # 개별 swing 프로파일 (격리 디버깅용)
+    env_file:
+      - .env
+    environment:
+      # Timezone
+      - TZ=Asia/Seoul
+      
+      # Database
+      - DATABASE_URL=postgresql://trading_user:trading_pw_2024@db_postgres:5432/trading_db
+      - REDIS_URL=redis://redis:6379/0
+      
+      # Strategy & Mode
+      - TRADING_MODE=paper
+      - CONFIG_PATH=configs/swing/active.yml
+      
+      # Risk Management
+      - EQUITY_USDT=50000
+      - RISK_PER_TRADE=0.01
+      - DAILY_LOSS_LIMIT_PCT=0.03
+      - MAX_CONCURRENT_POSITIONS=5
+      - MAX_EXPOSURE_PER_SYMBOL_PCT=0.3
+      - LOOKBACK=100
+      
+      # Telegram
+      - ENABLE_TELEGRAM=${ENABLE_TELEGRAM:-true}
+      - TELEGRAM_TOKEN=${TELEGRAM_TOKEN:-}
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID:-}
+      
+      # Encoding
+      - PYTHONIOENCODING=utf-8
+      - LANG=C.UTF-8
+      - PYTHONUNBUFFERED=1
+      
+    command: python -u main.py
+    depends_on:
+      db_postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    restart: unless-stopped
+    volumes:
+      - ./config.yml:/app/config.yml
+      - ./configs:/app/configs
+      - ./logs:/app/logs
+    networks:
+      - xxx_trading_network
+    healthcheck:
+      test: ["CMD-SHELL", "ps aux | grep 'python.*main.py' || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ============================================
+  # Trading Bot - LIVE Mode (실거래)
+  # ============================================
+  trading_bot_live:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: trading_bot_live
+    profiles:
+      - live
+    env_file:
+      - .env
+    environment:
+      # Database
+      - DATABASE_URL=postgresql://trading_user:trading_pw_2024@db_postgres:5432/trading_db
+      - REDIS_URL=redis://redis:6379/0
+      
+      # Strategy & Mode
+      - STRATEGY_SELECTOR=${STRATEGY_SELECTOR:-ensemble}
+      - TRADING_MODE=live
+      
+      # Risk Management
+      - EQUITY_USDT=${EQUITY_USDT:-10000}
+      - RISK_PER_TRADE=${RISK_PER_TRADE:-0.01}
+      - DAILY_LOSS_LIMIT_PCT=${DAILY_LOSS_LIMIT_PCT:-0.03}
+      - MAX_CONCURRENT_POSITIONS=${MAX_CONCURRENT_POSITIONS:-5}
+      - MAX_EXPOSURE_PER_SYMBOL_PCT=${MAX_EXPOSURE_PER_SYMBOL_PCT:-0.3}
+      
+      # Symbols
+      - SYMBOLS=${SYMBOLS:-BTCUSDT,ETHUSDT}
+      - TIMEFRAME=${TIMEFRAME:-5m}
+      - LOOKBACK=${LOOKBACK:-400}
+      
+      # Binance API (필수!)
+      - BINANCE_API_KEY=${BINANCE_API_KEY}
+      - BINANCE_SECRET=${BINANCE_SECRET}
+      
+      # Telegram Alert
+      - ENABLE_TELEGRAM=${ENABLE_TELEGRAM:-true}
+      - TELEGRAM_TOKEN=${TELEGRAM_TOKEN:-}
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID:-}
+    volumes:
+      - ./config.yml:/app/config.yml
+      - ./logs:/app/logs
+    depends_on:
+      db_postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    restart: unless-stopped
+    networks:
+      - xxx_trading_network
+    healthcheck:
+      test: ["CMD-SHELL", "ps aux | grep 'python.*main.py' || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ============================================
+  # 병렬 베이지안 튜너 (6개 전략 동시 실행)
+  # ⚠️ 백테스트 CSV 기반 - 별도 실행 전용
+  # ============================================
+  tuner_scalping:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: tuner_scalping
+    profiles:
+      - backtest_tuning
+    env_file:
+      - .env
+    environment:
+      - DATABASE_URL=postgresql://trading_user:trading_pw_2024@db_postgres:5432/trading_db
+      - TELEGRAM_TOKEN=${TELEGRAM_TOKEN}
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID}
+      - ENABLE_TELEGRAM=${ENABLE_TELEGRAM:-true}
+      - SYSTEM_NAME=SCALPING_TUNER
+      - REDIS_URL=redis://redis:6379/0
+      - PYTHONUNBUFFERED=1
+    command: >
+      python -u scripts/tuning/tune_scalping.py
+      --study scalping_v5_htf
+      --trials 200
+      --use-wfa 1
+      --notify-progress 1
+      --notify-completion 1
+      --early-stop-grade OFF
+      --dod-mode robust
+      --min-trades-oos 30
+      --penalty-variance 0.5
+      --penalty-regime-min B
+      --apply-best 1
+      --optuna-storage postgresql://trading_user:trading_pw_2024@db_postgres:5432/optuna
+    volumes:
+      - ./configs:/app/configs
+      - ./data:/app/data
+      - ./logs:/app/logs
+      - ./scripts:/app/scripts
+    depends_on:
+      db_postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    networks:
+      - xxx_trading_network
+
+  tuner_trend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: tuner_trend
+    profiles:
+      - backtest_tuning
+    env_file:
+      - .env
+    environment:
+      - DATABASE_URL=postgresql://trading_user:trading_pw_2024@db_postgres:5432/trading_db
+      - TELEGRAM_TOKEN=${TELEGRAM_TOKEN}
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID}
+      - ENABLE_TELEGRAM=${ENABLE_TELEGRAM:-true}
+      - SYSTEM_NAME=TREND_TUNER
+      - REDIS_URL=redis://redis:6379/0
+      - PYTHONUNBUFFERED=1
+    command: >
+      python -u scripts/tuning/tune_trend.py
+      --study trend_v2_htf
+      --trials 200
+      --use-wfa 1
+      --notify-progress 1
+      --notify-completion 1
+      --early-stop-grade OFF
+      --dod-mode robust
+      --min-trades-oos 30
+      --penalty-variance 0.5
+      --penalty-regime-min B
+      --apply-best 0
+      --optuna-storage postgresql://trading_user:trading_pw_2024@db_postgres:5432/optuna
+    volumes:
+      - ./configs:/app/configs
+      - ./data:/app/data
+      - ./logs:/app/logs
+      - ./scripts:/app/scripts
+    depends_on:
+      db_postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    networks:
+      - xxx_trading_network
+
+  tuner_reversion:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: tuner_reversion
+    profiles:
+      - backtest_tuning
+    env_file:
+      - .env
+    environment:
+      - DATABASE_URL=postgresql://trading_user:trading_pw_2024@db_postgres:5432/trading_db
+      - TELEGRAM_TOKEN=${TELEGRAM_TOKEN}
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID}
+      - ENABLE_TELEGRAM=${ENABLE_TELEGRAM:-true}
+      - SYSTEM_NAME=REVERSION_TUNER
+      - REDIS_URL=redis://redis:6379/0
+      - PYTHONUNBUFFERED=1
+    command: >
+      python -u scripts/tuning/tune_reversion.py
+      --study reversion_v2_htf
+      --trials 200
+      --use-wfa 1
+      --notify-progress 1
+      --notify-completion 1
+      --early-stop-grade OFF
+      --dod-mode robust
+      --min-trades-oos 30
+      --penalty-variance 0.5
+      --penalty-regime-min B
+      --apply-best 0
+      --optuna-storage postgresql://trading_user:trading_pw_2024@db_postgres:5432/optuna
+    volumes:
+      - ./configs:/app/configs
+      - ./data:/app/data
+      - ./logs:/app/logs
+      - ./scripts:/app/scripts
+    depends_on:
+      db_postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    networks:
+      - xxx_trading_network
+
+  tuner_breakout:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: tuner_breakout
+    profiles:
+      - backtest_tuning
+    env_file:
+      - .env
+    environment:
+      - DATABASE_URL=postgresql://trading_user:trading_pw_2024@db_postgres:5432/trading_db
+      - TELEGRAM_TOKEN=${TELEGRAM_TOKEN}
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID}
+      - ENABLE_TELEGRAM=${ENABLE_TELEGRAM:-true}
+      - SYSTEM_NAME=BREAKOUT_TUNER
+      - REDIS_URL=redis://redis:6379/0
+      - PYTHONUNBUFFERED=1
+    command: >
+      python -u scripts/tuning/tune_breakout.py
+      --study breakout_v2_htf
+      --trials 200
+      --use-wfa 1
+      --notify-progress 1
+      --notify-completion 1
+      --early-stop-grade OFF
+      --dod-mode robust
+      --min-trades-oos 30
+      --penalty-variance 0.5
+      --penalty-regime-min B
+      --apply-best 1
+      --optuna-storage postgresql://trading_user:trading_pw_2024@db_postgres:5432/optuna
+    volumes:
+      - ./configs:/app/configs
+      - ./data:/app/data
+      - ./logs:/app/logs
+      - ./scripts:/app/scripts
+    depends_on:
+      db_postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    networks:
+      - xxx_trading_network
+
+  tuner_daytrade:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: tuner_daytrade
+    profiles:
+      - backtest_tuning
+    env_file:
+      - .env
+    environment:
+      - DATABASE_URL=postgresql://trading_user:trading_pw_2024@db_postgres:5432/trading_db
+      - TELEGRAM_TOKEN=${TELEGRAM_TOKEN}
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID}
+      - ENABLE_TELEGRAM=${ENABLE_TELEGRAM:-true}
+      - SYSTEM_NAME=DAYTRADE_TUNER
+      - REDIS_URL=redis://redis:6379/0
+      - PYTHONUNBUFFERED=1
+    command: >
+      python -u scripts/tuning/tune_daytrade.py
+      --study daytrade_v2_htf
+      --trials 200
+      --use-wfa 1
+      --notify-progress 1
+      --notify-completion 1
+      --early-stop-grade OFF
+      --dod-mode robust
+      --min-trades-oos 30
+      --penalty-variance 0.5
+      --penalty-regime-min B
+      --apply-best 1
+      --optuna-storage postgresql://trading_user:trading_pw_2024@db_postgres:5432/optuna
+    volumes:
+      - ./configs:/app/configs
+      - ./data:/app/data
+      - ./logs:/app/logs
+      - ./scripts:/app/scripts
+    depends_on:
+      db_postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    networks:
+      - xxx_trading_network
+
+  tuner_swing:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: tuner_swing
+    profiles:
+      - backtest_tuning
+    env_file:
+      - .env
+    environment:
+      - DATABASE_URL=postgresql://trading_user:trading_pw_2024@db_postgres:5432/trading_db
+      - TELEGRAM_TOKEN=${TELEGRAM_TOKEN}
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID}
+      - ENABLE_TELEGRAM=${ENABLE_TELEGRAM:-true}
+      - SYSTEM_NAME=SWING_TUNER
+      - REDIS_URL=redis://redis:6379/0
+      - PYTHONUNBUFFERED=1
+    command: >
+      python -u scripts/tuning/tune_swing.py
+      --study swing_v2_htf
+      --trials 200
+      --use-wfa 1
+      --notify-progress 1
+      --notify-completion 1
+      --early-stop-grade OFF
+      --dod-mode robust
+      --min-trades-oos 30
+      --penalty-variance 0.5
+      --penalty-regime-min B
+      --apply-best 1
+      --optuna-storage postgresql://trading_user:trading_pw_2024@db_postgres:5432/optuna
+    volumes:
+      - ./configs:/app/configs
+      - ./data:/app/data
+      - ./logs:/app/logs
+      - ./scripts:/app/scripts
+    depends_on:
+      db_postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    networks:
+      - xxx_trading_network
+
+# ============================================
+# Networks
+# ============================================
+networks:
+  xxx_trading_network:
+    driver: bridge
+    name: xxx_trading_network
+
+# ============================================
+# Volumes (데이터 영속성)
+# ============================================
+volumes:
+  postgres_data:
+    driver: local

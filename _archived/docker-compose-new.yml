@@ -1,0 +1,105 @@
+version: '3.8'
+
+# ============================================
+# XXX Future Trading System v2.0
+# ============================================
+# 계층적 구조:
+#   future_trading_system/
+#   ├── postgres (DB)
+#   └── main (Trading Bot)
+# ============================================
+
+services:
+  # ============================================
+  # PostgreSQL Database
+  # ============================================
+  postgres:
+    image: postgres:16
+    container_name: future_trading_system_postgres
+    environment:
+      POSTGRES_USER: trading_user
+      POSTGRES_PASSWORD: trading_pw_2024
+      POSTGRES_DB: trading_db
+      TZ: Asia/Seoul
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init_db.sql:/docker-entrypoint-initdb.d/init_db.sql
+    ports:
+      - "5433:5432"
+    restart: unless-stopped
+    networks:
+      - future_trading_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U trading_user -d trading_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ============================================
+  # Trading Bot (Main System)
+  # ============================================
+  main:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: future_trading_system_main
+    env_file:
+      - .env
+    environment:
+      # Database
+      - DATABASE_URL=postgresql://trading_user:trading_pw_2024@postgres:5432/trading_db
+      
+      # Strategy & Mode
+      - STRATEGY_SELECTOR=${STRATEGY_SELECTOR:-ensemble}
+      - TRADING_MODE=${TRADING_MODE:-paper}
+      
+      # Risk Management
+      - EQUITY_USDT=${EQUITY_USDT:-10000}
+      - RISK_PER_TRADE=${RISK_PER_TRADE:-0.01}
+      - DAILY_LOSS_LIMIT_PCT=${DAILY_LOSS_LIMIT_PCT:-0.03}
+      - MAX_CONCURRENT_POSITIONS=${MAX_CONCURRENT_POSITIONS:-5}
+      
+      # Symbols
+      - SYMBOLS=${SYMBOLS:-BTCUSDT,ETHUSDT}
+      - TIMEFRAME=${TIMEFRAME:-5m}
+      - LOOKBACK=${LOOKBACK:-400}
+      
+      # Binance API (LIVE mode)
+      - BINANCE_API_KEY=${BINANCE_API_KEY:-}
+      - BINANCE_SECRET=${BINANCE_SECRET:-}
+      
+      # Telegram
+      - ENABLE_TELEGRAM=${ENABLE_TELEGRAM:-false}
+      - TELEGRAM_TOKEN=${TELEGRAM_TOKEN:-}
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID:-}
+      - SYSTEM_NAME=${SYSTEM_NAME:-TRADING}
+      
+    command: python -u main.py
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    volumes:
+      - ./logs:/app/logs
+    networks:
+      - future_trading_network
+    healthcheck:
+      test: ["CMD-SHELL", "ps aux | grep 'python.*main.py' || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+# ============================================
+# Networks
+# ============================================
+networks:
+  future_trading_network:
+    driver: bridge
+    name: future_trading_network
+
+# ============================================
+# Volumes (데이터 영속성)
+# ============================================
+volumes:
+  postgres_data:
+    driver: local

@@ -1,0 +1,559 @@
+# ========================================
+# 시스템 기본 설정
+# ========================================
+system:
+  timezone: Asia/Seoul  # 시간대 (한국 시간)
+  candle_queue_size: 600000  # 캔들 큐 크기 (Multi-TF: 100심볼×1000캔들×4TF=400k + 버퍼)
+
+# ========================================
+# 백테스트 Trial 식별자 (선택)
+# ========================================
+# 튜닝 스크립트에서 자동 설정됨 (예: trial_0001, WFA_2024Q1_IS)
+# PostgreSQL trading.trades 테이블의 trial_id 컬럼에 저장
+trial_id: null
+
+# ========================================
+# 데이터베이스 연결 (PostgreSQL)
+# ========================================
+database:
+  url: ${DATABASE_URL}       # 전체 연결 URL (환경변수)
+  host: ${DB_HOST}           # 호스트 주소
+  port: ${DB_PORT}           # 포트 번호
+  name: ${DB_NAME}           # 데이터베이스 이름
+  user: ${DB_USER}           # 사용자명
+  password: ${DB_PASSWORD}   # 비밀번호
+
+# ========================================
+# 텔레그램 알림 설정
+# ========================================
+telegram:
+  token: ${TELEGRAM_TOKEN}   # 봇 토큰 (환경변수)
+  chat_id: ${TELEGRAM_CHAT_ID}  # 채팅방 ID (환경변수)
+  enabled: ${ENABLE_TELEGRAM}    # 알림 활성화 여부
+  emoji:
+    long_circle: 🔵
+    long_arrow: 📈
+    short_circle: 🔴
+    short_arrow: 📉
+    take_profit: ✅🏆
+    stop_loss: ⛔🛑
+    tp1_partial: 🟡🎯
+    default: ⚪
+  terms:
+    exposure: 투입금액
+    margin: 증거금
+    slippage: 슬리피지
+    fee: 수수료
+accounting:
+  fee_bps: 5
+  fee_mode: taker
+  funding_model: avg_realized
+  slippage_model: atr_based
+backtest:
+  custom:
+    end_date: '2024-09-30'
+    start_date: '2024-01-01'
+  data_dir: data
+  data_file: BTCUSDT_5m_WFA_04_OOS_SUMMER_RANGE.csv
+  period: custom
+  periods:
+    one_year:
+      end_date: '2024-12-31'
+      start_date: '2024-01-01'
+    ten_years:
+      end_date: '2025-10-19'
+      start_date: '2015-01-01'
+    three_months:
+      end_date: '2025-10-22'
+      start_date: '2025-07-24'
+    three_years:
+      end_date: '2024-12-31'
+      start_date: '2022-01-01'
+  symbol: BTCUSDT
+  persist_signals: false
+
+# ========================================
+# FlowGuardian Gate 설정
+# ========================================
+flow_guardian:
+  enabled: true  # 게이트 활성화 (Smoke + Functional)
+  selftest:
+    max_runtime_sec: 120  # 셀프테스트 최대 실행 시간
+    require_metrics:  # 필수 메트릭 키
+      - profit_factor
+      - winrate
+      - score_total
+      - exp_score
+    min_profit_factor: 0.0  # 최소 Profit Factor (관대하게 설정)
+    min_winrate: 0.0  # 최소 승률 (관대하게 설정)
+    consistency_checks:
+      db_vs_json_score_equal: true  # DB와 JSON의 score_total 일치 검증
+      signals_no_nan: true  # 시그널에 NaN 금지
+      risk_never_oversize: true  # 리스크 초과 금지
+    snapshot_rules:
+      require_segment_isolation: true  # 세그먼트 격리 필수
+    artifacts:
+      require_files:  # 필수 아티팩트 파일
+        - logs/trial_0000.json
+        - logs/application.log
+  # PR7-4 보강 키(운영 정책): 단일 섹션으로 통합
+  essential_strategies:
+    - scalping
+    - daytrade
+  startup_bars:
+    3m: 1000
+    5m: 1000
+    15m: 1000
+    1h: 300
+    4h: 200
+  warmup_policy: indicator_max  # EMA slow 기준
+  on_not_ready: backfill_then_wait
+  functional:  # 기능 사양 테스트 (Functional SpecTest)
+    scenarios:
+      - name: pnl_calculation_simple
+        feed: data/golden/BTCUSDT_15m_golden_300.csv
+        slice: { start: 0, len: 50 }
+        config: { sl: 0.01, tp: 0.02, fee: 0.0004 }
+        expect:
+          winrate_min: 0.0  # 최소 승률 (관대하게 설정)
+          pf_min: 0.0  # 최소 PF (관대하게 설정)
+      
+      - name: risk_consecutive_losses
+        feed: data/golden/BTCUSDT_15m_golden_300.csv
+        slice: { start: 50, len: 30 }
+        config: { max_consecutive_losses: 7 }  # 기존 설정값 사용
+        expect:
+          trades_max: 10  # 최대 거래 수
+      
+      - name: portfolio_exposure_limit
+        feed: data/golden/BTCUSDT_15m_golden_300.csv
+        slice: { start: 100, len: 40 }
+        config: { max_exposure_pct: 0.95 }
+        expect:
+          blocked_if_over_exposure: true
+# ========================================
+# 자본 설정
+# ========================================
+capital:
+  initial: 50000  # 초기 자본금 (USDT)
+  # ⭐ 페이퍼/백테스트: 고정값 사용
+  # ⭐ 라이브: Binance API에서 자동 로드 (fetch_balance)
+
+equity: 50000  # 현재 자산 (USDT) - 페이퍼/라이브 모드 동적 업데이트
+  # ⭐ 라이브 모드 시작 시 실제 자산으로 자동 업데이트됨
+
+# ========================================
+# 거래 기본 설정
+# ========================================
+cooldown_candles: 5  # 진입 후 대기 캔들 수
+enable_mtf_confirm: true  # 멀티 타임프레임 확인 활성화
+htf: 1h  # 상위 타임프레임 (Higher Timeframe)
+enable_vol_spike_filter: true  # 거래량 급증 필터 활성화
+entries:
+  cooldown_candles: 1
+  min_rr_required: 1.2
+  type: meanrev
+execution:
+  max_slippage_bp: 12
+  order_type: limit_post_only
+  reject_cooldown_seconds: 60  # PR8: 심볼별 거부 쿨다운 (초)
+  retry:
+    backoff_ms: 200
+    max_attempts: 3
+# ========================================
+# 청산 (Exit) 설정
+# ========================================
+exits:
+  # 손절 (Stop Loss)
+  stop:
+    k: 1.8    # ATR 배수 (×1.8)
+    type: atr # ATR 기반
+  
+  # 분할 익절 (Take Profit)
+  take_profits:
+  - r_multiple: 1.0  # TP1: 1R (30% 청산)
+    size_pct: 30
+  - r_multiple: 2.0  # TP2: 2R (40% 청산)
+    size_pct: 40
+  
+  time_exit_min: 360  # 시간 청산 (6시간 = 360분)
+  
+  # 트레일링 스톱
+  trailing:
+    k: 3.0  # ATR 배수 (×3.0) - 중요!
+    move_to_break_even_at_r: 0.7  # 0.7R 도달 시 손절을 진입가로 이동
+    type: atr  # ATR 기반
+exposure:
+  correlation_group_cap_pct: 1.0
+  symbol_groups:
+  - name: BTC-ETH
+    symbols:
+    - BTCUSDT
+    - ETHUSDT
+  - name: ALTS
+    symbols:
+    - SOLUSDT
+    - BNBUSDT
+    - XRPUSDT
+fees:
+  maker: 0.0002
+  slippage: 0.0005
+  taker: 0.0004
+filters:
+  atr_window: 14
+  htf: 1h
+  mtf_confirm: true
+  news_blackout_min: 40
+  regime_filter: false
+  require_trend_align: false
+  session_whitelist: []
+  volume_spike: true
+session_windows_utc:
+  London:
+  - start: 07:00
+    end: '11:00'
+  NY-open:
+  - start: '13:30'
+    end: '16:00'
+flash_guard:
+  enabled: true
+  pause_candles: 3
+  threshold_pct: 0.03
+  window_sec: 60
+  log_throttle_sec: 300
+indicators:
+  atr:
+    length: 14
+  bollinger:
+    length: 20
+    std: 2.0
+  ema:
+    fast: 9
+    mid: 21
+    slow: 50
+  macd:
+    fast: 12
+    signal: 9
+    slow: 26
+  rsi:
+    length: 14
+  volume:
+    ma_length: 30
+# ========================================
+# 레버리지 설정
+# ========================================
+leverage:
+  cap: 50      # 레버리지 상한선 (최대 허용) ⭐ 2-50 범위 (바이낸스 기준)
+  default: 2   # 기본 레버리지 ⭐ 보수적 시작
+  max: 50      # 전략별 최대 레버리지 ⭐ 다차원 계산으로 동적 결정
+  min: 2       # 최소 레버리지 ⭐ 보수적 하한선
+lookback: 1000  # ⭐ resample + 지표 warmup 고려 (EMA 50 기준)
+min_bars_for_signal: 60  # ⭐ 전역 최소값 (지표 warmup + 안전 margin)
+mode: paper
+strategy:
+  use_ensemble: true  # PR7-2: 앙상블 Paper 모드
+  selector: null      # 6개 전략 모두 실행
+
+
+notifications:
+  telegram:
+    enabled: false
+    system_name: TRADING
+reports:
+  html: false
+performance:
+  enable_profiling: false
+  log_level: INFO
+  poll_interval_sec: 5
+# ========================================
+# 모니터링 (Monitoring)
+# ========================================
+monitoring:
+  flowguardian:
+    enabled: true
+    sample_interval_sec: 10
+    sinks: [log, telegram]          # log|telegram|json|db
+    retention_days: 7
+    alerts:
+      cpu_pct_warning: 85
+      cpu_pct_critical: 95
+      ws_last_message_ago_sec: 60
+      api_latency_ms_p95: 500
+      queue_drop_rate_pct: 1.0
+  redis:
+    host: ${REDIS_HOST}
+    port: ${REDIS_PORT}
+    ttl_seconds: 3600  # Dedup TTL (sec)
+  websocket:
+    heartbeat_interval_sec: 10  # 하트비트 간격
+    reconnect:
+      backoff_ms: 500           # 재연결 백오프
+      max_attempts: 20          # 최대 재연결 시도
+    connection_timeout_sec: 30  # 연결 타임아웃
+    gap_detection:
+      threshold_multiplier: 1.5   # Gap 감지 임계값 (타임프레임 × 배수)
+      max_backfill_batch: 50      # 최대 백필 배치 크기 (API 부하 방지)
+      large_gap_threshold: 100    # 대형 Gap 경고 임계값 (캔들 개수)
+    queue:  # PR5: 큐 백프레셔 모니터링
+      maxsize: 5000              # 큐 최대 크기
+      health_report_interval_sec: 10  # 헬스 리포트 간격
+      usage_threshold_pct: 80    # 사용률 경고 임계치 (%)
+# ========================================
+# 포트폴리오 관리
+# ========================================
+portfolio:
+  max_strategy_positions: 5    # 전략당 최대 포지션 개수 (기본값)
+  max_total_exposure: 0.95     # 전체 exposure 한도 (95%)
+  
+  # ⭐ PR8: 동적 설정 활성화
+  use_dynamic_exposure: true   # 변동성 기반 심볼별 exposure 동적 조정
+  use_dynamic_budget: true     # 성과 기반 전략별 budget 동적 배분
+  symbol_cooldown_seconds: 60  # 심볼별 쿨다운 (거부 후 재시도 방지)
+# ========================================
+# 포지션 사이징 (Position Sizing)
+# ========================================
+position_sizing:
+  max_position_value: 10000  # 최대 포지션 가치 (USDT)
+  min_position_value: 100    # 최소 포지션 가치 (USDT)
+  quality_weight_max: 1.3    # 신호 품질 가중치 최대
+  quality_weight_min: 0.7    # 신호 품질 가중치 최소
+  
+  # 컨텍스트 스케일링 (변동성 기반 리스크 조정)
+  context_scaling:
+    enabled: true          # 활성화 여부 (중요!)
+    atr_low_pct: 0.004     # 저변동성 기준 (0.4%)
+    atr_high_pct: 0.02     # 고변동성 기준 (2.0%)
+    low_vol_mult: 1.2      # 저변동성 시 리스크 증가 (×1.2)
+    neutral_mult: 1.0      # 중립 변동성 (×1.0)
+    high_vol_mult: 0.7     # 고변동성 시 리스크 감소 (×0.7)
+require_htf_aligned: false
+# ========================================
+# 리스크 관리 (핵심 설정!)
+# ========================================
+risk:
+  leverage_cap: 50  # 레버리지 상한 (안전 장치) ⭐ 2-50 범위 (바이낸스 기준)
+  liq_buffer_multiple_of_SL: 4  # 청산가 버퍼 (손절 × 4배)
+  margin_ratio: 0.01  # 유지 증거금 비율 (1% = 0.01) ⭐ 청산가 계산용
+  max_exposure_pct: 0.95  # 최대 노출 비율 (95%)
+  max_exposure_per_symbol: 0.3  # 심볼당 최대 노출 (30%)
+  max_open_positions: 2  # 최대 오픈 포지션 수
+  max_positions: 5  # 최대 포지션 수
+  per_trade: 0.003  # 거래당 리스크 비율 (0.3%) ⭐ 0.005→0.003
+  max_sl_pct: 0.05  # ⭐ 신규: SL 최대 한도 (entry의 ±5%)
+  profiles:
+    paper:
+      max_daily_loss_pct: 0.05
+      max_consecutive_losses: 7
+      cooldown_after_consecutive: 30
+      enforce_daily_loss_in_backtest: true
+      equity_stop_pct: 20.0
+    live:
+      max_daily_loss_pct: 0.03
+      max_consecutive_losses: 6
+      cooldown_after_consecutive: 60
+      enforce_daily_loss_in_backtest: true
+      equity_stop_pct: 15.0
+  max_consecutive_losses: 4
+  max_daily_loss_pct: 0.02
+  cooldown_after_consecutive: 30
+  enforce_daily_loss_in_backtest: true
+  equity_stop_pct: null
+strategies:
+  breakout:
+    atr_mult_sl: 1.5
+    cooldown_candles: 5
+    enabled: true
+    filters:
+      mtf_confirm: false
+      regime: false
+      volume_spike: false
+    min_bars_for_signal: 60  # PR7-4: 통일 (지표 warmup + 안전 margin)
+    risk_per_trade: 0.010  # ⭐ 0.02→0.010 (1.0%)
+    rr: 1.6
+    timeframe: 15m
+  daytrade:
+    atr_mult_sl: 1.5
+    cooldown_candles: 5
+    enabled: true
+    filters:
+      mtf_confirm: false
+      regime: true
+      volume_spike: true
+    min_bars_for_signal: 60  # PR7-4: 통일 (지표 warmup + 안전 margin)
+    risk_per_trade: 0.008  # ⭐ 0.015→0.008 (0.8%)
+    rr: 3.0
+    rsi_long_min: 50
+    rsi_short_max: 55
+    allow_breakout: false
+    timeframe: 5m
+  ensemble:
+    alpha_winrate: 0.4
+    atr_mult_sl: 1.5
+    beta_rr: 0.2
+    consensus_bonus: 0.2
+    cooldown_candles: 3
+    delta_confidence: 0.15
+    epsilon_regime: 0.05
+    filters:
+      mtf_confirm: false
+      regime: true
+      volume_spike: true
+    gamma_sharpe: 0.2
+    performance_window_days: 30
+    risk_per_trade: 0.010  # ⭐ 0.02→0.010 (1.0%)
+    rr: 2.0
+    rr_bonus: 0.2
+    rr_bonus_threshold: 1.6
+    theta_long: 0.15
+    theta_short: 0.15
+    weights:
+      breakout: 2.0
+      daytrade: 2.5
+      reversion: 3.0
+      scalping: 2.0
+      swing: 2.2
+      trend: 1.5
+    window_sec: 10
+  reversion:
+    atr_mult_sl: 1.5
+    bb_lower_pct: 0.02
+    bb_upper_pct: 0.98
+    cooldown_candles: 5
+    enabled: true  # PR7-4: Multi-TF preload로 활성화
+    filters:
+      allow_short: false
+      mtf_confirm: false
+      regime: true
+      trend_context_required: true
+      allow_short: false
+      volume_spike: false
+    min_bars_for_signal: 60  # PR7-4: 통일 (지표 warmup + 안전 margin)
+    risk_per_trade: 0.01
+    rr: 2.0
+    rsi_threshold: 30
+    timeframe: 15m
+    volume_mult: 1.2
+  scalping:
+    atr_mult_sl: 1.5
+    cooldown_candles: 3
+    min_bars_for_signal: 60  # PR7-4: 통일 (지표 warmup + 안전 margin)
+    timeframe: 3m
+    enabled: true
+    filters:
+      mtf_confirm: false
+      regime: false
+      volume_spike: true
+      volume_spike_guard: false
+      allow_short: true
+      session_whitelist: []
+    volume_mult: 1.1
+    bb_bounce_lower_now_mult: 1.0
+    bb_bounce_lower_prev_mult: 1.008
+    risk_per_trade: 0.003  # ⭐ 0.005→0.003 (0.3%)
+    rr: 1.6
+  swing:
+    atr_mult_sl: 2.0
+    cooldown_candles: 5
+    enabled: true  # PR7-4: Multi-TF preload로 활성화
+    filters:
+      mtf_confirm: false
+      regime: true
+      volume_spike: false
+    min_bars_for_signal: 60  # PR7-4: 통일 (지표 warmup + 안전 margin)
+    risk_per_trade: 0.010  # ⭐ 0.02→0.010 (1.0%)
+    rr: 2.2
+    timeframe: 1h
+  trend:
+    atr_mult_sl: 2.5
+    cooldown_candles: 10
+    enabled: true  # PR7-4: Multi-TF preload로 활성화
+    filters:
+      mtf_confirm: true
+      regime: true
+      volume_spike: false
+    min_bars_for_signal: 60  # PR7-4: 통일 (지표 warmup + 안전 margin)
+    risk_per_trade: 0.010  # ⭐ 0.025→0.010 (1.0%)
+    rr: 2.5
+    timeframe: 4h
+symbols:
+  core:
+  - BTCUSDT
+  - ETHUSDT
+  manual:
+  - BTCUSDT
+  max_streams: 120
+  mode: top100  # 스캘핑 튜닝용
+  topN:
+    min_volume_24h: 30000000
+    n: 50
+    refresh_interval: 3600
+feed:
+  base_timeframe: 1m
+timeframe: 5m
+tp_sl:
+  enabled: true
+  atr_mult_sl: 1.8
+  atr_mult_tp: 3.0
+  atr_mult_trail: 2.5
+  enable_trailing: true
+  manual:
+    sl_pct: 0.015
+    tp_pct: 0.03
+  tp1_rr: 1.0
+  tp2_rr: 2.0
+  trail_after_tp1: true
+vol_spike_mult: 2.5
+# ========================================
+# 튜닝 스케줄러 (Tuning Scheduler)
+# ========================================
+tuning:
+  schedules:
+    scalping:
+      every_hours: 1  # (현재 사용: 1시간마다)
+      recent_hours: 1
+      t_min_recent: 10
+      trials: 10
+    
+    # --- 다른 전략 스케줄 (미사용, 보관용) ---
+    # daytrade:
+    #   every_hours: 4
+    #   recent_hours: 4
+    #   t_min_recent: 5
+    #   trials: 10
+    # 
+    # reversion:
+    #   every_hours: 8
+    #   recent_hours: 8
+    #   t_min_recent: 3
+    #   trials: 10
+    # 
+    # breakout:
+    #   every_hours: 8
+    #   recent_hours: 8
+    #   t_min_recent: 3
+    #   trials: 10
+    # 
+    # swing:
+    #   every_hours: 12
+    #   recent_hours: 24
+    #   t_min_recent: 2
+    #   trials: 10
+    # 
+    # trend:
+    #   every_days: 1
+    #   recent_hours: 24
+    #   t_min_recent: 1
+    #   trials: 10
+    # --- 다른 전략 스케줄 끝 ---
+
+# ========================================
+# 애널리틱스 (Analytics)
+# ========================================
+analytics:
+  reports:
+    daily_time: "23:59"
+    weekly_day: "SUN"
+    channels: [log, telegram]
+  kpis:
+    enable_slippage: true
+    enable_sharpe_like: true

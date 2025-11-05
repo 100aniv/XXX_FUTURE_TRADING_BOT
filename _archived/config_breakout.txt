@@ -1,0 +1,55 @@
+# ========================================
+# BREAKOUT 봇 (15분봉) - 변동성 돌파
+# 목표: 레인지 돌파, 추세 전환 초입
+# 신호: 하루 10-25개
+# 승률: 58-68%
+# ========================================
+
+# TELEGRAM
+TELEGRAM_TOKEN=8028992679:AAFppWnFC20nTTtFIUVtrAJiYqDznJStaJE
+TELEGRAM_CHAT_ID=453694961
+
+# 봇 이름 및 전략 ID
+BOT_NAME=BREAKOUT
+STRATEGY_ID=breakout
+
+# ACCOUNT / RISK
+EQUITY_USDT=7000
+RISK_PER_TRADE=0.005
+
+# LEVERAGE
+MAX_LEVERAGE=5
+MIN_LEVERAGE=2
+
+# SYMBOLS / TIMEFRAME
+SYMBOLS=BTCUSDT,ETHUSDT,BNBUSDT,SOLUSDT,XRPUSDT,ADAUSDT,DOGEUSDT
+TIMEFRAME=15m
+LOOKBACK=400
+
+# SIGNAL PARAMS
+RR=2.0
+ATR_MULT_SL=1.3
+
+# BREAKOUT SPECIFIC
+DONCHIAN_PERIOD=20
+ATR_SPIKE_MULT=1.5
+
+# ========================================
+# 포지션 사이징 & 리스크 관리 ⭐ 신규
+# ========================================
+# 품질 가중치 (브레이크아웃: 공격적)
+QUALITY_WEIGHT_MIN=0.6
+QUALITY_WEIGHT_MAX=1.4
+
+# 포지션 한도 (브레이크아웃: 중대형)
+MAX_POSITION_VALUE=5000
+MIN_POSITION_VALUE=100
+
+# 심볼별 최대 노출
+MAX_EXPOSURE_PER_SYMBOL_PCT=0.35
+
+# 동시 포지션 수
+MAX_CONCURRENT_POSITIONS=4
+
+# 일일 손실 한도
+DAILY_LOSS_LIMIT_PCT=0.035

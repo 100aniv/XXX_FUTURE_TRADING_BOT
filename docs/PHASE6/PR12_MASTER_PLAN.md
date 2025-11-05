@@ -1,0 +1,80 @@
+# PHASE6 — PR12 마스터 플랜: 고급 가격 레벨 + 거래소 스펙 + 운영 견고화
+
+## 배경/의도(Overview)
+상용화 마감 단계로서, 동적 가격 레벨/거래소 스펙 반영/펀딩 연동/포트폴리오 예산·상관 제어/운영 모니터링 최소치를 구현합니다. 필요 시 출구 파라미터에 대한 튜닝 확장 가능성은 명시하되 실제 운영 튜닝은 PR13에서 수행합니다.
+
+## 목표(Goals)
+- TP/SL 레벨의 고급화(price_levels_advanced)
+- 거래소 tick_size/step_size 기반 동적 반올림
+- funding_rate 연동(적용 지점에 한해)
+- 전략별 예산 배분 및 상관(상관관계) 가드
+- 운영 최소 대시보드/메트릭/알림
+
+## 범위(Scope, In)
+- TPManager: 레짐 인지 S/R, 최근 고저가 반영
+- 동적 반올림: 거래소 tick/step 규격 준수
+- Funding: 수수료/캐리 계산에 반영되는 경우 연동
+- 포트폴리오: 전략별 예산 배분 훅, 상관 가드
+- 운영: 메트릭 표출, 최소 대시보드, A/B 비교 하니스
+
+## 제외(Out-of-Scope)
+- 앙상블/튜닝 내부 설계(→ PR10)
+- 리스크 가드 재설계(→ PR11)
+
+## 영향 파일(예상)
+- execution/tp_manager.py, common/calculations.py
+- 포트폴리오 관리 모듈(예산/상관 훅)
+- 거래소 어댑터(틱/스텝, 펀딩)
+- docs/PHASE6/PR_MASTER_INTEGRATION_TEST.md
+- config.yml(exits.*, exchange.*, portfolio.*)
+
+## 설정 키(제안)
+- exits.price_levels.advanced.enabled: bool
+- exchange.specs.dynamic_rounding: bool
+- exchange.funding.enabled: bool
+- portfolio.budget_per_strategy: dict
+- portfolio.correlation.max_pair_corr: float
+
+## FlowGuardian 게이트
+- READY 없이는 PAPER/LIVE 불가(게이트 준수)
+
+## 수용 기준(Acceptance)
+- 가격 반올림: price % tick_size == 0 및 qty % step_size == 0 (허용오차 ≤ 1e-9)
+- 펀딩 반영: 계산값과 DB/로그 차이 ≤ 수수료의 0.5% 또는 5e-7(둘 중 큰 값)
+- 예산/상관 가드: 초과 시 100% 차단, 차단 사유 로깅
+- 운영 모니터링: 6시간 관찰 동안
+  - api_latency_ms_p95 ≤ 300(ms)
+  - ws_last_message_ago_sec ≤ 30(s)
+  - queue_drop_rate_pct ≤ 0.5%
+  - cpu_pct_critical 경고 0회
+- pre-commit 통과, coverage>85%
+
+## 체크리스트(Checklist)
+- [ ] 고급 가격 레벨 구현 및 유닛 테스트
+- [ ] 동적 반올림/펀딩 연동 검증
+- [ ] 예산 배분/상관 가드 강제
+- [ ] 최소 운영 모니터링 가동
+
+## 테스트 플랜(Test Plan)
+- 유닛: 반올림 정확도, 레벨 산출, 펀딩 수식
+- 통합: 실시간 거래소 스펙 조회; 포트폴리오 제약 검사
+- A/B: 고급 레벨 적용 전/후 페이퍼 창 비교
+
+## 오류 수정 항목(Fix Log)
+- 발생 일시 | 증상 | 원인 | 수정 내역 | 재발 방지(테스트/가드)
+- 예: 2025-11-06 02:30 | 주문 거절(틱 불일치) | 반올림 순서 오류 | tick→step 순서로 재정렬 | unit: rounding_tick_step_order
+
+## 로그/DB 산출물(Artifacts)
+- logs/trial_0000.json: 출구/펀딩/라운딩 관련 메타
+- DB: 결정/거래 기록과 스펙 준수 여부 점검
+
+## 배포/롤백(Release/Rollback)
+- 스펙 캐시/폴백 경로 제공(네트워크 변동성 대비)
+- 문제 시 새 키 비활성화 후 기본 출구 로직으로 복귀
+
+## 리스크/완화(Risks & Mitigations)
+- 거래소 API 변동성 → 캐시/폴백/리트라이 전략
+- 계산 복잡도 증가 → 프로파일링 및 임계경고
+
+## 비고(Notes)
+- 출구 파라미터 튜닝 확장은 가능하나 운영 반영은 PR13에서 안전 게이트와 함께 수행

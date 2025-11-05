@@ -1,0 +1,31 @@
+interval,period,desc,file,candles
+5m,bear_2018,2018 약세장 (손절/리스크 검증),BTCUSDT_5m_bear_2018.csv,104040
+5m,covid_2020,2020 코로나 (슬리피지/플래시가드),BTCUSDT_5m_covid_2020.csv,43022
+5m,halving20_bull,2020-2021 반감기 강세 (추세/트레일),BTCUSDT_5m_halving20_bull.csv,104598
+5m,luna_ftx_2022,2022 루나/FTX (시스템 스트레스),BTCUSDT_5m_luna_ftx_2022.csv,78913
+5m,etf_anticip_24,2023-2024 ETF 기대/승인 (변동성),BTCUSDT_5m_etf_anticip_24.csv,52417
+5m,halving24_post,2024 반감기 직후 (반감기 후),BTCUSDT_5m_halving24_post.csv,52417
+15m,bear_2018,2018 약세장 (손절/리스크 검증),BTCUSDT_15m_bear_2018.csv,34683
+15m,covid_2020,2020 코로나 (슬리피지/플래시가드),BTCUSDT_15m_covid_2020.csv,14342
+15m,halving20_bull,2020-2021 반감기 강세 (추세/트레일),BTCUSDT_15m_halving20_bull.csv,34868
+15m,luna_ftx_2022,2022 루나/FTX (시스템 스트레스),BTCUSDT_15m_luna_ftx_2022.csv,26305
+15m,etf_anticip_24,2023-2024 ETF 기대/승인 (변동성),BTCUSDT_15m_etf_anticip_24.csv,17473
+15m,halving24_post,2024 반감기 직후 (반감기 후),BTCUSDT_15m_halving24_post.csv,17473
+1h,bear_2018,2018 약세장 (손절/리스크 검증),BTCUSDT_1h_bear_2018.csv,8675
+1h,covid_2020,2020 코로나 (슬리피지/플래시가드),BTCUSDT_1h_covid_2020.csv,3589
+1h,halving20_bull,2020-2021 반감기 강세 (추세/트레일),BTCUSDT_1h_halving20_bull.csv,8721
+1h,luna_ftx_2022,2022 루나/FTX (시스템 스트레스),BTCUSDT_1h_luna_ftx_2022.csv,6577
+1h,etf_anticip_24,2023-2024 ETF 기대/승인 (변동성),BTCUSDT_1h_etf_anticip_24.csv,4369
+1h,halving24_post,2024 반감기 직후 (반감기 후),BTCUSDT_1h_halving24_post.csv,4369
+1h,htf_2018_2019,HTF 장기 윈도우 (2018-2019),BTCUSDT_1h_htf_2018_2019.csv,17407
+1h,htf_2020_2021,HTF 장기 윈도우 (2020-2021),BTCUSDT_1h_htf_2020_2021.csv,17490
+1h,htf_2022_2024,HTF 장기 윈도우 (2022-2024),BTCUSDT_1h_htf_2022_2024.csv,26280
+4h,bear_2018,2018 약세장 (손절/리스크 검증),BTCUSDT_4h_bear_2018.csv,2173
+4h,covid_2020,2020 코로나 (슬리피지/플래시가드),BTCUSDT_4h_covid_2020.csv,899
+4h,halving20_bull,2020-2021 반감기 강세 (추세/트레일),BTCUSDT_4h_halving20_bull.csv,2184
+4h,luna_ftx_2022,2022 루나/FTX (시스템 스트레스),BTCUSDT_4h_luna_ftx_2022.csv,1644
+4h,etf_anticip_24,2023-2024 ETF 기대/승인 (변동성),BTCUSDT_4h_etf_anticip_24.csv,1092
+4h,halving24_post,2024 반감기 직후 (반감기 후),BTCUSDT_4h_halving24_post.csv,1092
+4h,htf_2018_2019,HTF 장기 윈도우 (2018-2019),BTCUSDT_4h_htf_2018_2019.csv,4359
+4h,htf_2020_2021,HTF 장기 윈도우 (2020-2021),BTCUSDT_4h_htf_2020_2021.csv,4379
+4h,htf_2022_2024,HTF 장기 윈도우 (2022-2024),BTCUSDT_4h_htf_2022_2024.csv,6570

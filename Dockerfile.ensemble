@@ -1,0 +1,13 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# 공통 모듈 복사
+COPY common/ common/
+
+COPY ensemble_bot.py .
+
+CMD ["python", "-u", "ensemble_bot.py"]

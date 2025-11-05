@@ -1,0 +1,65 @@
+# Git
+.git
+.gitignore
+
+# Python
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+*.egg
+*.egg-info
+dist
+build
+.venv
+venv/
+trading_bot_env/
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# Logs (로컬만, 컨테이너는 volume 사용)
+logs/
+*.log
+
+# DB Data
+pgdata/
+*.sql
+*.db
+*.sqlite
+
+# Archived
+_archived/
+
+# Temp
+tmp/
+temp/
+*.tmp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# Documentation
+README.md
+*.md
+docs/
+
+# Data (대용량 파일)
+data/historical/*.csv
+data/backtest_results/
+
+# Environment (빌드 시 별도 전달)
+.env.local
+.env.test

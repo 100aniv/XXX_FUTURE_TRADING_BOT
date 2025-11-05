@@ -1,0 +1,82 @@
+# ========================================
+# 스캘핑 봇 (1분봉) - 초단타
+# 목표: 빠른 매매, 많은 신호
+# 신호: 하루 50-100개
+# 승률: 48-55%
+# 특별 로직: BB 터치 + EMA 정렬
+# ========================================
+
+# --- TELEGRAM ---
+TELEGRAM_TOKEN=
+TELEGRAM_CHAT_ID=
+
+# 봇 이름 및 전략 ID
+BOT_NAME=SCALP
+STRATEGY_ID=scalping
+
+# --- ACCOUNT / RISK ---
+EQUITY_USDT=7000
+RISK_PER_TRADE=0.003    # 0.3% (작게)
+
+# --- LEVERAGE ---
+MAX_LEVERAGE=5
+MIN_LEVERAGE=2
+
+# --- SYMBOLS / TIMEFRAME ---
+SYMBOLS=BTCUSDT,ETHUSDT,BNBUSDT,SOLUSDT,XRPUSDT,ADAUSDT,DOGEUSDT
+TIMEFRAME=1m            # 1분봉 스캘핑
+LOOKBACK=400
+
+# --- SIGNAL PARAMS ---
+RR=1.5                  # 낮은 RR (빠른 익절) - 1.3에서 증가
+ATR_MULT_SL=1.0         # 좋은 손절 - 0.8에서 증가 (너무 좋았음)
+ATR_MULT_TRAIL=1.0
+COOLDOWN_CANDLES=0      # 쿼다운 없음
+
+# --- OPTIONAL FEATURES ---
+ENABLE_TP_TRAIL=true
+TP1_RR=0.7
+TP2_RR=1.3
+TRAIL_AFTER_TP1=true
+
+ENABLE_REGIME_ALERT=false   # 1분봉은 레짐 알림 OFF
+ENABLE_VOL_SPIKE_FILTER=false   # 필터 OFF (많은 신호)
+VOL_SPIKE_MULT=3.0
+VOL_MA_LEN=20
+
+ENABLE_MTF_CONFIRM=false    # 1분봉은 MTF OFF (너무 민감)
+HTF=5m
+REQUIRE_HTF_ALIGNED=false
+
+ENABLE_DAILY_RISK_GUARD=true
+DAILY_RISK_LIMIT_PCT=0.05   # 하루 5% 손실 제한
+
+ENABLE_GOAL_TRACKER=true
+DAILY_GOAL_PCT=0.08         # 하루 8% 목표
+
+ENABLE_FLASH_GUARD=false    # Flash Guard OFF
+FLASH_WINDOW_SEC=30
+FLASH_PCT=0.020
+FLASH_PAUSE_CANDLES=1
+
+ENABLE_BEGINNER_EXPLAIN=true
+
+# ========================================
+# 포지션 사이징 & 리스크 관리 ⭐ 신규
+# ========================================
+# 품질 가중치 (스캘핑: 보수적)
+QUALITY_WEIGHT_MIN=0.8
+QUALITY_WEIGHT_MAX=1.2
+
+# 포지션 한도 (스캘핑: 작은 크기)
+MAX_POSITION_VALUE=2000
+MIN_POSITION_VALUE=20
+
+# 심볼별 최대 노출
+MAX_EXPOSURE_PER_SYMBOL_PCT=0.2
+
+# 동시 포지션 수
+MAX_CONCURRENT_POSITIONS=3
+
+# 일일 손실 한도
+DAILY_LOSS_LIMIT_PCT=0.05

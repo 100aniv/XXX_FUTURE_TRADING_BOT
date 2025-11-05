@@ -1,0 +1,40 @@
+FROM python:3.11-slim
+
+LABEL maintainer="trading-bot"
+LABEL description="Backtest Runner for Trading Strategies"
+
+WORKDIR /app
+
+# 시스템 패키지 업데이트 및 필수 도구 설치
+RUN apt-get update && apt-get install -y \
+    gcc \
+    g++ \
+    libpq-dev \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Python 패키지 설치
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# 백테스트 전용 추가 패키지
+RUN pip install --no-cache-dir \
+    pandas>=2.0.0 \
+    numpy>=1.24.0 \
+    matplotlib>=3.7.0 \
+    seaborn>=0.12.0 \
+    scipy>=1.11.0
+
+# 백테스트 관련 파일 복사
+COPY backtest/ ./backtest/
+COPY trading_executor.py .
+COPY run_backtest.py .
+
+# 결과 및 리포트 디렉토리 생성
+RUN mkdir -p /app/results /app/reports /app/data
+
+# 권한 설정
+RUN chmod +x run_backtest.py
+
+# 기본 명령어 (컨테이너 실행 유지)
+CMD ["bash"]

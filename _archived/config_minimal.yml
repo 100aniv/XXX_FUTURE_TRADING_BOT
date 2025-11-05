@@ -1,0 +1,198 @@
+# ============================================
+# 백테스트 원인 분리용 최소 설정
+# ============================================
+
+# ============================================
+# 모드
+# ============================================
+mode: backtest
+
+# ============================================
+# 전략 (단일 전략 테스트)
+# ============================================
+strategy:
+  selector: daytrade
+  use_ensemble: false  # 앙상블 비활성화
+
+# ============================================
+# 필터 (모두 비활성화)
+# ============================================
+enable_mtf_confirm: false
+require_htf_aligned: false
+htf: 1h
+
+filters:
+  volume_spike: false
+  regime_filter: false
+  mtf_confirm: false
+
+cooldown_candles: 3
+
+# ============================================
+# 심볼
+# ============================================
+symbols:
+  mode: manual
+  manual:
+    - BTCUSDT
+  core:
+    - BTCUSDT
+  max_streams: 120
+
+timeframe: 5m
+lookback: 400
+
+# ============================================
+# 자본 & 리스크 관리
+# ============================================
+capital:
+  initial: 10000
+
+risk:
+  per_trade: 0.01
+  daily_loss_limit: 0.99
+  max_positions: 3
+  max_exposure_per_symbol: 0.6
+
+portfolio:
+  max_total_exposure: 0.8
+  max_strategy_positions: 3
+  max_correlated_positions: 2
+
+# ============================================
+# 레버리지 (낮게)
+# ============================================
+leverage:
+  min: 1
+  max: 3
+  default: 1
+
+# ============================================
+# 포지션 사이징
+# ============================================
+position_sizing:
+  quality_weight_min: 0.9
+  quality_weight_max: 1.1
+  max_position_value: 5000
+  min_position_value: 10
+
+# ============================================
+# 수수료
+# ============================================
+fees:
+  maker: 0.0002
+  taker: 0.0004
+  slippage: 0.0005
+
+# ============================================
+# Flash Guard
+# ============================================
+flash_guard:
+  enabled: true
+  window_sec: 60
+  threshold_pct: 0.03
+  pause_candles: 3
+
+# ============================================
+# 신호 필터 (기본값)
+# ============================================
+notifications:
+  telegram:
+    enabled: true
+    system_name: TRADING
+
+# ============================================
+# 전략별 파라미터 (daytrade만)
+# ============================================
+strategies:
+  scalping:
+    enabled: false
+  
+  daytrade:
+    enabled: true
+    timeframe: 15m
+    rr: 3.0
+    atr_mult_sl: 1.5
+    risk_per_trade: 0.015
+    cooldown_candles: 3
+    filters:
+      regime: false
+      volume_spike: false
+      mtf_confirm: false
+  
+  swing:
+    enabled: false
+  
+  trend:
+    enabled: false
+  
+  reversion:
+    enabled: false
+  
+  breakout:
+    enabled: false
+
+# ============================================
+# 백테스트
+# ============================================
+backtest:
+  period: custom
+  periods:
+    ten_years:
+      start_date: "2017-08-17"
+      end_date: "2025-10-19"
+    one_year:
+      start_date: "2024-01-01"
+      end_date: "2024-12-31"
+    three_years:
+      start_date: "2022-01-01"
+      end_date: "2024-12-31"
+  custom:
+    start_date: "2019-01-01"
+    end_date: "2021-12-31"
+  data_dir: data/historical
+
+# ============================================
+# TP/SL (ATR 기반만)
+# ============================================
+tp_sl:
+  atr_mult_sl: 1.5
+  atr_mult_tp: 3.0
+  atr_mult_trail: 1.2
+  enable_trailing: true
+  trail_after_tp1: true
+  tp1_rr: 1.0
+  tp2_rr: 2.0
+  manual:
+    sl_pct: null
+    tp_pct: null
+
+# ============================================
+# 지표
+# ============================================
+indicators:
+  ema:
+    fast: 9
+    mid: 21
+    slow: 50
+  rsi:
+    length: 14
+  macd:
+    fast: 12
+    slow: 26
+    signal: 9
+  bollinger:
+    length: 20
+    std: 2.0
+  atr:
+    length: 14
+  volume:
+    ma_length: 30
+
+# ============================================
+# 성능
+# ============================================
+performance:
+  poll_interval_sec: 5
+  enable_profiling: false
+  log_level: INFO
