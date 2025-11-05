@@ -64,15 +64,16 @@
 - [x] Dedup 캐시(키: symbol, timeframe, ts)
 - [x] 쿨다운 TTL 키 설정/존중
 - [x] 신호 해시 계산 및 TTL 저장
-- [ ] 재시작 시나리오 테스트 통과
-- [ ] dedup/쿨다운/멱등 hit 로그 확인
+- [x] 재시작 시나리오 테스트 통과
+- [x] dedup/쿨다운/멱등 hit 로그 확인
 
 ## 테스트 플랜(Test Plan)
 상세 절차는 docs/PHASE6/PR_MASTER_INTEGRATION_TEST.md(PR9 섹션) 참조. 로그 패턴과 선택 SQL 포함.
 
 ## 오류 수정 항목(Fix Log)
 - 발생 일시 | 증상 | 원인 | 수정 내역 | 재발 방지(테스트/가드)
-- 예: 2025-11-06 00:40 | 중복 캔들 처리됨 | dedup 키에 타임프레임 누락 | dedup 키 (symbol, timeframe, ts)로 교정 | integration: duplicate_candle_twice
+- **2025-11-06 01:40** | ✅ Phase 1-3 구현 완료 | N/A | Redis 연결 성공, 캔들 dedup/쿨다운 TTL/신호 멱등성 구현 | 로깅 패턴 확인
+- **2025-11-06 01:43** | ✅ Phase 4 재시작 테스트 통과 | N/A | 컨테이너 재시작 후 Redis TTL 유지 확인 (27초→9초 카운트다운) | TTL 편차 ≤ 2초 충족
 
 ## 로그/DB 산출물(Artifacts)
 - logs/trial_0000.json: 실행 메타/점수
