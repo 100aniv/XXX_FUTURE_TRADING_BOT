@@ -61,9 +61,9 @@
 - pre-commit 통과, coverage>85%
 
 ## 체크리스트(Checklist)
-- [ ] Dedup 캐시(키: symbol, timeframe, ts)
-- [ ] 쿨다운 TTL 키 설정/존중
-- [ ] 신호 해시 계산 및 TTL 저장
+- [x] Dedup 캐시(키: symbol, timeframe, ts)
+- [x] 쿨다운 TTL 키 설정/존중
+- [x] 신호 해시 계산 및 TTL 저장
 - [ ] 재시작 시나리오 테스트 통과
 - [ ] dedup/쿨다운/멱등 hit 로그 확인
 
