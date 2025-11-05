@@ -12,6 +12,9 @@ from typing import Dict
 from uuid import uuid4
 from datetime import datetime
 import pandas as pd
+import redis
+import hashlib
+import json
 
 from common.logger import setup_logger
 from common.messaging import tg, log_signal, log_trade, log_status, log_performance, log_daily_report, format_exit_alert, format_signal_alert
@@ -68,6 +71,24 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict):
     import time
     reject_cooldown = {}  # {f"{symbol}_{strategy}": last_reject_time}
     cooldown_seconds = config.get('execution', {}).get('reject_cooldown_seconds', 60)
+    
+    # ⭐ PR9: Redis 연결 (캔들 dedup, 쿨다운 TTL, 신호 멱등성)
+    redis_config = config.get('monitoring', {}).get('redis', {})
+    redis_client = None
+    try:
+        redis_client = redis.Redis(
+            host=redis_config.get('host', 'localhost'),
+            port=redis_config.get('port', 6379),
+            db=redis_config.get('db', 0),
+            decode_responses=True
+        )
+        redis_client.ping()
+        logger.info(f"✅ Redis 연결 성공: {redis_config.get('host')}:{redis_config.get('port')}")
+    except Exception as e:
+        logger.warning(f"⚠️  Redis 연결 실패 (Dedup/쿨다운 비활성화): {e}")
+        redis_client = None
+    
+    redis_ttl = redis_config.get('ttl_seconds', 3600)
     
     # Position Sizer & Risk Manager & Portfolio Manager (config 전달)
     sizer = PositionSizer(config)
@@ -310,6 +331,17 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict):
         candle_symbol = candle.get('symbol', symbol)  # 기본값 fallback
         candle_timeframe = candle.get('timeframe', config.get('timeframe', '5m'))  # PR7-4
         buffer_key = (candle_symbol, candle_timeframe)
+        
+        # ⭐⭐⭐ PR9 Phase 1: 캔들 Dedup (중복 캔들 처리 방지)
+        if redis_client:
+            dedup_key = f"dedup:{candle_symbol}:{candle_timeframe}:{ts}"
+            try:
+                if redis_client.exists(dedup_key):
+                    logger.debug(f"⏭️ 중복 캔들 무시: {candle_symbol} {candle_timeframe} {ts}")
+                    continue
+                redis_client.setex(dedup_key, redis_ttl, "1")
+            except Exception as e:
+                logger.warning(f"⚠️  Redis dedup 실패 (처리 계속): {e}")
         
         # 버퍼 초기화 ((심볼, TF)별 최초 1회)
         if buffer_key not in buffers:
@@ -726,26 +758,64 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict):
         # ⭐ position_sizer가 계산한 position_value 사용 (재계산 금지!)
         position_value = meta.get('position_value', qty * decision.get('entry'))
         
-        # ⭐ PR8: 전략별 심볼 거부 쿨다운 체크 (ensemble 모드 대응)
+        # ⭐ PR8/PR9: 전략별 심볼 거부 쿨다운 체크 (ensemble 모드 대응)
         strategy_id = decision.get('strategy_id', 'ensemble')
         cooldown_key = f"{candle_symbol}_{strategy_id}"
         
-        if cooldown_key in reject_cooldown:
-            elapsed = time.time() - reject_cooldown[cooldown_key]
-            if elapsed < cooldown_seconds:
-                # 쿨다운 중 - 디버그 로깅만 (운영 모니터링용)
-                logger.debug(f"🔒 [{strategy_id}] {candle_symbol} 쿨다운 중: {elapsed:.1f}초/{cooldown_seconds}초")
-                continue
-            else:
-                # 쿨다운 해제
-                del reject_cooldown[cooldown_key]
-                logger.debug(f"✅ [{strategy_id}] {candle_symbol} 쿨다운 해제")
+        # ⭐⭐⭐ PR9 Phase 2: Redis 쿨다운 TTL (재시작 후에도 유지)
+        if redis_client:
+            redis_cooldown_key = f"cooldown:{cooldown_key}"
+            try:
+                ttl = redis_client.ttl(redis_cooldown_key)
+                if ttl > 0:
+                    logger.info(f"🔒 {strategy_id} {candle_symbol} 쿨다운 중 (Redis TTL: {ttl}초)")
+                    continue
+            except Exception as e:
+                logger.warning(f"⚠️  Redis 쿨다운 체크 실패 (처리 계속): {e}")
+        else:
+            # Fallback: 로컬 메모리 쿨다운
+            if cooldown_key in reject_cooldown:
+                elapsed = time.time() - reject_cooldown[cooldown_key]
+                if elapsed < cooldown_seconds:
+                    logger.debug(f"🔒 [{strategy_id}] {candle_symbol} 쿨다운 중: {elapsed:.1f}초/{cooldown_seconds}초")
+                    continue
+                else:
+                    del reject_cooldown[cooldown_key]
+                    logger.debug(f"✅ [{strategy_id}] {candle_symbol} 쿨다운 해제")
+        
+        # ⭐⭐⭐ PR9 Phase 3: 신호 멱등성 (동일 파라미터 신호 차단)
+        if redis_client:
+            # 신호 해시 생성 (symbol, strategy, side, entry, sl, tp)
+            signal_params = {
+                'symbol': candle_symbol,
+                'strategy': strategy_id,
+                'side': decision.get('side'),
+                'entry': round(float(decision.get('entry', 0)), 2),
+                'sl': round(float(decision.get('sl', 0)), 2),
+                'tp': round(float(decision.get('tp', 0)), 2)
+            }
+            signal_hash = hashlib.md5(json.dumps(signal_params, sort_keys=True).encode()).hexdigest()
+            redis_signal_key = f"signal:{candle_symbol}:{signal_hash}"
+            
+            try:
+                if redis_client.exists(redis_signal_key):
+                    logger.info(f"🧩 신호 멱등 hit: {strategy_id} {candle_symbol} (중복 차단)")
+                    continue
+                redis_client.setex(redis_signal_key, redis_ttl, "1")
+            except Exception as e:
+                logger.warning(f"⚠️  Redis 멱등성 체크 실패 (처리 계속): {e}")
         
         # Risk Manager 체크 (⭐ position_value 전달)
         allowed, reason = risk.check_order(decision, qty, position_value=position_value)
         if not allowed:
-            # ⭐ PR8: 전략별 거부 쿨다운 설정
-            reject_cooldown[cooldown_key] = time.time()
+            # ⭐ PR9 Phase 2: Redis 쿨다운 TTL 설정
+            if redis_client:
+                try:
+                    redis_cooldown_key = f"cooldown:{cooldown_key}"
+                    redis_client.setex(redis_cooldown_key, cooldown_seconds, "1")
+                except Exception as e:
+                    logger.warning(f"⚠️  Redis 쿨다운 설정 실패: {e}")
+            reject_cooldown[cooldown_key] = time.time()  # Fallback
             logger.warning(f"⛔ [{strategy_id}] {candle_symbol} 리스크 체크 실패 (쿨다운 {cooldown_seconds}초): {reason}")
             if mode in ['paper', 'live']:
                 tg(f"⚠️ *거래 거부*\n전략: {strategy_id}\n심볼: {candle_symbol}\n방향: {decision.get('side')}\n사유: {reason}", config)
@@ -760,8 +830,14 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict):
         )
         
         if not can_open:
-            # ⭐ PR8: 전략별 거부 쿨다운 설정
-            reject_cooldown[cooldown_key] = time.time()
+            # ⭐ PR9 Phase 2: Redis 쿨다운 TTL 설정
+            if redis_client:
+                try:
+                    redis_cooldown_key = f"cooldown:{cooldown_key}"
+                    redis_client.setex(redis_cooldown_key, cooldown_seconds, "1")
+                except Exception as e:
+                    logger.warning(f"⚠️  Redis 쿨다운 설정 실패: {e}")
+            reject_cooldown[cooldown_key] = time.time()  # Fallback
             logger.warning(f"⛔ [{strategy_id}] {candle_symbol} 포트폴리오 거부 (쿨다운 {cooldown_seconds}초): {portfolio_reason}")
             if mode in ['paper', 'live']:
                 tg(f"⚠️ *포트폴리오 거부*\n전략: {strategy_id}\n심볼: {candle_symbol}\n방향: {decision.get('side')}\n사유: {portfolio_reason}", config)
