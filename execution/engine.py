@@ -1315,6 +1315,9 @@ def close_trade_in_db(
                 
                 if row:
                     entry_price, quantity = row
+                    # ⭐ PR10 Bug Fix: Decimal → float 변환 (PostgreSQL 타입 호환)
+                    entry_price = float(entry_price)
+                    quantity = float(quantity)
                     # pnl_pct 계산: (pnl / (entry_price * quantity)) * 100
                     pnl_pct = (pnl / (entry_price * quantity)) * 100 if quantity > 0 else 0.0
                     logger.debug(f"✅ pnl_pct 계산: {position_id} -> {pnl_pct:.2f}% (pnl={pnl:.2f}, entry={entry_price}, qty={quantity})")
