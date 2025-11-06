@@ -11,7 +11,7 @@
 3. 페이퍼 모드 기반 튜닝 설계(운영 반영은 PR13에서 단계적 적용)
 4. **⭐ Binance API 완전 호환성 확보** (신규)
    - One-Way Mode 포지션 관리
-   - TP/SL 자동 실행 (Binance 조건부 주문)
+   - SL 서버 등록 + TP/트레일링 로컬 관리 (Option C, 파리티 우선)
    - 라이브 모드 안전성 확보
 
 ## 범위(Scope, In)
@@ -23,10 +23,10 @@
   - `LiveBroker`: `positionSide="BOTH"` 추가
   - `PortfolioManager`: 반대 방향 신호 거부
   - `max_positions` 한도 로직 점검
-- **⭐ Binance TP/SL API 연동** (신규)
-  - 진입 시 `STOP_MARKET`, `TAKE_PROFIT_MARKET` 주문 등록
-  - 트레일링 스톱: `Modify Order` API 활용
-  - 봇 중단 시에도 Binance 서버가 자동 청산
+- **⭐ Binance SL API 연동 (Option C)** (신규)
+  - 진입 시 `STOP_MARKET`(SL)만 서버 등록 (`closePosition=true`, `positionSide="BOTH"`)
+  - 트레일링 스톱: SL 가격을 `Modify Order`로 갱신, 실패 시 `cancel → create` 폴백
+  - TP 분할/트레일링: `PositionTracker` 신호에 따라 로컬로 `broker.close_position(reduceOnly)` 실행
 
 ## 제외(Out-of-Scope)
 - 엔진/Redis(→ PR9)
@@ -39,7 +39,7 @@
 - config.yml(ensemble.* 키; 튜닝 키는 PR13에서 활성화)
 - **⭐ execution/adapters/brokers.py** (One-Way Mode, TP/SL API)
 - **⭐ execution/portfolio_manager.py** (반대 방향 신호 거부)
-- **⭐ execution/engine.py** (TP/SL 주문 등록/수정)
+- **⭐ execution/engine.py** (SL 등록/갱신 훅, TP는 로컬 close 호출)
 - **⭐ docs/PHASE6/PR10_BINANCE_SYSTEM_CHECK.md** (시스템 점검 결과)
 
 ## 설정 키(제안; PR13에서 활성화)
@@ -74,12 +74,21 @@
 - [x] **청산 로직 수정 (Bug #4, #4-2)** ✅ 
   - OPEN 포지션 심볼 자동 구독
   - PostgreSQL Decimal 타입 호환
-- [x] **brokers.py Binance API 연동** ✅
-  - LiveBroker: One-Way Mode (`positionSide="BOTH"`)
-  - LiveBroker: TP/SL API (create_tpsl_orders, update_sl_price, close_position)
-  - LiveBroker: 자산/포지션 조회 (get_account_balance, get_positions)
-  - PaperBroker: 동일한 메서드 시그니처 (가상 실행)
-  - **페이퍼/라이브 로직 100% 동일 보장** ⭐
+- [x] **brokers.py 리팩토링 (Option C)** ✅
+  - PaperBroker: `create_sl_order` 추가 (SL만 가상 등록, 하드코딩 제거)
+  - PaperBroker: `update_sl_price` 갱신 (가상 트레일링)
+  - LiveBroker: `create_sl_order` 추가 (STOP_MARKET + closePosition + positionSide="BOTH")
+  - LiveBroker: `update_sl_price` 갱신 (Modify 우선 → Cancel&Replace 폴백)
+  - LiveBroker: `close_position` reduceOnly=True 추가 (부분 청산시)
+  - LiveBroker: 자산/포지션 조회 (get_account_balance, get_positions) 유지
+  - **하드코딩 30%/40% 완전 제거** ✅
+- [x] **engine.py SL 등록/갱신 훅 추가** ✅
+  - 진입 직후 `broker.create_sl_order` 호출 (L1104-1110)
+  - 트레일링 SL 갱신 감지 및 `broker.update_sl_price` 호출 (L472-487)
+  - TP/분할 청산은 기존 `PositionTracker` 로직 유지 ✅
+- [x] **페이퍼/라이브 로직 100% 동일 보장** ✅
+  - TP/트레일링: `TPManager` + `PositionTracker` 로컬 로직 공유
+  - SL: 서버 등록(라이브) vs 가상 등록(페이퍼), 동일 시그니처
 - [ ] **모든 OPEN 포지션 강제 청산** (24시간 평가 전)
 
 ### Phase 3: 24시간 페이퍼 평가
@@ -108,6 +117,10 @@
 - **2025-11-06 14:30** | ✅ Bug #3: 포지션 가치 초과 경고 | "포지션 가치 초과: $X > $Y" 반복 경고 | position_sizer.py: epsilon 0.1→1.0 USDT 완화 (부동소수점 오차 허용 범위 확대) | 불필요한 경고 감소
 - **2025-11-06 18:50** | ✅ Bug #4: 청산 로직 작동 안 함 (CRITICAL) | 44개 OPEN 포지션, 가장 오래된 것 61시간 유지 (11-04부터), 청산 0건 | **원인**: symbols.mode=top100 (동적 심볼) → NMRUSDT가 top50에서 제외되어 WebSocket 구독 해제 → 캔들 안 들어와서 청산 체크 불가 | **수정**: execution/adapters/__init__.py (Paper/Live 모드 시작 시 DB에서 OPEN 포지션 심볼 조회 → WebSocket 구독 목록에 자동 추가)
 - **2025-11-06 19:15** | ✅ Bug #4-2: pnl_pct 계산 오류 (CRITICAL) | DB 종료 기록 실패 반복 발생 (매초), "unsupported operand type(s) for /: 'float' and 'decimal.Decimal'" | **원인**: PostgreSQL이 entry_price/quantity를 Decimal 타입으로 반환, pnl(float)과 연산 시 타입 불일치 | **수정**: execution/engine.py close_trade_in_db() L1319-1320 (Decimal → float 명시적 변환)
+- **2025-11-06 20:50** | ✅ brokers.py Binance API 연동 완료 | N/A | LiveBroker: One-Way Mode, TP/SL API 7개 메서드 추가 (create_tpsl_orders, update_sl_price, close_position, cancel_order, get_account_balance, get_positions 등) | PaperBroker: 동일 시그니처 메서드 추가 (페이퍼/라이브 로직 100% 동일 보장)
+- **2025-11-06 21:35** | ✅ PR10 Option C 구현 완료 (CRITICAL) | N/A | brokers.py: create_tpsl_orders→create_sl_order 변경, 하드코딩 30%/40% 제거, update_sl_price에 Cancel&Replace 폴백 추가, close_position에 reduceOnly=True 추가; engine.py: 진입 직후 SL 등록(L1104-1110), 트레일링 SL 갱신(L472-487) 훅 추가 | 하드코딩 제거, TPManager/PositionTracker 기존 로직 활용, 서버 SL + 로컬 TP 파리티 보장
+- **2025-11-06 21:53** | ✅ Bug #5: PaperBroker 시그니처 불일치 (CRITICAL) | TypeError: PaperBroker.update_sl_price() got an unexpected keyword argument 'side' | **원인**: LiveBroker에는 `side` 파라미터 추가했으나 PaperBroker에는 누락 | **수정**: PaperBroker.update_sl_price() 시그니처에 `side: str` 파라미터 추가 (L138), 페이퍼/라이브 파리티 보장
+- **2025-11-06 22:35** | ✅ 설정 검증 및 업데이트 | N/A | config.yml: risk.max_positions 5→20 (바이낸스 한도 50개, 안정적 20개), 페이퍼=라이브 동일 설정으로 검증 신뢰성 확보, max_open_positions 주석 처리 (사용 안 함) | 다른 PR 영향도 검증 완료 (PR11~13 독립 확인)
 
 ## 라이브 모드 고려사항(Live Considerations)
 - 라이브 전략 파일에 백테스트 전용 휴리스틱 삽입 금지(오버레이/설정으로 분리)

@@ -336,8 +336,8 @@ risk:
   margin_ratio: 0.01  # 유지 증거금 비율 (1% = 0.01) ⭐ 청산가 계산용
   max_exposure_pct: 0.95  # 최대 노출 비율 (95%)
   max_exposure_per_symbol: 0.3  # 심볼당 최대 노출 (30%)
-  max_open_positions: 2  # 최대 오픈 포지션 수
-  max_positions: 5  # 최대 포지션 수
+  # max_open_positions: 2  # ⚠️ 사용 안 함 (삭제 예정, max_positions 사용)
+  max_positions: 20  # 최대 동시 포지션 수 (바이낸스 한도: 50개, 안정적 운영: 20개, 페이퍼=라이브 동일)
   per_trade: 0.003  # 거래당 리스크 비율 (0.3%) ⭐ 0.005→0.003
   max_sl_pct: 0.05  # ⭐ 신규: SL 최대 한도 (entry의 ±5%)
   profiles:
