@@ -1155,12 +1155,18 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict):
                 "position_number": position_number,  # ⭐ P2: 포지션 번호 추가
             }
             
-            # ⭐ PR10: SL 서버 등록 (Option C)
+            # ⭐ PR10: SL 서버 등록 (Option C + workingType + priceProtect)
             if mode in ["paper", "live"]:
+                binance_api_cfg = config.get('exits', {}).get('binance_api', {})
+                working_type = binance_api_cfg.get('working_type', 'CONTRACT_PRICE')
+                price_protect = 'TRUE' if binance_api_cfg.get('price_protect', True) else 'FALSE'
+                
                 broker.create_sl_order(
                     position={'id': position_id, 'symbol': candle_symbol,
                               'side': decision.get('side'), 'qty': qty},
-                    sl_price=decision.get('sl')
+                    sl_price=decision.get('sl'),
+                    working_type=working_type,
+                    price_protect=price_protect
                 )
 
             logger.info(

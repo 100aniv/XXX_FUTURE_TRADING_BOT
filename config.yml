@@ -183,6 +183,11 @@ exits:
     k: 3.0  # ATR 배수 (×3.0) - 중요!
     move_to_break_even_at_r: 0.7  # 0.7R 도달 시 손절을 진입가로 이동
     type: atr  # ATR 기반
+  
+  # ⭐ PR10: 바이낸스 SL/TP API 파라미터
+  binance_api:
+    working_type: "CONTRACT_PRICE"  # MARK_PRICE | CONTRACT_PRICE (트리거 가격 기준)
+    price_protect: true              # Flash crash/pump 보호 (MARK vs CONTRACT 괴리율 검증)
 exposure:
   correlation_group_cap_pct: 1.0
   symbol_groups:

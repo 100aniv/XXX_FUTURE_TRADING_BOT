@@ -99,93 +99,70 @@ class PaperBroker:
         
         return order
     
-    def create_tpsl_orders(self, position: dict, tp_prices: list = None, sl_price: float = None) -> dict:
+    def create_sl_order(self, position: dict, sl_price: float,
+                        working_type: str = 'CONTRACT_PRICE',
+                        price_protect: str = 'TRUE') -> dict:
         """
-        TP/SL 조건부 주문 등록 (가상, Binance와 동일한 로직)
+        SL 주문만 등록 (가상, Option C)
         
         Args:
             position: 포지션 정보 {'id': int, 'symbol': str, 'side': str, 'qty': float}
-            tp_prices: TP 가격 리스트 [tp1, tp2]
             sl_price: SL 가격
+            working_type: 트리거 가격 기준 ('MARK_PRICE' | 'CONTRACT_PRICE')
+            price_protect: 가격 보호 활성화 ('TRUE' | 'FALSE')
         
         Returns:
-            {'success': bool, 'order_ids': [...]}
+            {'success': bool, 'order_id': str}
         """
         position_id = position['id']
         symbol = position['symbol']
         side = position['side']
-        total_qty = position['qty']
         
         close_side = 'SELL' if side == 'LONG' else 'BUY'
-        virtual_order_ids = []
         
-        # SL 가상 주문 (전체 청산)
-        if sl_price:
-            sl_order = {
-                'id': f"PAPER_SL_{int(datetime.now().timestamp() * 1000)}",
-                'symbol': symbol,
-                'side': close_side,
-                'type': 'STOP_MARKET',
-                'stopPrice': sl_price,
-                'closePosition': True,
-                'positionSide': 'BOTH'
-            }
-            virtual_order_ids.append(sl_order['id'])
-            logger.info(f"✅ [PAPER] SL 주문 등록: {symbol} @ ${sl_price:.2f}")
+        # ⭐ PR10: SL 가상 주문 (LiveBroker와 동일 파라미터)
+        sl_order = {
+            'id': f"PAPER_SL_{int(datetime.now().timestamp() * 1000)}",
+            'symbol': symbol,
+            'side': close_side,
+            'type': 'STOP_MARKET',
+            'stopPrice': sl_price,
+            'closePosition': True,
+            'positionSide': 'BOTH',
+            'workingType': working_type,
+            'priceProtect': price_protect
+        }
         
-        # TP1 가상 주문 (30%)
-        if tp_prices and len(tp_prices) > 0:
-            tp1_qty = round(total_qty * 0.3, 4)
-            tp1_order = {
-                'id': f"PAPER_TP1_{int(datetime.now().timestamp() * 1000)}",
-                'symbol': symbol,
-                'side': close_side,
-                'type': 'TAKE_PROFIT_MARKET',
-                'stopPrice': tp_prices[0],
-                'quantity': tp1_qty,
-                'positionSide': 'BOTH'
-            }
-            virtual_order_ids.append(tp1_order['id'])
-            logger.info(f"✅ [PAPER] TP1 주문 등록: {symbol} @ ${tp_prices[0]:.2f} ({tp1_qty:.4f})")
+        # 가상 SL 주문 저장
+        if not hasattr(self, 'virtual_sl_orders'):
+            self.virtual_sl_orders = {}
+        self.virtual_sl_orders[position_id] = sl_order['id']
         
-        # TP2 가상 주문 (40%)
-        if tp_prices and len(tp_prices) > 1:
-            tp2_qty = round(total_qty * 0.4, 4)
-            tp2_order = {
-                'id': f"PAPER_TP2_{int(datetime.now().timestamp() * 1000)}",
-                'symbol': symbol,
-                'side': close_side,
-                'type': 'TAKE_PROFIT_MARKET',
-                'stopPrice': tp_prices[1],
-                'quantity': tp2_qty,
-                'positionSide': 'BOTH'
-            }
-            virtual_order_ids.append(tp2_order['id'])
-            logger.info(f"✅ [PAPER] TP2 주문 등록: {symbol} @ ${tp_prices[1]:.2f} ({tp2_qty:.4f})")
-        
-        # 가상 주문 저장
-        self.virtual_tpsl_orders[position_id] = virtual_order_ids
-        
-        return {'success': True, 'order_ids': virtual_order_ids}
+        logger.info(f"✅ [PAPER] SL 주문 등록: {symbol} @ ${sl_price:.2f}")
+        return {'success': True, 'order_id': sl_order['id']}
     
-    def update_sl_price(self, position_id: int, symbol: str, new_sl_price: float) -> dict:
+    def update_sl_price(self, position_id: int, symbol: str, side: str, new_sl_price: float) -> dict:
         """
-        트레일링 스톱 가격 업데이트 (가상, Binance와 동일한 로직)
+        트레일링 스톱 가격 업데이트 (가상)
         
         Args:
             position_id: 포지션 ID
             symbol: 심볼
+            side: 원래 방향 ('LONG' or 'SHORT')
             new_sl_price: 새 SL 가격
         
         Returns:
             {'success': bool}
         """
-        order_ids = self.virtual_tpsl_orders.get(position_id, [])
-        if not order_ids:
-            logger.warning(f"⚠️ 포지션 {position_id} SL 주문 없음")
+        if not hasattr(self, 'virtual_sl_orders'):
+            self.virtual_sl_orders = {}
+            
+        order_id = self.virtual_sl_orders.get(position_id)
+        if not order_id:
+            logger.warning(f"⚠️ [PAPER] 포지션 {position_id} SL 주문 없음")
             return {'success': False, 'error': 'No SL order found'}
         
-        # 가상 SL 가격 업데이트 (실제로는 position_tracker가 처리)
+        # 가상 SL 가격 업데이트
         logger.info(f"📈 [PAPER] SL 가격 업데이트: {symbol} → ${new_sl_price:.2f}")
         return {'success': True}
     
@@ -305,84 +282,60 @@ class LiveBroker:
                 'error': str(e)
             }
     
-    def create_tpsl_orders(self, position: dict, tp_prices: list = None, sl_price: float = None) -> dict:
+    def create_sl_order(self, position: dict, sl_price: float, 
+                        working_type: str = 'CONTRACT_PRICE',
+                        price_protect: str = 'TRUE') -> dict:
         """
-        TP/SL 조건부 주문 등록 (Binance API)
+        SL 주문만 등록 (Binance API, Option C)
         
         Args:
             position: 포지션 정보 {'id': int, 'symbol': str, 'side': str, 'qty': float}
-            tp_prices: TP 가격 리스트 [tp1, tp2] (분할 익절)
             sl_price: SL 가격
+            working_type: 트리거 가격 기준 ('MARK_PRICE' | 'CONTRACT_PRICE')
+            price_protect: 가격 보호 활성화 ('TRUE' | 'FALSE')
         
         Returns:
-            {'success': bool, 'order_ids': [...]}
+            {'success': bool, 'order_id': int}
         """
         try:
             position_id = position['id']
             symbol = position['symbol']
             side = position['side']
-            total_qty = position['qty']
             
             close_side = 'SELL' if side == 'LONG' else 'BUY'
-            order_ids = []
             
-            # SL 주문 (전체 청산)
-            if sl_price:
-                sl_order = self.client.futures_create_order(
-                    symbol=symbol,
-                    side=close_side,
-                    type='STOP_MARKET',
-                    stopPrice=sl_price,
-                    closePosition=True,  # 전체 청산
-                    positionSide='BOTH'
-                )
-                order_ids.append(sl_order['orderId'])
-                logger.info(f"✅ [LIVE] SL 주문 등록: {symbol} @ ${sl_price:.2f}")
+            # ⭐ PR10: SL 주문 (workingType + priceProtect 추가)
+            sl_order = self.client.futures_create_order(
+                symbol=symbol,
+                side=close_side,
+                type='STOP_MARKET',
+                stopPrice=sl_price,
+                closePosition=True,
+                positionSide='BOTH',
+                workingType=working_type,      # 트리거 가격 기준
+                priceProtect=price_protect     # Flash crash/pump 보호
+            )
             
-            # TP1 주문 (30%)
-            if tp_prices and len(tp_prices) > 0:
-                tp1_qty = round(total_qty * 0.3, 4)
-                tp1_order = self.client.futures_create_order(
-                    symbol=symbol,
-                    side=close_side,
-                    type='TAKE_PROFIT_MARKET',
-                    stopPrice=tp_prices[0],
-                    quantity=tp1_qty,
-                    positionSide='BOTH'
-                )
-                order_ids.append(tp1_order['orderId'])
-                logger.info(f"✅ [LIVE] TP1 주문 등록: {symbol} @ ${tp_prices[0]:.2f} ({tp1_qty:.4f})")
+            # SL 주문 ID 저장
+            if not hasattr(self, 'sl_orders'):
+                self.sl_orders = {}
+            self.sl_orders[position_id] = sl_order['orderId']
             
-            # TP2 주문 (40%)
-            if tp_prices and len(tp_prices) > 1:
-                tp2_qty = round(total_qty * 0.4, 4)
-                tp2_order = self.client.futures_create_order(
-                    symbol=symbol,
-                    side=close_side,
-                    type='TAKE_PROFIT_MARKET',
-                    stopPrice=tp_prices[1],
-                    quantity=tp2_qty,
-                    positionSide='BOTH'
-                )
-                order_ids.append(tp2_order['orderId'])
-                logger.info(f"✅ [LIVE] TP2 주문 등록: {symbol} @ ${tp_prices[1]:.2f} ({tp2_qty:.4f})")
-            
-            # 주문 ID 저장
-            self.tpsl_orders[position_id] = order_ids
-            
-            return {'success': True, 'order_ids': order_ids}
+            logger.info(f"✅ [LIVE] SL 주문 등록: {symbol} @ ${sl_price:.2f} (Order ID: {sl_order['orderId']})")
+            return {'success': True, 'order_id': sl_order['orderId']}
             
         except BinanceAPIException as e:
-            logger.error(f"❌ TP/SL 주문 등록 실패: {e}")
+            logger.error(f"❌ [LIVE] SL 주문 등록 실패: {e}")
             return {'success': False, 'error': str(e)}
     
-    def update_sl_price(self, position_id: int, symbol: str, new_sl_price: float) -> dict:
+    def update_sl_price(self, position_id: int, symbol: str, side: str, new_sl_price: float) -> dict:
         """
-        트레일링 스톱 가격 업데이트 (Modify Order API)
+        트레일링 스톱 가격 업데이트 (Modify Order 우선, Cancel&Replace 폴백)
         
         Args:
             position_id: 포지션 ID
             symbol: 심볼
+            side: 원래 방향 ('LONG' or 'SHORT')
             new_sl_price: 새 SL 가격
         
         Returns:
@@ -390,26 +343,58 @@ class LiveBroker:
         """
         try:
             # 기존 SL 주문 ID 조회
-            order_ids = self.tpsl_orders.get(position_id, [])
-            if not order_ids:
-                logger.warning(f"⚠️ 포지션 {position_id} SL 주문 없음")
+            if not hasattr(self, 'sl_orders'):
+                self.sl_orders = {}
+            
+            sl_order_id = self.sl_orders.get(position_id)
+            if not sl_order_id:
+                logger.warning(f"⚠️ [LIVE] 포지션 {position_id} SL 주문 없음")
                 return {'success': False, 'error': 'No SL order found'}
             
-            # 첫 번째 주문이 SL (STOP_MARKET)
-            sl_order_id = order_ids[0]
+            # 1순위: Modify Order 시도
+            try:
+                self.client.futures_modify_order(
+                    orderId=sl_order_id,
+                    symbol=symbol,
+                    stopPrice=new_sl_price
+                )
+                logger.info(f"📈 [LIVE] SL 가격 업데이트 (Modify): {symbol} → ${new_sl_price:.2f}")
+                return {'success': True, 'method': 'modify'}
+                
+            except (BinanceAPIException, AttributeError) as modify_error:
+                # 2순위: Cancel & Replace 폴백
+                logger.warning(f"⚠️ [LIVE] Modify 실패, Cancel&Replace 시도: {modify_error}")
+                
+                try:
+                    # 기존 SL 취소
+                    self.client.futures_cancel_order(
+                        symbol=symbol,
+                        orderId=sl_order_id
+                    )
+                    
+                    # 새 SL 등록
+                    close_side = 'SELL' if side == 'LONG' else 'BUY'
+                    new_sl_order = self.client.futures_create_order(
+                        symbol=symbol,
+                        side=close_side,
+                        type='STOP_MARKET',
+                        stopPrice=new_sl_price,
+                        closePosition=True,
+                        positionSide='BOTH'
+                    )
+                    
+                    # 새 주문 ID 저장
+                    self.sl_orders[position_id] = new_sl_order['orderId']
+                    
+                    logger.info(f"📈 [LIVE] SL 가격 업데이트 (Cancel&Replace): {symbol} → ${new_sl_price:.2f}")
+                    return {'success': True, 'method': 'cancel_replace'}
+                    
+                except BinanceAPIException as replace_error:
+                    logger.error(f"❌ [LIVE] SL 업데이트 완전 실패: {replace_error}")
+                    return {'success': False, 'error': str(replace_error)}
             
-            # Modify Order API
-            self.client.futures_modify_order(
-                orderId=sl_order_id,
-                symbol=symbol,
-                stopPrice=new_sl_price
-            )
-            
-            logger.info(f"📈 [LIVE] SL 가격 업데이트: {symbol} → ${new_sl_price:.2f}")
-            return {'success': True}
-            
-        except BinanceAPIException as e:
-            logger.error(f"❌ SL 업데이트 실패: {e}")
+        except Exception as e:
+            logger.error(f"❌ [LIVE] SL 업데이트 오류: {e}")
             return {'success': False, 'error': str(e)}
     
     def cancel_order(self, symbol: str, order_id: int) -> dict:
@@ -468,7 +453,7 @@ class LiveBroker:
     
     def close_position(self, position_id: int, symbol: str, side: str, qty: float, reason: str = '') -> dict:
         """
-        포지션 청산 (부분/전체)
+        포지션 청산 (부분/전체, reduceOnly 보장)
         
         Args:
             position_id: 포지션 ID
@@ -493,12 +478,13 @@ class LiveBroker:
                     positionSide='BOTH'
                 )
             else:
-                # 부분 청산
+                # 부분 청산 (reduceOnly=True)
                 order = self.client.futures_create_order(
                     symbol=symbol,
                     side=close_side,
                     type='MARKET',
                     quantity=float(qty),
+                    reduceOnly=True,  # ⭐ Option C: 반대 포지션 방지
                     positionSide='BOTH'
                 )
             
@@ -513,5 +499,5 @@ class LiveBroker:
             }
             
         except BinanceAPIException as e:
-            logger.error(f"❌ 청산 실패: {e}")
+            logger.error(f"❌ [LIVE] 청산 실패: {e}")
             return {'success': False, 'error': str(e)}
