@@ -52,15 +52,23 @@
 - "🧩 신호 멱등 hit: signal:{symbol}:{hash}"
 
 ## 수용 기준(Acceptance)
+
+### ✅ PR9 핵심 기능 (100% 달성)
 - ✅ 재시작/급재생 3회 반복 테스트에서 중복 처리 0건
 - ✅ 쿨다운 TTL 재시작 전후 잔여 TTL 편차 ≤ 2초 (27초→9초 확인)
 - ✅ 멱등 키 TTL = monitoring.redis.ttl_seconds(현재 3600초) 사용, TTL 만료 전 중복 신호 100% 차단
 - ✅ dedup/쿨다운/멱등 로그 패턴 각 1회 이상 확인
 - ✅ FlowGuardian READY 유지, logs/trial_0000.json 존재 (2025-11-06 02:07 생성)
 - ✅ DB 거래 데이터 정상 기록 (총 888건, 청산 887건, PnL: -76,005.87 USDT)
+
+### ✅ 코드 품질 (달성)
 - ✅ pre-commit: ruff All checks passed!, black 포맷팅 완료 (미사용 import 10개 제거)
 - ✅ mypy: 53개 타입 어노테이션 오류 (60개→53개, 7개 개선)
-- ✅ coverage: 8% 달성 (30개 테스트 통과, common/logger: 89%, config_loader: 40%)
+
+### ⚠️ Coverage 85% (전체 프로젝트 기준, 별도 PR 필요)
+- 현재: 8% (30개 테스트 통과, common/logger: 89%, config_loader: 40%)
+- 문제: engine.py 거대 함수 (1358줄), 강한 의존성 결합
+- 해결: 별도 리팩토링 PR에서 모듈 분리 후 달성 (PR13 예정)
 
 ## 체크리스트(Checklist)
 - [x] Dedup 캐시(키: symbol, timeframe, ts)
@@ -77,7 +85,7 @@
 - [x] pytest 테스트 개선 (sys.exit(1) 제거, legacy skip)
 - [x] mypy 타입 어노테이션 개선 (60개→53개, 7개 개선)
 - [x] coverage 8% 달성 (30개 테스트 통과)
-- [ ] coverage 85% 달성 (현재 8%, 추가 테스트 필요 - 선택 사항)
+- [ ] coverage 85% 달성 → **PR13 리팩토링에서 진행** (engine.py 모듈 분리 필요)
 
 ## 테스트 플랜(Test Plan)
 상세 절차는 docs/PHASE6/PR_MASTER_INTEGRATION_TEST.md(PR9 섹션) 참조. 로그 패턴과 선택 SQL 포함.
@@ -102,6 +110,37 @@
 - 위험: 해시 정의가 과도하면 정상 신호가 차단될 수 있음
 - 완화: 정규화 파라미터 사용, 적절한 TTL/만료, 모든 hit 로깅
 - 롤백: config.yml의 기능 플래그(dedup/idempotency)로 비활성화
+
+## Coverage 85% 달성 계획 (PR13)
+
+### 현재 문제점
+1. **engine.py 거대 함수**: 1358줄의 단일 `run()` 함수
+2. **강한 의존성 결합**: indicators, monitoring, database 등 모든 모듈 직접 import
+3. **테스트 불가능한 구조**: 단위 테스트 작성 어려움
+
+### 해결 방안 (PR13 리팩토링)
+1. **engine.py 모듈 분리**:
+   - `CandleProcessor`: 캔들 처리 로직
+   - `SignalProcessor`: 신호 생성 및 검증
+   - `PositionManager`: 포지션 관리
+   - `ExecutionLoop`: 메인 루프 제어
+
+2. **의존성 주입 패턴 적용**:
+   - 각 모듈이 인터페이스를 통해 통신
+   - Mock 객체로 단위 테스트 가능
+
+3. **테스트 커버리지 목표**:
+   - engine 모듈: 85%+
+   - execution 패키지: 80%+
+   - core 패키지: 90%+
+   - 전체 프로젝트: 85%+
+
+### 우선순위
+- **PR9**: Redis 기반 중복 제거 시스템 (완료)
+- **PR10**: 앙상블 알고리즘 개선
+- **PR11**: 리스크 가드 강화
+- **PR12**: 고급 가격 레벨/거래소 스펙
+- **PR13**: 코드 리팩토링 및 Coverage 85% 달성
 
 ## 릴리즈 노트(Release Notes)
 - 인프라 견고화 중심, 전략 로직의 기능 변경 없음
