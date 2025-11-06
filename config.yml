@@ -342,8 +342,8 @@ risk:
   max_sl_pct: 0.05  # ⭐ 신규: SL 최대 한도 (entry의 ±5%)
   profiles:
     paper:
-      max_daily_loss_pct: 0.05
-      max_consecutive_losses: 7
+      max_daily_loss_pct: 0.20  # ⭐ PR10 테스트: 0.05→0.20 (20%, 임시 완화)
+      max_consecutive_losses: 15  # ⭐ PR10 테스트: 7→15 (임시 완화)
       cooldown_after_consecutive: 30
       enforce_daily_loss_in_backtest: true
       equity_stop_pct: 20.0
