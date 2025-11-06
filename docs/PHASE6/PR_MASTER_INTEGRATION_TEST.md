@@ -4,7 +4,8 @@
 - FlowGuardian READY 게이트 활성(READY 없이는 PAPER/LIVE 불가)
 - 설정 단일 소스: config.yml
 - logs/trial_0000.json 기록 활성화, DB score_total == JSON score_total
-- pre-commit: ruff, black, mypy, vulture, coverage>85% 통과
+- pre-commit: ruff, black, mypy, vulture 통과
+- **coverage ≥90% (PR14에서 달성)**
 
 ---
 
@@ -100,20 +101,57 @@
 
 ---
 
-## PR14 — 최종 상용 검증 & 무중복 아키텍처 감사
-### 절차
+## PR14 — 코드 리팩토링 + 최종 상용 검증 + Coverage 90%
+
+### Phase 1: 코드 리팩토링 (Coverage 90% 달성)
+#### 문제점
+- engine.py 거대 함수 (1358줄)
+- 강한 의존성 결합 (indicators, monitoring, database 직접 import)
+- 테스트 불가능한 구조
+
+#### 리팩토링 절차
+1) **engine.py 모듈 분리**:
+   - `CandleProcessor`: 캔들 처리 로직 분리
+   - `SignalProcessor`: 신호 생성 및 검증 분리
+   - `PositionManager`: 포지션 관리 분리
+   - `ExecutionLoop`: 메인 루프 제어
+
+2) **의존성 주입 패턴 적용**:
+   - 각 모듈이 인터페이스를 통해 통신
+   - Mock 객체로 단위 테스트 가능하게 구조 개선
+
+3) **단위 테스트 작성**:
+   - CandleProcessor 테스트 (dedup, 버퍼 관리)
+   - SignalProcessor 테스트 (신호 생성, 검증, 멱등성)
+   - PositionManager 테스트 (포지션 추적, TP/SL)
+   - ExecutionLoop 테스트 (메인 루프 플로우)
+
+#### Coverage 목표
+- engine 모듈: 90%+
+- execution 패키지: 85%+
+- core 패키지: 95%+
+- **전체 프로젝트: 90%+**
+
+### Phase 2: 아키텍처 감사
 1) 모듈/함수 중복성, 하드코딩, 단일 책임 원칙 감사
 2) 문서-코드-설정 동기화 점검(.windsurfrules 준수)
 3) 통합/회귀/부하/장시간 안정성 테스트(재시작/네트워크 변동/백프레셔)
 4) FlowGuardian 게이트/로그/DB/커버리지 최종 확인
 
 ### 수용 기준
+#### Phase 1: 리팩토링
+- ✅ engine.py 모듈 분리 완료 (4개 모듈)
+- ✅ 의존성 주입 패턴 적용
+- ✅ **Coverage 90% 달성** (engine: 90%+, execution: 85%+, core: 95%+)
+- ✅ 모든 기존 테스트 통과 (회귀 없음)
+
+#### Phase 2: 최종 검증
 - 중복/하드코딩/규칙 위반 0건
 - logs/trial_0000.json 생성 보장, DB=JSON
- - 24h 안정성: 프로세스 크래시 0, 메모리 증가율 ≤ 3%, CPU p95 ≤ 80%
- - 부하: 큐 사용률 p95 ≤ 70%, queue_drop_rate_pct ≤ 0.25%, api_latency_ms_p95 ≤ 300ms
- - 재시작 내구성: 의도적 재시작 3회 동안 데이터 유실 0, 복구 ≤ 45초
-- 커버리지 ≥ 90%(권장), pre-commit 전 항목 통과
+- 24h 안정성: 프로세스 크래시 0, 메모리 증가율 ≤ 3%, CPU p95 ≤ 80%
+- 부하: 큐 사용률 p95 ≤ 70%, queue_drop_rate_pct ≤ 0.25%, api_latency_ms_p95 ≤ 300ms
+- 재시작 내구성: 의도적 재시작 3회 동안 데이터 유실 0, 복구 ≤ 45초
+- **Coverage ≥ 90% (필수)**, pre-commit 전 항목 통과
 
 ---
 

@@ -65,10 +65,10 @@
 - ✅ pre-commit: ruff All checks passed!, black 포맷팅 완료 (미사용 import 10개 제거)
 - ✅ mypy: 53개 타입 어노테이션 오류 (60개→53개, 7개 개선)
 
-### ⚠️ Coverage 85% (전체 프로젝트 기준, 별도 PR 필요)
+### ⚠️ Coverage 90% (전체 프로젝트 기준, PR14에서 달성)
 - 현재: 8% (30개 테스트 통과, common/logger: 89%, config_loader: 40%)
 - 문제: engine.py 거대 함수 (1358줄), 강한 의존성 결합
-- 해결: 별도 리팩토링 PR에서 모듈 분리 후 달성 (PR13 예정)
+- 해결: PR14 리팩토링에서 모듈 분리 후 90% 달성
 
 ## 체크리스트(Checklist)
 - [x] Dedup 캐시(키: symbol, timeframe, ts)
@@ -85,7 +85,7 @@
 - [x] pytest 테스트 개선 (sys.exit(1) 제거, legacy skip)
 - [x] mypy 타입 어노테이션 개선 (60개→53개, 7개 개선)
 - [x] coverage 8% 달성 (30개 테스트 통과)
-- [ ] coverage 85% 달성 → **PR13 리팩토링에서 진행** (engine.py 모듈 분리 필요)
+- [ ] coverage 90% 달성 → **PR14 리팩토링에서 진행** (engine.py 모듈 분리 필요)
 
 ## 테스트 플랜(Test Plan)
 상세 절차는 docs/PHASE6/PR_MASTER_INTEGRATION_TEST.md(PR9 섹션) 참조. 로그 패턴과 선택 SQL 포함.
@@ -111,14 +111,14 @@
 - 완화: 정규화 파라미터 사용, 적절한 TTL/만료, 모든 hit 로깅
 - 롤백: config.yml의 기능 플래그(dedup/idempotency)로 비활성화
 
-## Coverage 85% 달성 계획 (PR13)
+## Coverage 90% 달성 계획 (PR14)
 
 ### 현재 문제점
 1. **engine.py 거대 함수**: 1358줄의 단일 `run()` 함수
 2. **강한 의존성 결합**: indicators, monitoring, database 등 모든 모듈 직접 import
 3. **테스트 불가능한 구조**: 단위 테스트 작성 어려움
 
-### 해결 방안 (PR13 리팩토링)
+### 해결 방안 (PR14 리팩토링)
 1. **engine.py 모듈 분리**:
    - `CandleProcessor`: 캔들 처리 로직
    - `SignalProcessor`: 신호 생성 및 검증
@@ -130,17 +130,18 @@
    - Mock 객체로 단위 테스트 가능
 
 3. **테스트 커버리지 목표**:
-   - engine 모듈: 85%+
-   - execution 패키지: 80%+
-   - core 패키지: 90%+
-   - 전체 프로젝트: 85%+
+   - engine 모듈: 90%+
+   - execution 패키지: 85%+
+   - core 패키지: 95%+
+   - 전체 프로젝트: 90%+
 
 ### 우선순위
-- **PR9**: Redis 기반 중복 제거 시스템 (완료)
+- **PR9**: Redis 기반 중복 제거 시스템 (완료) ✅
 - **PR10**: 앙상블 알고리즘 개선
 - **PR11**: 리스크 가드 강화
 - **PR12**: 고급 가격 레벨/거래소 스펙
-- **PR13**: 코드 리팩토링 및 Coverage 85% 달성
+- **PR13**: 베이시안 운영 튜닝 & 단계적 롤아웃
+- **PR14**: 코드 리팩토링 + 최종 검증 + Coverage 90% 달성
 
 ## 릴리즈 노트(Release Notes)
 - 인프라 견고화 중심, 전략 로직의 기능 변경 없음
