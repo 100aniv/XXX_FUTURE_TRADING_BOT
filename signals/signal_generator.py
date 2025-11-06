@@ -42,12 +42,12 @@ class SignalGenerator:
             strategy_modules: 전략 모듈 딕셔너리 (선택)
         """
         self.config = config
-        self.buffers = {}  # 심볼별 캔들 버퍼
-        self.last_alert_ts = {}  # 쿨다운
-        self.last_regime = {}  # 레짐
+        self.buffers: dict = {}  # 심볼별 캔들 버퍼
+        self.last_alert_ts: dict = {}  # 쿨다운
+        self.last_regime: dict = {}  # 레짐
         
         # ⭐ MTF 캐시 (API 호출 최소화)
-        self.mtf_cache = {}  # {symbol: {'regime': str, 'ts': int}}
+        self.mtf_cache: dict = {}  # {symbol: {'regime': str, 'ts': int}}
         self.mtf_cache_ttl = 300000  # 5분 (ms)
         
         # 전략 모듈

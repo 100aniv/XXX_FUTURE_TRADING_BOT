@@ -68,14 +68,14 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict):
     # ⭐ PR7-4: Multi-TF 버퍼: (심볼, 타임프레임) 독립 버퍼 관리
     # - 단일 TF: buffers = {('BTCUSDT', '5m'): deque([...], maxlen=400)}
     # - Multi-TF: buffers = {('BTCUSDT', '3m'): deque(...), ('BTCUSDT', '5m'): deque(...)}
-    buffers = {}  # {(symbol, timeframe): deque(maxlen=lookback)}
+    buffers: Dict[tuple, deque] = {}  # {(symbol, timeframe): deque(maxlen=lookback)}
 
     # ⭐ PR8: 전략별 심볼 거부 쿨다운 (Risk + Portfolio 거부 시 반복 시도 방지)
     # - ensemble 모드: 6개 전략이 독립적으로 신호 생성 → 전략별 쿨다운 필요
     # - 키 형식: "SYMBOL_STRATEGY" (예: "BTCUSDT_scalping")
     import time
 
-    reject_cooldown = {}  # {f"{symbol}_{strategy}": last_reject_time}
+    reject_cooldown: Dict[str, float] = {}  # {f"{symbol}_{strategy}": last_reject_time}
     cooldown_seconds = config.get("execution", {}).get("reject_cooldown_seconds", 60)
 
     # ⭐ PR9: Redis 연결 (캔들 dedup, 쿨다운 TTL, 신호 멱등성)
@@ -289,7 +289,7 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict):
     last_performance_log = 0
     status_interval = 600  # 10분 = 600초
     performance_interval = 600  # 10분 = 600초
-    flash_block_last_log = {}
+    flash_block_last_log: Dict[str, int] = {}
     try:
         flash_log_throttle_ms = getattr(risk, "_flash_log_throttle_ms", 300000)
     except Exception:
