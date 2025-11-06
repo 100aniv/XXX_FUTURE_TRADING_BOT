@@ -47,8 +47,7 @@
 ## 체크리스트(Checklist)
 - [x] 가중치 계산 업데이트 및 클램핑(설정 기반) ✅
 - [x] Experience Score 계산/기록 ✅
-- [x] 튜닝 파라미터/오버레이 구조 **설계 문서** 작성 ✅ (PR10_TUNING_DESIGN.md)
-- [x] A/B 비교 리포트 **경로 설계 문서** 작성 ✅ (PR10_AB_COMPARISON.md)
+- [x] 튜닝 파라미터/오버레이 구조 **설계 문서** 작성 ✅ (PR13_SYSTEM_ANALYSIS.md, PR13_ARCHITECTURE_DESIGN.md로 대체)
 - [ ] 24시간 페이퍼 평가 (baseline 대비 성능 비교) - **중단** (청산 로직 오류 발견)
 - [ ] **청산 로직 수정** - 포지션이 61시간 동안 유지되는 버그
 - [ ] **튜닝 파라미터 오버레이 시스템 구현** - PR13에서 진행 예정
