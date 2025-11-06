@@ -23,6 +23,7 @@
 - 앙상블 알고리즘 개선(→ PR10)
 - 리스크 가드 강화(→ PR11)
 - 고급 가격 레벨/거래소 스펙(→ PR12)
+- UI/UX 통합/메시징 표준화(→ PR15)
 
 ## 영향 파일(Affected Files, 예상)
 - execution/engine.py(dedup, TTL, 멱등 검사)

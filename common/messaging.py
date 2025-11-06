@@ -55,7 +55,9 @@ def send_telegram(
     if bot_prefix and not text.startswith("*["):
         text = f"{bot_prefix} {text}"
     
-    logger.info(f"[TELEGRAM] {text[:100]}...")
+    # 로깅용 단일 라인 변환 (개행 제거)
+    log_text = text.replace('\n', ' | ').replace('\r', '')
+    logger.info(f"[TELEGRAM] {log_text[:100]}...")
     
     # 토큰 검증
     if "PUT_YOUR" in token or "PUT_YOUR" in chat_id:
