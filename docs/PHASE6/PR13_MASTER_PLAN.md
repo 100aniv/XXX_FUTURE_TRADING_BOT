@@ -19,10 +19,39 @@
 - 리스크 가드/프로퍼티 테스트 신규 추가(→ PR11)
 - 고급 가격 레벨/거래소 스펙(→ PR12)
 
-## 영향 파일(예상)
-- config.yml(ensemble.*, exits.*, tuning.* 키)
-- docs/PHASE6/PR_MASTER_INTEGRATION_TEST.md(수용 테스트)
-- 리포트/대시보드(선택)
+## 영향 파일(확정)
+
+### 신규 파일 (구현 필요)
+```
+tuning/
+├── config_overlay.py           # 🆕 설정 오버레이 시스템
+├── ensemble_tuner.py           # 🆕 Ensemble 튜닝 (TunerCore 확장)
+├── rollout_manager.py          # 🆕 롤아웃 관리
+├── guardrail_engine.py         # 🆕 가드레일
+└── tuning_api.py               # 🆕 API
+
+analytics/
+└── ab_comparison.py            # 🆕 A/B 비교 리포트
+```
+
+### 수정 파일 (기존 활용)
+```
+tuning/
+├── tuning_core.py              # ✏️ 단일 전략용 (유지, EnsembleTuner가 확장)
+└── tuning_scheduler.py         # ✏️ 스케줄러 (Ensemble 추가)
+
+analytics/
+└── report_generator.py         # ✏️ 기존 리포트 (ABComparison이 확장)
+
+config.yml                      # ✏️ tuning.* 섹션 추가
+```
+
+### 참조 파일 (변경 없음)
+```
+metrics/compute.py              # ✅ 메트릭 계산 (그대로 사용)
+core/interfaces.py              # ✅ Protocol (그대로 사용)
+strategies/ensemble.py          # ✅ Ensemble 로직 (Config만 주입)
+```
 
 ## 설정 키(제안)
 - tuning.enabled: bool(기본 false)
@@ -45,11 +74,40 @@
 - logs/trial_0000.json/DB 동등성 유지, pre-commit 통과
 
 ## 체크리스트(Checklist)
-- [ ] 페이퍼 실험 수행 및 최적 파라미터 산출
-- [ ] 섀도우 모드 검증(미체결/미체화)
-- [ ] 카나리 단계별 성공 기준 충족 시 승격
-- [ ] 가드레일 위반 시 자동 중단/롤백 동작
-- [ ] A/B 비교 리포트 작성
+
+### 설계 완료 ✅
+- [x] 시스템 분석 완료 (PR13_SYSTEM_ANALYSIS.md)
+  - 기존 구현 현황 (tuning/, analytics/, metrics/, core/)
+  - Gap Analysis (P0/P1/P2 우선순위)
+  - 파일 구조 제안
+- [x] 아키텍처 설계 완료 (PR13_ARCHITECTURE_DESIGN.md)
+  - 5개 핵심 컴포넌트 (ConfigOverlay, EnsembleTuner, RolloutManager, GuardrailEngine, ABComparisonReport)
+  - 데이터 플로우
+  - 설정 스키마
+
+### 구현 예정
+- [ ] **Phase 1: ConfigOverlay & EnsembleTuner** (P0, 2일)
+  - tuning/config_overlay.py 구현
+  - tuning/ensemble_tuner.py 구현 (기존 TunerCore 확장)
+  - 단위 테스트
+  - 통합 테스트 (24시간 페이퍼 실험)
+
+- [ ] **Phase 2: RolloutManager & GuardrailEngine** (P0, 2일)
+  - tuning/rollout_manager.py 구현
+  - tuning/guardrail_engine.py 구현
+  - 섀도우 모드 테스트
+  - 카나리 모드 테스트 (10%→30%→50%→100%)
+
+- [ ] **Phase 3: ABComparisonReport** (P1, 1일)
+  - analytics/ab_comparison.py 구현 (기존 report_generator.py 확장)
+  - 차트 생성 (matplotlib)
+  - Markdown 템플릿
+  - 자동 리포트 생성 워크플로우
+
+- [ ] **Phase 4: 통합 및 최적화** (P2, 1일)
+  - API 통합 (tuning/api.py, tuning/rollout_api.py)
+  - CLI 개선 (tuning/tuning_cli.py)
+  - 성능 최적화
 
 ## 테스트 플랜(Test Plan)
 - 페이퍼: N시간 K회 실험, 결과 분포/안정성 분석
