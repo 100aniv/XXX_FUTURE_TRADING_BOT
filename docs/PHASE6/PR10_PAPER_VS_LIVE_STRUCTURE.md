@@ -128,7 +128,7 @@ Broker (모드별 분기)
 
 ## Q3: TP/SL API는 어떻게 처리되는가?
 
-**✅ 최종 방안: 페이퍼/라이브 동일한 로직, 실행만 다름** ⭐
+**✅ 최종 방안(Option C): 서버측 SL + 로컬 TP/트레일링** ⭐
 
 ```python
 # engine.py (공통 로직 - 모드 무관) ⭐
@@ -142,52 +142,45 @@ if should_action:
     
 # 브로커가 알아서 처리:
 # - PaperBroker: 가상 청산
-# - LiveBroker: 실제 API 청산
+# - LiveBroker: 실제 API 청산 (reduceOnly/closePosition)
 ```
 
-**진입 시 (Broker 내부 구현):**
+**진입 직후 (Broker 내부 구현): SL만 서버 등록**
 ```python
-# LiveBroker.create_tpsl_orders()
-def create_tpsl_orders(self, position, tp_prices, sl_price):
-    """TP/SL 주문 등록 (실제 Binance API)"""
-    # Binance 서버에 조건부 주문 등록
+# LiveBroker.create_sl_order() - ✅ 2025-11-07 업데이트
+def create_sl_order(self, position, sl_price, 
+                    working_type='CONTRACT_PRICE',
+                    price_protect='TRUE'):
+    """SL 주문 등록 (Binance API, STOP_MARKET + closePosition)"""
     self.client.futures_create_order(
         symbol=position['symbol'],
-        side='SELL',
+        side=('SELL' if position['side']=='LONG' else 'BUY'),
         type='STOP_MARKET',
         stopPrice=sl_price,
-        closePosition=True
-    )
-    
-    self.client.futures_create_order(
-        symbol=position['symbol'],
-        side='SELL',
-        type='TAKE_PROFIT_MARKET',
-        stopPrice=tp_prices[0],
-        quantity=position['qty'] * 0.3
+        closePosition=True,
+        positionSide='BOTH',
+        workingType=working_type,      # ⭐ 추가: CONTRACT_PRICE (실시간)
+        priceProtect=price_protect     # ⭐ 추가: Flash Crash/Pump 보호
     )
     return {'success': True}
 
-# PaperBroker.create_tpsl_orders()
-def create_tpsl_orders(self, position, tp_prices, sl_price):
-    """TP/SL 주문 등록 (가상, Binance와 동일한 로직)"""
-    # DB에 가상 주문 저장 (Binance와 동일한 구조)
-    self.virtual_tpsl_orders.append({
+# PaperBroker.create_sl_order() - ✅ 2025-11-07 업데이트 (파리티)
+def create_sl_order(self, position, sl_price,
+                    working_type='CONTRACT_PRICE',
+                    price_protect='TRUE'):
+    """SL 가상 등록 (시뮬레이션만, DB/메모리 저장)"""
+    self.virtual_sl_orders[position['id']] = {
         'symbol': position['symbol'],
-        'type': 'STOP_MARKET',
         'stopPrice': sl_price,
-        'closePosition': True
-    })
-    
-    self.virtual_tpsl_orders.append({
-        'symbol': position['symbol'],
-        'type': 'TAKE_PROFIT_MARKET',
-        'stopPrice': tp_prices[0],
-        'quantity': position['qty'] * 0.3
-    })
+        'type': 'STOP_MARKET',
+        'closePosition': True,
+        'workingType': working_type,    # ⭐ 파리티 (사용 안 함)
+        'priceProtect': price_protect   # ⭐ 파리티 (사용 안 함)
+    }
     return {'success': True}
 
-# 핵심: 메서드 시그니처 동일, 로직 동일, 실행만 다름! ⭐
+# 핵심: TP는 서버 미등록, PositionTracker가 부분청산을 트리거하고 broker.close_position으로 실행 ⭐
+# 극단 손실 방지: PositionTracker.check_tpsl_with_partial() 내부에서 PNL -50% cutoff ⭐
 ```
 
 **장점:**
@@ -199,35 +192,36 @@ def create_tpsl_orders(self, position, tp_prices, sl_price):
 
 ---
 
-## TP/SL 전략 (최종 확정) ⭐
+## TP/SL 전략 (최종 확정: Option C) ⭐
 
 ### 통합 방식 (페이퍼/라이브 동일)
 
 **1. 진입 시:**
 ```python
 # engine.py (모드 무관)
-broker.execute(decision, qty)  # 진입
-broker.create_tpsl_orders(position, tp_prices, sl_price)  # TP/SL 등록
+broker.execute(decision, qty)        # 진입
+broker.create_sl_order(position, sl_price)  # SL만 서버 등록
 ```
 
 **2. TP/SL 체크 (매 캔들):**
 ```python
 # engine.py (모드 무관)
-should_close, qty, reason = tracker.check_tpsl(position, price)
-if should_close:
-    broker.close_position(position_id, qty, reason)
+should_action, qty, reason = tracker.check_tpsl_with_partial(position, price, atr)
+if should_action:
+    broker.close_position(position_id, qty, reason)  # 부분/전체 청산
 ```
 
 **3. 트레일링 스톱:**
 ```python
 # engine.py (모드 무관)
-if should_trail:
-    broker.update_sl_price(position_id, new_sl_price)
+# TP2 이후 tracker가 새 SL을 계산하면 브로커에 업데이트 지시
+if tracker_updated_sl:
+    broker.update_sl_price(position_id, symbol, new_sl_price)  # 라이브: cancel&replace 또는 modify
 ```
 
 **브로커별 실행:**
-- **PaperBroker**: 가상 주문 관리, DB 업데이트
-- **LiveBroker**: Binance API 호출
+- **PaperBroker**: SL/TP 가상 관리, DB/메모리 업데이트
+- **LiveBroker**: SL 서버등록(Stop-Market closePosition), TP는 로컬 신호에 따라 시장가 reduceOnly 청산
 
 **장점:**
 1. ✅ 로직 100% 동일 → 페이퍼 테스트 신뢰도 극대화
@@ -271,8 +265,12 @@ def get_positions(self):
 | 항목 | 페이퍼 모드 | 라이브 모드 | 로직 동일? |
 |------|-----------|-----------|-----------|
 | **진입 주문** | 가상 실행 (DB만) | Binance API | ✅ 100% |
-| **TP/SL 등록** | 가상 등록 (DB) | Binance API | ✅ 100% |
+| **TP/SL 등록** | 가상 등록 (DB) | Binance API (SL만) | ✅ 100% |
 | **TP/SL 체크** | tracker.check_tpsl() | tracker.check_tpsl() | ✅ 100% |
+| **극단 손실 방지** | tracker (-50% cutoff) | tracker (-50% cutoff) | ✅ 100% |
+| **One-Way Mode** | engine.py 강제 청산 | engine.py 강제 청산 | ✅ 100% |
+| **workingType** | 파라미터 무의미 | CONTRACT_PRICE | ⚠️ 라이브만 |
+| **priceProtect** | 파라미터 무의미 | TRUE | ⚠️ 라이브만 |
 | **트레일링 스톱** | broker.update_sl_price() | broker.update_sl_price() | ✅ 100% |
 | **자산 조회** | 고정값 (config) | Binance API | ⚠️ 다름 (필요 시 동기화) |
 | **포지션 조회** | DB | Binance API + DB | ⚠️ 다름 (라이브는 이중 체크) |
@@ -280,6 +278,9 @@ def get_positions(self):
 **핵심:**
 - 상위 로직 (engine, portfolio, risk): **100% 동일** ⭐
 - TP/SL 계산/체크: **100% 동일** ⭐
+- 극단 손실 방지: **100% 동일** ⭐ (position_tracker.py L198-207)
+- One-Way Mode 강제: **100% 동일** ⭐ (engine.py L1043-1081)
 - 브로커 메서드 시그니처: **100% 동일** ⭐
 - 실행 방식만: **다름** (가상 vs 실제 API)
+- Binance API 파라미터 (workingType, priceProtect): **라이브만 의미있음** ⚠️
 - 페이퍼 테스트: **완전히 신뢰 가능** ✅

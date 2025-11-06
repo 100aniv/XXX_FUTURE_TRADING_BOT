@@ -29,54 +29,112 @@
 
 ## 2️⃣ 현재 구현 문제점
 
-### 🔴 CRITICAL: One-way Mode 위반
+### ✅ RESOLVED: One-way Mode 위반 (2025-11-07 해결)
 
 **발견된 문제:**
 ```sql
--- DB에 불가능한 포지션 존재
+-- DB에 불가능한 포지션 존재 (8시간 평가 중 6개 심볼)
 한 심볼에 LONG/SHORT 동시 OPEN:
-- AAVEUSDT: LONG + SHORT
-- DASHUSDT: LONG + SHORT  
-- ETHUSDT: LONG + SHORT
-- HIPPOUSDT: LONG + SHORT
-... 8개 심볼
+- DASHUSDT: LONG + SHORT (7건)
+- AIAUSDT: LONG + SHORT (6건)
+- LABUSDT: LONG + SHORT (5건)
+- NEARUSDT: LONG + SHORT (5건)
+- RESOLVUSDT: LONG + SHORT (4건)
+- SOONUSDT: LONG + SHORT (4건)
 ```
 
 **원인:**
-1. `LiveBroker.execute()`: `positionSide` 파라미터 없음
-2. 페이퍼 모드: DB만 기록 → 문제 숨겨짐
-3. 라이브 모드: 실제 Binance 실행 시 **오류 발생 예상**
+1. `LiveBroker.execute()`: `positionSide="BOTH"` 이미 있음 (정상)
+2. 페이퍼 모드: **PaperBroker가 반대 방향 진입 시 기존 포지션 청산 안 함**
+3. Binance는 자동 처리하지만 Paper는 검증 없음 → 문제 숨겨짐
 
-**코드 확인:**
+**✅ 해결 (2025-11-07 07:40):**
 ```python
-# execution/adapters/brokers.py L118-130
-order = self.client.futures_create_order(
-    symbol=symbol,
-    side='BUY',  # ← positionSide 없음!
-    type='MARKET',
-    quantity=qty
-)
+# engine.py L1043-1081
+# ⭐ PR10: One-Way Mode 강제 (같은 심볼 반대 포지션 청산)
+new_side = decision.get("side")
+opposite_side = "SHORT" if new_side == "LONG" else "LONG"
+
+opposite_positions = [
+    (pos_id, pos) for pos_id, pos in list(active_positions.items())
+    if pos["symbol"] == candle_symbol and pos["side"] == opposite_side
+]
+
+if opposite_positions:
+    for pos_id, position in opposite_positions:
+        # 현재가로 청산
+        pnl = calculate_pnl(position, current_price)
+        close_trade_in_db(pos_id, current_price, pnl, "ONE_WAY_MODE", ts, mode, leverage)
+        # ... Equity & Manager 업데이트
+        active_positions.pop(pos_id, None)
 ```
+
+**검증**: 30분 재검증 진행 중
 
 ---
 
 ## 3️⃣ TP/SL 자동 실행 메커니즘
 
-### ⚠️ 문제: Binance API 미사용
+### ✅ IMPLEMENTED: Option C (하이브리드) - 2025-11-07
 
 **Binance 공식 방식:**
 - 조건부 주문 등록: `STOP_MARKET`, `TAKE_PROFIT_MARKET`
 - Binance 서버가 자동 실행 (24/7)
 - API: `POST /fapi/v1/order` with `type=STOP_MARKET` or `TAKE_PROFIT_MARKET`
 
-**우리 현재 구현:**
-- Python 코드로 매 캔들마다 체크 (`check_tpsl_with_partial`)
-- Binance에 TP/SL 주문 **등록 안 함**
-- 봇이 중단되면 청산 불가능!
+**✅ 최종 구현 (Option C - 하이브리드):**
+1. **SL: Binance 서버 등록** (안전망)
+   - 진입 즉시 `STOP_MARKET` 주문 등록 (`closePosition=True`)
+   - 봇 중단 시에도 손절 보장
+   - **workingType**: `CONTRACT_PRICE` (실시간 가격 기준)
+   - **priceProtect**: `TRUE` (Flash Crash/Pump 보호)
+
+2. **TP: Python 로컬 체크** (유연성)
+   - `PositionTracker.check_tpsl_with_partial()` 매 캔들 체크
+   - 분할 청산 지원 (TP1 30%, TP2 40%, Trail 30%)
+   - config.yml 비율 즉시 반영
+
+3. **극단 손실 방지: Python 로컬 체크**
+   - PNL -50% 초과 시 `EXTREME_LOSS` 강제 청산
+   - position_tracker.py L198-207
+
+**코드:**
+```python
+# config.yml L187-190
+exits:
+  binance_api:
+    working_type: "CONTRACT_PRICE"  # MARK_PRICE | CONTRACT_PRICE
+    price_protect: true              # Flash crash/pump 보호
+
+# brokers.py L302-311 (LiveBroker)
+sl_order = self.client.futures_create_order(
+    symbol=symbol,
+    side=close_side,
+    type='STOP_MARKET',
+    stopPrice=sl_price,
+    closePosition=True,
+    positionSide='BOTH',
+    workingType=working_type,      # ⭐ 추가
+    priceProtect=price_protect     # ⭐ 추가
+)
+
+# position_tracker.py L198-207 (극단 손실 방지)
+if current_pnl_pct < -50.0:
+    logger.warning(f"🚨 [EXTREME_LOSS] 극단 손실 감지: {current_pnl_pct:.2f}%")
+    return True, None, 'EXTREME_LOSS'
+```
+
+**장점:**
+- ✅ SL 안전망 (Binance 24/7 자동 청산)
+- ✅ TP 유연성 (Python 분할 청산)
+- ✅ 극단 손실 방지 (-50% cutoff)
+- ✅ Flash Crash/Pump 보호 (priceProtect)
+- ✅ 실시간 가격 기준 (workingType=CONTRACT_PRICE)
+- ✅ 페이퍼/라이브 로직 100% 동일
 
 **리스크:**
-- ✅ 페이퍼 모드: 문제 없음 (가상 실행)
-- 🔴 라이브 모드: 봇 중단 시 손실 확대 가능
+- ✅ 페이퍼 모드: 가상 실행, 로직 동일
+- ✅ 라이브 모드: SL 서버 보장 + Python 이중 체크
 
 ---
 
@@ -455,12 +513,15 @@ client.futures_create_order(
 2. `PortfolioManager`: 반대 방향 신호 거부 로직
 3. `config.yml`: `max_positions` 로직 점검
 
-**Phase 3: Binance TP/SL API 연동 (2-3시간) ⭐**
-1. 진입 시 TP/SL 주문 자동 등록
-   - `STOP_MARKET` (SL)
-   - `TAKE_PROFIT_MARKET` (TP1, TP2)
-2. 트레일링 스톱: 1분마다 SL 가격 업데이트 (`Modify Order`)
-3. 분할 익절: TP1 도달 시 Python 체크 유지 (부분 청산)
+**Phase 3: Binance SL API 연동 (TP는 로컬 체크) (2-3시간) ⭐**
+1. 진입 시 SL 주문 자동 등록
+   - `STOP_MARKET` (SL, `closePosition=true`, `positionSide="BOTH"`)
+2. 트레일링 스톱: SL 가격 업데이트
+   - 우선 `PUT /fapi/v1/order` (Modify Order) 사용
+   - 미지원/에러 시 `cancel → create`(Cancel & Replace) 폴백
+3. 분할 익절: Python 체크 유지 (부분 청산)
+   - `tracker.check_tpsl_with_partial()` 결과로
+   - `broker.close_position(..., reduceOnly)` 시장가 청산
 
 **Phase 4: 라이브 동기화 준비 (1-2시간)**
 1. 실시간 자산 조회: `GET /fapi/v2/balance`
