@@ -58,7 +58,8 @@
 - ✅ dedup/쿨다운/멱등 로그 패턴 각 1회 이상 확인
 - ✅ FlowGuardian READY 유지, logs/trial_0000.json 존재 (2025-11-06 02:07 생성)
 - ✅ DB 거래 데이터 정상 기록 (총 888건, 청산 887건, PnL: -76,005.87 USDT)
-- ⚠️ pre-commit: ruff 6개 오류 (미사용 import 5개, undefined name 1개), 136개 자동 수정 완료
+- ✅ pre-commit: ruff All checks passed!, black 포맷팅 완료 (미사용 import 10개 제거)
+- ⚠️ mypy: 60개 타입 어노테이션 오류 (핵심 로직 영향 없음, dict 타입 힌트 누락)
 - ⚠️ coverage: 테스트 파일 sys.exit(1) 문제로 측정 불가 (주요 모듈 import 정상)
 
 ## 체크리스트(Checklist)
@@ -71,7 +72,9 @@
 - [x] DB 거래 데이터 정상 기록 (888건)
 - [x] 한글 로그 정상 출력 (UTF-8 환경변수)
 - [x] 텔레그램 메시지 한줄 통일
-- [ ] ruff 오류 수정 (미사용 import 제거)
+- [x] ruff 오류 수정 완료 (All checks passed!)
+- [x] black 포맷팅 완료 (1 file reformatted)
+- [ ] mypy 타입 어노테이션 개선 (60개 오류, 선택 사항)
 - [ ] coverage 85% 달성 (테스트 파일 수정 필요)
 
 ## 테스트 플랜(Test Plan)
@@ -84,6 +87,7 @@
 - **2025-11-06 01:47** | Docker 로그 한글 깨짐 (`???` 표시) | UTF-8 인코딩 환경변수 미설정 | Dockerfile에 LANG=C.UTF-8, LC_ALL=C.UTF-8, PYTHONIOENCODING=utf-8 추가 | ✅ Docker 재빌드 후 한글 정상 표시 확인 (컨테이너 내부)
 - **2025-11-06 01:52** | 텔레그램 거부 메시지 3줄 표시 | `\n` 개행 사용 | `\n` → `|` 구분자로 변경 (한줄 통일) | ✅ 거래/포트폴리오 거부 메시지 한줄 출력 확인
 - **2025-11-06 07:47** | ✅ 수용 기준 최종 검증 완료 | 6시간 운영 후 확인 | trial_0000.json 생성, DB 888건 거래 기록, 한글 로그 정상, 텔레그램 메시지 한줄 통일 | ruff 6개 오류 남음 (미사용 import), coverage 측정 불가 (테스트 파일 문제)
+- **2025-11-06 10:18** | ✅ pre-commit 검사 통과 | ruff/black 자동 수정 | 미사용 import 10개 제거 (log_signal, log_trade, log_daily_report, calculate_performance_scores, FlowGuardian, IDataSource, IStrategy, IRisk, IBroker, IMetrics), black 포맷팅 완료, undefined name decision 수정 | ruff All checks passed!, mypy 60개 타입 어노테이션 오류 (선택 사항)
 
 ## 로그/DB 산출물(Artifacts)
 - logs/trial_0000.json: 실행 메타/점수
