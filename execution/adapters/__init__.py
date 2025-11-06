@@ -307,6 +307,30 @@ def create_adapters(mode: str, symbols: List[str], config: dict, logger: Any) ->
         clock = SimClock()
     
     elif mode == 'paper':
+        # ⭐ PR10 Bug #4: OPEN 포지션 심볼을 WebSocket 구독 목록에 추가
+        from common.database import get_db_connection
+        
+        open_position_symbols = set()
+        try:
+            with get_db_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("SELECT DISTINCT symbol FROM trading.trades WHERE status = 'OPEN'")
+                    rows = cur.fetchall()
+                    open_position_symbols = {row[0] for row in rows}
+                    
+                    if open_position_symbols:
+                        logger.info(f"🔓 OPEN 포지션 심볼 발견: {len(open_position_symbols)}개")
+                        logger.info(f"   심볼: {', '.join(sorted(open_position_symbols))}")
+        except Exception as e:
+            logger.warning(f"⚠️ OPEN 포지션 조회 실패 (계속 진행): {e}")
+        
+        # 심볼 목록 병합 (중복 제거)
+        combined_symbols = list(set(symbols) | open_position_symbols)
+        added_count = len(combined_symbols) - len(symbols)
+        
+        if added_count > 0:
+            logger.info(f"✅ WebSocket 구독 목록 확장: {len(symbols)}개 → {len(combined_symbols)}개 (+{added_count})")
+        
         # 모니터링 설정 주입 (config.yml -> monitoring)
         monitoring_cfg = config.get('monitoring') or {}
         redis_cfg = monitoring_cfg.get('redis') or {}
@@ -319,8 +343,11 @@ def create_adapters(mode: str, symbols: List[str], config: dict, logger: Any) ->
             'gap_detection': monitoring_cfg.get('gap_detection', {}),
             'queue_size': queue_size  # ⭐ PR7-4: Multi-TF 큐 크기
         }
-        ws = WebSocketCollector(symbols, base_timeframe, redis_cfg=redis_cfg, ws_cfg=ws_cfg)
+        ws = WebSocketCollector(combined_symbols, base_timeframe, redis_cfg=redis_cfg, ws_cfg=ws_cfg)
         feed = ws
+        
+        # 프리로드 정보도 업데이트
+        symbols = combined_symbols
         
         broker = PaperBroker(
             fee_rate=fees_cfg.get('taker', 0.0004),
@@ -351,6 +378,30 @@ def create_adapters(mode: str, symbols: List[str], config: dict, logger: Any) ->
             logger.error("❌ 라이브 모드: API 키 필수")
             sys.exit(1)
         
+        # ⭐ PR10 Bug #4: OPEN 포지션 심볼을 WebSocket 구독 목록에 추가
+        from common.database import get_db_connection
+        
+        open_position_symbols = set()
+        try:
+            with get_db_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("SELECT DISTINCT symbol FROM trading.trades WHERE status = 'OPEN'")
+                    rows = cur.fetchall()
+                    open_position_symbols = {row[0] for row in rows}
+                    
+                    if open_position_symbols:
+                        logger.info(f"🔓 OPEN 포지션 심볼 발견: {len(open_position_symbols)}개")
+                        logger.info(f"   심볼: {', '.join(sorted(open_position_symbols))}")
+        except Exception as e:
+            logger.warning(f"⚠️ OPEN 포지션 조회 실패 (계속 진행): {e}")
+        
+        # 심볼 목록 병합 (중복 제거)
+        combined_symbols = list(set(symbols) | open_position_symbols)
+        added_count = len(combined_symbols) - len(symbols)
+        
+        if added_count > 0:
+            logger.info(f"✅ WebSocket 구독 목록 확장: {len(symbols)}개 → {len(combined_symbols)}개 (+{added_count})")
+        
         # 모니터링 설정 주입 (config.yml -> monitoring)
         monitoring_cfg = config.get('monitoring') or {}
         redis_cfg = monitoring_cfg.get('redis') or {}
@@ -363,8 +414,11 @@ def create_adapters(mode: str, symbols: List[str], config: dict, logger: Any) ->
             'gap_detection': monitoring_cfg.get('gap_detection', {}),
             'queue_size': queue_size  # ⭐ PR7-4: Multi-TF 큐 크기
         }
-        ws = WebSocketCollector(symbols, base_timeframe, redis_cfg=redis_cfg, ws_cfg=ws_cfg)
+        ws = WebSocketCollector(combined_symbols, base_timeframe, redis_cfg=redis_cfg, ws_cfg=ws_cfg)
         feed = ws
+        
+        # 프리로드 정보도 업데이트
+        symbols = combined_symbols
         
         broker = LiveBroker(
             api_key, api_secret,
