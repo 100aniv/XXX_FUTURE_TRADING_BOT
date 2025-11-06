@@ -3,16 +3,30 @@
 ## 배경/의도(Overview)
 앙상블 품질을 고도화하고, 데이터 충분성과 최근 OOS 성능을 반영한 Experience Score를 도입합니다. 베이시안 튜닝은 페이퍼 모드에서 설계/준비만 수행하며, 실제 운영 반영은 PR13(운영 튜닝/롤아웃)에서 안전 게이팅과 함께 진행합니다.
 
+**⭐ PR10 확장**: 페이퍼 평가 준비 중 **Binance API 호환성 문제** 발견으로 라이브 모드 대비 핵심 기능을 PR10 범위에 추가합니다.
+
 ## 목표(Goals)
-- 앙상블 의사결정의 품질/안정성 향상
-- Experience Score 산출 및 로깅
-- 페이퍼 모드 기반 튜닝 설계(운영 반영은 PR13에서 단계적 적용)
+1. 앙상블 의사결정의 품질/안정성 향상
+2. Experience Score 산출 및 로깅
+3. 페이퍼 모드 기반 튜닝 설계(운영 반영은 PR13에서 단계적 적용)
+4. **⭐ Binance API 완전 호환성 확보** (신규)
+   - One-Way Mode 포지션 관리
+   - TP/SL 자동 실행 (Binance 조건부 주문)
+   - 라이브 모드 안전성 확보
 
 ## 범위(Scope, In)
 - 가중치 개선(Sharpe, 승률, MDD, 샘플 크기 등)
 - 보너스 로직(컨센서스/리스크 보정) 정리 및 클램핑
 - Experience Score 계산/로깅
 - 튜닝 파라미터/오버레이 구조 설계(실 적용은 PR13)
+- **⭐ One-Way Mode 구현** (신규)
+  - `LiveBroker`: `positionSide="BOTH"` 추가
+  - `PortfolioManager`: 반대 방향 신호 거부
+  - `max_positions` 한도 로직 점검
+- **⭐ Binance TP/SL API 연동** (신규)
+  - 진입 시 `STOP_MARKET`, `TAKE_PROFIT_MARKET` 주문 등록
+  - 트레일링 스톱: `Modify Order` API 활용
+  - 봇 중단 시에도 Binance 서버가 자동 청산
 
 ## 제외(Out-of-Scope)
 - 엔진/Redis(→ PR9)
@@ -23,6 +37,10 @@
 - strategies/ensemble.py(가중/점수/로깅)
 - docs/PHASE6/PR_MASTER_INTEGRATION_TEST.md(테스트)
 - config.yml(ensemble.* 키; 튜닝 키는 PR13에서 활성화)
+- **⭐ execution/adapters/brokers.py** (One-Way Mode, TP/SL API)
+- **⭐ execution/portfolio_manager.py** (반대 방향 신호 거부)
+- **⭐ execution/engine.py** (TP/SL 주문 등록/수정)
+- **⭐ docs/PHASE6/PR10_BINANCE_SYSTEM_CHECK.md** (시스템 점검 결과)
 
 ## 설정 키(제안; PR13에서 활성화)
 - ensemble.min_confidence: float
@@ -45,13 +63,39 @@
 - pre-commit 통과, coverage>85%
 
 ## 체크리스트(Checklist)
+
+### Phase 1: 앙상블 고급화 ✅
 - [x] 가중치 계산 업데이트 및 클램핑(설정 기반) ✅
 - [x] Experience Score 계산/기록 ✅
 - [x] 튜닝 파라미터/오버레이 구조 **설계 문서** 작성 ✅ (PR13_SYSTEM_ANALYSIS.md, PR13_ARCHITECTURE_DESIGN.md로 대체)
-- [ ] 24시간 페이퍼 평가 (baseline 대비 성능 비교) - **중단** (청산 로직 오류 발견)
-- [ ] **청산 로직 수정** - 포지션이 61시간 동안 유지되는 버그
-- [ ] **튜닝 파라미터 오버레이 시스템 구현** - PR13에서 진행 예정
-- [ ] **A/B 비교 리포트 생성 스크립트 구현** - PR13에서 진행 예정
+
+### Phase 2: Binance API 호환성 (신규) 🔄
+- [x] **Binance 시스템 전체 점검** ✅ (PR10_BINANCE_SYSTEM_CHECK.md)
+- [x] **청산 로직 수정 (Bug #4, #4-2)** ✅ 
+  - OPEN 포지션 심볼 자동 구독
+  - PostgreSQL Decimal 타입 호환
+- [ ] **모든 OPEN 포지션 강제 청산** (24시간 평가 전)
+- [ ] **One-Way Mode 구현** 
+  - LiveBroker: `positionSide="BOTH"` 추가
+  - PortfolioManager: 반대 방향 신호 거부
+  - `max_positions` 한도 로직 점검
+- [ ] **Binance TP/SL API 연동**
+  - 진입 시 TP/SL 주문 자동 등록
+  - 트레일링 스톱: Modify Order API
+  - 분할 익절: Python 체크 유지
+- [ ] **라이브 동기화 준비**
+  - 실시간 자산 조회 (`GET /fapi/v2/balance`)
+  - 실시간 포지션 조회 (`GET /fapi/v2/positionRisk`)
+  - 레버리지 설정 (`POST /fapi/v1/leverage`)
+
+### Phase 3: 24시간 페이퍼 평가
+- [ ] 깨끗한 상태로 재시작 (포지션 0개)
+- [ ] 24시간 페이퍼 평가 (baseline 대비 성능 비교)
+- [ ] A/B 비교 리포트 생성 (PR13에서 자동화)
+
+### 이후 PR13으로 이관
+- [ ] 튜닝 파라미터 오버레이 시스템 구현
+- [ ] Hedge Mode 전환 (선택)
 
 ## 테스트 플랜(Test Plan)
 - 유닛: 가중치 수식/경계, Experience Score 입력/엣지
