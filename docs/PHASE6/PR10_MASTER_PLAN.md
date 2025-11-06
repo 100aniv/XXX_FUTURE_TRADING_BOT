@@ -69,6 +69,7 @@
 - **2025-11-06 14:30** | ✅ Bug #2: pnl_pct 미계산 | trading.trades 테이블의 pnl_pct 컬럼이 NULL | engine.py close_trade_in_db(): entry_price/quantity 조회 후 pnl_pct 계산 및 UPDATE 쿼리에 추가 | 신규 거래부터 pnl_pct 정상 저장
 - **2025-11-06 14:30** | ✅ Bug #3: 포지션 가치 초과 경고 | "포지션 가치 초과: $X > $Y" 반복 경고 | position_sizer.py: epsilon 0.1→1.0 USDT 완화 (부동소수점 오차 허용 범위 확대) | 불필요한 경고 감소
 - **2025-11-06 18:50** | ✅ Bug #4: 청산 로직 작동 안 함 (CRITICAL) | 44개 OPEN 포지션, 가장 오래된 것 61시간 유지 (11-04부터), 청산 0건 | **원인**: symbols.mode=top100 (동적 심볼) → NMRUSDT가 top50에서 제외되어 WebSocket 구독 해제 → 캔들 안 들어와서 청산 체크 불가 | **수정**: execution/adapters/__init__.py (Paper/Live 모드 시작 시 DB에서 OPEN 포지션 심볼 조회 → WebSocket 구독 목록에 자동 추가)
+- **2025-11-06 19:15** | ✅ Bug #4-2: pnl_pct 계산 오류 (CRITICAL) | DB 종료 기록 실패 반복 발생 (매초), "unsupported operand type(s) for /: 'float' and 'decimal.Decimal'" | **원인**: PostgreSQL이 entry_price/quantity를 Decimal 타입으로 반환, pnl(float)과 연산 시 타입 불일치 | **수정**: execution/engine.py close_trade_in_db() L1319-1320 (Decimal → float 명시적 변환)
 
 ## 라이브 모드 고려사항(Live Considerations)
 - 라이브 전략 파일에 백테스트 전용 휴리스틱 삽입 금지(오버레이/설정으로 분리)
