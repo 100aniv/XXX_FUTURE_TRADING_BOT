@@ -45,10 +45,11 @@
 - pre-commit 통과, coverage>85%
 
 ## 체크리스트(Checklist)
-- [ ] 가중치 계산 업데이트 및 클램핑(설정 기반)
-- [ ] Experience Score 계산/기록
+- [x] 가중치 계산 업데이트 및 클램핑(설정 기반) ✅
+- [x] Experience Score 계산/기록 ✅
 - [ ] 튜닝 파라미터/오버레이 구조 설계 완료(PR13 연계)
 - [ ] A/B 비교 리포트(페이퍼) 산출 경로 정의
+- [ ] 24시간 페이퍼 평가 (baseline 대비 성능 비교)
 
 ## 테스트 플랜(Test Plan)
 - 유닛: 가중치 수식/경계, Experience Score 입력/엣지
@@ -57,7 +58,9 @@
 
 ## 오류 수정 항목(Fix Log)
 - 발생 일시 | 증상 | 원인 | 수정 내역 | 재발 방지(테스트/가드)
-- 예: 2025-11-06 01:20 | 앙상블 가중치 NaN | 샘플 부족 | min_trades 가드 추가 | unit: experience_min_trades
+- **2025-11-06 12:45** | ✅ Experience Score 구현 완료 | N/A | calculate_experience_score() 함수 추가, 데이터 충분성/최근 성과/안정성 반영 | min_trades 가드 (기본값 20)
+- **2025-11-06 12:45** | ✅ 가중치 클램핑 구현 완료 | N/A | max_weight_per_strategy 설정 추가 (기본값 0.4), 클램핑 후 재정규화 | 단일 전략 독점 방지
+- **2025-11-06 12:45** | ✅ config.yml 업데이트 완료 | N/A | ensemble.experience, ensemble.max_weight_per_strategy 추가, 주석 개선 | 설정 기반 조정 가능
 
 ## 라이브 모드 고려사항(Live Considerations)
 - 라이브 전략 파일에 백테스트 전용 휴리스틱 삽입 금지(오버레이/설정으로 분리)
