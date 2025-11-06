@@ -468,9 +468,23 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict):
                 if df is not None and "atr" in df.columns and len(df) > 0
                 else None
             )
+            
+            # ⭐ PR10: 트레일링 SL 갱신 전 기존 SL 저장
+            old_sl = position.get('sl')
+            
             should_action, partial_qty, reason = tracker.check_tpsl_with_partial(
                 position, current_price, atr
             )
+            
+            # ⭐ PR10: 트레일링 SL 갱신 감지 및 서버 업데이트
+            new_sl = position.get('sl')
+            if mode in ["paper", "live"] and old_sl != new_sl:
+                broker.update_sl_price(
+                    position_id=pos_id,
+                    symbol=position['symbol'],
+                    side=position['side'],
+                    new_sl_price=new_sl
+                )
 
             if should_action:
                 # 부분 청산 또는 전체 청산
@@ -1026,6 +1040,46 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict):
                 )
             continue
 
+        # ⭐ PR10: One-Way Mode 강제 (같은 심볼 반대 포지션 청산)
+        new_side = decision.get("side")
+        opposite_side = "SHORT" if new_side == "LONG" else "LONG"
+        
+        # 같은 심볼의 반대 포지션 찾기
+        opposite_positions = [
+            (pos_id, pos) for pos_id, pos in list(active_positions.items())
+            if pos["symbol"] == candle_symbol and pos["side"] == opposite_side
+        ]
+        
+        if opposite_positions:
+            logger.info(f"🔄 [ONE-WAY MODE] {candle_symbol} 반대 포지션 감지 ({opposite_side} → {new_side}): {len(opposite_positions)}개 청산")
+            for pos_id, position in opposite_positions:
+                # 현재가로 청산
+                pnl = calculate_pnl(position, current_price)
+                close_trade_in_db(
+                    pos_id,
+                    current_price,
+                    pnl,
+                    "ONE_WAY_MODE",  # 청산 이유
+                    ts,
+                    mode=mode,
+                    leverage=position.get("lev", 1),
+                )
+                
+                # Equity & Manager 업데이트
+                new_equity = portfolio.get_equity() + pnl
+                portfolio.update_equity(new_equity)
+                sizer.update_equity(new_equity)
+                risk.update_equity(new_equity)
+                risk.update_daily_pnl(pnl)
+                
+                # 포지션 제거
+                position_value = position.get("position_value", position["qty"] * position["entry"])
+                portfolio.remove_position(symbol=position["symbol"], position_id=pos_id)
+                risk.remove_position(position["symbol"], position_value)
+                active_positions.pop(pos_id, None)
+                
+                logger.info(f"✅ [ONE-WAY MODE] {opposite_side} {position['symbol']} @ {current_price:,.2f} 청산 (PnL: ${pnl:,.2f})")
+
         # 거래 실행
         fill = broker.execute(decision, qty)
 
@@ -1100,6 +1154,14 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict):
                 "lev": decision.get("lev", 1),
                 "position_number": position_number,  # ⭐ P2: 포지션 번호 추가
             }
+            
+            # ⭐ PR10: SL 서버 등록 (Option C)
+            if mode in ["paper", "live"]:
+                broker.create_sl_order(
+                    position={'id': position_id, 'symbol': candle_symbol,
+                              'side': decision.get('side'), 'qty': qty},
+                    sl_price=decision.get('sl')
+                )
 
             logger.info(
                 f"✅ [{trade_count}] {decision.get('side')} @ {fill.get('filled_price'):.2f}"
