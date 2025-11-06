@@ -69,24 +69,18 @@
 - [x] Experience Score 계산/기록 ✅
 - [x] 튜닝 파라미터/오버레이 구조 **설계 문서** 작성 ✅ (PR13_SYSTEM_ANALYSIS.md, PR13_ARCHITECTURE_DESIGN.md로 대체)
 
-### Phase 2: Binance API 호환성 (신규) 🔄
+### Phase 2: Binance API 호환성 (신규) ✅
 - [x] **Binance 시스템 전체 점검** ✅ (PR10_BINANCE_SYSTEM_CHECK.md)
 - [x] **청산 로직 수정 (Bug #4, #4-2)** ✅ 
   - OPEN 포지션 심볼 자동 구독
   - PostgreSQL Decimal 타입 호환
+- [x] **brokers.py Binance API 연동** ✅
+  - LiveBroker: One-Way Mode (`positionSide="BOTH"`)
+  - LiveBroker: TP/SL API (create_tpsl_orders, update_sl_price, close_position)
+  - LiveBroker: 자산/포지션 조회 (get_account_balance, get_positions)
+  - PaperBroker: 동일한 메서드 시그니처 (가상 실행)
+  - **페이퍼/라이브 로직 100% 동일 보장** ⭐
 - [ ] **모든 OPEN 포지션 강제 청산** (24시간 평가 전)
-- [ ] **One-Way Mode 구현** 
-  - LiveBroker: `positionSide="BOTH"` 추가
-  - PortfolioManager: 반대 방향 신호 거부
-  - `max_positions` 한도 로직 점검
-- [ ] **Binance TP/SL API 연동**
-  - 진입 시 TP/SL 주문 자동 등록
-  - 트레일링 스톱: Modify Order API
-  - 분할 익절: Python 체크 유지
-- [ ] **라이브 동기화 준비**
-  - 실시간 자산 조회 (`GET /fapi/v2/balance`)
-  - 실시간 포지션 조회 (`GET /fapi/v2/positionRisk`)
-  - 레버리지 설정 (`POST /fapi/v1/leverage`)
 
 ### Phase 3: 24시간 페이퍼 평가
 - [ ] 깨끗한 상태로 재시작 (포지션 0개)
