@@ -97,7 +97,12 @@
 - [x] **평가 결과 분석** ✅ (PR10_8H_EVALUATION_RESULT.md)
 - [x] **One-Way Mode 위반 수정** ✅ (engine.py L1043-1081)
 - [x] **극단 손실 방지 로직 추가** ✅ (position_tracker.py L198-207, -50% 초과 강제 청산)
-- [ ] **30분 재검증** (One-Way Mode + 극단 손실 방지 반영 확인)
+- [x] **Binance API 파라미터 추가** ✅ (workingType, priceProtect)
+- [x] **30분 재검증** ✅ (2025-11-07 08:17~08:47)
+  - 125건 거래 발생, 5개 OPEN 포지션
+  - ONE_WAY_MODE: 0건 (반대 신호 미발생, 로직 대기 중)
+  - EXTREME_LOSS: 0건 (-50% 손실 미발생, 로직 대기 중)
+  - 에러 없음, 정상 작동 확인
 
 ### Phase 4: 24시간 본 평가 (대기)
 - [ ] 깨끗한 상태로 재시작 (포지션 0개)
