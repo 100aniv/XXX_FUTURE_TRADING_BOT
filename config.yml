@@ -387,25 +387,31 @@ strategies:
     allow_breakout: false
     timeframe: 5m
   ensemble:
+    # ⭐ PR10: 가중치 계산 파라미터
     alpha_winrate: 0.4
-    atr_mult_sl: 1.5
     beta_rr: 0.2
-    consensus_bonus: 0.2
-    cooldown_candles: 3
+    gamma_sharpe: 0.2
     delta_confidence: 0.15
     epsilon_regime: 0.05
-    filters:
-      mtf_confirm: false
-      regime: true
-      volume_spike: true
-    gamma_sharpe: 0.2
-    performance_window_days: 30
-    risk_per_trade: 0.010  # ⭐ 0.02→0.010 (1.0%)
-    rr: 2.0
-    rr_bonus: 0.2
-    rr_bonus_threshold: 1.6
-    theta_long: 0.15
-    theta_short: 0.15
+    
+    # ⭐ PR10: Experience Score 설정
+    experience:
+      min_trades: 20  # 최소 거래 수 (데이터 충분성 기준)
+    
+    # ⭐ PR10: 클램핑 설정
+    max_weight_per_strategy: 0.4  # 단일 전략 최대 가중치 (40%)
+    min_confidence: 0.6  # 최소 신뢰도 (미사용 시 거래 보류)
+    
+    # 보너스 로직
+    consensus_bonus: 0.2  # 합의 보너스
+    rr_bonus: 0.2  # RR 보너스
+    rr_bonus_threshold: 1.6  # RR 보너스 임계값
+    
+    # 의사결정 임계값
+    theta_long: 0.15  # LONG 진입 임계값
+    theta_short: 0.15  # SHORT 진입 임계값
+    
+    # 기본 가중치 (Experience Score 적용 전)
     weights:
       breakout: 2.0
       daytrade: 2.5
@@ -413,7 +419,20 @@ strategies:
       scalping: 2.0
       swing: 2.2
       trend: 1.5
+    
+    # 기타 설정
+    atr_mult_sl: 1.5
+    cooldown_candles: 3
+    performance_window_days: 30
+    risk_per_trade: 0.010  # ⭐ 0.02→0.010 (1.0%)
+    rr: 2.0
     window_sec: 10
+    
+    # 필터 설정
+    filters:
+      mtf_confirm: false
+      regime: true
+      volume_spike: true
   reversion:
     atr_mult_sl: 1.5
     bb_lower_pct: 0.02

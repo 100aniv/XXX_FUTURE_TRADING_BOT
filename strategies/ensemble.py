@@ -228,6 +228,77 @@ def calc_regime_fit(strategy_id: str, features: Dict) -> float:
 
 
 # ============================================
+# EXPERIENCE SCORE (경험 점수)
+# ============================================
+
+def calculate_experience_score(strategy_id: str, perf: Dict[str, Dict], config: dict) -> float:
+    """
+    전략의 Experience Score 계산
+    
+    Experience Score = 데이터 충분성 * 최근 성과 * 안정성
+    
+    Args:
+        strategy_id: 전략 ID
+        perf: 성과 메트릭
+        config: 설정 (ensemble.experience 파라미터)
+    
+    Returns:
+        Experience Score (0~1)
+    """
+    if strategy_id not in perf:
+        return 0.3  # 기본값 (낮은 신뢰도)
+    
+    p = perf[strategy_id]
+    ens_cfg = config.get('ensemble', {})
+    exp_cfg = ens_cfg.get('experience', {})
+    
+    # 1. 데이터 충분성 (Sample Size Factor)
+    min_trades = exp_cfg.get('min_trades', 20)
+    total_trades = p.get('total_trades', 0)
+    
+    if total_trades < min_trades:
+        # 부족한 경우 페널티
+        data_sufficiency = total_trades / min_trades
+    else:
+        # 충분한 경우 포화
+        data_sufficiency = min(1.0, 1.0 + 0.1 * ((total_trades - min_trades) / min_trades))
+    
+    # 2. 최근 성과 (Recent Performance)
+    winrate = p.get('winrate', 0.5)
+    profit_factor = p.get('profit_factor', 1.0)
+    
+    # 승률 기반 점수 (0.5 기준)
+    winrate_score = (winrate - 0.5) * 2  # -1 ~ 1
+    winrate_score = max(0, min(1, 0.5 + winrate_score * 0.5))  # 0 ~ 1
+    
+    # Profit Factor 기반 점수 (1.0 기준)
+    pf_score = min(1.0, profit_factor / 2.0)  # 2.0 이상이면 1.0
+    
+    recent_performance = (winrate_score + pf_score) / 2
+    
+    # 3. 안정성 (Stability)
+    sharpe = p.get('sharpe', 0.0)
+    
+    # Sharpe 기반 안정성 (0.5 이상이면 좋음)
+    if sharpe >= 0.5:
+        stability = min(1.0, sharpe / 1.5)
+    else:
+        stability = max(0.3, sharpe / 0.5 * 0.7 + 0.3)
+    
+    # 최종 Experience Score
+    exp_score = (
+        data_sufficiency * 0.4 +
+        recent_performance * 0.4 +
+        stability * 0.2
+    )
+    
+    # 0.1 ~ 1.0 범위로 클램핑
+    exp_score = max(0.1, min(1.0, exp_score))
+    
+    return exp_score
+
+
+# ============================================
 # WEIGHT CALCULATION (가중치 계산)
 # ============================================
 
@@ -265,6 +336,9 @@ def calculate_weights(signals: List[Dict], perf: Dict[str, Dict], config: dict) 
     weights = {}
     raw_weights = []
     
+    ens_cfg = config.get('ensemble', {})
+    max_weight_per_strategy = ens_cfg.get('max_weight_per_strategy', 0.4)
+    
     for i, sid in enumerate(strategy_ids):
         # 해당 전략의 신호 찾기
         sig = next((s for s in signals if s['strategy_id'] == sid), None)
@@ -274,14 +348,16 @@ def calculate_weights(signals: List[Dict], perf: Dict[str, Dict], config: dict) 
             raw_weights.append(0.0)
             continue
         
+        # ⭐ PR10: Experience Score 적용
+        exp_score = calculate_experience_score(sid, perf, config)
+        
         # 신뢰도
         confidence = float(sig.get('confidence', 0.5))
         
         # 레짐 적합도
         regime_fit = calc_regime_fit(sid, sig.get('features', {}))
         
-        # 점수 계산
-        ens_cfg = config.get('ensemble', {})
+        # 점수 계산 (기존 공식)
         raw_weight = (
             ens_cfg.get('alpha_winrate', 0.4) * z_winrates[i] +
             ens_cfg.get('beta_rr', 0.2) * z_rr_means[i] +
@@ -295,16 +371,28 @@ def calculate_weights(signals: List[Dict], perf: Dict[str, Dict], config: dict) 
         base_weight = weights_cfg.get(sid, 2.0)
         raw_weight += base_weight * 0.1
         
+        # ⭐ PR10: Experience Score 곱하기 (데이터 부족 시 페널티)
+        raw_weight = raw_weight * exp_score
+        
         raw_weights.append(max(0.0, raw_weight))
     
     # 정규화
     total = sum(raw_weights)
     if total > 0:
         for i, sid in enumerate(strategy_ids):
-            weights[sid] = raw_weights[i] / total
+            normalized_weight = raw_weights[i] / total
+            
+            # ⭐ PR10: 클램핑 (max_weight_per_strategy)
+            weights[sid] = min(normalized_weight, max_weight_per_strategy)
     else:
         for sid in strategy_ids:
             weights[sid] = 1.0 / len(strategy_ids)
+    
+    # ⭐ PR10: 클램핑 후 재정규화
+    total_after_clamp = sum(weights.values())
+    if total_after_clamp > 0 and total_after_clamp != 1.0:
+        for sid in weights:
+            weights[sid] = weights[sid] / total_after_clamp
     
     return weights
 
