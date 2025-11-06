@@ -92,7 +92,14 @@
   - SL: 서버 등록(라이브) vs 가상 등록(페이퍼), 동일 시그니처
 - [ ] **모든 OPEN 포지션 강제 청산** (24시간 평가 전)
 
-### Phase 3: 24시간 페이퍼 평가
+### Phase 3: 8시간 초기 평가 ✅
+- [x] **8시간 페이퍼 평가 수행** ✅ (2025-11-06 23:34 ~ 2025-11-07 07:28)
+- [x] **평가 결과 분석** ✅ (PR10_8H_EVALUATION_RESULT.md)
+- [x] **One-Way Mode 위반 수정** ✅ (engine.py L1043-1081)
+- [x] **극단 손실 방지 로직 추가** ✅ (position_tracker.py L198-207, -50% 초과 강제 청산)
+- [ ] **30분 재검증** (One-Way Mode + 극단 손실 방지 반영 확인)
+
+### Phase 4: 24시간 본 평가 (대기)
 - [ ] 깨끗한 상태로 재시작 (포지션 0개)
 - [ ] 24시간 페이퍼 평가 (baseline 대비 성능 비교)
 - [ ] A/B 비교 리포트 생성 (PR13에서 자동화)
@@ -122,6 +129,10 @@
 - **2025-11-06 21:35** | ✅ PR10 Option C 구현 완료 (CRITICAL) | N/A | brokers.py: create_tpsl_orders→create_sl_order 변경, 하드코딩 30%/40% 제거, update_sl_price에 Cancel&Replace 폴백 추가, close_position에 reduceOnly=True 추가; engine.py: 진입 직후 SL 등록(L1104-1110), 트레일링 SL 갱신(L472-487) 훅 추가 | 하드코딩 제거, TPManager/PositionTracker 기존 로직 활용, 서버 SL + 로컬 TP 파리티 보장
 - **2025-11-06 21:53** | ✅ Bug #5: PaperBroker 시그니처 불일치 (CRITICAL) | TypeError: PaperBroker.update_sl_price() got an unexpected keyword argument 'side' | **원인**: LiveBroker에는 `side` 파라미터 추가했으나 PaperBroker에는 누락 | **수정**: PaperBroker.update_sl_price() 시그니처에 `side: str` 파라미터 추가 (L138), 페이퍼/라이브 파리티 보장
 - **2025-11-06 22:35** | ✅ 설정 검증 및 업데이트 | N/A | config.yml: risk.max_positions 5→20 (바이낸스 한도 50개, 안정적 20개), 페이퍼=라이브 동일 설정으로 검증 신뢰성 확보, max_open_positions 주석 처리 (사용 안 함) | 다른 PR 영향도 검증 완료 (PR11~13 독립 확인)
+- **2025-11-07 07:40** | ✅ Bug #6: One-Way Mode 위반 (CRITICAL) | 8시간 평가 중 6개 심볼에서 LONG/SHORT 동시 보유 발생 (DASHUSDT, AIAUSDT 등), 라이브 모드 시 Binance API 오류 예상 | **원인**: PaperBroker가 반대 방향 진입 시 기존 포지션 청산 없이 단순 가상 주문만 생성, LiveBroker는 Binance가 자동 처리하지만 Paper는 검증 없음 | **수정**: engine.py L1043-1081 (진입 직전에 같은 심볼 반대 포지션 자동 청산 로직 추가, ONE_WAY_MODE 청산 이유 기록)
+- **2025-11-07 07:40** | ✅ Bug #7: 극단 손실 발생 (CRITICAL) | COAIUSDT SHORT: -438.92% 손실 (Entry $0.9155 → Exit $4.934, 5.4배 폭등), 최대 손실 한도 없음 | **원인**: SL 설정 오류 또는 미작동, 극단 손실 방지 로직 부재, 고변동성 코인 필터링 없음 | **수정**: position_tracker.py L198-207 (check_tpsl_with_partial 함수에 극단 손실 체크 추가, PNL -50% 초과 시 'EXTREME_LOSS' 사유로 강제 청산)
+- **2025-11-07 07:40** | 🔴 Bug #8: 승률 6.65% (CRITICAL) | 8시간 평가: 1,548건 거래, 승률 6.65% (정상의 1/10), 평균 PNL -7.64%, TP 청산 0건 | **원인**: 전략 신호 품질 문제, TP/SL 비율 부적절 (RR 3.0R로 TP가 너무 멀리), SHORT 전략 성과 나쁨 (-10.31% vs LONG -2.45%) | **수정 예정**: 전략 신호 필터 강화 (신뢰도 임계값 상향), TP/SL 비율 검토 (현재 ATR 기반 동적 계산은 유지)
+- **2025-11-07 07:40** | ⚠️ Bug #9: PNL NULL 73% | 8시간 평가: 1,548건 중 1,128건(73%) pnl_pct NULL, 420건만 유효 PNL | **원인**: close_trade_in_db() pnl_pct 계산 로직이 최근(Bug #2 수정) 추가됨, 이전 거래들은 pnl_pct 없이 청산됨 | **해결**: 기존 NULL 데이터는 제외하고 분석, 신규 거래는 정상 기록됨 (Bug #2 수정 이후)
 
 ## 라이브 모드 고려사항(Live Considerations)
 - 라이브 전략 파일에 백테스트 전용 휴리스틱 삽입 금지(오버레이/설정으로 분리)

@@ -195,6 +195,17 @@ class PositionTracker:
                 position['sl'] = new_trail
                 logger.info(f"📈 Trailing 업데이트: ${new_trail:,.2f}")
         
+        # ⭐ PR10 Bug #7: 극단 손실 방지 (-50% 초과 시 강제 청산)
+        current_pnl_pct = 0.0
+        if side == 'LONG':
+            current_pnl_pct = ((current_price - entry) / entry) * 100
+        else:  # SHORT
+            current_pnl_pct = ((entry - current_price) / entry) * 100
+        
+        if current_pnl_pct < -50.0:
+            logger.warning(f"🚨 [EXTREME_LOSS] 극단 손실 감지: {current_pnl_pct:.2f}% < -50% | Entry: ${entry:.4f} → Current: ${current_price:.4f}")
+            return True, None, 'EXTREME_LOSS'  # 전체 강제 청산
+        
         # SL 체크
         current_sl = position['sl']
         if (side == 'LONG' and current_price <= current_sl) or \
