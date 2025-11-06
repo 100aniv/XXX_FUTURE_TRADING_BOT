@@ -1301,14 +1301,37 @@ def close_trade_in_db(
         # 백테스트/Paper/Live 모두 PostgreSQL 사용
         with get_db_connection() as conn:
             with conn.cursor() as cur:
+                # ⭐ PR10 Bug Fix: pnl_pct 계산 및 저장
+                # entry_price와 quantity를 조회하여 pnl_pct 계산
+                cur.execute(
+                    """
+                    SELECT entry_price, quantity
+                    FROM trading.trades
+                    WHERE trade_id = %s
+                    """,
+                    (position_id,),
+                )
+                row = cur.fetchone()
+                
+                if row:
+                    entry_price, quantity = row
+                    # pnl_pct 계산: (pnl / (entry_price * quantity)) * 100
+                    pnl_pct = (pnl / (entry_price * quantity)) * 100 if quantity > 0 else 0.0
+                    logger.debug(f"✅ pnl_pct 계산: {position_id} -> {pnl_pct:.2f}% (pnl={pnl:.2f}, entry={entry_price}, qty={quantity})")
+                else:
+                    pnl_pct = 0.0
+                    logger.warning(f"⚠️ trade_id {position_id} not found for pnl_pct calculation")
+                
+                # UPDATE with pnl_pct
                 cur.execute(
                     """
                     UPDATE trading.trades
-                    SET exit_price = %s, pnl = %s, exit_reason = %s, status = 'CLOSED', ts_close = NOW()
+                    SET exit_price = %s, pnl = %s, pnl_pct = %s, exit_reason = %s, status = 'CLOSED', ts_close = NOW()
                     WHERE trade_id = %s
                 """,
-                    (exit_price, pnl, reason, position_id),
+                    (exit_price, pnl, pnl_pct, reason, position_id),
                 )
+                logger.debug(f"✅ DB 종료 기록 완료: {position_id}, pnl_pct={pnl_pct:.2f}%")
     except Exception as e:
         logger.error(f"❌ DB 종료 기록 실패: {e}")
 

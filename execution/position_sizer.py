@@ -142,9 +142,9 @@ class PositionSizer:
         
         # ⭐ 최종 포지션 가치 재확인 (반올림 후)
         final_position_value = final_qty * entry
-        # ⭐ 부동소수점 안전 비교 (금융 프로그램 표준, epsilon=0.1 USDT)
-        # 실제 반올림 오차는 0.01~0.09 범위이므로 0.1 적용
-        epsilon = 0.1
+        # ⭐ PR10 Bug Fix #3: 부동소수점 안전 비교 (epsilon 완화)
+        # 실제 반올림 오차는 0.01~0.5 범위이므로 1.0 USDT 허용
+        epsilon = 1.0
         if final_position_value > self.max_position_value + epsilon:
             # 한도 내로 다시 조정
             logger.warning(f"⚠️ 포지션 가치 초과: ${final_position_value:.2f} > ${self.max_position_value:.2f}, 조정 중...")
