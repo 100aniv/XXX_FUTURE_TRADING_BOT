@@ -291,25 +291,148 @@ client.futures_create_order(
 
 ---
 
-## 🔟 Binance API 전체 매핑
+## 🔟 Binance Futures USDⓈ-M API 전체 매핑
 
-### 현재 구현 vs Binance API
+### ⚠️ 페이퍼 vs 라이브 모드 차이점
 
-| 기능 | 현재 구현 | Binance API | 상태 | 우선순위 |
-|------|----------|-------------|------|---------|
-| **포지션 진입** | ✅ `futures_create_order` | `POST /fapi/v1/order` | ⚠️ `positionSide` 누락 | **HIGH** |
-| **TP/SL 등록** | ❌ Python 체크만 | `STOP_MARKET`, `TAKE_PROFIT_MARKET` | 🔴 미구현 | **CRITICAL** |
-| **TP/SL 수정** | ❌ 없음 | `PUT /fapi/v1/order` (Modify) | 🔴 미구현 | **MEDIUM** |
-| **TP/SL 취소** | ❌ 없음 | `DELETE /fapi/v1/order` | 🔴 미구현 | **LOW** |
-| **포지션 조회** | ❌ DB만 | `GET /fapi/v2/positionRisk` | 🔴 미구현 | **HIGH** |
-| **자산 조회** | ❌ 고정값 | `GET /fapi/v2/balance` | 🔴 미구현 | **CRITICAL** |
-| **레버리지 설정** | ❌ 없음 | `POST /fapi/v1/leverage` | 🔴 미구현 | **MEDIUM** |
-| **포지션 모드 확인** | ❌ 없음 | `GET /fapi/v1/positionSide/dual` | 🔴 미구현 | **LOW** |
+| 모드 | Binance API 사용 | 실행 방식 |
+|------|----------------|---------|
+| **페이퍼** | ❌ 안 함 (못함) | 가상 실행 (DB만 기록) |
+| **라이브** | ✅ 사용 | 실제 Binance API 호출 |
+
+**중요:** 페이퍼 모드에서 Binance API 호출하면 **실제 거래 발생** → 절대 불가!
+
+---
+
+### 현재 구현 vs Binance API (라이브 모드 기준)
+
+#### 1️⃣ Trade (거래) - CRITICAL
+
+| 기능 | 현재 구현 | Binance API | 페이퍼 | 라이브 | 우선순위 |
+|------|----------|-------------|--------|--------|---------|
+| **포지션 진입** | ✅ `futures_create_order` | `POST /fapi/v1/order` | Python | API | **HIGH** |
+| **TP/SL 등록** | ❌ Python 체크만 | `POST /fapi/v1/order` (STOP_MARKET) | Python | **API** ⭐ | **CRITICAL** |
+| **TP/SL 수정** | ❌ 없음 | `PUT /fapi/v1/order` | Python | **API** ⭐ | **HIGH** |
+| **주문 취소** | ❌ 없음 | `DELETE /fapi/v1/order` | N/A | API | **MEDIUM** |
+| **모든 주문 취소** | ❌ 없음 | `DELETE /fapi/v1/allOpenOrders` | N/A | API | **LOW** |
+| **주문 조회** | ❌ 없음 | `GET /fapi/v1/order` | N/A | API | **LOW** |
+
+**누락 발견:**
+- ✅ Batch Orders (일괄 주문): `POST /fapi/v1/batchOrders` - 우리는 불필요
+- ✅ Countdown Cancel: `POST /fapi/v1/countdownCancelAll` - 우리는 불필요
+
+---
+
+#### 2️⃣ Account (계정) - HIGH
+
+| 기능 | 현재 구현 | Binance API | 페이퍼 | 라이브 | 우선순위 |
+|------|----------|-------------|--------|--------|---------|
+| **자산 조회** | ❌ 고정값 | `GET /fapi/v2/balance` | 고정값 | **API** ⭐ | **CRITICAL** |
+| **계정 정보** | ❌ 없음 | `GET /fapi/v2/account` | N/A | **API** ⭐ | **HIGH** |
+| **포지션 조회** | ❌ DB만 | `GET /fapi/v2/positionRisk` | DB | **API** ⭐ | **HIGH** |
+| **거래 내역** | ❌ DB만 | `GET /fapi/v1/userTrades` | DB | API | **MEDIUM** |
+| **수수료 조회** | ❌ 고정값 | `GET /fapi/v1/commissionRate` | 고정값 | API | **LOW** |
+
+**누락 발견:**
+- ✅ Income History: `GET /fapi/v1/income` - 펀딩비/수수료 조회 (우리는 불필요)
+
+---
+
+#### 3️⃣ Market Data (시장 데이터) - LOW
+
+| 기능 | 현재 구현 | Binance API | 사용 여부 |
+|------|----------|-------------|---------|
+| **심볼 정보** | ❌ 없음 | `GET /fapi/v1/exchangeInfo` | **필요** ⭐ |
+| **현재가** | ✅ WebSocket | `GET /fapi/v1/ticker/price` | WebSocket 우선 |
+| **Kline** | ✅ WebSocket | `GET /fapi/v1/klines` | WebSocket 우선 |
+| **24h 통계** | ❌ 없음 | `GET /fapi/v1/ticker/24hr` | 불필요 |
+| **호가창** | ❌ 없음 | `GET /fapi/v1/depth` | 불필요 |
+
+**누락 발견:**
+- ✅ Exchange Info 필요! (심볼별 제약 조건, 최소 수량, 가격 필터 등)
+
+---
+
+#### 4️⃣ Position & Leverage (포지션/레버리지) - MEDIUM
+
+| 기능 | 현재 구현 | Binance API | 페이퍼 | 라이브 | 우선순위 |
+|------|----------|-------------|--------|--------|---------|
+| **레버리지 설정** | ❌ 없음 | `POST /fapi/v1/leverage` | N/A | **API** ⭐ | **MEDIUM** |
+| **마진 타입 변경** | ❌ 없음 | `POST /fapi/v1/marginType` | N/A | API | **LOW** |
+| **포지션 모드 확인** | ❌ 없음 | `GET /fapi/v1/positionSide/dual` | N/A | API | **LOW** |
+| **포지션 모드 변경** | ❌ 없음 | `POST /fapi/v1/positionSide/dual` | N/A | API | **LOW** |
+
+---
+
+#### 5️⃣ WebSocket (실시간 데이터) - 현재 사용 중
+
+| 기능 | 현재 구현 | 사용 여부 |
+|------|----------|---------|
+| **Kline** | ✅ WebSocket | 사용 중 ✅ |
+| **Aggregate Trade** | ❌ 없음 | 불필요 |
+| **Mark Price** | ❌ 없음 | **필요 가능성** ⭐ |
+| **User Data Stream** | ❌ 없음 | **라이브에서 필요** ⭐ |
+
+**중요 발견:**
+- `User Data Stream`: 실시간 주문/포지션 업데이트 수신
+  - `POST /fapi/v1/listenKey`: 스트림 시작
+  - WebSocket 연결로 실시간 알림
+  - **라이브 모드에서 필수!**
+
+---
+
+### 📊 최종 요약: PR10 범위
+
+#### ✅ PR10에 포함 (라이브 모드 준비)
+
+**CRITICAL (필수):**
+1. TP/SL API 등록: `POST /fapi/v1/order` (STOP_MARKET, TAKE_PROFIT_MARKET)
+2. 자산 조회: `GET /fapi/v2/balance`
+3. 계정 정보: `GET /fapi/v2/account`
+
+**HIGH (권장):**
+4. TP/SL 수정: `PUT /fapi/v1/order`
+5. 포지션 조회: `GET /fapi/v2/positionRisk`
+6. One-Way Mode: `positionSide="BOTH"` 추가
+7. 심볼 정보: `GET /fapi/v1/exchangeInfo` (최소 수량, 가격 필터)
+
+**MEDIUM (선택):**
+8. 레버리지 설정: `POST /fapi/v1/leverage`
+9. 주문 취소: `DELETE /fapi/v1/order`
+
+#### ❌ PR10에서 제외 (나중에 추가)
+
+- User Data Stream (WebSocket): PR11
+- 거래 내역 조회: 필요 시
+- Batch Orders: 불필요
+- Income History: 불필요
+
+---
+
+### 🔍 누락 확인 결과
+
+**새로 발견한 필수 API:**
+1. ✅ `GET /fapi/v1/exchangeInfo`: 심볼별 제약 조건
+   - 최소 주문 수량 (minQty)
+   - 가격 필터 (PRICE_FILTER)
+   - 수량 필터 (LOT_SIZE)
+   
+2. ✅ `POST /fapi/v1/listenKey`: User Data Stream (라이브 필수)
+   - 실시간 주문 체결 알림
+   - 실시간 포지션 변경 알림
+
+**결론:**
+- 기존 매핑은 **80% 정확**
+- 추가로 2개 API 필요
+- 전체적으로 **빠짐없이 확인 완료** ✅
+
+---
 
 **API 문서:**
-- New Order: https://developers.binance.com/docs/derivatives/usds-margined-futures/trade/rest-api/New-Order
-- Modify Order: https://developers.binance.com/docs/derivatives/usds-margined-futures/trade/rest-api/Modify-Order
-- Position Risk: https://developers.binance.com/docs/derivatives/usds-margined-futures/account/rest-api/Position-Information-V3
+- Trade: https://developers.binance.com/docs/derivatives/usds-margined-futures/trade/rest-api
+- Account: https://developers.binance.com/docs/derivatives/usds-margined-futures/account/rest-api
+- Market Data: https://developers.binance.com/docs/derivatives/usds-margined-futures/market-data/rest-api
+- WebSocket: https://developers.binance.com/docs/derivatives/usds-margined-futures/websocket-market-streams
 
 ---
 
@@ -378,4 +501,36 @@ client.futures_create_order(
 
 ---
 
-**결론**: One-way Mode로 진행 권장, 즉시 포지션 정리 필요
+---
+
+## 1️⃣2️⃣ PR10 범위 결정
+
+### ✅ PR10에 포함 (합의)
+
+**이유:**
+1. 지금 발견한 문제들은 **라이브 실행 시 치명적**
+2. 페이퍼 평가는 가짜 안전 (DB만 기록)
+3. Binance API를 제대로 안 쓰면 **직접 구현의 늪**
+4. 지금 고치면 5-8시간, 라이브 후 고치면 1주일+
+
+**PR10 목표 추가:**
+- Binance API 완전 호환성 확보
+- One-Way Mode 포지션 관리
+- TP/SL 자동 실행 (Binance 조건부 주문)
+- 라이브 모드 안전성 확보
+
+**구현 순서:**
+1. Phase 1: 정리 (10분) - OPEN 포지션 강제 청산
+2. Phase 2: One-Way Mode (2-3시간)
+3. Phase 3: Binance TP/SL API (2-3시간) ⭐
+4. Phase 4: 라이브 동기화 준비 (1-2시간)
+5. Phase 5: 24시간 페이퍼 평가
+
+**총 소요 시간:** 5-8시간
+
+---
+
+**결론**: 
+- One-Way Mode로 진행 (Hedge는 PR11 이후)
+- Binance API 최대 활용 (직접 구현 최소화)
+- 즉시 포지션 정리 후 구현 시작
