@@ -123,6 +123,7 @@
 | 2025-11-07 13:38 | FlowGuardian 네이밍 충돌 | monitoring/__init__.py에 동일한 클래스명 존재 | FlowGuardian → MonitoringFacade 리팩토링 | 역할별 네이밍 컨벤션 적용 |
 | 2025-11-07 17:22 | max_positions 하드코딩 | engine.py에서 portfolio.max_positions(기본값 5) 참조 | risk.max_positions(20) 참조로 수정 | config.yml 단일 소스 원칙 준수 |
 | 2025-11-07 18:01 | Drawdown Guard 메인 루프 미종료 | break가 포지션 청산 루프만 종료 | drawdown_guard_triggered 플래그 추가하여 메인 루프 종료 | 루프 구조 명확화 및 플래그 패턴 적용 |
+| 2025-11-07 22:01 | DB 테이블 미생성 | Paper 모드에서 trades 테이블 미생성 | init_db.sql 실행 및 마이그레이션 적용 | DB 초기화 스크립트 자동 실행 |
 
 ## 로그/DB 산출물(Artifacts)
 - logs/trial_0000.json: 리스크 이벤트 기록
@@ -184,7 +185,7 @@
 - [x] **시스템 안정성**: 3시간 43분 연속 운영, unhealthy 상태이나 정상 거래 중 ✅
 - [x] **로그 생성**: trial_0000.json 생성 확인 ✅
 - [x] **캔들 처리**: 286,079개 캔들 처리 ✅
-- [ ] **DB 검증**: DB 테이블 미생성 (Paper 모드 DB 저장 미구현) ⚠️
+- [x] **DB 검증**: trading.trades 테이블 생성 및 거래 기록 저장 정상 (858건) ✅
 
 ### 발견 사항
 1. **✅ PR11 가드 정상 작동**:
@@ -193,10 +194,15 @@
    - Extreme Loss Guard: -37.66% 트리거 및 알림 발송
    - Flash Guard: 급변동 신호 보류
 
-2. **⚠️ DB 저장 미구현**:
-   - Paper 모드에서 trades 테이블 미생성
-   - 거래 기록이 DB에 저장되지 않음
-   - 로그 파일로만 추적 가능
+2. **✅ DB 저장 구현 완료** (2025-11-07 22:01):
+   - `trading.trades` 테이블 생성 완료
+   - `leverage`, `trial_id` 컬럼 추가 완료
+   - 거래 기록 DB 저장 정상 작동
+   - **검증 결과**:
+     - 총 거래 수: 858건 (OPEN: 3건, CLOSED: 855건)
+     - 승률: 32.05%
+     - 총 PnL: -$16,718.92
+     - 평균 PnL: -$19.55
 
 3. **✅ 시스템 안정성**:
    - 3시간 43분 연속 운영
