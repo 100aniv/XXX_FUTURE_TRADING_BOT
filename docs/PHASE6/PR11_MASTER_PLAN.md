@@ -6,6 +6,7 @@
 ## 목표(Goals)
 - 최대 손실/슬리피지 경계 강제
 - 프로퍼티 테스트로 리스크 불변식 검증 자동화
+- Bug #8 교차: 리스크 가드로 승률 저하 영향 최소화(가드 hit 시 차단/쿨다운)
 
 ## 범위(Scope, In)
 - RiskManager: DD cutoff, Slippage Guard
@@ -15,6 +16,7 @@
 ## 제외(Out-of-Scope)
 - 고급 가격 레벨/거래소 라운딩(→ PR12)
 - 앙상블 내부 로직(→ PR10)
+- 전략 신호 생성/필터/임계 변경(→ PR16 전략 로직 개선)
 
 ## 영향 파일(예상)
 - execution/risk_manager.py(가드)
@@ -35,12 +37,14 @@
 - 슬리피지 가드: 예상 슬리피지 > execution.max_slippage_bp 기준(±epsilon)일 때 100% 차단
 - 프로퍼티 테스트 스위트 100% 통과(pre-commit 포함), risk 모듈 커버리지 ≥ 95%
 - pre-commit 통과, coverage>85%
+ - Bug #8 교차: 정상 변동성 구간에서 가드 활성화로 인한 승률/거래 수 악화 없음(승률 변화 |Δ| ≤ 0.5%p, 거래 수 변화 |Δ| ≤ 10%)
 
 ## 체크리스트(Checklist)
 - [ ] 전역 DD cutoff 강제
 - [ ] 주문 단위 슬리피지 가드 강제
 - [ ] 프로퍼티 테스트 구현/통과
 - [ ] 가드 hit 시 알림(선택)
+ - [ ] PR12/PR13/PR16과 교차 영향 점검 리포트(가드 hit, false positive, 승률/거래수 변화)
 
 ## 테스트 플랜(Test Plan)
 - 유닛: 임계 경계/epsilon 처리

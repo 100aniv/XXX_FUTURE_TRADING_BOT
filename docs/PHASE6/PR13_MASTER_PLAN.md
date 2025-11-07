@@ -7,12 +7,13 @@
 - 페이퍼 기반 최적 파라미터 산출(가중치/임계/보너스/출구 일부)
 - 섀도우 모드에서 안전성 검증 후 카나리 릴리즈
 - 가드레일 기반 자동 중단/롤백 체계
+- Bug #8: 파라미터 오버레이로 엔트리 품질(승률) 개선
 
 ## 범위(Scope, In)
 - 튜닝 파이프라인: 실험 구성(K회/시간창), 결과 집계, 오버레이 산출
 - 운영 롤아웃: 섀도우런→카나리(10%→30%→50%→100%) 단계 적용
 - 가드레일: DD 증가 한계, 최소 거래수, 분산/변동성 상승 한계, 에러율
-- A/B 비교: baseline vs tuned 결과 리포트
+- A/B 비교: baseline vs tuned 결과 리포트(승률/TP hit rate/평균 보유시간 포함)
 
 ## 제외(Out-of-Scope)
 - 신호 무결성/Redis(→ PR9)
@@ -69,6 +70,7 @@ strategies/ensemble.py          # ✅ Ensemble 로직 (Config만 주입)
 - 24시간 페이퍼 실험에서 baseline 대비 `score_total` ≥ 15% 향상
 - Sharpe-like(analytics.kpis) ≥ 12% 향상, MDD 증가는 ≤ 0.5%p
 - 최소 거래수 ≥ 80, 승률 하락 ≤ 0.5%p, 거래 수 변화 |Δ| ≤ 15%
+- 승률: baseline 대비 유지 이상(하락 0%p) 또는 +5%p 향상 달성
 - 섀도우 모드: 8시간 이상 가드레일 위반 0건(DD 증가 한계, min_trades, 변동성 증가)
 - 카나리 단계(10%→30%→50%→100%): 각 단계 6시간 이상 가드레일 위반 0건 시에만 승격
 - logs/trial_0000.json/DB 동등성 유지, pre-commit 통과
@@ -77,7 +79,6 @@ strategies/ensemble.py          # ✅ Ensemble 로직 (Config만 주입)
 
 ### 설계 완료 ✅
 - [x] 시스템 분석 완료 (PR13_SYSTEM_ANALYSIS.md)
-  - 기존 구현 현황 (tuning/, analytics/, metrics/, core/)
   - Gap Analysis (P0/P1/P2 우선순위)
   - 파일 구조 제안
 - [x] 아키텍처 설계 완료 (PR13_ARCHITECTURE_DESIGN.md)
@@ -105,6 +106,7 @@ strategies/ensemble.py          # ✅ Ensemble 로직 (Config만 주입)
   - 자동 리포트 생성 워크플로우
 
 - [ ] **Phase 4: 통합 및 최적화** (P2, 1일)
+ - [ ] Bug #8: 파라미터 후보 정의(min_confidence/consensus_bonus/budget_per_strategy) 및 오버레이 생성
   - API 통합 (tuning/api.py, tuning/rollout_api.py)
   - CLI 개선 (tuning/tuning_cli.py)
   - 성능 최적화
