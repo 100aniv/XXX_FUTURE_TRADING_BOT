@@ -19,32 +19,49 @@
 - 전략 신호 생성/필터/임계 변경(→ PR16 전략 로직 개선)
 
 ## 영향 파일(예상)
-- execution/risk_manager.py(가드)
-- tests/risk/property_tests_*.py(새 테스트)
-- docs/PHASE6/PR_MASTER_INTEGRATION_TEST.md(수용 기준)
-- config.yml(risk.* 키)
+- **⭐ execution/risk_manager.py**(가드 강화)
+- **⭐ execution/engine.py**(FlowGuardian 게이트 호출만 추가, PR10 One-Way Mode L1043-1081과 연계)
+- tests/risk/property_tests_*.py(새 테스트, 기존 tests 디렉토리 활용)
+- **⭐ core/interfaces.py**(FlowGuardian 인터페이스)
+- **⭐ core/flow_guardian.py**(신규 1개만 허용)
+- config.yml(risk.* 키, PR10 exits.binance_api와 독립)
 
 ## 설정 키(제안)
 - risk.max_drawdown_pct: float
-- risk.max_slippage_pct: float
+- risk.max_slippage_pct: float  
 - risk.property_tests.enabled: bool
+- **⭐ risk.extreme_loss_cutoff_pct: -50.0**(PR10 position_tracker.py L198-207과 연계)
 
-## FlowGuardian 게이트
-- READY 없이는 PAPER/LIVE 불가(게이트 준수)
+## FlowGuardian 게이트(.windsurfrules 준수)
+- **⭐ FlowGuardian.ready(): bool** → READY 상태 판정
+- **⭐ FlowGuardian.assert_ready(mode)** → 미준수 시 예외 발생  
+- **⭐ execution/engine.py 진입부**에서 assert_ready 1회 호출 (PR10 수정사항과 충돌 없음)
 
 ## 수용 기준(Acceptance)
+- **⭐ FlowGuardian 게이트**: tests/flow/test_flow_guardian.py 통과 필수(.windsurfrules)
 - 일일 손실 한도(risk.max_daily_loss_pct, 프로파일 기준) 초과 시 100% 차단 및 사유 로깅
 - 슬리피지 가드: 예상 슬리피지 > execution.max_slippage_bp 기준(±epsilon)일 때 100% 차단
+- **⭐ Paper/Live 파리티**: 리스크 가드 로직 100% 동일(PR10 brokers.py 시그니처 호환)
+- **⭐ 극단 손실 연계**: PR10 position_tracker.py L198-207 -50% cutoff와 중복 없음
 - 프로퍼티 테스트 스위트 100% 통과(pre-commit 포함), risk 모듈 커버리지 ≥ 95%
 - pre-commit 통과, coverage>85%
- - Bug #8 교차: 정상 변동성 구간에서 가드 활성화로 인한 승률/거래 수 악화 없음(승률 변화 |Δ| ≤ 0.5%p, 거래 수 변화 |Δ| ≤ 10%)
+- Bug #8 교차: 정상 변동성 구간에서 가드 활성화로 인한 승률/거래 수 악화 없음(승률 변화 |Δ| ≤ 0.5%p, 거래 수 변화 |Δ| ≤ 10%)
 
 ## 체크리스트(Checklist)
-- [ ] 전역 DD cutoff 강제
-- [ ] 주문 단위 슬리피지 가드 강제
-- [ ] 프로퍼티 테스트 구현/통과
+- [ ] **⭐ FlowGuardian 게이트 구현**(.windsurfrules 필수)
+  - [ ] core/interfaces.py: FlowGuardian 인터페이스 정의
+  - [ ] core/flow_guardian.py: ready()/assert_ready() 구현
+  - [ ] execution/engine.py: 진입부 assert_ready() 1회 호출
+- [ ] **⭐ RiskManager 강화**(PR10 연계)
+  - [ ] 전역 DD cutoff 강제
+  - [ ] 주문 단위 슬리피지 가드 강제  
+  - [ ] PR10 극단 손실 방지(-50%)와 중복 없음 확인
+- [ ] **⭐ Paper/Live 파리티 보장**(PR10 호환)
+  - [ ] 리스크 가드 로직 100% 동일
+  - [ ] brokers.py 시그니처 호환성 확인
+- [ ] 프로퍼티 테스트 구현/통과(기존 tests 디렉토리 활용)
 - [ ] 가드 hit 시 알림(선택)
- - [ ] PR12/PR13/PR16과 교차 영향 점검 리포트(가드 hit, false positive, 승률/거래수 변화)
+- [ ] PR12/PR13/PR16과 교차 영향 점검 리포트(가드 hit, false positive, 승률/거래수 변화)
 
 ## 테스트 플랜(Test Plan)
 - 유닛: 임계 경계/epsilon 처리
