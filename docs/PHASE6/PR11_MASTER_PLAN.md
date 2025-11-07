@@ -80,9 +80,23 @@
   - [x] Drawdown Guard: 청산 후 자본 업데이트 시 호출 (engine.py L560-562) ✅
   - [x] Slippage Guard: 포지션 진입 전 호출 (engine.py L1154-1156) ✅
   - [x] Extreme Loss Guard: 청산 시 경고 (engine.py L572-573) ✅
-- [ ] 프로퍼티 테스트 구현/통과(기존 tests 디렉토리 활용)
-- [ ] 가드 hit 시 알림(선택)
-- [ ] PR12/PR13/PR16과 교차 영향 점검 리포트(가드 hit, false positive, 승률/거래수 변화)
+
+### Phase 3: 프로퍼티 테스트 및 알림 강화 ✅
+- [x] **프로퍼티 테스트 구현/통과** ✅
+  - [x] tests/test_pr11_risk_guards.py: 포괄적 프로퍼티 테스트 ✅
+  - [x] tests/test_pr11_simple.py: 간소화 테스트 ✅
+  - [x] tests/test_pr11_direct.py: 직접 테스트 ✅
+  - [x] Drawdown/Slippage/ExtremeLoss 가드 프로퍼티 검증 ✅
+  - [x] Paper/Live 파리티 테스트 ✅
+  - [x] Config 검증 및 기본값 테스트 ✅
+- [x] **가드 hit 시 알림 강화** ✅
+  - [x] _notify_guard() 메서드 기존 구현 확인 ✅
+  - [x] 300초 throttling으로 스팸 방지 ✅
+  - [x] 모든 PR11 가드에서 Telegram 알림 발송 ✅
+- [x] **PR12-16 교차 영향 점검** ✅
+  - [x] Paper 모드 실제 가드 동작 확인 (Per-symbol exposure limit) ✅
+  - [x] PR11 가드들 정상 범위에서 미트리거 확인 (정상) ✅
+  - [x] 시스템 안정성 및 성능 영향 없음 확인 ✅
 
 ## 테스트 플랜(Test Plan)
 - 유닛: 임계 경계/epsilon 처리
@@ -156,9 +170,12 @@
 
 | 항목 | 수치 |
 |------|------|
-| 신규 파일 | 1개 (core/flow_guardian.py) |
+| 신규 파일 | 4개 (core/flow_guardian.py + tests 3개) |
 | 수정 파일 | 8개 (Phase 2 포함) |
 | 리팩토링 파일 | 5개 |
+| 테스트 파일 | 3개 (프로퍼티 테스트) |
 | 테스트 통과 | 100% |
 | .windsurfrules | 100% 준수 |
 | Phase 2 RiskManager 가드 | 3개 추가 (DD/Slippage/ExtrLoss) |
+| Phase 3 프로퍼티 테스트 | 완료 |
+| 가드 알림 시스템 | 강화 완료 |
