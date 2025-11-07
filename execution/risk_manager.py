@@ -88,8 +88,26 @@ class RiskManager:
         self.max_positions = config['risk']['max_positions']
         self.max_exposure_per_symbol_pct = config['risk']['max_exposure_per_symbol']
         
+        # ⭐ PR11: 추가 리스크 가드 (DD cutoff, Slippage Guard)
+        # DD cutoff (최대 낙폭 강제 차단)
+        self.max_drawdown_pct = get_value('max_drawdown_pct', 10.0) / 100.0  # 10% 기본값
+        self.max_drawdown_limit = self.max_drawdown_pct * self.equity
+        logger.info(f"✅ 최대 낙폭 한도: {self.max_drawdown_pct*100:.1f}% (${self.max_drawdown_limit:,.0f})")
+        
+        # Slippage Guard (예상 슬리피지 차단)
+        self.max_slippage_pct = get_value('max_slippage_pct', 0.5) / 100.0  # 0.5% 기본값
+        logger.info(f"✅ 슬리피지 가드: {self.max_slippage_pct*100:.2f}%")
+        
+        # 극단 손실 cutoff (PR10 연계, 중복 방지)
+        # PR10 position_tracker.py L198-207에서 -50% cutoff 이미 구현됨
+        # 여기서는 더 보수적인 임계값 설정 (예: -30%)
+        self.extreme_loss_cutoff_pct = get_value('extreme_loss_cutoff_pct', -30.0) / 100.0  # -30% 기본값
+        logger.info(f"✅ 극단 손실 가드: {self.extreme_loss_cutoff_pct*100:.1f}% (PR10 -50% cutoff와 연계)")
+        
         # 현재 상태 (나중에 DB에서 읽기)
         self.current_daily_loss = 0.0
+        self.current_drawdown = 0.0  # 현재 낙폭
+        self.peak_equity = self.equity  # 최고점 자본
         self.active_positions_count = 0
         self.symbol_exposures = {}  # {symbol: position_value}
         
@@ -383,6 +401,78 @@ class RiskManager:
         self.in_cooldown = False
         logger.warning("🔓 연속 손실 쿨다운 수동 리셋")
     
+    def check_drawdown_guard(self, current_equity: float) -> bool:
+        """
+        ⭐ PR11: 최대 낙폭 가드 체크
+        
+        Args:
+            current_equity: 현재 자본
+            
+        Returns:
+            bool: True=허용, False=차단
+        """
+        # 최고점 업데이트
+        if current_equity > self.peak_equity:
+            self.peak_equity = current_equity
+            self.current_drawdown = 0.0
+        else:
+            # 현재 낙폭 계산
+            self.current_drawdown = (self.peak_equity - current_equity) / self.peak_equity
+        
+        # 최대 낙폭 초과 시 차단
+        if self.current_drawdown > self.max_drawdown_pct:
+            logger.error(f"🚨 최대 낙폭 초과: {self.current_drawdown*100:.2f}% > {self.max_drawdown_pct*100:.1f}%")
+            self._notify_guard(f"Drawdown guard triggered: {self.current_drawdown*100:.2f}% > {self.max_drawdown_pct*100:.1f}%")
+            return False
+        
+        return True
+    
+    def check_slippage_guard(self, expected_price: float, market_price: float) -> bool:
+        """
+        ⭐ PR11: 슬리피지 가드 체크
+        
+        Args:
+            expected_price: 예상 체결 가격
+            market_price: 현재 시장 가격
+            
+        Returns:
+            bool: True=허용, False=차단
+        """
+        if expected_price <= 0 or market_price <= 0:
+            return True  # 가격이 유효하지 않으면 통과
+        
+        # 슬리피지 계산
+        slippage = abs(market_price - expected_price) / expected_price
+        
+        # 슬리피지 한도 초과 시 차단
+        if slippage > self.max_slippage_pct:
+            logger.error(f"🚨 슬리피지 초과: {slippage*100:.2f}% > {self.max_slippage_pct*100:.2f}%")
+            self._notify_guard(f"Slippage guard triggered: {slippage*100:.2f}% > {self.max_slippage_pct*100:.2f}%")
+            return False
+        
+        return True
+    
+    def check_extreme_loss_guard(self, position_pnl_pct: float) -> bool:
+        """
+        ⭐ PR11: 극단 손실 가드 체크 (PR10 연계, 중복 방지)
+        
+        Note: PR10 position_tracker.py L198-207에서 -50% cutoff 이미 구현됨
+              여기서는 더 보수적인 -30% 임계값으로 조기 경고
+        
+        Args:
+            position_pnl_pct: 포지션 PNL 퍼센트 (-0.3 = -30%)
+            
+        Returns:
+            bool: True=허용, False=차단
+        """
+        # 극단 손실 임계값 초과 시 차단 (PR10보다 보수적)
+        if position_pnl_pct < self.extreme_loss_cutoff_pct:
+            logger.error(f"🚨 극단 손실 가드: {position_pnl_pct*100:.1f}% < {self.extreme_loss_cutoff_pct*100:.1f}% (PR10 -50% 이전 조기 차단)")
+            self._notify_guard(f"Extreme loss guard triggered: {position_pnl_pct*100:.1f}% < {self.extreme_loss_cutoff_pct*100:.1f}%")
+            return False
+        
+        return True
+
     def update_equity(self, new_equity: float):
         """
         자본 업데이트 + 한도 재계산 - 복리 효과

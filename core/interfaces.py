@@ -15,7 +15,7 @@ FlowGuardian 및 모듈 간 계약 정의
 - 시그니처는 최소/안정 형태 유지
 - 기존 모듈 로직 변경 금지
 """
-from typing import Protocol, Any, Dict
+from typing import Protocol, Any, Dict, Literal
 import pandas as pd
 
 
@@ -205,5 +205,46 @@ class IMetrics(Protocol):
         
         Raises:
             Exception: 계산 실패 시
+        """
+        ...
+
+
+class IFlowGuardian(Protocol):
+    """
+    FlowGuardian 게이트 계약 (.windsurfrules 준수)
+    
+    목적:
+    - READY 플래그 없이는 PAPER/LIVE 실행 불가
+    - config.yml 유효성, DB/Redis 헬스체크, 계약 불변 조건 검증
+    
+    구현 대상:
+    - core/flow_guardian.py::FlowGuardian
+    """
+    
+    def ready(self) -> bool:
+        """
+        READY 상태 판정
+        
+        검증 항목:
+        - config.yml 유효성 (필수 키 존재/타입 체크)
+        - DB·Redis 헬스체크 (선택)
+        - 전략/튜닝 계약 불변 조건 일치
+        - 최근 테스트 타임스탬프 신선도 확인 (옵션)
+        
+        Returns:
+            bool: READY 상태 (True=준비됨, False=미준비)
+        """
+        ...
+    
+    def assert_ready(self, mode: Literal["paper", "live"]) -> None:
+        """
+        READY 상태 강제 검증
+        
+        Args:
+            mode: 실행 모드 ("paper" | "live")
+            
+        Raises:
+            RuntimeError: READY 미준수 시 예외 발생
+            ValueError: 잘못된 모드
         """
         ...

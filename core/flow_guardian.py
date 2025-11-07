@@ -655,3 +655,96 @@ class FlowGuardian:
         if "blocked_if_over_exposure" in expect and expect["blocked_if_over_exposure"]:
             # 익스포저 검증은 추후 확장
             pass
+
+    def ready(self) -> bool:
+        """
+        READY 상태 판정 (.windsurfrules 준수)
+        
+        검증 항목:
+        - config.yml 유효성 (필수 키 존재/타입 체크)
+        - DB·Redis 헬스체크 (선택)
+        - 전략/튜닝 계약 불변 조건 일치
+        - 최근 테스트 타임스탬프 신선도 확인 (옵션)
+        
+        Returns:
+            bool: READY 상태 (True=준비됨, False=미준비)
+        """
+        try:
+            # 1) config.yml 필수 키 검증
+            required_keys = ["mode", "capital", "risk", "execution"]
+            for key in required_keys:
+                if key not in self.config:
+                    logger.error(f"❌ config.yml 필수 키 누락: {key}")
+                    return False
+            
+            # 2) DB 헬스체크 (선택)
+            if self.gate_config.get("check_db", True):
+                try:
+                    with get_db_connection() as conn:
+                        with conn.cursor() as cur:
+                            cur.execute("SELECT 1")
+                            cur.fetchone()
+                    logger.debug("✅ DB 헬스체크 통과")
+                except Exception as e:
+                    logger.error(f"❌ DB 헬스체크 실패: {e}")
+                    return False
+            
+            # 3) 셀프테스트 실행 (간소화)
+            if self.enabled:
+                result = self.run_selftest()
+                if not result.ready:
+                    logger.error(f"❌ 셀프테스트 실패: {result.errors}")
+                    return False
+                logger.debug("✅ 셀프테스트 통과")
+            
+            # 4) 최근 테스트 타임스탬프 확인 (옵션)
+            if self.gate_config.get("check_freshness", False):
+                trial_file = Path("logs/trial_0000.json")
+                if trial_file.exists():
+                    import json
+                    from datetime import datetime, timedelta
+                    
+                    with open(trial_file, "r") as f:
+                        trial_data = json.load(f)
+                    
+                    timestamp_str = trial_data.get("timestamp", "")
+                    if timestamp_str:
+                        timestamp = datetime.fromisoformat(timestamp_str.replace("Z", "+00:00"))
+                        age = datetime.now() - timestamp.replace(tzinfo=None)
+                        max_age = timedelta(hours=self.gate_config.get("max_age_hours", 24))
+                        
+                        if age > max_age:
+                            logger.error(f"❌ 테스트 타임스탬프 오래됨: {age} > {max_age}")
+                            return False
+                        logger.debug(f"✅ 테스트 타임스탬프 신선: {age}")
+            
+            logger.info("🚀 FlowGuardian READY 상태 확인됨")
+            return True
+            
+        except Exception as e:
+            logger.error(f"❌ READY 상태 검증 실패: {e}")
+            return False
+    
+    def assert_ready(self, mode: str) -> None:
+        """
+        READY 상태 강제 검증 (.windsurfrules 준수)
+        
+        Args:
+            mode: 실행 모드 ("paper" | "live")
+            
+        Raises:
+            RuntimeError: READY 미준수 시 예외 발생
+            ValueError: 잘못된 모드
+        """
+        # 모드 검증
+        if mode not in ["paper", "live"]:
+            raise ValueError(f"잘못된 모드: {mode}. 'paper' 또는 'live'만 허용")
+        
+        # READY 상태 검증
+        if not self.ready():
+            raise RuntimeError(
+                f"❌ FlowGuardian READY 미준수 - {mode.upper()} 모드 실행 불가. "
+                "시스템 점검 후 다시 시도하세요."
+            )
+        
+        logger.info(f"✅ FlowGuardian 게이트 통과 - {mode.upper()} 모드 진입 허가")

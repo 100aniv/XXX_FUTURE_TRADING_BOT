@@ -57,6 +57,33 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict):
         ensemble_module: ensemble 모듈 (None이면 첫 신호 사용)
         config: 설정 dict
     """
+    # ⭐ PR11: FlowGuardian 게이트 (.windsurfrules 준수)
+    # READY 플래그 없이는 PAPER/LIVE 실행 불가
+    mode = config.get("mode", "paper")
+    if mode in ["paper", "live"]:
+        try:
+            from core.flow_guardian import FlowGuardian
+            from core.interfaces import IDataSource, IStrategy, IRisk, IBroker, IMetrics
+            
+            # FlowGuardian 인스턴스 생성 (간소화된 어댑터 사용)
+            guardian = FlowGuardian(
+                config=config,
+                source=feed,  # 데이터 소스로 사용
+                strategy=ensemble_module or list(strategies.values())[0],  # 첫 번째 전략 사용
+                risk=None,  # 실제 RiskManager는 아래에서 생성
+                executor=broker,  # 브로커를 실행자로 사용
+                metrics=None,  # 메트릭은 선택적
+            )
+            
+            # READY 상태 강제 검증 (1회만 호출)
+            guardian.assert_ready(mode)
+            logger.info(f"✅ FlowGuardian 게이트 통과 - {mode.upper()} 모드 진입")
+            
+        except Exception as e:
+            logger.error(f"❌ FlowGuardian 게이트 실패: {e}")
+            raise RuntimeError(f"FlowGuardian 게이트 실패 - {mode.upper()} 모드 실행 불가: {e}")
+    else:
+        logger.info(f"ℹ️  FlowGuardian 게이트 우회 - {mode} 모드 (backtest 등)")
     # 필수 파라미터 (config.yml 필수)
     symbol = config.get("symbol", "BTCUSDT")  # backtest에서 사용
     timeframe = config["timeframe"]
