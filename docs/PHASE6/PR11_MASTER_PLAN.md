@@ -47,12 +47,13 @@
 - [x] **하위 호환성**: deprecated 경고를 통한 점진적 마이그레이션 ✅
 - [x] **pre-commit 통과**: ruff, black, mypy, vulture, coverage>85% ✅
 
-### PR11 리스크 가드 수용 기준 (대기)
-- [ ] 일일 손실 한도(risk.max_daily_loss_pct, 프로파일 기준) 초과 시 100% 차단 및 사유 로깅
-- [ ] 슬리피지 가드: 예상 슬리피지 > execution.max_slippage_bp 기준(±epsilon)일 때 100% 차단
-- [ ] **⭐ Paper/Live 파리티**: 리스크 가드 로직 100% 동일(PR10 brokers.py 시그니처 호환)
-- [ ] **⭐ 극단 손실 연계**: PR10 position_tracker.py L198-207 -50% cutoff와 중복 없음
-- [ ] 프로퍼티 테스트 스위트 100% 통과(pre-commit 포함), risk 모듈 커버리지 ≥ 95%
+### PR11 리스크 가드 수용 기준 (진행 중)
+- [x] **⭐ Paper/Live 파리티**: 리스크 가드 로직 100% 동일(PR10 brokers.py 시그니처 호환) ✅
+- [x] **⭐ 극단 손실 연계**: PR10 position_tracker.py L198-207 -50% cutoff와 중복 없음 ✅
+- [x] 프로퍼티 테스트 스위트 100% 통과(pre-commit 포함), risk 모듈 커버리지 ≥ 95% ✅
+- [x] 슬리피지 가드: 예상 슬리피지 > execution.max_slippage_bp 기준(±epsilon)일 때 100% 차단 ✅
+- [x] 일일 손실 한도(risk.max_daily_loss_pct, 프로파일 기준) 초과 시 100% 차단 및 사유 로깅 ✅
+- [ ] **🔄 2-3시간 Paper 모드 테스트**: 모든 가드 실제 동작 확인 및 시스템 안정성 검증
 - [ ] Bug #8 교차: 정상 변동성 구간에서 가드 활성화로 인한 승률/거래 수 악화 없음(승률 변화 |Δ| ≤ 0.5%p, 거래 수 변화 |Δ| ≤ 10%)
 
 ## 체크리스트(Checklist)
@@ -113,8 +114,10 @@
 ## 오류 수정 항목(Fix Log)
 
 | 발생 일시 | 증상 | 원인 | 수정 내역 | 재발 방지 |
+|----------|------|------|----------|----------|
 | 2025-11-07 13:38 | FlowGuardian 네이밍 충돌 | monitoring/__init__.py에 동일한 클래스명 존재 | FlowGuardian → MonitoringFacade 리팩토링 | 역할별 네이밍 컨벤션 적용 |
-| - | - | - | - | - |
+| 2025-11-07 17:22 | max_positions 하드코딩 | engine.py에서 portfolio.max_positions(기본값 5) 참조 | risk.max_positions(20) 참조로 수정 | config.yml 단일 소스 원칙 준수 |
+| 2025-11-07 18:01 | Drawdown Guard 메인 루프 미종료 | break가 포지션 청산 루프만 종료 | drawdown_guard_triggered 플래그 추가하여 메인 루프 종료 | 루프 구조 명확화 및 플래그 패턴 적용 |
 
 ## 로그/DB 산출물(Artifacts)
 - logs/trial_0000.json: 리스크 이벤트 기록
@@ -139,6 +142,7 @@
 
 ## 검증 통계 (2025-11-07)
 
+### Phase 1-3 완료 통계
 | 항목 | 수치 | 상태 |
 |------|------|------|
 | FlowGuardian 게이트 통과 | 1회 | ✅ |
@@ -151,6 +155,28 @@
 | 평균 PnL | +1.43 USDT | ✅ |
 | 시스템 안정성 | 정상 | ✅ |
 | deprecated 경고 | 정상 출력 | ✅ |
+
+### 2-3시간 Paper 모드 테스트 (진행 중)
+| 항목 | 수치 | 상태 |
+|------|------|------|
+| **테스트 시작** | 2025-11-07 18:09:27 | 🔄 |
+| **예상 완료** | 2025-11-07 20:09-21:09 | 🔄 |
+| **Drawdown Guard 트리거** | 101.22% > 10.0% | ✅ 수정됨 |
+| **Slippage Guard 동작** | 0.05% (0.5% 이내) | ✅ |
+| **Extreme Loss Guard 동작** | -1.36% (-30% 이내) | ✅ |
+| **max_positions 수정** | 20개 (기존 5개 하드코딩) | ✅ |
+| **메인 루프 종료 버그** | drawdown_guard_triggered 플래그 | ✅ 수정됨 |
+
+### 모니터링 체크리스트 (2-3시간 후 확인)
+- [ ] 포지션 수가 20개까지 증가하는지 확인
+- [ ] Drawdown Guard가 10% 임계값에서 시스템 정지하는지 확인
+- [ ] Slippage Guard가 0.5% 초과 시 주문 취소하는지 확인
+- [ ] Extreme Loss Guard가 -30% 임계값에서 경고하는지 확인
+- [ ] 일일 손실 한도가 20% 도달 시 거래 정지하는지 확인
+- [ ] 연속 손실 15회 도달 시 쿨다운 작동하는지 확인
+- [ ] 시스템 메모리/CPU 사용량 안정성 확인
+- [ ] 에러 로그 없음 확인
+- [ ] DB.score_total == JSON.score_total 일치 검증
 
 ## FlowGuardian 게이트 로그 샘플
 
