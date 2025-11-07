@@ -68,14 +68,18 @@
   - [x] tests/*.py: 4개 파일 수정 ✅
   - [x] 하위 호환성: deprecated 경고 추가 ✅
 
-### Phase 2: RiskManager 강화 (대기)
-- [ ] **⭐ RiskManager 강화**(PR10 연계)
-  - [ ] 전역 DD cutoff 강제
-  - [ ] 주문 단위 슬리피지 가드 강제  
-  - [ ] PR10 극단 손실 방지(-50%)와 중복 없음 확인
-- [ ] **⭐ Paper/Live 파리티 보장**(PR10 호환)
-  - [ ] 리스크 가드 로직 100% 동일
-  - [ ] brokers.py 시그니처 호환성 확인
+### Phase 2: RiskManager 강화 ✅
+- [x] **⭐ RiskManager 강화**(PR10 연계) ✅
+  - [x] 전역 DD cutoff 강제 (risk_manager.py L404-428) ✅
+  - [x] 주문 단위 슬리피지 가드 강제 (risk_manager.py L430-453) ✅
+  - [x] PR10 극단 손실 방지(-50%)와 중복 없음 확인 (risk_manager.py L455-474, -30% 조기 경고) ✅
+- [x] **⭐ Paper/Live 파리티 보장**(PR10 호환) ✅
+  - [x] 리스크 가드 로직 100% 동일 (모드별 config.yml 프로파일 사용) ✅
+  - [x] brokers.py 시그니처 호환성 확인 ✅
+- [x] **engine.py 가드 호출 통합** ✅
+  - [x] Drawdown Guard: 청산 후 자본 업데이트 시 호출 (engine.py L560-562) ✅
+  - [x] Slippage Guard: 포지션 진입 전 호출 (engine.py L1154-1156) ✅
+  - [x] Extreme Loss Guard: 청산 시 경고 (engine.py L572-573) ✅
 - [ ] 프로퍼티 테스트 구현/통과(기존 tests 디렉토리 활용)
 - [ ] 가드 hit 시 알림(선택)
 - [ ] PR12/PR13/PR16과 교차 영향 점검 리포트(가드 hit, false positive, 승률/거래수 변화)
@@ -95,7 +99,6 @@
 ## 오류 수정 항목(Fix Log)
 
 | 발생 일시 | 증상 | 원인 | 수정 내역 | 재발 방지 |
-|----------|------|------|----------|-----------|
 | 2025-11-07 13:38 | FlowGuardian 네이밍 충돌 | monitoring/__init__.py에 동일한 클래스명 존재 | FlowGuardian → MonitoringFacade 리팩토링 | 역할별 네이밍 컨벤션 적용 |
 | - | - | - | - | - |
 
@@ -125,6 +128,7 @@
 | 항목 | 수치 | 상태 |
 |------|------|------|
 | FlowGuardian 게이트 통과 | 1회 | ✅ |
+| FlowGuardian 상세 로깅 | [1/4] ~ [4/4] 단계별 출력 | ✅ |
 | trial_0000.json 생성 | 13:38:18 | ✅ |
 | DB vs JSON score_total 일치 | 0.0 == 0.0 | ✅ |
 | Paper 모드 실행 시간 | 68분 | ✅ |
@@ -134,12 +138,27 @@
 | 시스템 안정성 | 정상 | ✅ |
 | deprecated 경고 | 정상 출력 | ✅ |
 
+## FlowGuardian 게이트 로그 샘플
+
+```
+2025-11-07 16:40:34,141 [INFO] 🔍 FlowGuardian READY 상태 검증 시작
+2025-11-07 16:40:34,142 [INFO] [1/4] config.yml 필수 키 검증 ...
+2025-11-07 16:40:34,142 [INFO]       ✅ config.yml 필수 키 검증 통과
+2025-11-07 16:40:34,143 [INFO] [2/4] DB 헬스체크 ...
+2025-11-07 16:40:34,156 [INFO]       ✅ DB 헬스체크 통과
+2025-11-07 16:40:34,166 [INFO] [3/4] 셀프테스트 실행 ...
+2025-11-07 16:40:34,195 [INFO]       ✅ 셀프테스트 통과
+2025-11-07 16:40:34,214 [INFO] [4/4] 테스트 타임스탬프 확인 스킵
+2025-11-07 16:40:34,214 [INFO] 🚀 FlowGuardian READY 상태 확인됨
+```
+
 ## 변경 통계
 
 | 항목 | 수치 |
 |------|------|
 | 신규 파일 | 1개 (core/flow_guardian.py) |
-| 수정 파일 | 6개 |
+| 수정 파일 | 8개 (Phase 2 포함) |
 | 리팩토링 파일 | 5개 |
 | 테스트 통과 | 100% |
 | .windsurfrules | 100% 준수 |
+| Phase 2 RiskManager 가드 | 3개 추가 (DD/Slippage/ExtrLoss) |
