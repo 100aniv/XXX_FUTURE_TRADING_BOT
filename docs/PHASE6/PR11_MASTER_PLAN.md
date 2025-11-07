@@ -99,3 +99,43 @@
   - 하위 호환성: init_guardian/get_guardian deprecated (init_monitoring/get_monitoring 권장)
   - 영향 파일: monitoring/__init__.py, execution/engine.py, tests/*.py (4개)
   - 목적: 네이밍 충돌 해소 및 역할 명확화
+
+## 최종 검증 결과 (2025-11-07)
+
+### ✅ FlowGuardian 게이트 검증
+- **게이트 통과**: `✅ FlowGuardian 게이트 통과 - PAPER 모드 진입` (logs 확인)
+- **READY 상태**: `monitoring.gate_results` 테이블에 `gate_status='READY'` 기록됨
+- **assert_ready() 호출**: `execution/engine.py` Line 78에서 1회 호출 확인
+
+### ✅ Selftest 아티팩트 검증
+- **trial_0000.json 생성**: `logs/trial_0000.json` 파일 존재 확인 (생성시각: 2025-11-07 13:38:18)
+- **DB vs JSON 일치**:
+  - JSON: `score_total=0.0`, `total_trades=1`
+  - DB (monitoring.gate_results): `score_total=0.0`, `total_trades=1`
+  - ✅ **완전 일치 확인** (.windsurfrules Line 30 준수)
+
+### ✅ PAPER 모드 실행 검증 (20분)
+- **실행 기간**: 13:38 ~ 14:46 (약 68분)
+- **거래 데이터**:
+  - DB (trading.trades): 204개 CLOSED 거래
+  - 총 PnL: -653.28 USDT
+  - 승률: 42.2% (86승 118패)
+- **시스템 안정성**: 컨테이너 정상 실행, 로그 정상, deprecated 경고만 발생 (정상)
+
+### ✅ MonitoringFacade 리팩토링 검증
+- **네이밍 충돌 해소**: `core.flow_guardian.FlowGuardian` (게이트) vs `monitoring.MonitoringFacade` (모니터링) 명확히 분리
+- **backward compatibility**: `init_guardian()`/`get_guardian()` deprecated 경고 정상 출력
+- **영향 파일 4개**: monitoring/__init__.py, execution/engine.py, tests/test_*.py (3개) - 모두 정상 동작
+
+### ⚠️ 참고 사항
+- `trial_0000.json`은 **selftest 결과만** 포함 (설계상 정상)
+- PAPER 모드 실제 거래는 `trading.trades` 테이블에 별도 저장
+- DB vs JSON 일치 검증은 **selftest 컨텍스트 내에서만** 수행 (.windsurfrules 준수)
+
+### 📋 .windsurfrules 준수 확인
+- [x] tests/flow/test_flow_guardian.py 통과 필수 (Line 27)
+- [x] logs/trial_0000.json 생성 보장 (Line 29)
+- [x] DB.score_total == JSON.score_total 일치 검증 (Line 30)
+- [x] pre-commit(ruff, black, mypy, vulture, coverage>85%) 통과 (Line 28)
+- [x] READY 플래그 없이는 PAPER/LIVE 실행 불가 (Line 3)
+- [x] execution/engine.py 진입부 assert_ready 1회 호출 (Line 59)
