@@ -538,6 +538,7 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict):
                     positions_to_close.append((pos_id, position, reason))
 
         # 포지션 종료 처리
+        drawdown_guard_triggered = False  # 플래그 추가
         for pos_id, position, reason in positions_to_close:
             pnl = calculate_pnl(position, current_price)
             close_trade_in_db(
@@ -560,7 +561,8 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict):
             logger.info(f"🔍 Drawdown Guard 체크: equity=${new_equity:,.2f}")
             if not risk.check_drawdown_guard(new_equity):
                 logger.error(f"🚨 Drawdown Guard 차단 - 시스템 정지")
-                break  # 메인 루프 종료
+                drawdown_guard_triggered = True
+                break  # 포지션 청산 루프 종료
 
             # Risk Manager 업데이트 (⭐ 저장된 position_value 사용)
             position_value = position.get(
@@ -678,6 +680,11 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict):
         #     except Exception as e:
         #         logger.error(f"❌ [{strategy_id}] 전략 오류: {e}")
         # =============================================================================
+
+        # ⭐ PR11: Drawdown Guard 체크 (메인 루프 종료)
+        if drawdown_guard_triggered:
+            logger.error(f"🚨 Drawdown Guard 트리거됨 - 메인 루프 종료")
+            break  # 메인 루프 종료
 
         # ⭐ [새 코드] SignalGenerator 활용 (MTF, 쿨다운, 거래량 필터 포함)
         signals = []
