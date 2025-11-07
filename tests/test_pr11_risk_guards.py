@@ -31,8 +31,8 @@ class TestPR11RiskGuards:
             'mode': 'paper',
             'capital': {'initial': 10000},
             'risk': {
-                'max_positions': 5,
-                'max_exposure_per_symbol': 0.15,  # 15%
+                'max_positions': 20,  # config.yml과 동일
+                'max_exposure_per_symbol': 0.3,  # config.yml과 동일 (30%)
                 'max_daily_loss_pct': 2.0,  # 2%
                 'max_drawdown_pct': 10.0,  # 10%
                 'max_slippage_pct': 0.5,   # 0.5%
@@ -120,8 +120,8 @@ class TestPR11RiskGuards:
             'mode': 'paper',
             'capital': {'initial': 10000},
             'risk': {
-                'max_positions': 5,
-                'max_exposure_per_symbol': 0.15,
+                'max_positions': 20,  # config.yml과 동일
+                'max_exposure_per_symbol': 0.3,  # config.yml과 동일 (30%)
                 'max_drawdown_pct': 10.0,
                 'max_slippage_pct': 0.5,
                 'extreme_loss_cutoff_pct': -30.0,
@@ -184,7 +184,7 @@ class TestPR11RiskGuards:
         minimal_config = {
             'mode': 'paper',
             'capital': {'initial': 10000},
-            'risk': {'max_positions': 5, 'max_exposure_per_symbol': 0.15}
+            'risk': {'max_positions': 20, 'max_exposure_per_symbol': 0.3}
         }
         
         risk_manager = RiskManager(minimal_config)

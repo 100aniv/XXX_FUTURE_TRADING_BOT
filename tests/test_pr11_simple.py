@@ -24,13 +24,13 @@ def test_pr11_guards():
     """PR11 가드 기본 동작 테스트"""
     print("🧪 PR11 Risk Guards 테스트 시작...")
     
-    # 테스트용 config
+    # 테스트용 config (config.yml 기반)
     config = {
         'mode': 'paper',
         'capital': {'initial': 10000},
         'risk': {
-            'max_positions': 5,
-            'max_exposure_per_symbol': 0.15,
+            'max_positions': 20,  # config.yml과 동일
+            'max_exposure_per_symbol': 0.3,  # config.yml과 동일 (30%)
             'max_drawdown_pct': 10.0,  # 10%
             'max_slippage_pct': 0.5,   # 0.5%
             'extreme_loss_cutoff_pct': -30.0,  # -30%
@@ -116,8 +116,8 @@ def test_config_validation():
         'mode': 'paper',
         'capital': {'initial': 10000},
         'risk': {
-            'max_positions': 5,
-            'max_exposure_per_symbol': 0.15
+            'max_positions': 20,  # config.yml과 동일
+            'max_exposure_per_symbol': 0.3  # config.yml과 동일 (30%)
         }
     }
     
