@@ -27,8 +27,9 @@ from dataclasses import dataclass
 
 from core.interfaces import IDataSource, IStrategy, IRisk, IBroker, IMetrics
 from common.database import get_db_connection
+from common.logger import setup_logger
 
-logger = logging.getLogger(__name__)
+logger = setup_logger(__name__, log_type="application")
 
 
 @dataclass
