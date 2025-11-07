@@ -631,7 +631,7 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict):
                 active_pos_count = len(
                     active_positions
                 )  # 청산 후 포지션 수 (pop 이후 길이 사용)
-                max_pos = config.get("portfolio", {}).get("max_positions", 5)
+                max_pos = config.get("risk", {}).get("max_positions", 20)
 
                 # 포지션 번호 (청산되는 포지션)
                 position_number = position.get("position_number", 1)
@@ -1247,7 +1247,7 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict):
                 cash_before = max(0.0, current_equity - total_exposure_before)
                 cash_after = max(0.0, current_equity - total_exposure_after)
                 active_pos_count = len(active_positions)
-                max_pos = config.get("portfolio", {}).get("max_positions", 5)
+                max_pos = config.get("risk", {}).get("max_positions", 20)
 
                 # format_signal_alert 사용 (P2 최종 포맷)
                 msg = format_signal_alert(
