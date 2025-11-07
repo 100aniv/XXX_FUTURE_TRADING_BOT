@@ -557,6 +557,7 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict):
             risk.update_equity(new_equity)
             
             # ⭐ PR11: Drawdown Guard 체크
+            logger.debug(f"🔍 Drawdown Guard 체크: equity=${new_equity:,.2f}")
             if not risk.check_drawdown_guard(new_equity):
                 logger.error(f"🚨 Drawdown Guard 차단 - 시스템 정지")
                 break  # 메인 루프 종료
@@ -569,6 +570,7 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict):
             
             # ⭐ PR11: Extreme Loss Guard 체크
             pnl_pct = pnl / (position["entry"] * position["qty"]) if position["qty"] > 0 else 0
+            logger.debug(f"🔍 Extreme Loss Guard 체크: pnl_pct={pnl_pct*100:.2f}%")
             if not risk.check_extreme_loss_guard(pnl_pct):
                 logger.warning(f"⚠️  Extreme Loss Guard 경고 - 포지션: {position['symbol']}")
 
@@ -1151,6 +1153,7 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict):
             expected_price = decision.get("entry_price", decision.get("entry", 0))
             filled_price = fill.get("filled_price", 0)
             if expected_price > 0 and filled_price > 0:
+                logger.debug(f"🔍 Slippage Guard 체크: expected=${expected_price:.4f}, filled=${filled_price:.4f}")
                 if not risk.check_slippage_guard(expected_price, filled_price):
                     logger.error(f"🚨 Slippage Guard 차단 - 주문 취소: {candle_symbol}")
                     continue  # 이 주문 스킵
