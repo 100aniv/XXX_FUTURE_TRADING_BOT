@@ -23,7 +23,7 @@ class TestRegressionImports(unittest.TestCase):
             # engine.py의 import들이 정상 동작하는지 확인
             from monitoring.telemetry_profiler import start_monitoring
             from monitoring.performance_monitor import calculate_performance_scores
-            from monitoring import FlowGuardian, init_guardian
+            from monitoring import MonitoringFacade, init_monitoring
             print("✅ engine.py import 정상")
         except Exception as e:
             self.fail(f"❌ engine.py import 실패: {e}")

@@ -25,7 +25,7 @@ from common.messaging import (
     format_signal_alert,
 )
 from monitoring.telemetry_profiler import start_monitoring
-from monitoring import init_guardian
+from monitoring import init_monitoring
 from indicators import add_indicators
 from common.database import get_db_connection, save_signal_to_db
 from execution.position_sizer import PositionSizer
@@ -381,15 +381,15 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict):
                     portfolio.get_equity(),
                 )
 
-                # FlowGuardian 모니터링 훅
+                # MonitoringFacade 모니터링 훅
                 try:
-                    guardian = (
-                        init_guardian(config)
-                        if "guardian" not in locals()
-                        else guardian
+                    monitoring = (
+                        init_monitoring(config)
+                        if "monitoring" not in locals()
+                        else monitoring
                     )
-                    perf = guardian.sample_system()
-                    guardian.emit_event(
+                    perf = monitoring.sample_system()
+                    monitoring.emit_event(
                         {
                             "type": "system.performance",
                             "ts": current_time,
@@ -397,7 +397,7 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict):
                         }
                     )
                 except Exception as e:
-                    logger.debug(f"FlowGuardian 훅 실패: {e}")
+                    logger.debug(f"MonitoringFacade 훅 실패: {e}")
 
                 last_status_log = current_time
 

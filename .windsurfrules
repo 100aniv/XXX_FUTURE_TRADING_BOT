@@ -1,7 +1,9 @@
 [Objective]
 FlowGuardian(게이트) 모듈 추가.
 READY 플래그 없이는 PAPER/LIVE 실행 불가.
-새 파일/메서드 금지. 필요한 경우 interfaces.py 변경 PR 먼저 제안.
+새 파일/메서드 금지. 필요한 경우 interfaces.py 변경 PR 먼저 제안. 
+trading_bot_env 가상화 환경 유지.
+CI/CD 환경 구성을 위해 변경이 있을 때 마다 git commit.
 
 [Files You May Edit]
 - core/interfaces.py
@@ -25,30 +27,57 @@ READY 플래그 없이는 PAPER/LIVE 실행 불가.
 - tests/flow/test_flow_guardian.py 통과 필수
 - pre-commit(ruff, black, mypy, vulture, coverage>85%) 통과
 - logs/trial_0000.json 생성 보장
-- DB score_total == JSON score_total
+- DB.score_total == JSON.score_total 일치 검증
 
 [Refactor Workflow]
-리팩토링은 모듈 단위 PR로 진행하고, 다른 기능(게이트, DB, 튜닝)과 분리.
-변경 허용 파일 목록을 PR 본문에 명시. 비허용 파일 변경 불가.
+리팩토링은 모듈 단위 PR로 진행하며 게이트, DB, 튜닝과 분리.
+PR 본문에 허용 파일 목록 명시(목록 외 파일 변경 불가).
+
 [Documentation Sync]
-리팩토링 시 아래 문서 동기화 필수:
-REFACTORING_문서아키텍처.md
+Docs/PHASE6 문서 동기화 필수.
+게이트 기준/시나리오 영향 시 REFACTORING_flow_guardian_gate.md 갱신.
 
- 
- 해당 모듈 REFACTORING_*.mdㅇㄹㅇㄹㄹㄴㅇㅇㄴㄴㄹㄹ
-REFACTORING_database_v1.md (DB 영향 시)
-REFACTORING_tuning_v1.md (튜닝 영향 시)ㅋㅇㄴㄹㄴㄹㄴㅇ
-
-ㄴㅇ
-ㄹ
-
-REFACTORING_flow_guardian_gate.md (게이트 기준·시나리오 영향 시)
 [Testing & Acceptance]
 unit/contract/flow/gate/tuning 테스트 매트릭스 적용.
-게이트 수용 기준: tests/flow/test_flow_guardian.py 통과, logs/trial_0000.json 생성, DB score_total == JSON score_total.
-pre-commit(ruff, black, mypy, vulture, coverage>85%) 통과.
-[Docker Policy]ㅇㄹ
-WS/DB/Redis 경로 영향 시 PAPER 프로파일 기준 10분 스모크(선택 권장).
+게이트 수용 기준:
+1) tests/flow/test_flow_guardian.py 통과
+2) logs/trial_0000.json 생성
+3) DB.score_total == JSON.score_total 일치
+4) pre-commit(ruff, black, mypy, vulture, coverage>85%) 통과
+
+[Docker Policy]
+WS/DB/Redis 경로 영향 시 PAPER 프로파일 기준 10분 스모크 테스트 권장.
 순수 파이썬 내부 로직 변경은 로컬 테스트로 대체 가능.
+
 [Config Policy]
-설정은 config.yml 단일 소스. 모드 결정은 config.mode > ENV TRADING_MODE > paper.
+설정 단일 소스는 config.yml.
+모드 결정 우선순위: config.mode > ENV.TRADING_MODE > paper.
+
+[FlowGuardian Spec]
+- FlowGuardian.ready(): bool → READY 상태 판정
+- FlowGuardian.assert_ready(mode: Literal["paper","live"]) → 미준수 시 예외 발생
+- execution/engine.py 진입부에서 assert_ready 1회 호출 (중복 호출 금지)
+- READY 판정 근거:
+  · config.yml 유효성(필수 키 존재/타입 체크)
+  · DB·Redis 헬스체크(선택)
+  · 전략/튜닝 계약 불변 조건 일치
+  · 최근 테스트 타임스탬프 신선도 확인(옵션)
+
+[CI Enforcement]
+- 허용 파일 외 변경 시 CI 실패
+- 하드코딩 탐지(정규식: \b\d+(\.\d+)?\b, config 바인딩 없으면 실패)
+- READY 미호출 시 PAPER/LIVE 실행 테스트 실패
+- logs/trial_0000.json 미생성 시 실패
+- DB.score_total != JSON.score_total 시 실패
+- pre-commit 미통과 시 커밋 차단
+- CODEOWNERS에 core/interfaces.py, execution/engine.py는 게이트 승인자 필수
+
+[Checklist Before Commit]
+1) 현 구조 파악 완료 (연결 모듈·메서드·데이터 흐름 요약)
+2) 기존 모듈 재사용 여부 명시
+3) config.yml 키 추가 및 하드코딩 제거 여부 확인
+4) 공개 시그니처 변경 시 계약 영향 검토
+5) READY 기준 영향 여부 및 FlowGuardian 호출 위치 명시
+6) 테스트 4종 통과 증빙(log/test 결과) 확보
+7) 문서(Docs/PHASE6) 업데이트 위치 명시
+8) 실패 시 롤백 절차 명시

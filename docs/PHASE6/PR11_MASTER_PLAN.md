@@ -93,3 +93,9 @@
 
 ## 릴리즈 노트(Release Notes)
 - 리스크 가드 강화 및 자동 검증 도입. 전략 로직 변경 없음.
+- **⭐ MonitoringFacade 리팩토링** (2025-11-07 완료):
+  - monitoring/__init__.py: FlowGuardian → MonitoringFacade 네이밍 변경
+  - PHASE5 설계 준수: core/flow_guardian.py (게이트) vs monitoring (모니터링 Facade) 분리
+  - 하위 호환성: init_guardian/get_guardian deprecated (init_monitoring/get_monitoring 권장)
+  - 영향 파일: monitoring/__init__.py, execution/engine.py, tests/*.py (4개)
+  - 목적: 네이밍 충돌 해소 및 역할 명확화

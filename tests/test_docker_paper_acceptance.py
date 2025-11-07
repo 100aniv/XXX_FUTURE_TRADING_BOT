@@ -26,7 +26,7 @@ class TestDockerPaperAcceptance(unittest.TestCase):
     def test_01_monitoring_imports(self):
         """monitoring 패키지 import 테스트"""
         try:
-            from monitoring import FlowGuardian, init_guardian
+            from monitoring import MonitoringFacade, init_monitoring
             from monitoring.performance_monitor import (
                 calculate_performance_scores,
                 get_performance_report,

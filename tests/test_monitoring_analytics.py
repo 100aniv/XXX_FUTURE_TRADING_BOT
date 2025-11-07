@@ -23,7 +23,7 @@ class TestMonitoringAnalytics(unittest.TestCase):
     def test_01_import_monitoring(self):
         """monitoring 패키지 import 테스트"""
         try:
-            from monitoring import FlowGuardian, init_guardian
+            from monitoring import MonitoringFacade, init_monitoring
             from monitoring.performance_monitor import (
                 SystemPerformanceMonitor,
                 QueueHealth,
@@ -45,8 +45,8 @@ class TestMonitoringAnalytics(unittest.TestCase):
             self.fail(f"❌ analytics import 실패: {e}")
     
     def test_03_flowguardian_init(self):
-        """FlowGuardian 초기화 테스트"""
-        from monitoring import FlowGuardian
+        """MonitoringFacade 초기화 테스트"""
+        from monitoring import MonitoringFacade
         
         config = {
             "monitoring": {
@@ -62,18 +62,18 @@ class TestMonitoringAnalytics(unittest.TestCase):
             }
         }
         
-        guardian = FlowGuardian(config)
+        guardian = MonitoringFacade(config)
         self.assertTrue(guardian.enabled)
         self.assertEqual(guardian.sample_interval_sec, 10)
         print("✅ FlowGuardian 초기화 성공")
     
     def test_04_emit_event(self):
         """emit_event 동작 테스트"""
-        from monitoring import FlowGuardian
+        from monitoring import MonitoringFacade
         import time
         
         config = {"monitoring": {"flowguardian": {"enabled": True}}}
-        guardian = FlowGuardian(config)
+        guardian = MonitoringFacade(config)
         
         # 이벤트 발행
         guardian.emit_event({
@@ -89,10 +89,10 @@ class TestMonitoringAnalytics(unittest.TestCase):
     
     def test_05_sample_system(self):
         """sample_system 동작 테스트"""
-        from monitoring import FlowGuardian
+        from monitoring import MonitoringFacade
         
         config = {"monitoring": {"flowguardian": {"enabled": True}}}
-        guardian = FlowGuardian(config)
+        guardian = MonitoringFacade(config)
         
         # 시스템 샘플링
         perf = guardian.sample_system()
@@ -105,12 +105,12 @@ class TestMonitoringAnalytics(unittest.TestCase):
         print(f"✅ sample_system 동작 확인: {perf}")
     
     def test_06_snapshot(self):
-        """snapshot 스키마 검증"""
-        from monitoring import FlowGuardian
+        """스냅샷 스키마 검증"""
+        from monitoring import MonitoringFacade
         import time
         
         config = {"monitoring": {"flowguardian": {"enabled": True}}}
-        guardian = FlowGuardian(config)
+        guardian = MonitoringFacade(config)
         
         # 이벤트 발행
         guardian.emit_event({
@@ -143,7 +143,7 @@ class TestMonitoringAnalytics(unittest.TestCase):
     
     def test_07_alert_if_needed(self):
         """alert_if_needed 임계값 체크 테스트"""
-        from monitoring import FlowGuardian
+        from monitoring import MonitoringFacade
         import time
         
         config = {
@@ -158,7 +158,7 @@ class TestMonitoringAnalytics(unittest.TestCase):
                 }
             }
         }
-        guardian = FlowGuardian(config)
+        guardian = MonitoringFacade(config)
         
         # 높은 CPU 이벤트 발행
         guardian.emit_event({

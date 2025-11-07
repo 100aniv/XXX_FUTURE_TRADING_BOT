@@ -164,16 +164,16 @@ def test_flowguardian():
     print("5️⃣  FlowGuardian 이벤트 확인")
     print("="*60)
     try:
-        from monitoring import FlowGuardian, init_guardian
+        from monitoring import MonitoringFacade, init_monitoring
         from common.config_loader import load_config
         
         # config 로드
         config = load_config()
         print(f"✅ config 로드 성공")
         
-        # FlowGuardian 초기화
-        guardian = init_guardian(config)
-        print(f"✅ FlowGuardian 초기화 성공")
+        # MonitoringFacade 초기화
+        monitoring = init_monitoring(config)
+        print(f"✅ MonitoringFacade 초기화 성공")
         
         # 테스트 이벤트 emit
         test_event = {
@@ -181,12 +181,12 @@ def test_flowguardian():
             "ts": int(__import__('time').time()),
             "payload": {"message": "Phase 5 테스트"}
         }
-        guardian.emit_event(test_event)
-        print(f"✅ FlowGuardian 이벤트 emit 성공")
+        monitoring.emit_event(test_event)
+        print(f"✅ MonitoringFacade 이벤트 emit 성공")
         
         # 스냅샷 생성 테스트
-        snapshot = guardian.snapshot()
-        print(f"✅ FlowGuardian 스냅샷 생성 성공 (ts: {snapshot['ts']})")
+        snapshot = monitoring.snapshot()
+        print(f"✅ MonitoringFacade 스냅샷 생성 성공 (ts: {snapshot['ts']})")
         
         return True
     except Exception as e:

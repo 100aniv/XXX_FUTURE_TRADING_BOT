@@ -1,7 +1,7 @@
 """
 Monitoring Package - System Performance & Telemetry
 
-FlowGuardian Facade를 포함하여 시스템 성능, 연결 상태, 백필, 큐, 레이턴시 등을 모니터링합니다.
+MonitoringFacade를 포함하여 시스템 성능, 연결 상태, 백필, 큐, 레이턴시 등을 모니터링합니다.
 """
 
 from typing import Dict, Any
@@ -15,9 +15,9 @@ logger = logging.getLogger(__name__)
 # from .telemetry_profiler import TelemetryProfiler
 
 
-class FlowGuardian:
+class MonitoringFacade:
     """
-    FlowGuardian Facade - 모니터링 & 애널리틱스 통합 관문
+    MonitoringFacade - 모니터링 & 애널리틱스 통합 Facade (PHASE5 PR5)
     
     책임:
     - 이벤트 수집/분배 (emit_event)
@@ -54,7 +54,7 @@ class FlowGuardian:
         self.sinks = self.mon_cfg.get("sinks", ["log"])
         self.alerts = self.mon_cfg.get("alerts", {})
         
-        logger.info(f"✅ FlowGuardian 초기화: enabled={self.enabled}, sinks={self.sinks}")
+        logger.info(f"✅ MonitoringFacade 초기화: enabled={self.enabled}, sinks={self.sinks}")
     
     def emit_event(self, event: dict) -> None:
         """
@@ -87,7 +87,7 @@ class FlowGuardian:
         
         # 싱크 처리 (log, telegram, json, db)
         if "log" in self.sinks:
-            logger.debug(f"[FlowGuardian] {event_type}: {payload}")
+            logger.debug(f"[MonitoringFacade] {event_type}: {payload}")
     
     def sample_system(self) -> dict:
         """
@@ -154,7 +154,7 @@ class FlowGuardian:
             # from analytics.report_generator import generate_daily_report
             # report_path = generate_daily_report(kpis, ...)
             
-            logger.info("📊 [FlowGuardian] 일일 리포트 생성 (구현 예정)")
+            logger.info("📊 [MonitoringFacade] 일일 리포트 생성 (구현 예정)")
             return {"status": "pending", "report_path": None, "telegram_sent": False}
         except Exception as e:
             logger.error(f"❌ report_daily 실패: {e}")
@@ -168,7 +168,7 @@ class FlowGuardian:
             {status, report_path, telegram_sent}
         """
         try:
-            logger.info("📊 [FlowGuardian] 주간 리포트 생성 (구현 예정)")
+            logger.info("📊 [MonitoringFacade] 주간 리포트 생성 (구현 예정)")
             return {"status": "pending", "report_path": None, "telegram_sent": False}
         except Exception as e:
             logger.error(f"❌ report_weekly 실패: {e}")
@@ -234,20 +234,31 @@ class FlowGuardian:
 
 
 # 전역 인스턴스 (선택, engine에서 초기화 후 사용)
-_guardian_instance = None
+_monitoring_instance = None
 
-def get_guardian() -> FlowGuardian:
-    """전역 FlowGuardian 인스턴스 반환"""
-    global _guardian_instance
-    if _guardian_instance is None:
-        raise RuntimeError("FlowGuardian이 초기화되지 않았습니다. init_guardian(config)를 먼저 호출하세요.")
-    return _guardian_instance
+def get_monitoring() -> MonitoringFacade:
+    """전역 MonitoringFacade 인스턴스 반환"""
+    global _monitoring_instance
+    if _monitoring_instance is None:
+        raise RuntimeError("MonitoringFacade가 초기화되지 않았습니다. init_monitoring(config)를 먼저 호출하세요.")
+    return _monitoring_instance
 
-def init_guardian(config: dict) -> FlowGuardian:
-    """전역 FlowGuardian 초기화"""
-    global _guardian_instance
-    _guardian_instance = FlowGuardian(config)
-    return _guardian_instance
+def init_monitoring(config: dict) -> MonitoringFacade:
+    """전역 MonitoringFacade 초기화"""
+    global _monitoring_instance
+    _monitoring_instance = MonitoringFacade(config)
+    return _monitoring_instance
+
+# 하위 호환성 (deprecated)
+def init_guardian(config: dict) -> MonitoringFacade:
+    """@deprecated: init_monitoring() 사용 권장"""
+    logger.warning("⚠️ init_guardian()은 deprecated입니다. init_monitoring()을 사용하세요.")
+    return init_monitoring(config)
+
+def get_guardian() -> MonitoringFacade:
+    """@deprecated: get_monitoring() 사용 권장"""
+    logger.warning("⚠️ get_guardian()은 deprecated입니다. get_monitoring()을 사용하세요.")
+    return get_monitoring()
 
 
-__all__ = ["FlowGuardian", "get_guardian", "init_guardian"]
+__all__ = ["MonitoringFacade", "get_monitoring", "init_monitoring", "init_guardian", "get_guardian"]
