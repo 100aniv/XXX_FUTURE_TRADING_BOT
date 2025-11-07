@@ -745,35 +745,48 @@ class FlowGuardian:
             bool: READY 상태 (True=준비됨, False=미준비)
         """
         try:
+            logger.info("=" * 60)
+            logger.info("🔍 FlowGuardian READY 상태 검증 시작")
+            logger.info("=" * 60)
+            
             # 1) config.yml 필수 키 검증
+            logger.info("[1/4] config.yml 필수 키 검증 ...")
             required_keys = ["mode", "capital", "risk", "execution"]
             for key in required_keys:
                 if key not in self.config:
                     logger.error(f"❌ config.yml 필수 키 누락: {key}")
                     return False
+            logger.info("      ✅ config.yml 필수 키 검증 통과")
             
             # 2) DB 헬스체크 (선택)
             if self.gate_config.get("check_db", True):
+                logger.info("[2/4] DB 헬스체크 ...")
                 try:
                     with get_db_connection() as conn:
                         with conn.cursor() as cur:
                             cur.execute("SELECT 1")
                             cur.fetchone()
-                    logger.debug("✅ DB 헬스체크 통과")
+                    logger.info("      ✅ DB 헬스체크 통과")
                 except Exception as e:
                     logger.error(f"❌ DB 헬스체크 실패: {e}")
                     return False
+            else:
+                logger.info("[2/4] DB 헬스체크 스킵 (비활성화)")
             
-            # 3) 셀프테스트 실행 (간소화)
+            # 3) 셀프테스트 실행
+            logger.info("[3/4] 셀프테스트 실행 ...")
             if self.enabled:
                 result = self.run_selftest()
                 if not result.ready:
                     logger.error(f"❌ 셀프테스트 실패: {result.errors}")
                     return False
-                logger.debug("✅ 셀프테스트 통과")
+                logger.info("      ✅ 셀프테스트 통과")
+            else:
+                logger.warning("      ⚠️  셀프테스트 비활성화 (flow_guardian.enabled=false)")
             
             # 4) 최근 테스트 타임스탬프 확인 (옵션)
             if self.gate_config.get("check_freshness", False):
+                logger.info("[4/4] 테스트 타임스탬프 신선도 확인 ...")
                 trial_file = Path("logs/trial_0000.json")
                 if trial_file.exists():
                     import json
@@ -791,9 +804,13 @@ class FlowGuardian:
                         if age > max_age:
                             logger.error(f"❌ 테스트 타임스탬프 오래됨: {age} > {max_age}")
                             return False
-                        logger.debug(f"✅ 테스트 타임스탬프 신선: {age}")
+                        logger.info(f"      ✅ 테스트 타임스탬프 신선: {age} < {max_age}")
+            else:
+                logger.info("[4/4] 테스트 타임스탬프 확인 스킵")
             
+            logger.info("=" * 60)
             logger.info("🚀 FlowGuardian READY 상태 확인됨")
+            logger.info("=" * 60)
             return True
             
         except Exception as e:

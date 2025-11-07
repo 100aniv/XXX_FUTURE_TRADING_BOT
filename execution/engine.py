@@ -555,12 +555,22 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict):
             portfolio.update_equity(new_equity)
             sizer.update_equity(new_equity)
             risk.update_equity(new_equity)
+            
+            # ⭐ PR11: Drawdown Guard 체크
+            if not risk.check_drawdown_guard(new_equity):
+                logger.error(f"🚨 Drawdown Guard 차단 - 시스템 정지")
+                break  # 메인 루프 종료
 
             # Risk Manager 업데이트 (⭐ 저장된 position_value 사용)
             position_value = position.get(
                 "position_value", position["qty"] * position["entry"]
             )
             risk.update_daily_pnl(pnl)
+            
+            # ⭐ PR11: Extreme Loss Guard 체크
+            pnl_pct = pnl / (position["entry"] * position["qty"]) if position["qty"] > 0 else 0
+            if not risk.check_extreme_loss_guard(pnl_pct):
+                logger.warning(f"⚠️  Extreme Loss Guard 경고 - 포지션: {position['symbol']}")
 
             # ⭐ Portfolio Manager 업데이트 (포지션 제거)
             portfolio.remove_position(symbol=position["symbol"], position_id=pos_id)
@@ -1136,6 +1146,14 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict):
 
             # Risk Manager에도 등록 (⭐ candle_symbol 사용!)
             risk.add_position(candle_symbol, position_value)
+
+            # ⭐ PR11: Slippage Guard 체크
+            expected_price = decision.get("entry_price", decision.get("entry", 0))
+            filled_price = fill.get("filled_price", 0)
+            if expected_price > 0 and filled_price > 0:
+                if not risk.check_slippage_guard(expected_price, filled_price):
+                    logger.error(f"🚨 Slippage Guard 차단 - 주문 취소: {candle_symbol}")
+                    continue  # 이 주문 스킵
 
             # ⭐ Portfolio Manager에 포지션 추가
             portfolio.add_position(
