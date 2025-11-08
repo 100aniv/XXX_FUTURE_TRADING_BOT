@@ -31,9 +31,11 @@ class RiskManager:
     """
     리스크 관리 및 한도 체크
     (업계 표준: Daily loss limit + Position limits + Flash Guard)
+    
+    ⭐ PR12: PortfolioManager로 PnL 관리 통합, 가드 로직만 유지
     """
     
-    def __init__(self, config: dict):
+    def __init__(self, config: dict, portfolio=None):
         """
         Args:
             config: config.yml 전체 설정
@@ -104,8 +106,10 @@ class RiskManager:
         self.extreme_loss_cutoff_pct = get_value('extreme_loss_cutoff_pct', -30.0) / 100.0  # -30% 기본값
         logger.info(f"✅ 극단 손실 가드: {self.extreme_loss_cutoff_pct*100:.1f}% (PR10 -50% cutoff와 연계)")
         
+        # ⭐ PR12: 포트폴리오 참조 추가
+        self.portfolio = portfolio
+        
         # 현재 상태 (나중에 DB에서 읽기)
-        self.current_daily_loss = 0.0
         self.current_drawdown = 0.0  # 현재 낙폭
         self.peak_equity = self.equity  # 최고점 자본
         self.active_positions_count = 0
@@ -303,10 +307,11 @@ class RiskManager:
                 self.in_cooldown = False
         
         # 1) 일일 손실 한도 체크 (프로파일에 따라 ON/OFF)
-        if self.daily_loss_limit is not None:
-            if ((self.mode != 'backtest') or self.enforce_daily_loss_in_backtest) and abs(self.current_daily_loss) >= self.daily_loss_limit:
-                self._notify_guard(f"Daily loss limit hit: {self.current_daily_loss:.2f} ≥ {self.daily_loss_limit:.2f}")
-                return False, f"일일 손실 한도 초과: {self.current_daily_loss:.2f}"
+        if self.daily_loss_limit is not None and self.portfolio is not None:
+            daily_pnl = self.portfolio.get_daily_pnl()
+            if ((self.mode != 'backtest') or self.enforce_daily_loss_in_backtest) and abs(daily_pnl) >= self.daily_loss_limit:
+                self._notify_guard(f"Daily loss limit hit: {daily_pnl:.2f} ≥ {self.daily_loss_limit:.2f}")
+                return False, f"일일 손실 한도 초과: {daily_pnl:.2f}"
         
         # 1-1) 전체 자산 중지 한도 (equity stop)
         if self.equity_stop_limit is not None:
@@ -342,10 +347,8 @@ class RiskManager:
         # 모든 체크 통과
         return True, "OK"
     
-    def update_daily_pnl(self, pnl: float):
-        """일일 PnL 업데이트 + 연속 손실 추적"""
-        self.current_daily_loss += pnl
-        
+    def update_consecutive_losses(self, pnl: float):
+        """PnL에 따른 연속 손실 추적 (쿨다운 관리)"""
         # ⭐ TUNING_VIBLE: 연속 손실 추적 (프로파일에 따라 ON/OFF)
         if self.max_consecutive_losses is not None:
             if pnl < 0:
@@ -364,16 +367,6 @@ class RiskManager:
                     logger.info(f"✅ 연속 손실 리셋 ({self.consecutive_losses}회 → 0회)")
                 self.consecutive_losses = 0
                 self.in_cooldown = False
-        
-        # 로그 출력 (한도가 있을 때만)
-        if self.daily_loss_limit is not None:
-            logger.info(f"📊 RiskManager: Daily PnL = {self.current_daily_loss:.2f} / {self.daily_loss_limit:.2f}")
-        else:
-            logger.debug(f"📊 RiskManager: Daily PnL = {self.current_daily_loss:.2f} (한도 OFF)")
-    
-    def get_daily_pnl(self) -> float:
-        """일일 누적 PnL 반환"""
-        return self.current_daily_loss
     
     def add_position(self, symbol: str, position_value: float):
         """포지션 추가"""
@@ -388,12 +381,31 @@ class RiskManager:
             self.symbol_exposures[symbol] = max(0.0, self.symbol_exposures[symbol] - position_value)
         logger.info(f"➖ 포지션 제거: {symbol}, 남은 {self.active_positions_count}개")
     
-    def reset_daily(self):
-        """일일 리셋 (자정)"""
-        self.current_daily_loss = 0.0
+    def reset_consecutive_losses(self):
+        """연속 손실 리셋 (PR12: daily PnL은 portfolio로 이동)"""
         self.consecutive_losses = 0
         self.in_cooldown = False
-        logger.info("📅 RiskManager 일일 리셋")
+        logger.info("📅 RiskManager 연속 손실 리셋")
+    
+    def check_daily_loss_limit(self) -> bool:
+        """
+        일일 손실 한도 (포트폴리오에서 PnL 가져옴)
+        
+        Returns:
+            bool: True=허용, False=차단
+        """
+        # 포트폴리오에서 daily_pnl 가져오기
+        if self.portfolio is None or self.daily_loss_limit is None:
+            return True
+            
+        daily_pnl = self.portfolio.get_daily_pnl()
+        
+        if self.daily_loss_limit and daily_pnl < -self.daily_loss_limit:
+            logger.error(f"🚨 일일 손실 한도: ${daily_pnl:,.2f} < -${self.daily_loss_limit:,.2f}")
+            self._notify_guard(f"Daily loss limit: {daily_pnl:,.2f} < -{self.daily_loss_limit:,.2f}")
+            return False
+            
+        return True
     
     def reset_cooldown(self):
         """쿨다운 수동 리셋 (관리자 개입용)"""
@@ -411,6 +423,9 @@ class RiskManager:
         Returns:
             bool: True=허용, False=차단
         """
+        # ⭐ PR12: 포트폴리오에서 initial_equity 가져오기
+        initial_equity = self.portfolio.initial_equity if self.portfolio else self.initial_equity
+        
         # 최고점 업데이트
         if current_equity > self.peak_equity:
             self.peak_equity = current_equity
