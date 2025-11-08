@@ -215,6 +215,15 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict):
     # 백테스트도 PostgreSQL 사용 (trial_id로 구분)
     if mode == "backtest":
         logger.info("✅ 백테스트 모드: PostgreSQL trading.trades 사용")
+    
+    # ⭐ PR12: Live 모드에서 자산 동기화 실행
+    if mode == "live":
+        try:
+            logger.info("🔍 거래소 자산과 동기화 시도 (Live 모드)")
+            portfolio.sync_equity_with_broker(broker)
+            logger.info(f"✅ 현재 자산: ${portfolio.get_equity():,.2f} USDT")
+        except Exception as e:
+            logger.warning(f"⚠️ 자산 동기화 실패 (무시하고 계속): {e}")
 
     logger.info("=" * 80)
     logger.info(f"🚀 Trading Engine 시작: Symbol={symbol}, Timeframe={timeframe}")
