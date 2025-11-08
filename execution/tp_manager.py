@@ -16,6 +16,7 @@ TP 분할:
 """
 from typing import Dict, Optional, Tuple
 from common.logger import setup_logger
+from common.calculations import round_tick  # ⭐ PR12: 동적 반올림
 
 logger = setup_logger(__name__)
 
@@ -49,9 +50,10 @@ class TPManager:
         logger.info(f"✅ TPManager 초기화: TP 레벨={self.tp_levels}, 트레일링={self.trail_type}×{self.trail_k}, BE 이동={self.be_at_r}R")
     
     def calculate_tp_levels(self, entry: float, stop: float, side: str, 
-                           atr: float = None, volatility_regime: str = None) -> Dict[str, float]:
+                           atr: float = None, volatility_regime: str = None,
+                           symbol: str = "BTCUSDT") -> Dict[str, float]:
         """
-        TP 레벨 계산 (⭐ PR8 Phase2: 변동성 레짐 반영)
+        TP 레벨 계산 (⭐ PR12: 동적 반올림 적용)
         
         Args:
             entry: 진입가
@@ -59,6 +61,7 @@ class TPManager:
             side: LONG/SHORT
             atr: ATR 값 (트레일링용)
             volatility_regime: 'low_vol', 'neutral', 'high_vol' (선택)
+            symbol: 거래 심볼 (⭐ PR12: 반올림용)
         
         Returns:
             {'tp1': price, 'tp2': price, 'trail': price, 'be': price}
@@ -80,28 +83,36 @@ class TPManager:
         
         result = {}
         
-        # TP 레벨 계산 (조정된 1R 사용)
+        # TP 레벨 계산 (조정된 1R 사용) + ⭐ PR12: 동적 반올림
         for level in self.tp_levels:
             r_mult = level['r_multiple']
             key = f"tp{int(r_mult)}"
             
             if side == 'LONG':
-                result[key] = entry + (adjusted_one_r * r_mult)
+                price = entry + (adjusted_one_r * r_mult)
             else:
-                result[key] = entry - (adjusted_one_r * r_mult)
+                price = entry - (adjusted_one_r * r_mult)
+            
+            # ⭐ PR12: Binance tick_size에 맞게 반올림
+            result[key] = round_tick(symbol, price)
         
-        # BE (Break Even) 가격
+        # BE (Break Even) 가격 + ⭐ PR12: 동적 반올림
         if side == 'LONG':
-            result['be'] = entry + (adjusted_one_r * self.be_at_r)
+            be_price = entry + (adjusted_one_r * self.be_at_r)
         else:
-            result['be'] = entry - (adjusted_one_r * self.be_at_r)
+            be_price = entry - (adjusted_one_r * self.be_at_r)
         
-        # 초기 트레일링 가격 (ATR 기반)
+        result['be'] = round_tick(symbol, be_price)
+        
+        # 초기 트레일링 가격 (ATR 기반) + ⭐ PR12: 동적 반올림
         if atr and self.trail_type == 'atr':
             if side == 'LONG':
-                result['trail'] = entry - (atr * self.trail_k)
+                trail_price = entry - (atr * self.trail_k)
             else:
-                result['trail'] = entry + (atr * self.trail_k)
+                trail_price = entry + (atr * self.trail_k)
+            
+            # ⭐ PR12: Binance tick_size에 맞게 반올림
+            result['trail'] = round_tick(symbol, trail_price)
         
         # 메타데이터 추가
         result['_meta'] = {
