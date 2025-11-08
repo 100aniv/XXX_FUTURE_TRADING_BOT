@@ -124,10 +124,11 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict):
 
     redis_ttl = redis_config.get("ttl_seconds", 3600)
 
-    # Position Sizer & Risk Manager & Portfolio Manager (config 전달)
+    # Position Sizer & Portfolio Manager & Risk Manager (config 전달)
+    # ⭐ PR12: 순서 변경 - portfolio를 먼저 초기화하고 risk에 전달
     sizer = PositionSizer(config)
-    risk = RiskManager(config)
-    portfolio = PortfolioManager(config)  # ⭐ 포트폴리오 매니저 추가
+    portfolio = PortfolioManager(config)
+    risk = RiskManager(config, portfolio=portfolio)  # ⭐ PR12: 포트폴리오 참조 추가
     tracker = PositionTracker(config)  # ⭐ TUNING_VIBLE TP 분할 지원
 
     # ⭐⭐⭐ SignalGenerator 초기화: config.merge_strategy_config 사용 ⭐⭐⭐
@@ -354,6 +355,9 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict):
 
     # ⭐ 메인 루프
     for candle in feed.stream():
+        # ⭐ PR12: 일일 PnL 자동 리셋 체크 (자정 00:00)
+        portfolio.check_and_reset_daily()
+        
         candle_count += 1
 
         # 백테스트: 진행률 로깅 (매 1000캔들마다)
@@ -551,24 +555,28 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict):
                 leverage=position.get("lev", 1),
             )
 
-            # ⭐⭐⭐ 복리 자본 관리: 자본 업데이트 (ROOT_CAUSE_ANALYSIS.md)
-            new_equity = portfolio.get_equity() + pnl
-            portfolio.update_equity(new_equity)
-            sizer.update_equity(new_equity)
-            risk.update_equity(new_equity)
+            # ⭐ PR12: PnL 업데이트 단일화 (포트폴리오로 통합)
+            portfolio.update_equity(pnl=pnl)  # 포트폴리오만 업데이트
+            current_equity = portfolio.get_equity()
+            
+            # 다른 모듈에 equity 참조 전달
+            sizer.update_equity(current_equity)
+            risk.update_equity(current_equity)
             
             # ⭐ PR11: Drawdown Guard 체크
-            logger.info(f"🔍 Drawdown Guard 체크: equity=${new_equity:,.2f}")
-            if not risk.check_drawdown_guard(new_equity):
-                logger.error(f"🚨 Drawdown Guard 차단 - 시스템 정지")
+            logger.info(f"🔍 Drawdown Guard 체크: equity=${current_equity:,.2f}")
+            if not risk.check_drawdown_guard(current_equity):
+                logger.error(f"🔴 Drawdown Guard 차단 - 시스템 정지")
                 drawdown_guard_triggered = True
                 break  # 포지션 청산 루프 종료
 
-            # Risk Manager 업데이트 (⭐ 저장된 position_value 사용)
+            # ⭐ PR12: 연속 손실 추적 (리스크 관리자에서)
+            risk.update_consecutive_losses(pnl)
+            
+            # 포지션 값 계산 (저장된 position_value 사용)
             position_value = position.get(
                 "position_value", position["qty"] * position["entry"]
             )
-            risk.update_daily_pnl(pnl)
             
             # ⭐ PR11: Extreme Loss Guard 체크
             pnl_pct = pnl / (position["entry"] * position["qty"]) if position["qty"] > 0 else 0
@@ -618,9 +626,9 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict):
                 slippage = position.get("slippage", 0.0)
                 fee = position.get("fee", 0.0)
 
-                # 일일 누적 PnL (risk manager에서 추출)
+                # ⭐ PR12: 일일 누적 PnL (포트폴리오에서 추출)
                 daily_pnl = (
-                    risk.get_daily_pnl() if hasattr(risk, "get_daily_pnl") else 0.0
+                    portfolio.get_daily_pnl() if hasattr(portfolio, "get_daily_pnl") else 0.0
                 )
 
                 # 포트폴리오 정보 (청산 전/후)
@@ -683,7 +691,7 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict):
 
         # ⭐ PR11: Drawdown Guard 체크 (메인 루프 종료)
         if drawdown_guard_triggered:
-            logger.error(f"🚨 Drawdown Guard 트리거됨 - 메인 루프 종료")
+            logger.error(f"🔴 Drawdown Guard 트리거됨 - 메인 루프 종료")
             break  # 메인 루프 종료
 
         # ⭐ [새 코드] SignalGenerator 활용 (MTF, 쿨다운, 거래량 필터 포함)
