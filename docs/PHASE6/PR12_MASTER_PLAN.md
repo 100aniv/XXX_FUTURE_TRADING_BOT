@@ -129,15 +129,16 @@
    - [ ] A/B 비교 하니스
 
 ### Phase 3: 바이낸스 API 파리티 검증
- - [x] **⭐ Paper/Live 파리티 체크**
-   - [x] TP/SL 계산 로직 100% 동일 검증
-   - [x] 반올림 규칙 100% 동일 검증
-   - [x] 펀딩 계산 100% 동일 검증
-   - [x] Broker 계층 분리 확인
- - [x] **⭐ PR10/PR11 호환성 검증**
-   - [x] PR10 바이낸스 파라미터 충돌 없음
-   - [x] PR11 리스크 가드 상호작용 확인
-   - [x] config.yml 단일 소스 원칙 준수
+ - [ ] **⭐ Paper/Live 파리티 체크** (Paper 모드 테스트 후 검증)
+   - [x] TP/SL 계산 로직 100% 동일 검증 (단위 테스트)
+   - [x] 반올림 규칙 100% 동일 검증 (단위 테스트)
+   - [x] 펀딩 계산 100% 동일 검증 (단위 테스트)
+   - [ ] Paper 모드 실제 운영 테스트 (30분)
+   - [ ] Broker 계층 분리 확인 (실제 환경)
+ - [ ] **⭐ PR10/PR11 호환성 검증** (Paper 모드 테스트 후 검증)
+   - [ ] PR10 바이낸스 파라미터 충돌 없음
+   - [ ] PR11 리스크 가드 상호작용 확인
+   - [ ] config.yml 단일 소스 원칙 준수
  - [ ] **⭐ Bug #8 개선 검증**
    - [ ] A/B 하니스 연결
    - [ ] TP hit rate 관찰
@@ -219,3 +220,13 @@
 ### 문서/연계
 - PR13과 연계: PR13에서 `ensemble.min_confidence`/`portfolio.budget_per_strategy` 등 파라미터 튜닝
 - PR10/PR11과 충돌 없음(전략 로직/리스크 가드 불변)
+
+---
+
+## 오류 수정 항목(Fix Log)
+- 발생 일시 | 증상 | 원인 | 수정 내역 | 재발 방지(테스트/가드)
+- **2025-11-08 13:30** | ✅ PR12 동적 반올림 및 펀딩 연동 구현 완료 | N/A | get_exchange_info(), round_tick(), get_funding_rate(), calculate_funding_fee() 함수 추가, Binance API 연동, 캐시 메커니즘 (exchangeInfo 1시간, fundingRate 5분) | 단위 테스트 통과, Paper/Live 파리티 검증 대기
+- **2025-11-08 13:30** | ✅ TP/SL 가격 반올림 적용 완료 | N/A | tp_manager.py calculate_tp_levels()에 symbol 파라미터 추가, TP1/TP2/BE/Trailing 가격에 round_tick() 적용 | 단위 테스트 통과, 실제 환경 테스트 대기
+- **2025-11-08 13:30** | ✅ 포트폴리오 가드 구현 완료 | N/A | portfolio_manager.py에 calculate_strategy_budget(), check_correlation_guard() 추가, can_open_position()에 전략별 예산 및 상관관계 체크 통합 | 단위 테스트 통과, 실제 환경 테스트 대기
+
+**Paper 모드 테스트 대기 중** - 실제 운영 환경에서 발견되는 문제는 아래에 추가 예정
