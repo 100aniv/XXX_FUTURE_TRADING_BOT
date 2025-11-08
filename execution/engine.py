@@ -57,8 +57,9 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict):
         ensemble_module: ensemble 모듈 (None이면 첫 신호 사용)
         config: 설정 dict
     """
-    logger.info("🔍 [ENGINE DEBUG] run() 함수 시작")
-    logger.info(f"🔍 [ENGINE DEBUG] config mode: {config.get('mode', 'unknown')}")
+    logger.info("🚨 [ENGINE CRITICAL] run() 함수 시작 - 성공적으로 도달!")
+    logger.info(f"🚨 [ENGINE CRITICAL] config mode: {config.get('mode', 'unknown')}")
+    logger.info(f"🚨 [ENGINE CRITICAL] feed 타입: {type(feed).__name__}")
     
     # ⭐ WebSocket 생성 및 시작 (main()에서 지연된 처리)
     if hasattr(feed, 'create_actual_websocket'):

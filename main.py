@@ -140,11 +140,21 @@ def main():
             pass
     
     # ⭐ 공통 실행 (모드 무관)
-    logger.info("🔍 [MAIN DEBUG] engine.run() 호출 직전")
+    logger.info("🚨 [CRITICAL] main() → engine.run() 호출 직전")
+    logger.info(f"🚨 [CRITICAL] feed 타입: {type(feed).__name__}")
+    logger.info(f"🚨 [CRITICAL] feed 속성: {dir(feed)}")
+    
     from execution import engine
-    logger.info("🔍 [MAIN DEBUG] engine 모듈 임포트 완료")
-    engine.run(feed, broker, clock, strategies, ensemble if use_ensemble else None, config)
-    logger.info("🔍 [MAIN DEBUG] engine.run() 호출 완료")
+    logger.info("🚨 [CRITICAL] engine 모듈 임포트 완료")
+    
+    try:
+        engine.run(feed, broker, clock, strategies, ensemble if use_ensemble else None, config)
+        logger.info("🚨 [CRITICAL] engine.run() 정상 완료")
+    except Exception as e:
+        logger.error(f"🚨 [CRITICAL] engine.run() 실행 실패: {e}")
+        import traceback
+        logger.error(f"🚨 [CRITICAL] 스택트레이스: {traceback.format_exc()}")
+        raise
 
 
 if __name__ == "__main__":

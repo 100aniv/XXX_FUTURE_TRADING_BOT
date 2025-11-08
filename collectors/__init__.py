@@ -10,14 +10,15 @@ Collectors Module
 - rest_collector: Binance REST API
 """
 from .historical_collector import HistoricalFeed, MultiSymbolHistoricalFeed, load_historical_data
-from .websocket_collector import WebSocketCollector
+# ⚠️ WebSocketCollector 즉시 임포트 방지 - engine.run()에서 지연 로드
+# from .websocket_collector import WebSocketCollector  # 🚫 즉시 임포트 금지
 from .rest_collector import fetch_history, fetch_all_symbols, fetch_ticker_24h
 
 __all__ = [
     'HistoricalFeed',
-    'MultiSymbolHistoricalFeed',
+    'MultiSymbolHistoricalFeed', 
     'load_historical_data',
-    'WebSocketCollector',
+    # 'WebSocketCollector',  # 🚫 지연 로드로 변경
     'fetch_history',
     'fetch_all_symbols',
     'fetch_ticker_24h'

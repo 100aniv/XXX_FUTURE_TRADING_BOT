@@ -17,7 +17,9 @@ from pathlib import Path
 
 from .brokers import SimBroker, PaperBroker, LiveBroker
 from .clocks import SimClock, LiveClock
-from collectors import fetch_history, WebSocketCollector
+from collectors import fetch_history
+# ⚠️ WebSocketCollector 임포트를 지연시켜 즉시 활성화 방지
+# from collectors import WebSocketCollector  # 🚫 즉시 임포트 금지
 
 __all__ = [
     'SimBroker', 'PaperBroker', 'LiveBroker',
