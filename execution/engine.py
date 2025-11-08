@@ -60,12 +60,21 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict):
     logger.info("🔍 [ENGINE DEBUG] run() 함수 시작")
     logger.info(f"🔍 [ENGINE DEBUG] config mode: {config.get('mode', 'unknown')}")
     
-    # ⭐ WebSocket 시작 (main()에서 지연된 시작 처리)
-    if hasattr(feed, 'start'):
-        logger.info("🔗 WebSocket 시작 (engine.run()에서 처리)")
-        feed.start()
+    # ⭐ WebSocket 생성 및 시작 (main()에서 지연된 처리)
+    if hasattr(feed, 'create_actual_websocket'):
+        logger.info("🔗 WebSocket 생성 및 시작 (engine.run()에서 처리)")
+        actual_feed = feed.create_actual_websocket()
+        actual_feed.start()
         import time
         time.sleep(2)  # WebSocket 연결 안정화 대기
+        logger.info("✅ WebSocket 시작 완료")
+        # 실제 feed로 교체
+        feed = actual_feed
+    elif hasattr(feed, 'start'):
+        logger.info("🔗 일반 WebSocket 시작")
+        feed.start()
+        import time
+        time.sleep(2)
         logger.info("✅ WebSocket 시작 완료")
     
     # ⭐ PR11: FlowGuardian 게이트 (.windsurfrules 준수)

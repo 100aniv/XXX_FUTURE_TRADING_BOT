@@ -13,11 +13,16 @@
 - [PR12_ENSEMBLE_ANALYSIS.md](./PR12_ENSEMBLE_ANALYSIS.md): **⚠️ 앙상블 로직 분석** - 현재 유효하나 Paper/Live 현실 미반영
 - [PR12_PORTFOLIO_REFACTORING.md](./PR12_PORTFOLIO_REFACTORING.md): **⚠️ 포트폴리오 문제 분석** - 분석 내용은 유효
 
-### ❌ **사용 금지 (허위/과거 정보)**
-- [PR12_TEST_REPORT.md](./PR12_TEST_REPORT.md): **❌ 허위 성공 보고** - 실제는 전면 실패
-- [PR12_FINAL_TEST_PLAN.md](./PR12_FINAL_TEST_PLAN.md): **❌ 존재하지 않는 성공** - 테스트 자체 무효
-- [PR12_LIVE_TEST.md](./PR12_LIVE_TEST.md): **❌ 작동하지 않는 가이드** - Live 모드 미작동
-- [PR12_BINANCE_PARITY_CHECK.md](./PR12_BINANCE_PARITY_CHECK.md): **❌ 파리티 완전 실패** - 0% 준수
+### 🗑️ **삭제된 허위 문서들**
+- ~~PR12_TEST_REPORT.md~~: **삭제됨** - 허위 성공 보고로 인한 제거
+- ~~PR12_FINAL_TEST_PLAN.md~~: **삭제됨** - 존재하지 않는 성공 계획으로 인한 제거  
+- ~~PR12_LIVE_TEST.md~~: **삭제됨** - 작동하지 않는 Live 모드 가이드로 인한 제거
+- ~~PR12_BINANCE_PARITY_CHECK.md~~: **삭제됨** - 0% 준수 파리티로 인한 제거
+
+### 🚨 **엄격한 검증 원칙**
+- **허위 보고 금지**: 실제 작동 검증 없는 "✅ 완료" 표시 절대 금지
+- **로그 기반 검증**: 모든 성공은 실제 로그로 입증 필수
+- **단계별 확인**: 각 Phase별 실제 동작 확인 후 다음 단계 진행
 
 ## 🚨 **현재 상황: 전면 재구현 필요**
 
