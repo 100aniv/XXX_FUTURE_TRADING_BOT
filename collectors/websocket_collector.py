@@ -21,7 +21,7 @@ from common.utils import make_streams, parse_timeframe_ms
 from common.redis_client import RedisClient
 from monitoring.performance_monitor import backfill_stats, connection_stats
 try:
-    from monitoring import get_guardian
+    from monitoring import get_monitoring
     GUARDIAN_AVAILABLE = True
 except ImportError:
     GUARDIAN_AVAILABLE = False
@@ -312,7 +312,7 @@ class WebSocketCollector:
             
             # FlowGuardian 이벤트 발행
             if GUARDIAN_AVAILABLE:
-                guardian = get_guardian()
+                guardian = get_monitoring()
                 guardian.emit_event({
                     "type": "queue.health",
                     "ts": time.time(),
@@ -345,7 +345,7 @@ class WebSocketCollector:
         # FlowGuardian 훅
         if GUARDIAN_AVAILABLE:
             try:
-                guardian = get_guardian()
+                guardian = get_monitoring()
                 guardian.emit_event({"type": "ws.connection", "ts": time.time(), "payload": {"connected": False, "reason": reason}})
             except Exception:
                 pass
@@ -385,7 +385,7 @@ class WebSocketCollector:
         # FlowGuardian 훅
         if GUARDIAN_AVAILABLE:
             try:
-                guardian = get_guardian()
+                guardian = get_monitoring()
                 guardian.emit_event({"type": "ws.connection", "ts": time.time(), "payload": {"connected": True}})
             except Exception:
                 pass
