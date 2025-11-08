@@ -33,6 +33,7 @@ def main():
     """메인 함수"""
     # 설정 로드
     CFG = load_config()
+    logger.info("🚨🚨🚨 [FORCE DEBUG] main() 함수 시작됨")
     logger.info("✅ config.yml 로드 완료")
     
     # ⭐ config.yml에서 mode 읽기 (환경변수보다 우선)
@@ -139,8 +140,11 @@ def main():
             pass
     
     # ⭐ 공통 실행 (모드 무관)
+    logger.info("🔍 [MAIN DEBUG] engine.run() 호출 직전")
     from execution import engine
+    logger.info("🔍 [MAIN DEBUG] engine 모듈 임포트 완료")
     engine.run(feed, broker, clock, strategies, ensemble if use_ensemble else None, config)
+    logger.info("🔍 [MAIN DEBUG] engine.run() 호출 완료")
 
 
 if __name__ == "__main__":

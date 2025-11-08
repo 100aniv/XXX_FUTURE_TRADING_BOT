@@ -57,6 +57,8 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict):
         ensemble_module: ensemble 모듈 (None이면 첫 신호 사용)
         config: 설정 dict
     """
+    logger.info("🔍 [ENGINE DEBUG] run() 함수 시작")
+    logger.info(f"🔍 [ENGINE DEBUG] config mode: {config.get('mode', 'unknown')}")
     # ⭐ PR11: FlowGuardian 게이트 (.windsurfrules 준수)
     # READY 플래그 없이는 PAPER/LIVE 실행 불가
     mode = config.get("mode", "paper")
@@ -260,10 +262,12 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict):
     active_positions = {}
 
     # ⭐⭐⭐ Paper/Live 모드 분기 (디버깅 로그 추가)
-    logger.info(f"🔍 [DEBUG] 포지션 복원 모드: {mode}")
+    logger.info(f"🔍 [CRITICAL DEBUG] 포지션 복원 모드: {mode}")
+    logger.info(f"🔍 [CRITICAL DEBUG] 현재 시각: {time.time()}")
     
     # ⭐⭐⭐ Paper 모드: DB에서 OPEN 포지션 복원
     if mode == "paper":
+        logger.info(f"🔍 [CRITICAL DEBUG] Paper 모드 분기 진입")
         try:
             with get_db_connection() as conn:
                 with conn.cursor() as cur:
@@ -336,8 +340,10 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict):
     
     # ⭐⭐⭐ Live 모드: Binance API에서 실제 포지션 조회 및 동기화
     elif mode == "live":
+        logger.info(f"🔍 [CRITICAL DEBUG] Live 모드 분기 진입")
         try:
             logger.info("🔍 [LIVE] Binance API에서 실제 포지션 조회 중...")
+            logger.info("🔍 [CRITICAL DEBUG] broker.get_positions() 호출 직전")
             positions_result = broker.get_positions()
             
             if positions_result.get('success') and positions_result.get('positions'):

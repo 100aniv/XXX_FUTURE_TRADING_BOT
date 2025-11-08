@@ -9,18 +9,41 @@
 - [PR12_PORTFOLIO_REFACTORING.md](./PR12_PORTFOLIO_REFACTORING.md): **포트폴리오 리팩토링** - 자산 관리 및 PnL 추적 통합
 - [PR12_BINANCE_PARITY_CHECK.md](./PR12_BINANCE_PARITY_CHECK.md): **바이낸스 API 파리티 검증** - 동일한 로직 가동 여부
 
+## 🚨 **긴급 상황: PR12 완전 재시작 필요**
+
+### 현재 문제점
+- ❌ **Live 모드 Binance API 포지션 조회 미실행**: 상용 프로그램 핵심 기능 누락
+- ❌ **PR10 구조 0% 준수**: Paper(DB)/Live(API) 분리 완전 실패
+- ❌ **아키텍처 설계 오류**: 데이터 피드 루프가 engine.run() 호출 차단
+
+### 재구현 방향
+PR10_PAPER_VS_LIVE_STRUCTURE.md 구조를 100% 준수하여 완전 재구현
+
 ## 배경/의도(Overview)
-상용화 마감 단계로서, 동적 가격 레벨/거래소 스펙 반영/펀딩 연동/포트폴리오 예산·상관 제어/운영 모니터링 최소치를 구현합니다. Paper 모드 검증 후 Live 모드 소액 테스트까지 PR12 범위에 포함됩니다.
+**PHASE6 최우선 목표**: PR10 구조 기반 올바른 Paper/Live 모드 구현
+- Paper 모드: DB에서 가상 포지션 복원
+- Live 모드: Binance API에서 실제 포지션 조회
+- 상용 프로그램 기준 100% 준수
 
 
-## 목표(Goals)
- - TP/SL 레벨의 고급화(price_levels_advanced)
- - 거래소 tick_size/step_size 기반 동적 반올림
- - funding_rate 연동(적용 지점에 한해)
- - 전략별 예산 배분 및 상관(상관관계) 가드
- - 운영 최소 대시보드/메트릭/알림
- - Bug #8: 구조적 완화로 실현 승률/체결률 개선(A/B 측정)
- - ✨ 시스템 종료 시 텔레그램 알림(실패 완화)
+## 목표(Goals) - 우선순위 재정립
+
+### 🥇 **1순위: Paper/Live 모드 올바른 구현 (CRITICAL)**
+- ✅ **Paper 모드**: DB에서 가상 포지션 복원 후 거래 시작
+- ✅ **Live 모드**: Binance API에서 실제 포지션 조회 후 거래 시작  
+- ✅ **로직 파리티**: 전략 로직 100% 동일, 실행 계층만 분리
+- ✅ **상용 프로그램 기준**: 업계 표준 아키텍처 준수
+
+### 🥈 **2순위: 운영 안정성 (HIGH)**
+- 동적 반올림: 거래소 tick_size/step_size 기반
+- 포트폴리오 예산 배분 및 가드
+- 시스템 종료 시 텔레그램 알림
+
+### 🥉 **3순위: 고급 기능 (MEDIUM)**
+- TP/SL 레벨의 고급화
+- funding_rate 연동
+- Bug #8 구조적 완화
+- 운영 대시보드/메트릭
 
 ## 범위(Scope, In)
  - TPManager: 레짐 인지 S/R, 최근 고저가 반영
