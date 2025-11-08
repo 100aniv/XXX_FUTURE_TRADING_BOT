@@ -259,13 +259,12 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict):
     # 활성 포지션 dict {position_id: position_info}
     active_positions = {}
 
-    # ⭐⭐⭐ 페이퍼/라이브 모드: DB에서 OPEN 포지션 복원
-    # ⚠️ PR12: Paper/Live 모드 완전 분리 - mode 필터 사용
-    if mode in ["paper", "live"]:
+    # ⭐⭐⭐ Paper 모드: DB에서 OPEN 포지션 복원
+    if mode == "paper":
         try:
             with get_db_connection() as conn:
                 with conn.cursor() as cur:
-                    # ⭐ PR12: mode 필터로 Paper/Live 포지션 완전 분리
+                    # Paper 모드는 DB에서 가상 포지션 복원
                     cur.execute(
                         """
                         SELECT trade_id, symbol, strategy_id, side, 
@@ -331,6 +330,57 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict):
                         logger.info("✅ TP 레벨 재생성 완료")
         except Exception as e:
             logger.error(f"❌ OPEN 포지션 복원 실패: {e}")
+    
+    # ⭐⭐⭐ Live 모드: Binance API에서 실제 포지션 조회 및 동기화
+    elif mode == "live":
+        try:
+            logger.info("🔍 [LIVE] Binance API에서 실제 포지션 조회 중...")
+            positions_result = broker.get_positions()
+            
+            if positions_result.get('success') and positions_result.get('positions'):
+                live_positions = positions_result['positions']
+                logger.info(f"✅ [LIVE] Binance에서 {len(live_positions)}개 포지션 조회됨")
+                
+                # 실제 포지션을 active_positions에 변환
+                for pos in live_positions:
+                    position_amt = float(pos.get('positionAmt', 0))
+                    if abs(position_amt) > 0:  # 실제 포지션만
+                        symbol = pos.get('symbol')
+                        entry_price = float(pos.get('entryPrice', 0))
+                        unrealized_pnl = float(pos.get('unRealizedPnl', 0))
+                        
+                        # 포지션 방향 결정
+                        side = 'LONG' if position_amt > 0 else 'SHORT'
+                        qty = abs(position_amt)
+                        
+                        # active_positions에 추가
+                        position_id = f"LIVE_{symbol}_{side}"
+                        active_positions[position_id] = {
+                            "symbol": symbol,
+                            "strategy": "live_sync",  # Live 동기화 포지션
+                            "side": side,
+                            "entry": entry_price,
+                            "qty": qty,
+                            "sl": 0,  # Binance에서 SL 정보 조회 필요
+                            "tp": 0,  # Binance에서 TP 정보 조회 필요
+                            "lev": 1,  # 기본값, 실제 레버리지 조회 필요
+                            "entry_time": int(time.time()),
+                            "position_value": entry_price * qty,
+                            "tp_levels": {},
+                            "tp1_hit": False,
+                            "tp2_hit": False,
+                            "be_moved": False,
+                            "unrealized_pnl": unrealized_pnl
+                        }
+                        
+                        logger.info(f"  - {symbol}: {position_amt} @ ${entry_price:,.2f} (PnL: ${unrealized_pnl:,.2f})")
+                        
+                if active_positions:
+                    logger.info(f"✅ [LIVE] {len(active_positions)}개 실제 포지션을 시스템에 동기화")
+            else:
+                logger.info("✅ [LIVE] Binance에 OPEN 포지션 없음 (신규 시작)")
+        except Exception as e:
+            logger.warning(f"⚠️ [LIVE] 포지션 조회 실패 (무시하고 계속): {e}")
 
     # ⭐ 백테스트 진행률 표시 (총 캔들 수 확인)
     total_candles = getattr(feed, "total", None)
