@@ -23,6 +23,10 @@
 - 앙상블/튜닝 내부 설계(→ PR10)
 - 리스크 가드 재설계(→ PR11)
 
+
+
+
+
 ## 영향 파일(예상)
 - **⭐ execution/tp_manager.py**: TP/SL 고급 레벨 계산 (PR10 연계)
 - **⭐ common/calculations.py**: 반올림/펀딩 계산
@@ -57,6 +61,17 @@
  - A/B 관찰: TP hit rate 비열화 없음(↑ 기대), 주문 거절률↓ 또는 동등, 평균 보유시간 악화 없음
  - pre-commit 통과, coverage>85%
 
+### PR12 포트폴리오 리팩토링 수용 기준 (⭐ 신규)
+ - **⭐ PnL 추적 통합**: PortfolioManager에서 daily_pnl/total_pnl 관리
+ - **⭐ Daily PnL 리셋**: 자정에 자동 리셋, 로그 기록
+ - **⭐ Equity 단일 소스**: PortfolioManager만 equity 관리, 중복 제거
+ - **⭐ Paper/Live 자산 동기화**:
+   - Live: Binance API로 자산 조회 (`futures_account_balance`)
+   - Paper: 로컬 equity 반환
+   - 메서드 시그니처 100% 동일 (`get_account_balance`, `sync_equity_with_exchange`)
+ - **⭐ 역할 명확화**: PortfolioManager(자산/PnL), RiskManager(가드만)
+ - **⭐ 텔레그램 Daily PnL 정확도**: 일일 리셋 후 정확한 일일 손익 표시
+
 ### 바이낸스 API 파리티 수용 기준 (PR10/PR11 연계)
  - **⭐ Paper/Live 로직 100% 동일**: TP/SL 계산, 반올림, 펀딩, 포트폴리오 가드
  - **⭐ Broker 계층 분리**: 주문 실행만 Paper(가상) vs Live(실제)로 분리
@@ -83,7 +98,27 @@
    - [ ] 펀딩 비용 계산 수식
    - [ ] DB 저장 및 로깅
 
-### Phase 2: 포트폴리오 가드 및 운영 모니터링
+### Phase 2: 포트폴리오 리팩토링 및 가드 (⭐ PR12_PORTFOLIO_REFACTORING.md)
+ - [ ] **⭐ PortfolioManager PnL 통합**
+   - [ ] `update_pnl()` 메서드 추가
+   - [ ] `get_daily_pnl()` / `get_total_pnl()` 메서드 추가
+   - [ ] `reset_daily()` 자동 호출 구현
+   - [ ] `check_and_reset_daily()` 메서드 추가 (날짜 체크)
+ - [ ] **⭐ RiskManager 간소화**
+   - [ ] PnL 관련 코드 제거 (PortfolioManager로 이동)
+   - [ ] Portfolio 참조로 대체
+   - [ ] 가드 로직만 유지
+ - [ ] **⭐ Equity 단일 소스**
+   - [ ] PortfolioManager만 equity 관리
+   - [ ] PositionSizer equity 제거
+   - [ ] RiskManager equity 제거
+   - [ ] Engine 중복 코드 제거
+ - [ ] **⭐ Paper/Live 자산 동기화**
+   - [ ] `LiveBroker.get_account_balance()` 구현 (Binance API)
+   - [ ] `LiveBroker.sync_equity_with_exchange()` 구현
+   - [ ] `PaperBroker.get_account_balance()` 구현 (파리티)
+   - [ ] `PortfolioManager.sync_equity_with_broker()` 구현
+   - [ ] Engine에서 자동 동기화 호출 (Live 모드만)
  - [ ] **⭐ 포트폴리오 가드**
    - [ ] 전략별 예산 배분 훅
    - [ ] 심볼 간 상관관계 가드
