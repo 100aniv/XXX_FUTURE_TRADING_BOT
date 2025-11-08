@@ -1,75 +1,210 @@
-# PHASE6 — PR12 마스터 플랜: 고급 가격 레벨 + 거래소 스펙 + 운영 견고화
+# 🎯 PR12 마스터 플랜: Paper/Live 모드 완전 재구현
 
-## 문서 참조 가이드
+> **단일 진실 소스 (Single Source of Truth)**: 이 문서가 PR12의 모든 정보를 통합 관리합니다.
 
-- [PR12_TEST_REPORT.md](./PR12_TEST_REPORT.md): **종합 테스트 리포트** - 동적 반올림, 펀딩, 포트폴리오 가드, 테스트 결과
-- [PR12_ENSEMBLE_ANALYSIS.md](./PR12_ENSEMBLE_ANALYSIS.md): **앙상블 분석 문서** - 전략 가중치 기반 앙상블 메커니즘
-- [PR12_FINAL_TEST_PLAN.md](./PR12_FINAL_TEST_PLAN.md): **30분 페이퍼 테스트 계획** - 결과와 거래 로그 분석
-- [PR12_LIVE_TEST.md](./PR12_LIVE_TEST.md): **라이브 모드 설정 가이드** - 바이낸스 설정 및 소액 테스트
-- [PR12_PORTFOLIO_REFACTORING.md](./PR12_PORTFOLIO_REFACTORING.md): **포트폴리오 리팩토링** - 자산 관리 및 PnL 추적 통합
-- [PR12_BINANCE_PARITY_CHECK.md](./PR12_BINANCE_PARITY_CHECK.md): **바이낸스 API 파리티 검증** - 동일한 로직 가동 여부
+## 📚 **문서 참조 가이드 및 상태**
 
-## 🚨 **긴급 상황: PR12 완전 재시작 필요**
+### 🥇 **핵심 문서 (반드시 참조)**
+- [PR10_PAPER_VS_LIVE_STRUCTURE.md](./PR10_PAPER_VS_LIVE_STRUCTURE.md): **✅ 올바른 아키텍처** - Paper/Live 분리 구조 정의
+- [PR12_PAPER_LIVE_REIMPLEMENT.md](./PR12_PAPER_LIVE_REIMPLEMENT.md): **✅ 재구현 계획** - 구체적 구현 로드맵
+- [PR11_BINANCE_PARITY_CHECK.md](./PR11_BINANCE_PARITY_CHECK.md): **✅ 성공 사례** - 15시간 검증 완료
 
-### 현재 문제점
-- ❌ **Live 모드 Binance API 포지션 조회 미실행**: 상용 프로그램 핵심 기능 누락
-- ❌ **PR10 구조 0% 준수**: Paper(DB)/Live(API) 분리 완전 실패
-- ❌ **아키텍처 설계 오류**: 데이터 피드 루프가 engine.run() 호출 차단
+### 🥈 **보조 문서 (부분 참조 가능)**
+- [PR12_ENSEMBLE_ANALYSIS.md](./PR12_ENSEMBLE_ANALYSIS.md): **⚠️ 앙상블 로직 분석** - 현재 유효하나 Paper/Live 현실 미반영
+- [PR12_PORTFOLIO_REFACTORING.md](./PR12_PORTFOLIO_REFACTORING.md): **⚠️ 포트폴리오 문제 분석** - 분석 내용은 유효
 
-### 재구현 방향
-PR10_PAPER_VS_LIVE_STRUCTURE.md 구조를 100% 준수하여 완전 재구현
+### ❌ **사용 금지 (허위/과거 정보)**
+- [PR12_TEST_REPORT.md](./PR12_TEST_REPORT.md): **❌ 허위 성공 보고** - 실제는 전면 실패
+- [PR12_FINAL_TEST_PLAN.md](./PR12_FINAL_TEST_PLAN.md): **❌ 존재하지 않는 성공** - 테스트 자체 무효
+- [PR12_LIVE_TEST.md](./PR12_LIVE_TEST.md): **❌ 작동하지 않는 가이드** - Live 모드 미작동
+- [PR12_BINANCE_PARITY_CHECK.md](./PR12_BINANCE_PARITY_CHECK.md): **❌ 파리티 완전 실패** - 0% 준수
 
-## 배경/의도(Overview)
-**PHASE6 최우선 목표**: PR10 구조 기반 올바른 Paper/Live 모드 구현
-- Paper 모드: DB에서 가상 포지션 복원
-- Live 모드: Binance API에서 실제 포지션 조회
-- 상용 프로그램 기준 100% 준수
+## 🚨 **현재 상황: 전면 재구현 필요**
+
+### 📊 **PR11 vs PR12 비교**
+| 항목 | PR11 | PR12 |
+|------|------|------|
+| **구현 상태** | ✅ 완벽 (15시간 43분 검증) | ❌ 전면 실패 |
+| **Paper/Live 파리티** | ✅ 100% | ❌ 0% |
+| **상용 기준 준수** | ✅ 완전 | ❌ 전혀 없음 |
+| **Binance API 포지션 조회** | ✅ 정상 (가드만) | ❌ 미실행 |
+
+### ⚠️ **치명적 문제점**
+1. **Live 모드 Binance API 포지션 조회 미실행**: 상용 프로그램 핵심 기능 누락
+2. **Paper/Live 분기 자체가 작동하지 않음**: 아키텍처 레벨 오류
+3. **데이터 피드 루프가 engine.run() 차단**: 잘못된 실행 순서
+4. **PR10 구조 0% 준수**: 설계 문서 완전 무시
+
+### 🎯 **재구현 방향**
+**.windsurfrules 18번 라인 준수**: "Paper/Live 로직 100% 동일, 실행 계층(Broker)만 분리"
+
+## 📋 **배경/의도 (재정립)**
+**PHASE6 최우선 목표**: 상용 프로그램 기준에 부합하는 올바른 Paper/Live 모드 구현
+
+### 🏆 **성공 기준**
+1. **Paper 모드**: DB에서 가상 포지션 복원 → 거래 시작
+2. **Live 모드**: Binance API에서 실제 포지션 조회 → 거래 시작  
+3. **로직 파리티**: 전략/TP/SL/리스크 100% 동일, Broker 계층만 분리
+4. **업계 표준**: 모든 상용 프로그램이 따르는 아키텍처 준수
 
 
-## 목표(Goals) - 우선순위 재정립
+## 🎯 **목표 및 우선순위**
 
-### 🥇 **1순위: Paper/Live 모드 올바른 구현 (CRITICAL)**
-- ✅ **Paper 모드**: DB에서 가상 포지션 복원 후 거래 시작
-- ✅ **Live 모드**: Binance API에서 실제 포지션 조회 후 거래 시작  
-- ✅ **로직 파리티**: 전략 로직 100% 동일, 실행 계층만 분리
-- ✅ **상용 프로그램 기준**: 업계 표준 아키텍처 준수
+### 🥇 **1순위: Paper/Live 모드 아키텍처 (CRITICAL)** 
+**Status**: ❌ 미구현, 즉시 시작 필요
+
+#### **구현 목표**
+- [ ] **Paper 모드**: DB에서 가상 포지션 복원 후 거래 시작
+- [ ] **Live 모드**: Binance API에서 실제 포지션 조회 후 거래 시작  
+- [ ] **로직 파리티**: 전략 로직 100% 동일, 실행 계층만 분리
+- [ ] **상용 프로그램 기준**: 업계 표준 아키텍처 준수
+
+#### **성공 검증 기준**
+```bash
+# Paper 모드 로그 확인
+docker logs trading_bot_live | Select-String "PAPER.*DB에서.*포지션 복원"
+
+# Live 모드 로그 확인  
+docker logs trading_bot_live | Select-String "LIVE.*Binance API.*포지션 조회"
+```
 
 ### 🥈 **2순위: 운영 안정성 (HIGH)**
+**Status**: ⏸️ 1순위 완료 후 시작
 - 동적 반올림: 거래소 tick_size/step_size 기반
-- 포트폴리오 예산 배분 및 가드
+- 포트폴리오 예산 배분 및 가드 
 - 시스템 종료 시 텔레그램 알림
 
 ### 🥉 **3순위: 고급 기능 (MEDIUM)**
+**Status**: ⏸️ 2순위 완료 후 시작
 - TP/SL 레벨의 고급화
 - funding_rate 연동
 - Bug #8 구조적 완화
 - 운영 대시보드/메트릭
 
-## 범위(Scope, In)
- - TPManager: 레짐 인지 S/R, 최근 고저가 반영
- - 동적 반올림: 거래소 tick/step 규격 준수
- - Funding: 수수료/캐리 계산에 반영되는 경우 연동
- - 포트폴리오: 전략별 예산 배분 훅, 상관 가드
- - 운영: 메트릭 표출, 최소 대시보드, A/B 비교 하니스
- - Bug #8 KPI 관찰: TP hit rate/평균 보유시간/주문 거절률(반올림 위반) 지표화
+## 📋 **구현 범위 및 제외사항**
 
-## 제외(Out-of-Scope)
-- 앙상블/튜닝 내부 설계(→ PR10)
-- 리스크 가드 재설계(→ PR11)
+### ✅ **범위 내 (Scope In)**
+
+#### **1순위 범위**
+- **아키텍처 수정**: main.py → engine.run() 실행 순서 보장
+- **Paper/Live 분기**: 포지션 복원 로직 모드별 구현
+- **Broker 파리티**: Paper(가상)/Live(실API) 동일 인터페이스
+- **로그 검증**: 각 모드별 실행 확인 가능한 로그 추가
+
+#### **2-3순위 범위**
+- TPManager: 레짐 인지 S/R, 최근 고저가 반영
+- 동적 반올림: 거래소 tick/step 규격 준수
+- Funding: 수수료/캐리 계산 연동
+- 포트폴리오: 전략별 예산 배분, 상관 가드
+- 운영: 메트릭 표출, 최소 대시보드
+
+### ❌ **제외사항 (Out-of-Scope)**
+- 앙상블/튜닝 내부 설계 (PR10 완료)
+- 리스크 가드 재설계 (PR11 완료)
+- 전략 신호 로직 변경 (.windsurfrules 35번)
+- 브로커/데이터 소스 교체 (.windsurfrules 36번)
 
 
 
 
 
-## 영향 파일(예상)
-- **⭐ execution/tp_manager.py**: TP/SL 고급 레벨 계산 (PR10 연계)
-- **⭐ common/calculations.py**: 반올림/펀딩 계산
-- **⭐ execution/adapters/exchange_specs.py**: 거래소 스펙 조회 (신규)
-- **⭐ execution/adapters/brokers.py**: Paper/Live Broker 파리티 보장
-- 포트폴리오 관리 모듈(예산/상관 훅)
-- docs/PHASE6/PR_MASTER_INTEGRATION_TEST.md
-- **⭐ docs/PHASE6/PR12_BINANCE_PARITY_CHECK.md**: 바이낸스 API 파리티 검증 (신규)
-- config.yml(exits.*, exchange.*, portfolio.*)
+## 🔧 **영향 파일 및 구현 계획**
+
+### 📁 **핵심 수정 파일 (.windsurfrules 허용 범위)**
+
+#### **1순위 (즉시 수정 필요)**
+- **execution/engine.py**: 포지션 복원 로직 Paper/Live 분기 구현
+- **main.py**: 실행 순서 수정 (데이터 피드 → engine.run() 순서 보장)
+- **execution/adapters/brokers.py**: Paper/Live Broker 파리티 보장
+
+#### **2-3순위 (1순위 완료 후)**
+- **execution/tp_manager.py**: TP/SL 고급 레벨 계산
+- **common/calculations.py**: 반올림/펀딩 계산
+- **execution/portfolio_manager.py**: 예산 배분 및 PnL 통합
+- **execution/position_sizer.py**: Equity 참조 최적화
+
+#### **문서 업데이트**
+- **docs/PHASE6/PR12_*.md**: 진행 상황 실시간 반영
+- **config.yml**: 필요시 설정 추가
+
+### ⚡ **즉시 시작 구현 로드맵**
+
+#### **Phase 1: 아키텍처 수정 (30분)**
+```python
+# main.py 수정
+def main():
+    # 1. 설정/피드 준비
+    # 2. engine.run() 호출 보장
+    engine.run(feed, broker, clock, strategies, ensemble, config)
+
+# engine.py 수정  
+def run():
+    # 1. 포지션 복원 (모드별 분기)
+    if mode == "paper":
+        restore_positions_from_db()
+    elif mode == "live":  
+        restore_positions_from_binance()
+    # 2. 거래 루프 시작
+```
+
+#### **Phase 2: 검증 및 테스트 (30분)**
+```bash
+# Paper 모드 검증
+docker-compose --profile paper up
+docker logs | grep "PAPER.*포지션 복원"
+
+# Live 모드 검증  
+docker-compose --profile live up
+docker logs | grep "LIVE.*Binance API.*포지션"
+```
+
+#### **Phase 3: 파리티 확인 (30분)**
+- Paper와 Live에서 동일한 신호에 대한 동일한 반응 확인
+- 로직 100% 일치 검증
+- 상용 프로그램 기준 준수 확인
+
+## 🎯 **성공 KPI 및 수용 기준**
+
+### ✅ **필수 달성 지표**
+1. **Live 모드 Binance API 포지션 조회 실행**: 로그로 확인 가능
+2. **Paper 모드 DB 포지션 복원 실행**: 로그로 확인 가능  
+3. **Paper/Live 로직 파리티**: 동일 입력 → 동일 출력
+4. **.windsurfrules 준수**: 모든 제약사항 충족
+
+### 📊 **검증 매트릭스**
+| 기준 | Paper 모드 | Live 모드 | 파리티 |
+|------|-----------|-----------|--------|
+| **포지션 복원** | DB 조회 | Binance API | ✅ 동일 인터페이스 |
+| **신호 처리** | 동일 로직 | 동일 로직 | ✅ 100% 일치 |
+| **TP/SL 계산** | 동일 공식 | 동일 공식 | ✅ 100% 일치 |
+| **리스크 가드** | 동일 임계값 | 동일 임계값 | ✅ 100% 일치 |
+
+## 📅 **타임라인 및 마일스톤**
+
+### 🚀 **즉시 시작 (Tonight)**
+- **23:55-00:25**: Phase 1 - 아키텍처 수정
+- **00:25-00:55**: Phase 2 - 검증 및 테스트  
+- **00:55-01:25**: Phase 3 - 파리티 확인
+
+### 🎯 **1순위 완료 목표: 90분 내**
+**성공 시**: Live 모드에서 "Binance API 포지션 조회" 로그 확인
+**실패 시**: 추가 디버깅 및 아키텍처 재검토
+
+---
+
+## 🔄 **진행 상황 추적 (.windsurfrules 준수)**
+
+### 📝 **커밋 단위**
+- 각 Phase별 즉시 커밋
+- 문서 업데이트 동반 필수
+- git push origin main 필수
+
+### 📊 **실시간 업데이트**
+- 이 마스터 플랜 파일에서 진행 상황 실시간 반영
+- 성공/실패 여부 즉시 문서화
+- 다음 단계 계획 업데이트
+
+**최종 목표**: 상용 프로그램 기준에 부합하는 완벽한 Paper/Live 모드 구현! 🚀
 
 ## 설정 키(제안)
 - exits.price_levels.advanced.enabled: bool
