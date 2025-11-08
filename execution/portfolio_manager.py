@@ -68,6 +68,25 @@ class PortfolioManager:
         self.unrealized_pnl = 0.0
         self.last_reset_date = datetime.now().date()
         
+        # ⭐ PR12: 전략별 예산 및 상관관계 가드 설정
+        portfolio_cfg = config.get('portfolio', {})
+        
+        # 전략별 예산 설정
+        budget_cfg = portfolio_cfg.get('budget', {})
+        self.strategy_budget = budget_cfg.get('strategy_allocation', {})  # {전략ID: 비율}
+        self.default_budget_pct = budget_cfg.get('default_allocation', 0.2)  # 기본 20%
+        
+        # 상관관계 가드 설정
+        correlation_cfg = portfolio_cfg.get('correlation', {})
+        self.max_correlation = correlation_cfg.get('max_pair_corr', 0.7)  # 기본 0.7
+        self.correlation_window = correlation_cfg.get('window', 30)  # 기본 30일
+        self.use_correlation_guard = correlation_cfg.get('enabled', False)  # 기본 비활성화
+        
+        # 심볼 갖 상관관계 캐시
+        self.correlation_cache = {}  # {(symbol1, symbol2): correlation}
+        self.correlation_timestamp = time.time()
+        self.correlation_ttl = 3600  # 1시간 캐시 유효기간
+        
         logger.info(f"✅ PortfolioManager 초기화: Equity=${self.equity:,.0f}, Max Positions={self.max_positions}, Max Exposure/Symbol={self.max_exposure_per_symbol*100:.0f}%, Max Total={self.max_total_exposure*100:.0f}%, Symbol Cooldown={self.cooldown_seconds}s")
     
     def can_open_position(
@@ -78,47 +97,36 @@ class PortfolioManager:
         side: str
     ) -> tuple[bool, str]:
         """
-        포지션 진입 가능 여부 확인
+        새 포지션 시작 가능 여부 검사
         
         Args:
             symbol: 심볼 (BTCUSDT)
-            strategy: 전략 이름 (scalping)
-            position_value: 포지션 가치 (USDT)
-            side: LONG | SHORT
+            strategy: 전략 ID
+            position_value: 포지션 가치 (USD)
+            side: 방향 ("LONG" | "SHORT")
             
         Returns:
-            (가능 여부, 사유)
+            (allowed, reason): 허용 여부와 사유
         """
-        # 0. ⭐ PR8: 심볼별 쿨다운 체크 (거부 후 반복 시도 방지)
+        equity = self.equity
+        
+        # 1. 심볼 쿨다운 여부 검사
         if symbol in self.symbol_cooldown:
-            elapsed = time.time() - self.symbol_cooldown[symbol]
-            if elapsed < self.cooldown_seconds:
-                remaining = int(self.cooldown_seconds - elapsed)
-                return False, f"{symbol} 쿨다운 중 ({remaining}초 남음)"
-            else:
-                # 쿨다운 종료
-                del self.symbol_cooldown[symbol]
-                logger.info(f"✅ [{symbol}] 쿨다운 해제")
+            cooldown_end = self.symbol_cooldown[symbol] + self.cooldown_seconds
+            now = time.time()
+            
+            if now < cooldown_end:
+                remaining = int(cooldown_end - now)
+                return False, f"심볼 {symbol} 쿨다운 중: {remaining}초 남음"
         
-        # 1. 동일 심볼 중복 진입 완전 차단 (추매/헤지 로직 없음)
-        logger.debug(f"🔍 [{symbol}] 포지션 체크: {symbol in self.positions}, 개수: {len(self.positions.get(symbol, []))}")
-        if symbol in self.positions and len(self.positions[symbol]) > 0:
-            logger.warning(f"⛔ [{symbol}] 이미 포지션 보유 중: {len(self.positions[symbol])}개")
-            return False, f"{symbol} 이미 포지션 보유 중 (중복 진입 불가)"
-        
-        # 2. 최대 포지션 수 체크
-        total_positions = sum(len(positions) for positions in self.positions.values())
-        if total_positions >= self.max_positions:
-            return False, f"최대 포지션 수 도달 ({total_positions}/{self.max_positions})"
+        # 2. 포지션 최대 수 검사
+        if len(self.get_all_positions()) >= self.max_positions:
+            return False, f"포지션 최대 한강 도달: {self.max_positions}개"
         
         # 3. 심볼별 exposure 체크
         symbol_exposure = self._get_symbol_exposure(symbol)
-        new_symbol_exposure = (symbol_exposure + position_value) / self.equity
-        
+        new_symbol_exposure = (symbol_exposure + position_value) / equity
         if new_symbol_exposure > self.max_exposure_per_symbol:
-            # ⭐ PR8: 거부 시 쿨다운 설정
-            self.symbol_cooldown[symbol] = time.time()
-            logger.warning(f"⛔ [{symbol}] 쿨다운 설정 ({self.cooldown_seconds}초): exposure 초과")
             return False, f"{symbol} exposure 초과 ({new_symbol_exposure*100:.1f}% > {self.max_exposure_per_symbol*100:.0f}%)"
         
         # 4. 전체 포트폴리오 exposure 체크
@@ -132,8 +140,26 @@ class PortfolioManager:
         if self.strategy_positions[strategy] >= self.max_strategy_positions:
             return False, f"{strategy} 최대 포지션 도달 ({self.strategy_positions[strategy]}/{self.max_strategy_positions})"
         
-        # 상관성 체크 제거: 심볼 선택은 symbol_manager에서 이미 처리 (manual/top50/top100/all)
-        # max_positions로 전체 포지션 수 제한으로 충분
+        # 6. ⭐ PR12: 전략별 예산 한도 검사
+        strategy_budget = self.calculate_strategy_budget(strategy)
+        strategy_exposure = 0.0
+        
+        # 동일 전략의 기존 포지션 가치 합계
+        for pos_list in self.positions.values():
+            for pos in pos_list:
+                if pos.get('strategy') == strategy:
+                    strategy_exposure += pos.get('value', 0)
+        
+        # 새 포지션 추가 후 전략 노출 예산
+        new_strategy_exposure = strategy_exposure + position_value
+        if new_strategy_exposure > strategy_budget:
+            return False, f"전략 예산 초과: {strategy} ${new_strategy_exposure:,.2f} > ${strategy_budget:,.2f}"
+        
+        # 7. ⭐ PR12: 상관관계 가드 검사
+        if self.use_correlation_guard:
+            allowed, reason = self.check_correlation_guard(symbol)
+            if not allowed:
+                return False, reason
         
         return True, "OK"
     
@@ -301,6 +327,116 @@ class PortfolioManager:
                     logger.info(f"✅ 자산 동기화: ${exchange_equity:,.2f}")
             except Exception as e:
                 logger.error(f"❌ 자산 동기화 실패: {e}")
+                
+    def calculate_strategy_budget(self, strategy_id: str) -> float:
+        """
+        ⭐ PR12: 전략별 예산 한도 계산
+        
+        Args:
+            strategy_id: 전략 ID
+            
+        Returns:
+            float: 전략 예산 한도 (USD 값)
+        """
+        equity = self.equity
+        
+        # 전략별 예산 할당
+        if strategy_id in self.strategy_budget:
+            budget_pct = self.strategy_budget[strategy_id]
+        else:
+            # 기본 비율 사용
+            budget_pct = self.default_budget_pct
+            
+        # 전략별 예산 = 자산 * 할당 비율
+        budget = equity * budget_pct
+        
+        logger.debug(f"💰 전략 예산: {strategy_id} = ${budget:,.2f} ({budget_pct*100:.1f}%)")
+        return budget
+        
+    def check_correlation_guard(self, new_symbol: str) -> tuple[bool, str]:
+        """
+        ⭐ PR12: 심볼 간 상관관계 가드
+        
+        Args:
+            new_symbol: 새로 추가하려는 심볼
+            
+        Returns:
+            (allowed, reason): 허용 여부와 사유
+        """
+        # 가드 비활성화된 경우 허용
+        if not self.use_correlation_guard:
+            return True, "OK"
+            
+        # 기존 포지션이 없으면 허용
+        if not self.positions:
+            return True, "OK"
+            
+        # 현재 활성 심볼 목록
+        active_symbols = list(self.positions.keys())
+        if not active_symbols:
+            return True, "OK"
+            
+        # 고상관 심볼 검색
+        high_corr_symbols = []
+        
+        for symbol in active_symbols:
+            # 동일 심볼 제외
+            if symbol == new_symbol:
+                continue
+                
+            # 상관관계 계산 (or 캐시 사용)
+            corr = self._get_correlation(symbol, new_symbol)
+            
+            # 상관관계 가드 체크
+            if abs(corr) > self.max_correlation:
+                high_corr_symbols.append(f"{symbol} ({corr:.2f})")
+        
+        # 고상관 심볼이 있으면 차단
+        if high_corr_symbols:
+            reason = f"상관관계 가드: {new_symbol}은 {', '.join(high_corr_symbols)}와 고상관"
+            return False, reason
+        
+        return True, "OK"
+    
+    def _get_correlation(self, symbol1: str, symbol2: str) -> float:
+        """
+        두 심볼 간의 상관관계 계산 (캐시 지원)
+        
+        Args:
+            symbol1: 첫번째 심볼
+            symbol2: 두번째 심볼
+            
+        Returns:
+            float: -1.0 ~ +1.0 범위의 상관계수
+        """
+        # 기본값 (API 접근 불가능 시)
+        default_corr = 0.0
+        
+        # 캐시 키 생성 (알파벳 순)
+        key = tuple(sorted([symbol1, symbol2]))
+        current_time = time.time()
+        
+        # 캐시 데이터 확인
+        if key in self.correlation_cache:
+            cache_time, corr = self.correlation_cache[key]
+            
+            # TTL 내 캐시 데이터 사용
+            if current_time - cache_time < self.correlation_ttl:
+                return corr
+        
+        # ⭐ TODO: 실제 API 호출 필요 (PR12 후 분리 구현)
+        try:
+            # 임의의 테스트 값 (병렬 테스트용)
+            import random
+            corr = random.uniform(-0.8, 0.8)
+            
+            # 캐시 업데이트
+            self.correlation_cache[key] = (current_time, corr)
+            return corr
+            
+        except Exception as e:
+            logger.warning(f"⚠️ 상관관계 계산 실패: {e}")
+            return default_corr
     
     def update_equity(self, new_equity: float = None, pnl: float = None):
         """
