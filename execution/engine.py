@@ -260,18 +260,21 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict):
     active_positions = {}
 
     # ⭐⭐⭐ 페이퍼/라이브 모드: DB에서 OPEN 포지션 복원
+    # ⚠️ PR12: Paper/Live 모드 완전 분리 - mode 필터 사용
     if mode in ["paper", "live"]:
         try:
             with get_db_connection() as conn:
                 with conn.cursor() as cur:
+                    # ⭐ PR12: mode 필터로 Paper/Live 포지션 완전 분리
                     cur.execute(
                         """
                         SELECT trade_id, symbol, strategy_id, side, 
                                entry_price, quantity, sl_price, tp_price, 
                                leverage, ts_open
                         FROM trading.trades
-                        WHERE status = 'OPEN'
-                    """
+                        WHERE status = 'OPEN' AND mode = %s
+                    """,
+                        (mode,)
                     )
                     rows = cur.fetchall()
 
@@ -1496,8 +1499,8 @@ def save_trade_to_db(
                     INSERT INTO trading.trades (
                         trade_id, symbol, strategy_id, side,
                         entry_price, quantity, sl_price, tp_price,
-                        leverage, status, ts_open
-                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW())
+                        leverage, status, ts_open, mode
+                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW(), %s)
                 """,
                     (
                         position_id,
@@ -1510,6 +1513,7 @@ def save_trade_to_db(
                         tp_price,
                         leverage,
                         "OPEN",
+                        mode,  # ⭐ PR12: Paper/Live 모드 분리
                     ),
                 )
     except Exception as e:
