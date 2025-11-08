@@ -355,10 +355,10 @@ def create_adapters(mode: str, symbols: List[str], config: dict, logger: Any) ->
         )
         clock = LiveClock()
         
-        # WebSocket 시작 (프리로드는 engine.run에서 콜백 설정 후 수행)
-        logger.info("🔗 WebSocket 연결 시작...")
-        ws.start()
-        time.sleep(2)
+        # ⚠️ Paper 모드: WebSocket 시작을 engine.run()으로 지연 (main() 진행 보장)
+        logger.info("🔗 WebSocket 준비 완료 (시작은 engine.run()에서)")
+        # ws.start()  # 🚫 즉시 시작 방지 - engine.run()에서 처리
+        # time.sleep(2)
         
         # PR7-4: Multi-TF 프리로드 (콜백 설정 후 수행하도록 feed 객체에 정보 저장)
         feed._preload_info = {
@@ -369,6 +369,9 @@ def create_adapters(mode: str, symbols: List[str], config: dict, logger: Any) ->
         }
         
         logger.info(f"📄 페이퍼 모드: {len(symbols)}개 심볼 구독 중")
+        
+        # ⚠️ Paper 모드: WebSocket 즉시 시작 방지 (engine.run() 진행 보장)
+        feed._ws_ready_to_start = True  # 시작 준비 플래그
     
     elif mode == 'live':
         api_key = os.getenv('BINANCE_API_KEY')
@@ -426,10 +429,10 @@ def create_adapters(mode: str, symbols: List[str], config: dict, logger: Any) ->
         )
         clock = LiveClock()
         
-        # WebSocket 시작 (프리로드는 engine.run에서 콜백 설정 후 수행)
-        logger.info("🔗 WebSocket 연결 시작...")
-        ws.start()
-        time.sleep(2)
+        # ⚠️ Live 모드: WebSocket 시작을 engine.run()으로 지연 (main() 진행 보장)
+        logger.info("🔗 WebSocket 준비 완료 (시작은 engine.run()에서)")
+        # ws.start()  # 🚫 즉시 시작 방지 - engine.run()에서 처리
+        # time.sleep(2)
         
         # PR7-4: Multi-TF 프리로드 (콜백 설정 후 수행하도록 feed 객체에 정보 저장)
         feed._preload_info = {

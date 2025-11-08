@@ -59,6 +59,15 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict):
     """
     logger.info("🔍 [ENGINE DEBUG] run() 함수 시작")
     logger.info(f"🔍 [ENGINE DEBUG] config mode: {config.get('mode', 'unknown')}")
+    
+    # ⭐ WebSocket 시작 (main()에서 지연된 시작 처리)
+    if hasattr(feed, 'start'):
+        logger.info("🔗 WebSocket 시작 (engine.run()에서 처리)")
+        feed.start()
+        import time
+        time.sleep(2)  # WebSocket 연결 안정화 대기
+        logger.info("✅ WebSocket 시작 완료")
+    
     # ⭐ PR11: FlowGuardian 게이트 (.windsurfrules 준수)
     # READY 플래그 없이는 PAPER/LIVE 실행 불가
     mode = config.get("mode", "paper")
