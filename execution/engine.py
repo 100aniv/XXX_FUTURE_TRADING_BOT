@@ -259,6 +259,9 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict):
     # 활성 포지션 dict {position_id: position_info}
     active_positions = {}
 
+    # ⭐⭐⭐ Paper/Live 모드 분기 (디버깅 로그 추가)
+    logger.info(f"🔍 [DEBUG] 포지션 복원 모드: {mode}")
+    
     # ⭐⭐⭐ Paper 모드: DB에서 OPEN 포지션 복원
     if mode == "paper":
         try:
