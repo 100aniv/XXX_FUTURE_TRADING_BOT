@@ -88,14 +88,14 @@
    - [ ] 레짐 인지 S/R 반영
    - [ ] 최근 고저가 동적 반영
    - [ ] PR10 workingType/priceProtect 호환성 검증
- - [ ] **⭐ 동적 반올림 구현** (calculations.py, exchange_specs.py)
-   - [ ] exchangeInfo API 조회 (Paper/Live 공통)
-   - [ ] tick_size 반올림 로직
-   - [ ] step_size 반올림 로직
-   - [ ] 캐시/폴백 메커니즘
- - [ ] **⭐ 펀딩 연동** (calculations.py)
-   - [ ] fundingRate API 조회 (Paper/Live 공통)
-   - [ ] 펀딩 비용 계산 수식
+ - [x] **⭐ 동적 반올림 구현** (calculations.py)
+   - [x] exchangeInfo API 조회 (Paper/Live 공통)
+   - [x] tick_size 반올림 로직
+   - [x] step_size 반올림 로직
+   - [x] 캐시/폴백 메커니즘 (1시간 TTL)
+ - [x] **⭐ 펀딩 연동** (calculations.py)
+   - [x] fundingRate API 조회 (Paper/Live 공통)
+   - [x] 펀딩 비용 계산 수식
    - [ ] DB 저장 및 로깅
 
 ### Phase 2: 포트폴리오 리팩토링 및 가드 (⭐ PR12_PORTFOLIO_REFACTORING.md)
