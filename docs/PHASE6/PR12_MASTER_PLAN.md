@@ -118,11 +118,11 @@
    - [x] `LiveBroker.sync_equity_with_exchange()` 구현
    - [x] `PaperBroker.get_account_balance()` 구현 (파리티)
    - [x] `PortfolioManager.sync_equity_with_broker()` 구현
-   - [ ] Engine에서 자동 동기화 호출 (Live 모드만)
- - [ ] **⭐ 포트폴리오 가드**
-   - [ ] 전략별 예산 배분 훈
-   - [ ] 심볼 간 상관관계 가드
-   - [ ] PR11 리스크 가드와 독립성 검증
+   - [x] Engine에서 자동 동기화 호출 (Live 모드만)
+ - [x] **⭐ 포트폴리오 가드**
+   - [x] 전략별 예산 배분 훈
+   - [x] 심볼 간 상관관계 가드
+   - [x] PR11 리스크 가드와 독립성 검증
  - [ ] **⭐ 운영 모니터링**
    - [ ] 메트릭 표출 (API 지연, WS 상태, 큐 사용률)
    - [ ] 최소 대시보드

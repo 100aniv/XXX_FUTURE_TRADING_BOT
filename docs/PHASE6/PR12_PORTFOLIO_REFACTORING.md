@@ -327,7 +327,7 @@ def run(config, mode='paper'):
   - [x] `LiveBroker.sync_equity_with_exchange()` 구현
   - [x] `PaperBroker.get_account_balance()` 구현 (파리티)
   - [x] `PortfolioManager.sync_equity_with_broker()` 구현
-  - [ ] Engine에서 자동 동기화 호출 (Live 모드만)
+  - [x] Engine에서 자동 동기화 호출 (Live 모드만)
 
 ---
 
@@ -368,8 +368,9 @@ def run(config, mode='paper'):
 4. ✅ RiskManager 간소화
 5. ✅ Engine 수정
 6. ✅ Paper/Live 자산 동기화 구현
-7. [ ] 테스트 및 검증
-8. [ ] PR12_MASTER_PLAN.md 업데이트
+7. ✅ 포트폴리오 가드 구현 (전략 예산/상관관계)
+8. [ ] 테스트 및 검증
+9. [x] PR12_MASTER_PLAN.md 업데이트
 
 ---
 
