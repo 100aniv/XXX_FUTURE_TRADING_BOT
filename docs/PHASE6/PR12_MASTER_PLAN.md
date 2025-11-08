@@ -99,28 +99,28 @@
    - [ ] DB 저장 및 로깅
 
 ### Phase 2: 포트폴리오 리팩토링 및 가드 (⭐ PR12_PORTFOLIO_REFACTORING.md)
- - [ ] **⭐ PortfolioManager PnL 통합**
-   - [ ] `update_pnl()` 메서드 추가
-   - [ ] `get_daily_pnl()` / `get_total_pnl()` 메서드 추가
-   - [ ] `reset_daily()` 자동 호출 구현
-   - [ ] `check_and_reset_daily()` 메서드 추가 (날짜 체크)
- - [ ] **⭐ RiskManager 간소화**
-   - [ ] PnL 관련 코드 제거 (PortfolioManager로 이동)
-   - [ ] Portfolio 참조로 대체
-   - [ ] 가드 로직만 유지
- - [ ] **⭐ Equity 단일 소스**
-   - [ ] PortfolioManager만 equity 관리
-   - [ ] PositionSizer equity 제거
-   - [ ] RiskManager equity 제거
-   - [ ] Engine 중복 코드 제거
- - [ ] **⭐ Paper/Live 자산 동기화**
-   - [ ] `LiveBroker.get_account_balance()` 구현 (Binance API)
-   - [ ] `LiveBroker.sync_equity_with_exchange()` 구현
-   - [ ] `PaperBroker.get_account_balance()` 구현 (파리티)
-   - [ ] `PortfolioManager.sync_equity_with_broker()` 구현
+ - [x] **⭐ PortfolioManager PnL 통합**
+   - [x] `update_pnl()` 메서드 추가
+   - [x] `get_daily_pnl()` / `get_total_pnl()` 메서드 추가
+   - [x] `reset_daily()` 자동 호출 구현
+   - [x] `check_and_reset_daily()` 메서드 추가 (날짜 체크)
+ - [x] **⭐ RiskManager 간소화**
+   - [x] PnL 관련 코드 제거 (PortfolioManager로 이동)
+   - [x] Portfolio 참조로 대체
+   - [x] 가드 로직만 유지
+ - [x] **⭐ Equity 단일 소스**
+   - [x] PortfolioManager만 equity 관리
+   - [x] PositionSizer equity 참조로 변경
+   - [x] RiskManager equity 참조로 변경
+   - [x] Engine 중복 코드 제거
+ - [x] **⭐ Paper/Live 자산 동기화**
+   - [x] `LiveBroker.get_account_balance()` 구현 (Binance API)
+   - [x] `LiveBroker.sync_equity_with_exchange()` 구현
+   - [x] `PaperBroker.get_account_balance()` 구현 (파리티)
+   - [x] `PortfolioManager.sync_equity_with_broker()` 구현
    - [ ] Engine에서 자동 동기화 호출 (Live 모드만)
  - [ ] **⭐ 포트폴리오 가드**
-   - [ ] 전략별 예산 배분 훅
+   - [ ] 전략별 예산 배분 훈
    - [ ] 심볼 간 상관관계 가드
    - [ ] PR11 리스크 가드와 독립성 검증
  - [ ] **⭐ 운영 모니터링**

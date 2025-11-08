@@ -304,29 +304,29 @@ def run(config, mode='paper'):
 
 ### **Phase 4: 포트폴리오 리팩토링 (신규)**
 
-- [ ] **⭐ PortfolioManager PnL 통합**
-  - [ ] `update_pnl()` 메서드 추가
-  - [ ] `get_daily_pnl()` 메서드 추가
-  - [ ] `get_total_pnl()` 메서드 추가
-  - [ ] `reset_daily()` 자동 호출 구현
-  - [ ] `check_and_reset_daily()` 메서드 추가
+- [x] **⭐ PortfolioManager PnL 통합**
+  - [x] `update_pnl()` 메서드 추가
+  - [x] `get_daily_pnl()` 메서드 추가
+  - [x] `get_total_pnl()` 메서드 추가
+  - [x] `reset_daily()` 자동 호출 구현
+  - [x] `check_and_reset_daily()` 메서드 추가
 
-- [ ] **⭐ RiskManager 간소화**
-  - [ ] PnL 관련 코드 제거
-  - [ ] Portfolio 참조로 대체
-  - [ ] 가드 로직만 유지
+- [x] **⭐ RiskManager 간소화**
+  - [x] PnL 관련 코드 제거
+  - [x] Portfolio 참조로 대체
+  - [x] 가드 로직만 유지
 
-- [ ] **⭐ Equity 단일 소스**
-  - [ ] PortfolioManager만 equity 관리
-  - [ ] PositionSizer equity 제거
-  - [ ] RiskManager equity 제거
-  - [ ] Engine 중복 코드 제거
+- [x] **⭐ Equity 단일 소스**
+  - [x] PortfolioManager만 equity 관리
+  - [x] PositionSizer equity 참조로 변경
+  - [x] RiskManager equity 참조로 변경
+  - [x] Engine 중복 코드 제거
 
-- [ ] **⭐ Paper/Live 자산 동기화**
-  - [ ] `LiveBroker.get_account_balance()` 구현
-  - [ ] `LiveBroker.sync_equity_with_exchange()` 구현
-  - [ ] `PaperBroker.get_account_balance()` 구현 (파리티)
-  - [ ] `PortfolioManager.sync_equity_with_broker()` 구현
+- [x] **⭐ Paper/Live 자산 동기화**
+  - [x] `LiveBroker.get_account_balance()` 구현
+  - [x] `LiveBroker.sync_equity_with_exchange()` 구현
+  - [x] `PaperBroker.get_account_balance()` 구현 (파리티)
+  - [x] `PortfolioManager.sync_equity_with_broker()` 구현
   - [ ] Engine에서 자동 동기화 호출 (Live 모드만)
 
 ---
@@ -334,20 +334,20 @@ def run(config, mode='paper'):
 ## 🎯 **수용 기준**
 
 ### **리팩토링 수용 기준**
-- [ ] PnL 추적이 PortfolioManager로 통합됨
-- [ ] Equity 업데이트가 단일 소스로 관리됨
-- [ ] Daily PnL 리셋이 자정에 자동 실행됨
-- [ ] Paper/Live 자산 조회 로직이 동일함
-- [ ] RiskManager가 가드만 담당함
+- [x] PnL 추적이 PortfolioManager로 통합됨
+- [x] Equity 업데이트가 단일 소스로 관리됨
+- [x] Daily PnL 리셋이 자정에 자동 실행됨
+- [x] Paper/Live 자산 조회 로직이 동일함
+- [x] RiskManager가 가드만 담당함
 - [ ] 모든 테스트 통과 (pre-commit, coverage>85%)
 
 ### **Paper/Live 파리티 수용 기준**
-- [ ] PortfolioManager 로직 100% 동일
-- [ ] PnL 추적 로직 100% 동일
-- [ ] Daily 리셋 로직 100% 동일
-- [ ] 브로커 메서드 시그니처 100% 동일 (get_account_balance, sync_equity)
-- [ ] Live 모드에서 Binance API 자산 조회 정상 작동
-- [ ] Paper 모드에서 가상 자산 조회 정상 작동
+- [x] PortfolioManager 로직 100% 동일
+- [x] PnL 추적 로직 100% 동일
+- [x] Daily 리셋 로직 100% 동일
+- [x] 브로커 메서드 시그니처 100% 동일 (get_account_balance, sync_equity)
+- [ ] Live 모드에서 Binance API 자산 조회 정상 작동 확인 필요
+- [ ] Paper 모드에서 가상 자산 조회 정상 작동 확인 필요
 
 ---
 
@@ -364,10 +364,10 @@ def run(config, mode='paper'):
 
 1. ✅ 현상 분석 완료
 2. ✅ 개선 계획 수립
-3. [ ] PortfolioManager 리팩토링
-4. [ ] RiskManager 간소화
-5. [ ] Engine 수정
-6. [ ] Paper/Live 자산 동기화 구현
+3. ✅ PortfolioManager 리팩토링
+4. ✅ RiskManager 간소화
+5. ✅ Engine 수정
+6. ✅ Paper/Live 자산 동기화 구현
 7. [ ] 테스트 및 검증
 8. [ ] PR12_MASTER_PLAN.md 업데이트
 
