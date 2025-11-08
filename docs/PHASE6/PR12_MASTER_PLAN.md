@@ -217,6 +217,7 @@
 
 **✅ Paper 모드 테스트 완료** - PR12 핵심 기능(동적 반올림, 전략별 예산 관리, TP/SL 라운딩, 포트폴리오 가드) 정상 작동 확인, 거래 실행 및 텔레그램 알림 정상, 추가 기능(텔레그램 중복 방지, 종료 알림) 구현
 **✅ Live 모드 테스트 완료** - LiveBroker 자산 동기화 기능 확인(sync_equity_with_exchange), 텔레그램 중복 메시지 방지 기능 개선 후 정상 동작 확인
+**✅ Paper/Live 모드 완전 분리 완료** - DB 스키마에 mode 컬럼 추가, Paper 포지션이 Live에 영향을 주는 문제 근본 해결, PnL 계산 오류 수정, Paper/Live 파리티 100% 보장
 
 ## 로그/DB 산출물(Artifacts)
 - logs/trial_0000.json: 출구/펀딩/라운딩 관련 메타
