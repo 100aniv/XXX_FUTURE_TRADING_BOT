@@ -13,27 +13,112 @@
 - price_levels(): 진입/손절/익절 가격 계산
 """
 import math
-from typing import Tuple
+import time
+import requests
+from typing import Tuple, Dict, Optional
+from common.logger import setup_logger
+
+logger = setup_logger(__name__, log_type="application")
 
 
-def round_tick(symbol: str, price: float) -> float:
+# ⭐ PR12: 거래소 스펙 캐시 (exchangeInfo API)
+_exchange_info_cache: Dict[str, Dict] = {}
+_exchange_info_timestamp: float = 0
+_exchange_info_ttl: int = 3600  # 1시간 캐시
+
+# ⭐ PR12: 펀딩 레이트 캐시 (fundingRate API)
+_funding_rate_cache: Dict[str, float] = {}
+_funding_rate_timestamp: float = 0
+_funding_rate_ttl: int = 300  # 5분 캐시
+
+
+def get_exchange_info(symbol: str, use_cache: bool = True) -> Optional[Dict]:
     """
-    심볼별 가격 반올림 (tick size)
+    ⭐ PR12: Binance exchangeInfo API 조회 (Paper/Live 공통)
+    
+    Args:
+        symbol: 거래 심볼 (예: BTCUSDT)
+        use_cache: 캐시 사용 여부
+    
+    Returns:
+        dict: {"tickSize": float, "stepSize": float} or None
+    """
+    global _exchange_info_cache, _exchange_info_timestamp
+    
+    symbol = symbol.upper()
+    current_time = time.time()
+    
+    # 캐시 확인
+    if use_cache and symbol in _exchange_info_cache:
+        if current_time - _exchange_info_timestamp < _exchange_info_ttl:
+            return _exchange_info_cache[symbol]
+    
+    # API 호출
+    try:
+        url = "https://fapi.binance.com/fapi/v1/exchangeInfo"
+        response = requests.get(url, timeout=5)
+        response.raise_for_status()
+        data = response.json()
+        
+        # 심볼 정보 추출
+        for s in data.get("symbols", []):
+            if s["symbol"] == symbol:
+                # tick_size (가격 단위)
+                tick_size = None
+                for f in s.get("filters", []):
+                    if f["filterType"] == "PRICE_FILTER":
+                        tick_size = float(f["tickSize"])
+                        break
+                
+                # step_size (수량 단위)
+                step_size = None
+                for f in s.get("filters", []):
+                    if f["filterType"] == "LOT_SIZE":
+                        step_size = float(f["stepSize"])
+                        break
+                
+                if tick_size and step_size:
+                    info = {"tickSize": tick_size, "stepSize": step_size}
+                    _exchange_info_cache[symbol] = info
+                    _exchange_info_timestamp = current_time
+                    logger.debug(f"✅ exchangeInfo: {symbol} tickSize={tick_size}, stepSize={step_size}")
+                    return info
+        
+        logger.warning(f"⚠️ {symbol} not found in exchangeInfo")
+        return None
+        
+    except Exception as e:
+        logger.error(f"❌ exchangeInfo API 실패: {e}")
+        return None
+
+
+def round_tick(symbol: str, price: float, use_api: bool = True) -> float:
+    """
+    ⭐ PR12: 심볼별 가격 반올림 (동적 tick size)
     
     Args:
         symbol: 거래 심볼 (예: BTCUSDT)
         price: 원본 가격
+        use_api: Binance API 사용 여부 (False면 폴백)
     
     Returns:
         float: 반올림된 가격
         
     Examples:
         >>> round_tick("BTCUSDT", 50123.456)
-        50123.46  # BTC는 0.01 단위
+        50123.46  # API에서 가져온 tickSize 사용
         
         >>> round_tick("ETHUSDT", 3456.789)
-        3456.79  # ETH는 0.01 단위
+        3456.79  # API에서 가져온 tickSize 사용
     """
+    # ⭐ PR12: API 조회 시도
+    if use_api:
+        info = get_exchange_info(symbol)
+        if info and "tickSize" in info:
+            tick_size = info["tickSize"]
+            return round(price / tick_size) * tick_size
+    
+    # 폴백: 하드코딩된 값 (API 실패 시)
     s = symbol.upper()
     step = 0.01
     
@@ -281,28 +366,87 @@ def tp_from_rr(signal_info: dict, rr: float) -> float:
         return entry - (risk_dist * rr)
 
 
+def get_funding_rate(symbol: str, use_cache: bool = True) -> float:
+    """
+    ⭐ PR12: Binance fundingRate API 조회 (Paper/Live 공통)
+    
+    Args:
+        symbol: 거래 심볼 (예: BTCUSDT)
+        use_cache: 캐시 사용 여부
+    
+    Returns:
+        float: 현재 펀딩 레이트 (예: 0.0001 = 0.01%)
+    """
+    global _funding_rate_cache, _funding_rate_timestamp
+    
+    symbol = symbol.upper()
+    current_time = time.time()
+    
+    # 캐시 확인
+    if use_cache and symbol in _funding_rate_cache:
+        if current_time - _funding_rate_timestamp < _funding_rate_ttl:
+            return _funding_rate_cache[symbol]
+    
+    # API 호출
+    try:
+        url = f"https://fapi.binance.com/fapi/v1/premiumIndex?symbol={symbol}"
+        response = requests.get(url, timeout=5)
+        response.raise_for_status()
+        data = response.json()
+        
+        funding_rate = float(data.get("lastFundingRate", 0.0001))
+        
+        # 캐시 업데이트
+        _funding_rate_cache[symbol] = funding_rate
+        _funding_rate_timestamp = current_time
+        
+        logger.debug(f"✅ fundingRate: {symbol} = {funding_rate:.6f} ({funding_rate*100:.4f}%)")
+        return funding_rate
+        
+    except Exception as e:
+        logger.error(f"❌ fundingRate API 실패: {e}")
+        # 폴백: 기본값 0.01%
+        return 0.0001
+
+
 def calculate_funding_fee(
     position_value: float,
     holding_hours: float,
-    funding_rate: float = 0.0001,  # 0.01%
-    side: str = "LONG"
+    funding_rate: Optional[float] = None,
+    side: str = "LONG",
+    symbol: Optional[str] = None,
+    use_api: bool = True
 ) -> float:
     """
-    선물 펀딩비 계산 (바이낸스 기준)
+    ⭐ PR12: 선물 펀딩비 계산 (바이낸스 API 연동)
     
     Args:
         position_value: 포지션 가치 (USDT)
         holding_hours: 보유 시간 (시간)
-        funding_rate: 펀딩 비율 (기본 0.01%)
+        funding_rate: 펀딩 비율 (None이면 API 조회)
         side: LONG or SHORT
+        symbol: 거래 심볼 (API 조회 시 필요)
+        use_api: Binance API 사용 여부
     
     Returns:
         float: 펀딩비 (음수 = 지불, 양수 = 수령)
     
     Example:
+        >>> # API 조회
+        >>> calculate_funding_fee(10000, 24, symbol="BTCUSDT", side="LONG")
+        -3.0  # 실제 펀딩 레이트 기반
+        
+        >>> # 수동 지정
         >>> calculate_funding_fee(10000, 24, 0.0001, "LONG")
         -3.0  # LONG 포지션, 24시간 = 3번 정산, $3 지불
     """
+    # ⭐ PR12: API에서 펀딩 레이트 조회
+    if funding_rate is None and symbol and use_api:
+        funding_rate = get_funding_rate(symbol)
+    elif funding_rate is None:
+        # 폴백: 기본값 0.01%
+        funding_rate = 0.0001
+    
     # 8시간마다 정산
     funding_periods = int(holding_hours // 8)
     
