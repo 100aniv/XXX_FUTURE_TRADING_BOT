@@ -11,9 +11,10 @@
 3. 동시 포지션 수 제어
 4. 집중도 리스크 관리
 """
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Any
 from collections import defaultdict
 import time
+from datetime import datetime
 from common.logger import setup_logger
 
 logger = setup_logger(__name__, log_type="application")
@@ -58,6 +59,14 @@ class PortfolioManager:
         # ⭐ PR8: 심볼별 쿨다운 (거부 후 반복 시도 방지)
         self.symbol_cooldown: Dict[str, float] = {}  # {symbol: last_reject_time}
         self.cooldown_seconds = config.get('portfolio', {}).get('symbol_cooldown_seconds', 60)  # 기본 60초
+        
+        # ⭐ PR12: PnL 추적 추가
+        self.initial_equity = self.equity
+        self.daily_pnl = 0.0
+        self.total_pnl = 0.0
+        self.realized_pnl = 0.0
+        self.unrealized_pnl = 0.0
+        self.last_reset_date = datetime.now().date()
         
         logger.info(f"✅ PortfolioManager 초기화: Equity=${self.equity:,.0f}, Max Positions={self.max_positions}, Max Exposure/Symbol={self.max_exposure_per_symbol*100:.0f}%, Max Total={self.max_total_exposure*100:.0f}%, Symbol Cooldown={self.cooldown_seconds}s")
     
@@ -238,14 +247,87 @@ class PortfolioManager:
     def get_equity(self) -> float:
         """현재 자본 반환"""
         return self.equity
-    
-    def update_equity(self, new_equity: float):
-        """자본 업데이트 (PnL 반영)"""
-        old_equity = self.equity
-        self.equity = max(0.0, new_equity)
         
-        if abs(new_equity - old_equity) > 0.01:
-            logger.info(f"💰 Equity 업데이트: ${old_equity:,.0f} → ${new_equity:,.0f}")
+    def update_pnl(self, pnl: float, realized: bool = True):
+        """PnL 업데이트"""
+        if realized:
+            self.realized_pnl += pnl
+            self.daily_pnl += pnl
+            self.total_pnl += pnl
+            
+            # Equity 업데이트
+            old_equity = self.equity
+            self.equity = max(0.0, self.equity + pnl)
+            
+            if abs(pnl) > 0.01:  # 유의미한 변화만 로그
+                logger.info(f"💰 PnL 업데이트: ${pnl:+,.2f}, Daily: ${self.daily_pnl:+,.2f}, Total: ${self.total_pnl:+,.2f}, Equity: ${old_equity:,.2f} → ${self.equity:,.2f}")
+        else:
+            self.unrealized_pnl = pnl
+    
+    def get_daily_pnl(self) -> float:
+        """일일 누적 PnL 반환"""
+        return self.daily_pnl
+    
+    def get_total_pnl(self) -> float:
+        """전체 누적 PnL 반환"""
+        return self.total_pnl
+    
+    def reset_daily(self):
+        """일일 리셋 (자정)"""
+        logger.info(f"📅 일일 PnL 리셋: ${self.daily_pnl:+,.2f} → $0.00")
+        self.daily_pnl = 0.0
+        self.last_reset_date = datetime.now().date()
+    
+    def check_and_reset_daily(self):
+        """날짜 체크 및 자동 리셋"""
+        today = datetime.now().date()
+        if today > self.last_reset_date:
+            self.reset_daily()
+    
+    def sync_equity_with_broker(self, broker: Any):
+        """
+        브로커와 자산 동기화 (Live 모드에서만 의미)
+        
+        Args:
+            broker: PaperBroker 또는 LiveBroker
+        """
+        if hasattr(broker, 'sync_equity_with_exchange'):
+            try:
+                exchange_equity = broker.sync_equity_with_exchange()
+                
+                if exchange_equity > 0 and abs(exchange_equity - self.equity) > 0.01:
+                    logger.warning(f"⚠️ 자산 불일치: Local=${self.equity:,.2f}, Exchange=${exchange_equity:,.2f}")
+                    self.equity = exchange_equity
+                    logger.info(f"✅ 자산 동기화: ${exchange_equity:,.2f}")
+            except Exception as e:
+                logger.error(f"❌ 자산 동기화 실패: {e}")
+    
+    def update_equity(self, new_equity: float = None, pnl: float = None):
+        """
+        자본 업데이트 (단일 소스)
+        
+        Args:
+            new_equity: 새로운 자본 (직접 설정)
+            pnl: PnL (증감분)
+            
+        Raises:
+            ValueError: new_equity와 pnl이 모두 None이거나 모두 제공된 경우
+        """
+        if new_equity is not None and pnl is not None:
+            raise ValueError("new_equity와 pnl 중 하나만 제공해야 합니다")
+            
+        if new_equity is not None:
+            old_equity = self.equity
+            self.equity = max(0.0, new_equity)
+            
+            if abs(self.equity - old_equity) > 0.01:
+                logger.info(f"💰 Equity 설정: ${old_equity:,.0f} → ${new_equity:,.0f}")
+        
+        elif pnl is not None:
+            self.update_pnl(pnl, realized=True)
+        
+        else:
+            raise ValueError("new_equity 또는 pnl 중 하나는 제공해야 합니다")
     
     # =========================================================================
     # ⭐ PR8: 동적 설정 계산
