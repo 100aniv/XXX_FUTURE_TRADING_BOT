@@ -1,83 +1,121 @@
 [Objective]
-FlowGuardian(게이트) 모듈 추가.
-READY 플래그 없이는 PAPER/LIVE 실행 불가.
-새 파일/메서드 금지. 필요한 경우 interfaces.py 변경 PR 먼저 제안. 
-trading_bot_env 가상화 환경 유지.
-CI/CD 환경 구성을 위해 변경이 있을 때 마다 git commit.
+- FlowGuardian 게이트 유지 + 포트폴리오/리스크/튜닝 리팩토링 병행.
+- PAPER/LIVE 실행 전 READY 게이트 통과 필수.
+- trading_bot_env 가상환경 유지.
+- 변경마다 git commit (docs 포함).
 
-[Files You May Edit]
-- core/interfaces.py
-- core/flow_guardian.py (신규 1개만 허용)
-- execution/engine.py (게이트 호출만 추가)
-- metrics/compute.py (계약 준수 내 범위)
+[Scope & Flexibility]
+- 신규 파일/메서드는 “필요성 → 설계 요약 → 사용자 합의 → 생성” 순으로 진행.
+- 신규 파일은 PR 별 1개 이하 권장, 설계 문서(PR 마스터 플랜/리팩토링 노트)와 연결.
+- 기존 모듈 우선 재사용. 단일 책임/파리티 보장 목적일 때만 신규 생성.
+- 전략 로직/데이터 소스/브로커 교체는 별도 승인 후 진행.
+
+[Ownership Policy]
+- PnL/Equity 단일 소스는 PortfolioManager.
+- RiskManager는 가드(DD/슬리피지/극단손실/일일손실한도)만 담당.
+- Engine은 PortfolioManager의 인터페이스만 사용해 자본/손익 반영.
+- Telegram 일일 손익은 PortfolioManager.get_daily_pnl() 기준.
+- Paper/Live 로직 100% 동일, 실행 계층(Broker)만 분리.
+
+[Files You May Edit]  ; 예시, PR 본문에 “허용 파일 목록” 명시 후 확장 가능
+- core/interfaces.py                 ; 게이트/계약 정의
+- core/flow_guardian.py              ; READY 판정
+- execution/engine.py                ; 게이트 호출 + 포트폴리오 연계
+- execution/portfolio_manager.py     ; 자산·PnL 단일 소스
+- execution/risk_manager.py          ; 가드 전담 (PnL/Equity 비소유)
+- execution/position_sizer.py        ; Equity 참조만
+- execution/adapters/*.py            ; Paper/Live 파리티
+- common/messaging.py                ; PnL 표기 데이터 소스 교정 범위
+- metrics/compute.py                 ; 계약 범위 내
+- tests/**                           ; 관련 테스트 추가 허용
+- docs/PHASE6/**                     ; PR별 마스터 플랜/리포트
 
 [Non-Goals]
-- 복잡한 파워쉘 명령어 조합 사용하지 않기(명령어가 복잡해지면 오류발생)
-- 전략 로직 변경 금지
-- 데이터 소스/브로커 어댑터 교체 금지
-- 기존 모듈 최대 활용 - 신규 파일 생성 안 함 (리팩토링시 예외, 참고하는 문서에 생성이 필요하다고 할때는 생성)
--  불필요한 모듈 혹은 메소드 제거 - 기존 모듈과의 관계 현재 구현하려는 것, 전체 흐름 고려햇을때 사용하지 않는 것 제거
-- 하드코딩 제거 - 모든 로직 모듈화
--  단일 책임 - 각 모듈의 역할 명확
--  간결성 - main.py는 흐름 제어만
--  기존 MD파일 활용 - 신규로 MD파일 생성 안함 기존 통합업데이트
- - 설정값음 config.yml - 설정값 변경에 대한 파일은 config.yml 유일무이. 꼭 설정이 필요한 값에 대해 config.yml에. 중복 및 하드코딩 되지 않게
+- 과도한 파워셸/복잡 명령 사용 금지.
+- 전략 신호 로직 변경 금지.
+- 외부 데이터 소스/브로커 교체 금지.
+- 사용하지 않는 모듈/메서드 잔존 금지(참조 없으면 제거).
+- 하드코딩 금지, config.yml 단일 소스 준수.
+- 모듈 단일 책임 준수.
+- main.py는 흐름 제어만.
+- 문서는 기존 파일 우선(새 문서는 필요/합의 시에만 추가).
 
 [Constraints]
-- tests/flow/test_flow_guardian.py 통과 필수
-- pre-commit(ruff, black, mypy, vulture, coverage>85%) 통과
-- logs/trial_0000.json 생성 보장
-- DB.score_total == JSON.score_total 일치 검증
+- tests/flow/test_flow_guardian.py 통과.
+- pre-commit(ruff/black/mypy/vulture) 통과, coverage>85%.
+- logs/trial_0000.json 생성 보장.
+- DB.score_total == JSON.score_total 동기화 검증.
+- FlowGuardian READY 미호출 시 PAPER/LIVE 실행 금지.
 
 [Refactor Workflow]
-리팩토링은 모듈 단위 PR로 진행하며 게이트, DB, 튜닝과 분리.
-PR 본문에 허용 파일 목록 명시(목록 외 파일 변경 불가).
+- 모듈 단위로 PR 분리(게이트/DB/튜닝/포트폴리오 등).
+- 각 PR 설명에 허용 파일 목록과 변경 목적 명시.
+- 설계 변경은 관련 문서(PR 마스터 플랜/리팩토링 문서) 동기화 후 진행.
 
 [Documentation Sync]
-Docs/PHASE6 문서 동기화 필수.
-게이트 기준/시나리오 영향 시 REFACTORING_flow_guardian_gate.md 갱신.
+- Docs/PHASE6 문서 필수 업데이트.
+- FlowGuardian 변경 시 REFACTORING_flow_guardian_gate.md 갱신.
+- 포트폴리오/리스크 변경 시 해당 PR 문서에 영향/테스트 결과 기록.
 
 [Testing & Acceptance]
-unit/contract/flow/gate/tuning 테스트 매트릭스 적용.
-게이트 수용 기준:
-1) tests/flow/test_flow_guardian.py 통과
-2) logs/trial_0000.json 생성
-3) DB.score_total == JSON.score_total 일치
-4) pre-commit(ruff, black, mypy, vulture, coverage>85%) 통과
+- unit/contract/flow/gate/tuning 매트릭스 적용.
+- 게이트 수용 기준:
+  1) tests/flow/test_flow_guardian.py 통과
+  2) logs/trial_0000.json 생성
+  3) DB.score_total == JSON.score_total 일치
+  4) pre-commit(ruff/black/mypy/vulture, coverage>85%) 통과
+- 포트폴리오 리팩토링 수용 기준:
+  - PortfolioManager가 daily_pnl/total_pnl/realized/unrealized 일원화
+  - 자정 자동 리셋(check_and_reset_daily) 로깅
+  - Engine에서 portfolio.update_equity(pnl=…) 단일 호출
+  - Telegram 일일 손익 = PortfolioManager.get_daily_pnl()
+  - Paper: 로컬 equity, Live: Binance API 동기화 파리티
+
+[Paper/Live Parity]
+- 로직 100% 동일: TP/SL 계산, 반올림, 펀딩, 포트폴리오 가드.
+- Broker 계층만 분리: Paper(가상), Live(실API).
+- exchangeInfo/fundingRate API: Paper/Live 모두 조회(읽기 전용).
+- config.yml 단일 소스 원칙 철저 준수.
 
 [Docker Policy]
-WS/DB/Redis 경로 영향 시 PAPER 프로파일 기준 10분 스모크 테스트 권장.
-순수 파이썬 내부 로직 변경은 로컬 테스트로 대체 가능.
+- WS/DB/Redis 경로 변경 시 PAPER 프로파일 기준 10분 스모크 테스트 권장.
+- 순수 파이썬 내부 로직 변경은 로컬 테스트로 대체 가능.
 
 [Config Policy]
-설정 단일 소스는 config.yml.
-모드 결정 우선순위: config.mode > ENV.TRADING_MODE > paper.
+- 설정 단일 소스는 config.yml.
+- 모드 우선순위: config.mode > ENV.TRADING_MODE > 기본값 paper.
 
 [FlowGuardian Spec]
-- FlowGuardian.ready(): bool → READY 상태 판정
-- FlowGuardian.assert_ready(mode: Literal["paper","live"]) → 미준수 시 예외 발생
-- execution/engine.py 진입부에서 assert_ready 1회 호출 (중복 호출 금지)
+- FlowGuardian.ready() → READY 상태 bool 반환.
+- FlowGuardian.assert_ready(mode: Literal["paper","live"]) → READY 미준수 시 예외.
+- execution/engine.py 진입부에서 assert_ready 1회 호출(중복 금지).
 - READY 판정 근거:
-  · config.yml 유효성(필수 키 존재/타입 체크)
-  · DB·Redis 헬스체크(선택)
-  · 전략/튜닝 계약 불변 조건 일치
-  · 최근 테스트 타임스탬프 신선도 확인(옵션)
+  · config.yml 필수 키/타입 검증
+  · DB/Redis 헬스체크(옵션)
+  · 전략/튜닝 계약 조건 일치 여부
+  · 최근 테스트 타임스탬프 신선도(옵션)
 
 [CI Enforcement]
-- 허용 파일 외 변경 시 CI 실패
-- 하드코딩 탐지(정규식: \b\d+(\.\d+)?\b, config 바인딩 없으면 실패)
-- READY 미호출 시 PAPER/LIVE 실행 테스트 실패
-- logs/trial_0000.json 미생성 시 실패
-- DB.score_total != JSON.score_total 시 실패
-- pre-commit 미통과 시 커밋 차단
-- CODEOWNERS에 core/interfaces.py, execution/engine.py는 게이트 승인자 필수
+- 허용 범위 밖 파일 변경 시 CI 실패.
+- 하드코딩 탐지(\b\d+(\.\d+)?\b) → config 바인딩 없으면 실패.
+- READY 미호출 → PAPER/LIVE 실행 테스트 실패.
+- logs/trial_0000.json 누락 → 실패.
+- DB.score_total != JSON.score_total → 실패.
+- pre-commit 실패 시 커밋 차단.
+- CODEOWNERS: core/interfaces.py, execution/engine.py, execution/portfolio_manager.py, execution/risk_manager.py 등 핵심 파일 승인 절차 유지.
+
+[Git Workflow]
+- 로컬 커밋 후 반드시 git push origin main으로 GitHub에 동기화
+- 로컬과 원격 저장소의 커밋 이력이 일치하는지 확인 (git status 확인)
+- 매 작업 완료 후 GitHub 저장소에서 최신 커밋 확인
 
 [Checklist Before Commit]
-1) 현 구조 파악 완료 (연결 모듈·메서드·데이터 흐름 요약)
-2) 기존 모듈 재사용 여부 명시
-3) config.yml 키 추가 및 하드코딩 제거 여부 확인
-4) 공개 시그니처 변경 시 계약 영향 검토
-5) READY 기준 영향 여부 및 FlowGuardian 호출 위치 명시
-6) 테스트 4종 통과 증빙(log/test 결과) 확보
-7) 문서(Docs/PHASE6) 업데이트 위치 명시
-8) 실패 시 롤백 절차 명시
+1) 현 구조/데이터 흐름 요약.
+2) 기존 모듈 재사용 여부 + 신규 생성 근거 명시.
+3) config.yml 키 변경/추가 여부 + 하드코딩 제거 확인.
+4) 공개 시그니처 변경 시 계약 영향 분석.
+5) READY 기준 영향 및 호출 위치 명시.
+6) 테스트 4종 + 추가 테스트 증빙 첨부(logs/tests).
+7) 문서 업데이트 위치 명시(Docs/PHASE6).
+8) 실패 시 롤백 절차/대안 명시.
+9) 로컬 커밋 완료 후 GitHub에 git push origin main 실행 필수
