@@ -107,7 +107,7 @@
 [Git Workflow]
 - 로컬 커밋 후 반드시 git push origin main으로 GitHub에 동기화
 - 로컬과 원격 저장소의 커밋 이력이 일치하는지 확인 (git status 확인)
-- 매 작업 완료 후 GitHub 저장소에서 최신 커밋 확인
+- PR이나 Phase가 끝나면 GitHub 저장소에서 최신 커밋 확인
 
 [Checklist Before Commit]
 1) 현 구조/데이터 흐름 요약.
@@ -118,4 +118,24 @@
 6) 테스트 4종 + 추가 테스트 증빙 첨부(logs/tests).
 7) 문서 업데이트 위치 명시(Docs/PHASE6).
 8) 실패 시 롤백 절차/대안 명시.
-9) 로컬 커밋 완료 후 GitHub에 git push origin main 실행 필수
+9) PR이나 PHASE처럼 큰 작업이 끝나면 GitHub에 git push origin main 실행 필수
+
+[로그 검증 절차]
+1. 시스템 상태 로그:
+   docker logs trading_bot_paper_ensemble | Select-String "✅|❌|⚠️"
+
+2. 텔레그램 메시지 로그:
+   docker logs trading_bot_paper_ensemble | Select-String "\[TELEGRAM\]"
+
+3. 거래 활동 로그:
+   docker logs trading_bot_paper_ensemble | Select-String "포지션|Position|order|PORTFOLIO"
+
+4. 특정 기능 검증 로그:
+   - 동적 반올림: docker logs trading_bot_paper_ensemble | Select-String "round_tick|exchangeInfo"
+   - 펀딩 수수료: docker logs trading_bot_paper_ensemble | Select-String "funding|fundingRate"
+   - 포트폴리오 가드: docker logs trading_bot_paper_ensemble | Select-String "예산|budget|전략 예산|correlation"
+
+[메서드 명명 규칙]
+- 기능별 접두사 사용: calculate_*, get_*, check_*
+- 중복 방지: 유사 기능에 다른 동사 사용 (calculate_X vs compute_X)
+- 메서드 검증 테스트 필수

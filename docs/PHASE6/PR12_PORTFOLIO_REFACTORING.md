@@ -311,6 +311,12 @@ def run(config, mode='paper'):
   - [x] `reset_daily()` 자동 호출 구현
   - [x] `check_and_reset_daily()` 메서드 추가
 
+- [x] **⭐ 전략별 예산 관리**
+  - [x] `config.yml`에 `portfolio.budget` 섹션 추가
+  - [x] `strategy_allocation` 비율 설정 추가 (각 전략의 자산 사용 비율)
+  - [x] `calculate_strategy_budget()` 메서드 구현 (동적 계산)
+  - [x] `can_open_position()`에 전략 예산 검사 로직 추가
+
 - [x] **⭐ RiskManager 간소화**
   - [x] PnL 관련 코드 제거
   - [x] Portfolio 참조로 대체
@@ -369,6 +375,64 @@ def run(config, mode='paper'):
 5. ✅ Engine 수정
 6. ✅ Paper/Live 자산 동기화 구현
 7. ✅ 포트폴리오 가드 구현 (전략 예산/상관관계)
+
+### 전략별 예산 관리 (Strategy Budget Management)
+
+#### 설정 방법
+
+```yaml
+# config.yml
+portfolio:
+  # 기타 포트폴리오 설정...
+  
+  # 전략별 예산 설정
+  budget:
+    default_allocation: 0.2    # 기본 배분 비율 (20%)
+    strategy_allocation:       # 전략별 배분 비율
+      ensemble_1_signals: 0.4  # 전체 자산의 40%까지 사용 가능
+      ensemble_2_signals: 0.4  # 전체 자산의 40%까지 사용 가능
+      ensemble_3_signals: 0.3  # 전체 자산의 30%까지 사용 가능
+      scalping: 0.3            # 전체 자산의 30%까지 사용 가능
+```
+
+#### 동작 방식
+
+1. **자산 할당 비율 계산**: 현재 자산(equity)에 비율을 곱하여 전략별 예산 계산
+   - 예: 자산 $50,000 환경에서 ensemble_1_signals의 예산 = $50,000 × 0.4 = $20,000
+
+2. **예산 사용 추적**: 현재 포지션들의 가치와 신규 포지션 가치를 합산하여 예산 초과 여부 검사
+
+3. **유동적 예산 관리**: 자산(equity)이 변화되면 자동으로 전략별 예산도 동적 조정
+   - 예산 = 현재 자산(equity) × 설정 비율
+
+#### 구현 코드
+
+```python
+# execution/portfolio_manager.py
+def calculate_strategy_budget(self, strategy_id: str) -> float:
+    """⭐ PR12: 전략별 예산 한도 계산"""
+    equity = self.equity  # 현재 자산
+    
+    # 전략별 예산 할당 비율 조회
+    if strategy_id in self.strategy_budget:
+        budget_pct = self.strategy_budget[strategy_id]
+    else:
+        # 기본 비율 사용
+        budget_pct = self.default_budget_pct
+        
+    # 전략별 예산 = 자산 * 할당 비율
+    budget = equity * budget_pct
+    
+    logger.info(f"💰 전략 예산: {strategy_id} = ${budget:,.2f} ({budget_pct*100:.1f}%)")
+    return budget
+```
+
+#### 이점
+
+1. **지나친 노출 방지**: 한 전략의 실패가 전체 포트폴리오에 미치는 영향 최소화
+2. **리스크 분산**: 전체 자산을 다양한 전략에 고루 분포
+3. **동적 조정**: 자산 변경에 따른 자동 조정 (PnL 증가 시 예산도 증가, PnL 감소 시 예산도 감소)
+
 8. [ ] 테스트 및 검증
 9. [x] PR12_MASTER_PLAN.md 업데이트
 

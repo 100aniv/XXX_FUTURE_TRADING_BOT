@@ -253,10 +253,27 @@ class LiveBroker:
     """실거래 브로커 - Binance API"""
     
     def __init__(self, api_key: str, api_secret: str, fee_rate: float = 0.0004):
+        # API 키/시크릿 기본 검증
+        if not api_key or len(api_key) < 10:
+            logger.error(f"❌ [LIVE API] 유효하지 않은 API 키 형식 (길이: {len(api_key) if api_key else 0})")  
+        if not api_secret or len(api_secret) < 10:
+            logger.error(f"❌ [LIVE API] 유효하지 않은 API 시크릿 형식")
+            
         self.client = Client(api_key, api_secret)
         self.fee_rate = fee_rate
         self.tpsl_orders = {}  # {position_id: [order_ids]}
-        logger.info(f"✅ LiveBroker 초기화 (실거래)")
+        
+        # API 키 마스킹하여 로그 출력
+        masked_key = api_key[:4] + '...' + api_key[-4:] if len(api_key) > 8 else "유효하지 않은 키"
+        logger.info(f"✅ LiveBroker 초기화 (API 키: {masked_key})")  
+        
+        # 초기화 시 API 연결 테스트 수행
+        connection_status = self.check_api_connection()
+        if connection_status['success']:
+            logger.info(f"✅ [LIVE API] 연결 테스트 성공: ${connection_status.get('wallet_balance', 0):,.2f} USDT")
+        else:
+            logger.error(f"❌ [LIVE API] 연결 테스트 실패: {connection_status.get('error', '알 수 없는 오류')}")
+        
     
     def execute(self, decision: dict, qty: float) -> dict:
         """Binance API 실제 실행 (One-Way Mode)"""
@@ -457,6 +474,49 @@ class LiveBroker:
             logger.error(f"❌ 자산 조회 실패: {e}")
             return {'success': False, 'error': str(e)}
             
+    def check_api_connection(self) -> dict:
+        """
+        API 연결 및 권한 진단 함수
+        
+        Returns:
+            dict: {'success': bool, 'wallet_balance': float, 'error': str}
+        """
+        try:
+            # 1. 서버 시간 확인 (가장 기본적인 API 호출)
+            try:
+                server_time = self.client.get_server_time()
+                logger.info(f"✅ [LIVE API] 서버 시간 확인 성공: {server_time}")
+            except Exception as e:
+                logger.error(f"❌ [LIVE API] 서버 시간 확인 실패: {e}")
+                return {'success': False, 'error': f'서버 시간 확인 실패: {e}'}
+            
+            # 2. 계정 정보 확인
+            try:
+                account = self.client.futures_account()
+                total_wallet_balance = float(account['totalWalletBalance'])
+                available_balance = float(account['availableBalance'])
+                logger.info(f"✅ [LIVE API] 계정 확인 성공: 총 잔고=${total_wallet_balance:,.2f}, 가용=${available_balance:,.2f}")
+            except Exception as e:
+                logger.error(f"❌ [LIVE API] 계정 정보 확인 실패: {e}")
+                return {'success': False, 'error': f'계정 정보 확인 실패: {e}'}
+            
+            # 3. 권한 확인 시도
+            try:
+                api_permissions = self.client.get_api_permissions()
+                futures_enabled = api_permissions.get('enableFutures', False)
+                logger.info(f"✅ [LIVE API] 권한 확인: Futures={futures_enabled}")
+            except Exception as e:
+                logger.warning(f"⚠️ [LIVE API] 권한 확인 실패 (무시됨): {e}")
+            
+            return {
+                'success': True,
+                'wallet_balance': total_wallet_balance,
+                'available_balance': available_balance
+            }
+        except Exception as e:
+            logger.error(f"❌ [LIVE API] 연결 진단 실패: {e.__class__.__name__} - {str(e)}")
+            return {'success': False, 'error': str(e)}
+    
     def sync_equity_with_exchange(self) -> float:
         """
         ⭐ PR12: 거래소 자산과 동기화
@@ -467,24 +527,41 @@ class LiveBroker:
         Raises:
             Exception: 동기화 실패 시
         """
+        logger.info(f"\u231b [LIVE] 거래소 자산 동기화 시도 (Binance Futures API)")
         try:
-            result = self.get_account_balance()
+            # 재시도
+            max_retries = 3
+            for attempt in range(max_retries):
+                try:
+                    result = self.get_account_balance()
+                    break
+                except Exception as retry_err:
+                    if attempt < max_retries - 1:
+                        logger.warning(f"\u26a0️ [LIVE] 자산 조회 재시도 ({attempt+1}/{max_retries}): {retry_err}")
+                        time.sleep(1)
+                    else:
+                        raise
+                        
             if not result['success']:
-                logger.error(f"❌ 자산 동기화 실패: {result.get('error')}")
+                logger.error(f"\u274c [LIVE] 자산 동기화 실패: {result.get('error')}")
                 return 0.0
-                
+            
             # 'USDT' 잔고 찾기
+            logger.info(f"\u2705 [LIVE] 자산 조회 성공: {len(result['balances'])}개 자산 정보 받음")
             for balance in result['balances']:
+                logger.debug(f"\u2139️ [LIVE] 자산: {balance['asset']} = {balance['balance']}")
                 if balance['asset'] == 'USDT':
                     equity = float(balance['balance'])
-                    logger.info(f"✅ 거래소 자산 조회: ${equity:,.2f} USDT")
+                    logger.info(f"\u2705 [LIVE] 거래소 자산 동기화 성공: ${equity:,.2f} USDT")
                     return equity
-                    
-            logger.error("❌ USDT 잔고를 찾을 수 없음")
+            
+            # USDT 잔고가 없는 경우 상세 로깅
+            assets = [f"{b['asset']}:{b['balance']}" for b in result['balances'][:5]]
+            logger.error(f"\u274c [LIVE] USDT 잔고를 찾을 수 없음. 가용 자산: {', '.join(assets)}...")
             return 0.0
             
         except Exception as e:
-            logger.error(f"❌ 자산 동기화 오류: {e}")
+            logger.error(f"\u274c [LIVE] 자산 동기화 오류: {e}")
             return 0.0
     
     def get_positions(self) -> dict:

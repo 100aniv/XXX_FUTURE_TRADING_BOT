@@ -14,6 +14,10 @@
 - 운영 롤아웃: 섀도우런→카나리(10%→30%→50%→100%) 단계 적용
 - 가드레일: DD 증가 한계, 최소 거래수, 분산/변동성 상승 한계, 에러율
 - A/B 비교: baseline vs tuned 결과 리포트(승률/TP hit rate/평균 보유시간 포함)
+- **⭐ 운영 모니터링** (PR12에서 이관):
+  - 메트릭 표출 (API 지연, WS 상태, 큐 사용률)
+  - 최소 대시보드
+  - A/B 비교 하니스 (ABComparisonReport로 구현)
 
 ## 제외(Out-of-Scope)
 - 신호 무결성/Redis(→ PR9)
@@ -99,11 +103,15 @@ strategies/ensemble.py          # ✅ Ensemble 로직 (Config만 주입)
   - 섀도우 모드 테스트
   - 카나리 모드 테스트 (10%→30%→50%→100%)
 
-- [ ] **Phase 3: ABComparisonReport** (P1, 1일)
+- [ ] **Phase 3: ABComparisonReport & 운영 모니터링** (P1, 1일)
   - analytics/ab_comparison.py 구현 (기존 report_generator.py 확장)
   - 차트 생성 (matplotlib)
   - Markdown 템플릿
   - 자동 리포트 생성 워크플로우
+  - **⭐ PR12에서 이관된 운영 모니터링**:
+    - 메트릭 표출 (API 지연, WS 상태, 큐 사용률)
+    - 최소 대시보드 (Grafana 또는 간단한 웹 대시보드)
+    - A/B 비교 하니스 (ABComparisonReport와 통합)
 
 - [ ] **Phase 4: 통합 및 최적화** (P2, 1일)
  - [ ] Bug #8: 파라미터 후보 정의(min_confidence/consensus_bonus/budget_per_strategy) 및 오버레이 생성

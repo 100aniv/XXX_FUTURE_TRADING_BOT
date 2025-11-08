@@ -11,6 +11,7 @@
 
 사용법:
   python main.py
+
 """
 import os
 import sys
@@ -20,7 +21,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from common.logger import setup_logger
-from common.messaging import tg
+from common.messaging import tg, system_shutdown_alert
 from common.database import test_db_connection
 from common.config_loader import load_config
 from common.symbol_manager import load_symbols_from_config
@@ -48,13 +49,14 @@ def main():
             tg("✅ DB 연결 성공", CFG)
         else:
             tg("❌ DB 연결 실패 (거래/튜닝 기록 불가)", CFG)
-    except Exception:
-        pass
-
-    # Telegram: STOP on exit
+    except Exception as e:
+        logger.error(f"❌ 텔레그램 알림 오류: {e}")
+    
+    # Telegram: STOP on exit (PR12 #9)
     def _on_exit():
         try:
-            tg(f"🛑 STOP [{mode.upper()}] Trading system", CFG)
+            strategy = (CFG.get('strategy', {}).get('selector') or 'ensemble')
+            system_shutdown_alert(mode, strategy, CFG)
         except Exception:
             pass
     atexit.register(_on_exit)

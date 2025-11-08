@@ -183,6 +183,11 @@ exits:
     k: 3.0  # ATR 배수 (×3.0) - 중요!
     move_to_break_even_at_r: 0.7  # 0.7R 도달 시 손절을 진입가로 이동
     type: atr  # ATR 기반
+    
+  # ⭐ PR12: 고급 가격 레벨 설정
+  price_levels:
+    advanced:
+      enabled: true  # 레짐 인지/최근 고저가 반영
   
   # ⭐ PR10: 바이낸스 SL/TP API 파라미터
   binance_api:
@@ -254,7 +259,7 @@ leverage:
   min: 2       # 최소 레버리지 ⭐ 보수적 하한선
 lookback: 1000  # ⭐ resample + 지표 warmup 고려 (EMA 50 기준)
 min_bars_for_signal: 60  # ⭐ 전역 최소값 (지표 warmup + 안전 margin)
-mode: paper
+mode: live
 strategy:
   use_ensemble: true  # PR7-2: 앙상블 Paper 모드
   selector: null      # 6개 전략 모두 실행
@@ -314,6 +319,26 @@ portfolio:
   use_dynamic_exposure: true   # 변동성 기반 심볼별 exposure 동적 조정
   use_dynamic_budget: true     # 성과 기반 전략별 budget 동적 배분
   symbol_cooldown_seconds: 60  # 심볼별 쿨다운 (거부 후 재시도 방지)
+  
+  # ⭐ PR12: 상관관계 가드 설정
+  correlation:
+    max_pair_corr: 0.7         # 심볼 상관관계 최대값 (70%)
+    window_days: 14           # 상관관계 계산 기간 (14일)
+  
+  # ⭐ PR12: 전략별 예산 설정
+  budget:
+    default_allocation: 0.2    # 기본 배분 비율 (20%)
+    strategy_allocation:       # 전략별 배분 비율 (신호 개수에 비례)
+      ensemble_1_signals: 0.25  # 1개 전략 합의 → 25% (낮은 신뢰도)
+      ensemble_2_signals: 0.40  # 2개 전략 합의 → 40% (중간 신뢰도)
+      ensemble_3_signals: 0.55  # 3개 전략 합의 → 55% (높은 신뢰도)
+      ensemble_4_signals: 0.65  # 4개 전략 합의 → 65% (매우 높은 신뢰도)
+      scalping: 0.25            # 스캘핑 전략 → 25%
+      daytrade: 0.3            # 30%
+      swing: 0.3               # 30%
+      trend: 0.3               # 30%
+      reversion: 0.3           # 30%
+      breakout: 0.3            # 30%
 # ========================================
 # 포지션 사이징 (Position Sizing)
 # ========================================
@@ -574,6 +599,27 @@ tuning:
     #   t_min_recent: 1
     #   trials: 10
     # --- 다른 전략 스케줄 끝 ---
+
+# ========================================
+# 템포럴 디커플링
+# ========================================
+metrics:
+  jitter_threshold: 60    # 지터 임계값 (60초)
+  health:
+    max_api_latency_ms: 500
+    max_ws_message_lag_sec: 30
+
+# ========================================
+# PR12: 거래소 스펙
+# ========================================
+exchange:
+  specs:
+    dynamic_rounding: true      # 동적 반올림 활성화 (tick_size/step_size)
+    cache_ttl_sec: 3600         # 캐시 TTL (1시간)
+  
+  funding:
+    enabled: true               # 펀딩 연동 활성화
+    cache_ttl_sec: 300          # 펀딩 캐시 TTL (5분)
 
 # ========================================
 # 애널리틱스 (Analytics)

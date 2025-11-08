@@ -219,11 +219,23 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict):
     # ⭐ PR12: Live 모드에서 자산 동기화 실행
     if mode == "live":
         try:
-            logger.info("🔍 거래소 자산과 동기화 시도 (Live 모드)")
-            portfolio.sync_equity_with_broker(broker)
-            logger.info(f"✅ 현재 자산: ${portfolio.get_equity():,.2f} USDT")
+            logger.info("🔍 [LIVE] 거래소 자산과 동기화 시도")
+            initial_equity = portfolio.get_equity()
+            new_equity = portfolio.sync_equity_with_broker(broker)
+            logger.info(f"✅ [LIVE] 자산 동기화 {mode.upper()}: ${initial_equity:,.2f} → ${new_equity:,.2f} USDT")
+            
+            # 자산 변화량 추적
+            equity_change = new_equity - initial_equity
+            if abs(equity_change) > 0.01:  # 1센트 이상 변화가 있는 경우
+                logger.info(f"💰 [LIVE] 자산 변화: ${equity_change:+,.2f} USDT")
+                
+            # 전제조건 확인
+            if new_equity <= 0:
+                logger.error(f"🚨 [LIVE] 거래소 자산 부족: ${new_equity:,.2f} USDT")
+                # 텔레그램 알림
+                tg(f"\ud83d\udea8 *거래소 자산 부족*\n예치금: ${new_equity:,.2f} USDT\n\n❗️ 거래를 위해 자산을 입금해야 합니다.", config)
         except Exception as e:
-            logger.warning(f"⚠️ 자산 동기화 실패 (무시하고 계속): {e}")
+            logger.warning(f"⚠️ [LIVE] 자산 동기화 실패 (무시하고 계속): {e}")
 
     logger.info("=" * 80)
     logger.info(f"🚀 Trading Engine 시작: Symbol={symbol}, Timeframe={timeframe}")
@@ -1127,30 +1139,12 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict):
                     leverage=position.get("lev", 1),
                 )
                 
-                # Equity & Manager 업데이트
-                new_equity = portfolio.get_equity() + pnl
-                portfolio.update_equity(new_equity)
-                sizer.update_equity(new_equity)
-                risk.update_equity(new_equity)
-                risk.update_daily_pnl(pnl)
+                # ⭐ PR12: Equity 단일 소스 - PortfolioManager만 업데이트
+                portfolio.update_equity(pnl=pnl)
                 
                 # 포지션 제거
                 position_value = position.get("position_value", position["qty"] * position["entry"])
                 portfolio.remove_position(symbol=position["symbol"], position_id=pos_id)
-                risk.remove_position(position["symbol"], position_value)
-                active_positions.pop(pos_id, None)
-                
-                logger.info(f"✅ [ONE-WAY MODE] {opposite_side} {position['symbol']} @ {current_price:,.2f} 청산 (PnL: ${pnl:,.2f})")
-
-        # 거래 실행
-        fill = broker.execute(decision, qty)
-
-        if fill.get("success"):
-            trade_count += 1
-
-            # 포지션 ID 생성
-            position_id = str(uuid4())
-
             # 포지션 정보에 entry_time 추가
             entry_time = ts
 

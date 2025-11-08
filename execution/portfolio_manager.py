@@ -236,6 +236,13 @@ class PortfolioManager:
         for positions in self.positions.values():
             total += sum(pos['value'] for pos in positions)
         return total
+
+    def get_all_positions(self) -> List[Dict]:
+        """모든 포지션 목록 반환"""
+        all_positions = []
+        for positions in self.positions.values():
+            all_positions.extend(positions)
+        return all_positions
     
     def get_stats(self) -> Dict:
         """
@@ -310,23 +317,43 @@ class PortfolioManager:
         if today > self.last_reset_date:
             self.reset_daily()
     
-    def sync_equity_with_broker(self, broker: Any):
+    def sync_equity_with_broker(self, broker: Any) -> float:
         """
         브로커와 자산 동기화 (Live 모드에서만 의미)
         
         Args:
             broker: PaperBroker 또는 LiveBroker
+            
+        Returns:
+            float: 동기화 후 자산값
         """
+        # 기존 자산 값 기록
+        initial_equity = self.equity
+        logger.debug(f"\u23f3 [PORTFOLIO] 자산 동기화 시도: 현재=${initial_equity:,.2f} USDT")
+        
         if hasattr(broker, 'sync_equity_with_exchange'):
             try:
+                # 거래소 API 통한 자산 조회
                 exchange_equity = broker.sync_equity_with_exchange()
                 
-                if exchange_equity > 0 and abs(exchange_equity - self.equity) > 0.01:
-                    logger.warning(f"⚠️ 자산 불일치: Local=${self.equity:,.2f}, Exchange=${exchange_equity:,.2f}")
-                    self.equity = exchange_equity
-                    logger.info(f"✅ 자산 동기화: ${exchange_equity:,.2f}")
+                if exchange_equity > 0:
+                    # 유의미한 변화가 있을 때만 동기화
+                    if abs(exchange_equity - self.equity) > 0.01:
+                        logger.info(f"\u2705 [PORTFOLIO] 자산 동기화: ${self.equity:,.2f} \u2192 ${exchange_equity:,.2f} USDT")
+                        self.equity = exchange_equity
+                    else:
+                        logger.debug(f"\u2139\ufe0f [PORTFOLIO] 자산 동기화 불필요: 변화량=${abs(exchange_equity - self.equity):,.2f} USDT")
+                else:
+                    logger.warning(f"\u26a0\ufe0f [PORTFOLIO] 거래소 잔고 없음 (API 값: ${exchange_equity:,.2f})")
+                    
+                return exchange_equity
+                    
             except Exception as e:
-                logger.error(f"❌ 자산 동기화 실패: {e}")
+                logger.error(f"\u274c [PORTFOLIO] 자산 동기화 실패: {e}")
+        else:
+            logger.warning(f"\u26a0\ufe0f [PORTFOLIO] 브로커에 'sync_equity_with_exchange' 기능 없음")
+        
+        return self.equity  # 변경 없음
                 
     def calculate_strategy_budget(self, strategy_id: str) -> float:
         """
@@ -350,7 +377,7 @@ class PortfolioManager:
         # 전략별 예산 = 자산 * 할당 비율
         budget = equity * budget_pct
         
-        logger.debug(f"💰 전략 예산: {strategy_id} = ${budget:,.2f} ({budget_pct*100:.1f}%)")
+        logger.info(f"💰 전략 예산: {strategy_id} = ${budget:,.2f} ({budget_pct*100:.1f}%)")
         return budget
         
     def check_correlation_guard(self, new_symbol: str) -> tuple[bool, str]:
@@ -505,9 +532,9 @@ class PortfolioManager:
         
         return min(dynamic_exposure, 0.5)  # 최대 50%
     
-    def calculate_strategy_budget(self, strategy: str, performance: dict = None) -> int:
+    def calculate_strategy_positions(self, strategy: str, performance: dict = None) -> int:
         """
-        전략 성과 기반 동적 Budget (최대 포지션 수) 계산
+        전략 성과 기반 동적 최대 포지션 수 계산
         
         Args:
             strategy: 전략 이름
@@ -517,10 +544,10 @@ class PortfolioManager:
             해당 전략의 최대 포지션 수
         
         Example:
-            >>> pm.calculate_strategy_budget('scalping', {'sharpe': 1.5, 'winrate': 0.65})
+            >>> pm.calculate_strategy_positions('scalping', {'sharpe': 1.5, 'winrate': 0.65})
             5  # 우수한 전략
             
-            >>> pm.calculate_strategy_budget('weak', {'sharpe': 0.3, 'winrate': 0.45})
+            >>> pm.calculate_strategy_positions('weak', {'sharpe': 0.3, 'winrate': 0.45})
             1  # 약한 전략
         """
         if not self.use_dynamic_budget or performance is None:

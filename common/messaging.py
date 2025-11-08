@@ -19,12 +19,19 @@
 """
 import os
 import requests
+import time
+import hashlib
 from typing import Optional, Dict, Any, List
 from datetime import datetime
 
 from .logger import setup_logger
 
 logger = setup_logger(__name__, log_type="application")
+
+# 메시지 중복 방지를 위한 캐시
+_message_cache = {}
+_MESSAGE_CACHE_TTL = 300  # 초 단위 TTL (Time To Live) - PR12 개선: 60초에서 300초로 확대
+_MESSAGE_CACHE_MAX = 100  # 최대 캐시 크기
 
 
 def send_telegram(
@@ -103,6 +110,8 @@ def tg(text: str, config: dict) -> bool:
     Examples:
         >>> tg("신호 발생: BTCUSDT LONG", config)
     """
+    global _message_cache
+    
     # telegram 설정 추출
     tg_config = config.get("telegram", {})
     token = tg_config.get("token", "")
@@ -114,6 +123,40 @@ def tg(text: str, config: dict) -> bool:
         logger.warning("⚠️ 텔레그램 비활성화 또는 설정 없음")
         return False
     
+    # 메시지 중복 확인 (PR12 Fix: 중복 텔레그램 메시지 방지)
+    # 메시지 해시 생성 (내용 기반)
+    msg_hash = hashlib.md5(text.encode()).hexdigest()
+    
+    # 캐시 정리 (오래된 항목 제거)
+    current_time = time.time()
+    expired_keys = [k for k, v in _message_cache.items() 
+                  if current_time - v['timestamp'] > _MESSAGE_CACHE_TTL]
+    for k in expired_keys:
+        _message_cache.pop(k, None)
+    
+    # 캐시 크기 제한
+    if len(_message_cache) > _MESSAGE_CACHE_MAX:
+        # 가장 오래된 항목 제거
+        oldest_key = min(_message_cache.keys(), key=lambda k: _message_cache[k]['timestamp'])
+        _message_cache.pop(oldest_key, None)
+    
+    # 중복 메시지 확인 - PR12 개선: 중복 감지 로직 강화
+    if msg_hash in _message_cache:
+        # 마지막 전송 시간 확인
+        last_sent = _message_cache[msg_hash]['timestamp']
+        if current_time - last_sent < _MESSAGE_CACHE_TTL:
+            logger.warning(f"⚠️ 중복 텔레그램 메시지 방지 (TTL: {_MESSAGE_CACHE_TTL}초 내 동일 메시지, 해시: {msg_hash[:8]}...)")
+            # 캐시 항목 업데이트 (시간만 업데이트하여 TTL 재시작)
+            _message_cache[msg_hash]['timestamp'] = current_time
+            return False
+    
+    # 캐시에 추가
+    _message_cache[msg_hash] = {
+        'timestamp': current_time,
+        'text': text[:50] + '...' if len(text) > 50 else text  # 로깅용 요약
+    }
+    
+    # 메시지 전송
     return send_telegram(
         text=text,
         token=token,
@@ -880,4 +923,35 @@ def data_gap_alert(strategy: str, symbol: str, gap_size: int, config: dict):
 ━━━━━━━━━━━━━━━"""
     
     logger.warning(f"⚠️ [{strategy.upper()}] 데이터 갭 | {symbol} | Gap: {gap_size}캔들")
+    tg(msg, config)
+
+
+# ============================================
+# 시스템 종료 알람 (PR12 #9)
+# ============================================
+
+def system_shutdown_alert(mode: str, strategy: str, config: dict):
+    """
+    시스템 종료 알람
+    
+    Args:
+        mode: 모드 (paper/live)
+        strategy: 전략명
+        config: 설정 딕셔너리
+    """
+    import pytz
+    kst = pytz.timezone('Asia/Seoul')
+    now = datetime.now(kst).strftime("%Y-%m-%d %H:%M:%S")
+    
+    msg = f"""🛑 *시스템 종료*
+━━━━━━━━━━━━━━━
+📌 모드: {mode.upper()}
+📌 전략: {strategy.upper()}
+📌 시간: {now}
+━━━━━━━━━━━━━━━
+
+*참고*: 컨테이너 정상/비정상 종료 시 전송됩니다.
+"""
+    
+    logger.info(f"🛑 [{strategy.upper()}] 시스템 종료 | Mode: {mode}")
     tg(msg, config)
