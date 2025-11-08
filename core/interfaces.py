@@ -121,11 +121,15 @@ class IBroker(Protocol):
     구현 대상:
     - execution/executors/simulation.py::SimulationExecutor
     - execution/executors/paper.py::PaperExecutor
+    - execution/adapters/brokers.py::PaperBroker
+    - execution/adapters/brokers.py::LiveBroker
     
     참고:
     - 일부 문맥에서 IExecutor로 지칭
     - dry_run: 시뮬레이션 실행 (게이트용)
     - place: 실제 주문 (PAPER/LIVE용)
+    - get_account_balance: 계좌 자산 조회 (PR12)
+    - sync_equity_with_exchange: 자산 동기화 (PR12)
     """
     
     def dry_run(self, order_intent: Dict[str, Any]) -> Dict[str, Any]:
@@ -171,6 +175,33 @@ class IBroker(Protocol):
             Exception: 주문 실패 시
         """
         ...
+    
+    def get_account_balance(self) -> Dict[str, Any]:
+        """
+        계정 자산 조회 (PR12)
+        
+        Returns:
+            {
+                "success": bool,
+                "balances": List[Dict[str, Any]],  # [{"asset": "USDT", "balance": "1000.00", ...}, ...]
+            }
+        
+        Raises:
+            Exception: 조회 실패 시
+        """
+        ...
+    
+    def sync_equity_with_exchange(self) -> float:
+        """
+        거래소 자산과 동기화 (PR12)
+        
+        Returns:
+            float: 현재 가용 USDT 자산
+        
+        Raises:
+            Exception: 동기화 실패 시
+        """
+        ...
 
 
 class IMetrics(Protocol):
@@ -205,6 +236,92 @@ class IMetrics(Protocol):
         
         Raises:
             Exception: 계산 실패 시
+        """
+        ...
+
+
+class IPortfolio(Protocol):
+    """
+    포트폴리오 관리자 계약 (PR12)
+    
+    구현 대상:
+    - execution/portfolio_manager.py::PortfolioManager
+    
+    목적:
+    - 중앙 집중식 자산(equity) 관리
+    - PnL 통합 관리 (daily, total, realized, unrealized)
+    - 포지션 노출 및 분산 관리
+    - 브로커와 자산 동기화
+    """
+    
+    def get_equity(self) -> float:
+        """
+        현재 자본 반환
+        
+        Returns:
+            float: 현재 자본 (USDT)
+        """
+        ...
+    
+    def update_equity(self, new_equity: float = None, pnl: float = None) -> None:
+        """
+        자본 업데이트 (단일 소스)
+        
+        Args:
+            new_equity: 새 자본 직접 설정 (둘 중 하나만 제공)
+            pnl: PnL 증감분 (둘 중 하나만 제공)
+        
+        Raises:
+            ValueError: new_equity와 pnl이 모두 None이거나 모두 제공된 경우
+        """
+        ...
+    
+    def update_pnl(self, pnl: float, realized: bool = True) -> None:
+        """
+        PnL 업데이트
+        
+        Args:
+            pnl: 손익 (USDT)
+            realized: 실현 여부 (True=실현, False=미실현)
+        """
+        ...
+    
+    def get_daily_pnl(self) -> float:
+        """
+        일일 누적 PnL 반환
+        
+        Returns:
+            float: 일일 누적 PnL (USDT)
+        """
+        ...
+    
+    def get_total_pnl(self) -> float:
+        """
+        전체 누적 PnL 반환
+        
+        Returns:
+            float: 전체 누적 PnL (USDT)
+        """
+        ...
+    
+    def reset_daily(self) -> None:
+        """
+        일일 PnL 리셋 (자정)
+        """
+        ...
+    
+    def check_and_reset_daily(self) -> None:
+        """
+        날짜 체크 및 일일 PnL 자동 리셋
+        """
+        ...
+    
+    def sync_equity_with_broker(self, broker: Any) -> None:
+        """
+        브로커와 자산 동기화 (Live 모드)
+        
+        Args:
+            broker: 브로커 객체 (IBroker 구현체)
         """
         ...
 
