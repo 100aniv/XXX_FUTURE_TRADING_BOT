@@ -345,30 +345,9 @@ def create_adapters(mode: str, symbols: List[str], config: dict, logger: Any) ->
             'gap_detection': monitoring_cfg.get('gap_detection', {}),
             'queue_size': queue_size  # ⭐ PR7-4: Multi-TF 큐 크기
         }
-        # ⚠️ Paper 모드: WebSocket 생성을 engine.run()으로 지연 (히스토리 로드 자동 시작 방지)
-        class WebSocketDelayed:
-            def __init__(self, symbols, timeframe, redis_cfg, ws_cfg):
-                self.symbols = symbols
-                self.timeframe = timeframe  
-                self.redis_cfg = redis_cfg
-                self.ws_cfg = ws_cfg
-                self._actual_ws = None
-                logger.info("🔗 [PAPER] WebSocket 설정 준비 완료 (생성은 engine.run()에서)")
-            
-            def create_actual_websocket(self):
-                """실제 WebSocket 생성 및 반환"""
-                from collectors.websocket_collector import WebSocketCollector
-                logger.info("🔗 [PAPER] 실제 WebSocket 생성 중...")
-                self._actual_ws = WebSocketCollector(self.symbols, self.timeframe, 
-                                                   redis_cfg=self.redis_cfg, ws_cfg=self.ws_cfg)
-                return self._actual_ws
-            
-            def start(self):
-                """실제 WebSocket의 start() 호출"""  
-                if self._actual_ws:
-                    return self._actual_ws.start()
-                    
-        feed = WebSocketDelayed(combined_symbols, base_timeframe, redis_cfg=redis_cfg, ws_cfg=ws_cfg)
+        from collectors.websocket_collector import WebSocketCollector
+        ws = WebSocketCollector(combined_symbols, base_timeframe, redis_cfg=redis_cfg, ws_cfg=ws_cfg)
+        feed = ws
         
         # 프리로드 정보도 업데이트
         symbols = combined_symbols
@@ -441,30 +420,9 @@ def create_adapters(mode: str, symbols: List[str], config: dict, logger: Any) ->
             'gap_detection': monitoring_cfg.get('gap_detection', {}),
             'queue_size': queue_size  # ⭐ PR7-4: Multi-TF 큐 크기
         }
-        # ⚠️ Live 모드: WebSocket 생성을 engine.run()으로 지연 (히스토리 로드 자동 시작 방지)
-        class WebSocketDelayed:
-            def __init__(self, symbols, timeframe, redis_cfg, ws_cfg):
-                self.symbols = symbols
-                self.timeframe = timeframe  
-                self.redis_cfg = redis_cfg
-                self.ws_cfg = ws_cfg
-                self._actual_ws = None
-                logger.info("🔗 [LIVE] WebSocket 설정 준비 완료 (생성은 engine.run()에서)")
-            
-            def create_actual_websocket(self):
-                """실제 WebSocket 생성 및 반환"""
-                from collectors.websocket_collector import WebSocketCollector
-                logger.info("🔗 [LIVE] 실제 WebSocket 생성 중...")
-                self._actual_ws = WebSocketCollector(self.symbols, self.timeframe, 
-                                                   redis_cfg=self.redis_cfg, ws_cfg=self.ws_cfg)
-                return self._actual_ws
-            
-            def start(self):
-                """실제 WebSocket의 start() 호출"""  
-                if self._actual_ws:
-                    return self._actual_ws.start()
-                    
-        feed = WebSocketDelayed(combined_symbols, base_timeframe, redis_cfg=redis_cfg, ws_cfg=ws_cfg)
+        from collectors.websocket_collector import WebSocketCollector
+        ws = WebSocketCollector(combined_symbols, base_timeframe, redis_cfg=redis_cfg, ws_cfg=ws_cfg)
+        feed = ws
         
         # 프리로드 정보도 업데이트
         symbols = combined_symbols
