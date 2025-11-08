@@ -63,12 +63,17 @@ class SimBroker:
 class PaperBroker:
     """페이퍼 트레이딩 브로커 - 가상 실행 (LiveBroker와 100% 동일한 로직)"""
     
-    def __init__(self, fee_rate: float = 0.0004, slippage_pct: float = 0.0005):
+    def __init__(self, fee_rate: float = 0.0004, slippage_pct: float = 0.0005, config: dict = None):
         self.fee_rate = fee_rate
         self.slippage_pct = slippage_pct
         self.virtual_orders = []
         self.virtual_tpsl_orders = {}  # {position_id: [order_dicts]}
-        logger.info(f"✅ PaperBroker 초기화")
+        
+        # ⭐ PR12: 초기 자본 설정 (포트폴리오와 동기화 용도)
+        self.config = config or {}
+        self.equity = self.config.get('capital', {}).get('initial', 50000)
+        
+        logger.info(f"✅ PaperBroker 초기화: Equity=${self.equity:,.0f}")
     
     def execute(self, decision: dict, qty: float) -> dict:
         """가상 실행 (슬리피지 적용하여 백테스트와 파리티 유지)"""
@@ -189,7 +194,25 @@ class PaperBroker:
         """
         # 페이퍼는 고정값 또는 DB에서 계산
         logger.debug(f"✅ [PAPER] 자산 조회 (고정값)")
-        return {'success': True, 'balances': []}
+        return {
+            'success': True, 
+            'balances': [{
+                'asset': 'USDT',
+                'balance': str(self.equity),
+                'withdrawAvailable': str(self.equity)
+            }]
+        }
+        
+    def sync_equity_with_exchange(self) -> float:
+        """
+        ⭐ PR12: 가상 자산 반환 (동기화 불필요)
+        
+        Returns:
+            float: 현재 가용 USDT 자산
+        """
+        # 페이퍼 모드에서는 내부 저장값 반환
+        logger.debug(f"✅ [PAPER] 자산 동기화 (내부 고정값: ${self.equity:,.2f})")
+        return self.equity
     
     def get_positions(self) -> dict:
         """
@@ -433,6 +456,36 @@ class LiveBroker:
         except BinanceAPIException as e:
             logger.error(f"❌ 자산 조회 실패: {e}")
             return {'success': False, 'error': str(e)}
+            
+    def sync_equity_with_exchange(self) -> float:
+        """
+        ⭐ PR12: 거래소 자산과 동기화
+        
+        Returns:
+            float: 현재 가용 USDT 자산
+            
+        Raises:
+            Exception: 동기화 실패 시
+        """
+        try:
+            result = self.get_account_balance()
+            if not result['success']:
+                logger.error(f"❌ 자산 동기화 실패: {result.get('error')}")
+                return 0.0
+                
+            # 'USDT' 잔고 찾기
+            for balance in result['balances']:
+                if balance['asset'] == 'USDT':
+                    equity = float(balance['balance'])
+                    logger.info(f"✅ 거래소 자산 조회: ${equity:,.2f} USDT")
+                    return equity
+                    
+            logger.error("❌ USDT 잔고를 찾을 수 없음")
+            return 0.0
+            
+        except Exception as e:
+            logger.error(f"❌ 자산 동기화 오류: {e}")
+            return 0.0
     
     def get_positions(self) -> dict:
         """
