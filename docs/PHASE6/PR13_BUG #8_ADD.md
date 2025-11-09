@@ -72,16 +72,26 @@
 ## 테스트 플랜(Test Plan) - .windsurfrules 테스트 매트릭스 준수
 
 ### unit/contract/flow/gate/tuning 매트릭스
-- **Unit**: ConfigOverlay deep-merge/스키마 검증, 가중치 클램프, 임계/보너스 적용
+- **Unit**: ConfigOverlay deep-merge/스키마 검증, 가중치 클램프, 임계/보너스 적용 ✅ Phase 1 완료
 - **Contract**: Interface/Protocol 계약 검증 (core/interfaces.py 준수)
 - **Flow**: 24h×N 트라이얼, A/B 비교(ABComparisonReport) 자동 생성
 - **Gate**: FlowGuardian READY 게이트 검증
-- **Tuning**: 섀도우/카나리 단계별 가드레일 체크 및 자동 승격/롤백
+- **Tuning**: 
+  - ✅ Phase 1: 단위 테스트 (ConfigOverlay 17개 + EnsembleTuner 13개)
+  - ⏳ Phase 1.5: 실제 튜닝 실행 검증 (3 trials, 오버레이 파일 생성)
+  - ⏳ Phase 2: 섀도우/카나리 단계별 가드레일 체크 및 자동 승격/롤백
 
 ### 특화 테스트
-- **섀도우 모드**: 실시간 메트릭 수집, 거래 미반영 검증
+- **섀도우 모드**: 실시간 메트릭 수집, 거래 미반영 검증 (8시간)
 - **카나리 모드**: 10→30→50→100% 단계별 6시간 모니터링
 - **가드레일**: DD/거래수/변동성 한계 위반 시 자동 롤백 검증
+- **Live 전환** (Phase 2.5 - NEW):
+  - 챔피언 파라미터 확정 및 커밋
+  - Live 모드 실행 검증 (Binance API 호출)
+  - 실거래 모니터링 (최소 24시간)
+  - Paper/Live 파리티 검증 (로직 동일, 실행만 다름)
+  - DB env='live', Redis fa:live:{run_id}:* 확인
+  - 긴급 롤백 절차 준비
 
 ## 롤백 절차(Rollback) - 운영 안전성 보장
 

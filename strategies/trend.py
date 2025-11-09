@@ -14,7 +14,7 @@ from typing import Dict, Any
 import pandas as pd
 
 from common.calculations import price_levels, leverage_suggestion
-from indicators import regime
+from indicators import regime, detect_volatility_regime
 
 
 def signal_logic(df: pd.DataFrame, config: dict) -> Dict[str, Any]:

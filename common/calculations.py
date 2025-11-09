@@ -305,10 +305,11 @@ def price_levels(
     price: float,
     atr: float,
     rr: float,
-    atr_mult_sl: float = 1.5
+    atr_mult_sl: float = 1.5,
+    max_sl_pct: float = 0.08  # ⭐ CRITICAL: SL 상한 8% (상용 시스템 기준)
 ) -> Tuple[float, float, float]:
     """
-    진입/손절/익절 가격 계산
+    진입/손절/익절 가격 계산 (⭐ CRITICAL: SL % 상한 적용)
     
     Args:
         side: "LONG" 또는 "SHORT"
@@ -316,6 +317,7 @@ def price_levels(
         atr: ATR 값
         rr: Risk/Reward 비율
         atr_mult_sl: 손절 ATR 배수
+        max_sl_pct: 최대 SL % (기본 8%, 상용 시스템 권장 2~8%)
     
     Returns:
         tuple: (진입가, 손절가, 익절가)
@@ -323,15 +325,29 @@ def price_levels(
     Examples:
         >>> price_levels("LONG", 100, 2, 2.0)
         (100, 97.0, 106.0)  # 진입 100, 손절 97, 익절 106
+        
+    Notes:
+        - SL이 max_sl_pct를 초과하면 max_sl_pct로 제한
+        - 상용 시스템 기준: SL -2~8% (변동성 작은 코인 -2~5%, 큰 코인 -5~8%)
     """
+    # 기본 ATR 기반 SL 계산
+    sl_distance = atr_mult_sl * atr
+    
+    # ⭐ CRITICAL: SL % 상한 적용 (비정상적으로 큰 ATR 방지)
+    max_sl_distance = price * max_sl_pct
+    if sl_distance > max_sl_distance:
+        sl_distance = max_sl_distance
+        # 로그 남기기 (선택)
+        # logger.warning(f"⚠️ SL 상한 적용: ATR 기반 {sl_distance/price*100:.2f}% → {max_sl_pct*100:.1f}%")
+    
     if side == "LONG":
         entry = price
-        sl = price - atr_mult_sl * atr
-        tp = price + rr * (entry - sl)
+        sl = price - sl_distance
+        tp = price + rr * sl_distance
     else:  # SHORT
         entry = price
-        sl = price + atr_mult_sl * atr
-        tp = price - rr * (sl - entry)
+        sl = price + sl_distance
+        tp = price - rr * sl_distance
     
     return entry, sl, tp
 

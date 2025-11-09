@@ -40,7 +40,7 @@ def get_client():
 
 def fetch_history(symbol: str, timeframe: str, limit: int = 500) -> List[Dict]:
     """
-    Binance에서 히스토리 캔들 로드
+    Binance에서 히스토리 캔들 로드 (⭐ Rate Limit 대응)
     
     Args:
         symbol: 심볼 (예: BTCUSDT)
@@ -54,10 +54,50 @@ def fetch_history(symbol: str, timeframe: str, limit: int = 500) -> List[Dict]:
         >>> candles = fetch_history("BTCUSDT", "5m", 250)
         >>> print(len(candles))  # 250
     """
+    import time
+    from binance.exceptions import BinanceAPIException
+    
+    max_retries = 3
+    retry_count = 0
+    
+    while retry_count < max_retries:
+        try:
+            client = get_client()
+            klines = client.futures_klines(symbol=symbol, interval=timeframe, limit=limit)
+            
+            # ⭐ Rate Limit 헤더 확인 (가능 시)
+            # Note: python-binance 라이브러리는 헤더 직접 노출 안함
+            # 향후 requests 직접 사용으로 전환 시 X-MBX-USED-WEIGHT 모니터링 가능
+            
+            break  # 성공 시 루프 종료
+            
+        except BinanceAPIException as e:
+            if e.code == -1003:  # Rate Limit 초과
+                wait_time = 2 ** retry_count  # Exponential backoff: 1초, 2초, 4초
+                logger.warning(
+                    f"⚠️ [{symbol}] Rate Limit 감지 (재시도 {retry_count + 1}/{max_retries}), "
+                    f"{wait_time}초 대기... | 오류: {e.message}"
+                )
+                time.sleep(wait_time)
+                retry_count += 1
+                
+                if retry_count >= max_retries:
+                    logger.error(f"❌ [{symbol}] Rate Limit 최대 재시도 초과, 빈 배열 반환")
+                    return []
+            else:
+                # 다른 API 오류는 즉시 raise
+                raise
+        except Exception as e:
+            # 예상치 못한 오류
+            import traceback
+            logger.error(f"❌ {symbol} 히스토리 로드 실패:")
+            logger.error(f"   에러 타입: {type(e).__name__}")
+            logger.error(f"   에러 메시지: {str(e)}")
+            logger.error(f"   스택 트레이스:\n{traceback.format_exc()}")
+            return []
+    
+    # 성공 케이스: klines 파싱
     try:
-        client = get_client()
-        klines = client.futures_klines(symbol=symbol, interval=timeframe, limit=limit)
-        
         # klines format: [[time, open, high, low, close, volume, ...], ...]
         df = pd.DataFrame(klines, columns=[
             "time", "open", "high", "low", "close", "volume",

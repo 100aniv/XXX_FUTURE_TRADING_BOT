@@ -50,7 +50,9 @@
 ## 로깅 패턴(Logging)
 - "⏭️ 중복 캔들 무시"
 - "🔒 {strategy} {symbol} 쿨다운 중"
-- "🧩 신호 멱등 hit: signal:{symbol}:{hash}"
+- "⚠️ 🧩 신호 멱등 차단: {strategy} {symbol} {side} (같은 봉 내 중복, TTL={redis_ttl}초)" (WARNING 레벨)
+- "✅ 멱등 TTL 설정: {timeframe} → {ttl}초 (봉 단위 자동 조정)"
+- "✅ 멱등 키 설정: {redis_signal_key} (TTL={redis_ttl}초)" (DEBUG 레벨)
 
 ## 수용 기준(Acceptance)
 
@@ -98,6 +100,7 @@
 - **2025-11-06 01:47** | Docker 로그 한글 깨짐 (`???` 표시) | UTF-8 인코딩 환경변수 미설정 | Dockerfile에 LANG=C.UTF-8, LC_ALL=C.UTF-8, PYTHONIOENCODING=utf-8 추가 | ✅ Docker 재빌드 후 한글 정상 표시 확인 (컨테이너 내부)
 - **2025-11-06 01:52** | 텔레그램 거부 메시지 3줄 표시 | `\n` 개행 사용 | `\n` → `|` 구분자로 변경 (한줄 통일) | ✅ 거래/포트폴리오 거부 메시지 한줄 출력 확인
 - **2025-11-06 07:47** | ✅ 수용 기준 최종 검증 완료 | 6시간 운영 후 확인 | trial_0000.json 생성, DB 888건 거래 기록, 한글 로그 정상, 텔레그램 메시지 한줄 통일 | ruff 6개 오류 남음 (미사용 import), coverage 측정 불가 (테스트 파일 문제)
+- **2025-11-09 23:42** | ✅ 멱등성 개선: 타임프레임 기반 동적 TTL | 기존: 고정 TTL 3600초 → 개선: 타임프레임 자동 조정 (1m=63s, 5m=315s, 봉 길이×1.05) | 1. TTL 자동 계산 함수 추가 (timeframe_to_ttl), 2. 멱등 키 생성 개선 (symbol:side:candle_close_time), 3. 로그 레벨 INFO→WARNING | ✅ 거래 정상 발생 확인 (DB 저장: XPLUSDT LONG @ 23:15:00), 같은 봉 내 중복 차단, 새 봉에서 재진입 허용
 - **2025-11-06 10:18** | ✅ pre-commit 검사 통과 | ruff/black 자동 수정 | 미사용 import 10개 제거 (log_signal, log_trade, log_daily_report, calculate_performance_scores, FlowGuardian, IDataSource, IStrategy, IRisk, IBroker, IMetrics), black 포맷팅 완료, undefined name decision 수정 | ruff All checks passed!, mypy 60개 타입 어노테이션 오류 (선택 사항)
 - **2025-11-06 11:17** | ✅ 테스트 개선 및 coverage 측정 | sys.exit(1) 제거, pytest 방식 변경 | test_refactoring.py pytest 변환, test_pr9_core.py 추가 (Redis 테스트 6개), test_pr9_integration.py 추가 (모듈 import 테스트 9개), conftest.py에 legacy skip 설정 | 7개 테스트 통과, coverage 7% 달성 (core: 11%, monitoring: 17-28%, execution: 3%)
 - **2025-11-06 11:26** | ✅ 선택 항목 개선 완료 | mypy 및 coverage 향상 | engine.py, signal_generator.py 타입 힌트 추가 (buffers, reject_cooldown, flash_block_last_log 등), test_pr9_simple.py 추가 (21개 테스트), test_pr9_coverage.py 추가 (9개 테스트) | mypy 60개→53개 (7개 개선), coverage 7%→8% (30개 테스트 통과), common/logger: 89%, config_loader: 40%

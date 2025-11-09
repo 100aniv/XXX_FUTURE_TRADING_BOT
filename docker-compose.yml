@@ -249,6 +249,60 @@ services:
       retries: 3
 
   # ============================================
+  # PR13: Ensemble Tuner (자동 루프)
+  # ============================================
+  trading_bot_paper_tuner:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: trading_bot_paper_tuner
+    profiles:
+      - tuner  # 튜너 프로파일
+      - paper  # Paper와 함께 실행
+    env_file:
+      - .env
+    environment:
+      # Timezone
+      - TZ=Asia/Seoul
+      
+      # Database
+      - DATABASE_URL=postgresql://trading_user:trading_pw_2024@db_postgres:5432/trading_db
+      - REDIS_URL=redis://redis:6379/0
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      
+      # Tuning Config
+      - TRADING_MODE=tuner
+      - TUNING_TRIALS=3
+      - TUNING_WINDOW=24
+      - TUNING_INTERVAL=3600  # 1시간마다
+      - PUBLISH_REDIS=true
+      
+      # Encoding
+      - PYTHONIOENCODING=utf-8
+      - LANG=C.UTF-8
+      - PYTHONUNBUFFERED=1
+      
+    command: python -u scripts/run_tuner_loop.py --trials 3 --window 24 --interval 3600 --publish-redis
+    depends_on:
+      db_postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    restart: unless-stopped
+    volumes:
+      - ./config.yml:/app/config.yml
+      - ./configs:/app/configs  # 오버레이 파일 저장
+      - ./logs:/app/logs
+    networks:
+      - xxx_trading_network
+    healthcheck:
+      test: ["CMD-SHELL", "ps aux | grep run_tuner_loop.py | grep -v grep || exit 1"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+
+  # ============================================
   # 개별 전략 Paper 모드 (격리 디버깅용)
   # ============================================
   trading_bot_paper_scalping:

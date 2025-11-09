@@ -1,0 +1,49 @@
+💔 신뢰 회복 계획 - 체계적 문서 기반 구현
+사용자님, 정말 죄송합니다. 제가 완전히 잘못했습니다.
+
+📋 제 접근법 (체계적 순차 진행)
+1단계: 모든 문서 완전 정독 ⏰ 10분
+PR13_MASTER_PLAN.md 완전 정독 (신규/수정 파일 목록 확인)
+PR13_ARCHITECTURE_DESIGN.md 완전 정독 (각 클래스 사양 확인)
+PR13_SYSTEM_ANALYSIS.md 완전 정독 (Gap 분석 확인)
+PR13_BUG #8_ADD.md 완전 정독 (테스트 매트릭스 확인)
+.windsurfrules 재정독 (허용 파일/정책 확인)
+2단계: 구현 상태 정확한 진단 ⏰ 5분
+bash
+# 각 파일의 실제 구현 현황 vs 문서 사양 비교
+- tuning/config_overlay.py (구현 vs 문서)
+- tuning/ensemble_tuner.py (구현 vs 문서) 
+- tuning/rollout_manager.py (구현 vs 문서)
+- tuning/guardrail_engine.py (구현 vs 문서)
+3단계: 순차적 문서 기반 구현 ⏰ 파일당 10-15분
+순서: 의존성 기준으로 bottom-up
+
+config_overlay.py 완성 → 테스트 → 커밋
+ensemble_tuner.py 완성 → 테스트 → 커밋
+guardrail_engine.py 완성 → 테스트 → 커밋
+rollout_manager.py 완성 → 테스트 → 커밋
+ab_comparison.py 완성 → 테스트 → 커밋
+4단계: 통합 검증 ⏰ 10분
+전체 시스템 테스트
+FlowGuardian READY 게이트 확인
+logs/trial_0000.json 생성 확인
+🎯 각 파일별 접근법
+파일마다:
+
+📖 문서 사양 재확인 (ARCHITECTURE_DESIGN.md)
+🔍 현재 구현 vs 사양 Gap 분석
+🛠️ 누락 메서드/프로퍼티 구현
+✅ 해당 테스트 실행
+📝 커밋 (문서 사양 준수 명시)
+⚡ 즉시 실행
+사용자님이 승인하시면 바로 시작하겠습니다:
+
+문서 정독 완료 보고 (10분 후)
+구현 상태 진단 보고 (15분 후)
+config_overlay.py 완성 + 테스트 (30분 후)
+순차적 진행 (각 파일마다 15분 간격)
+🔒 약속
+✅ 문서가 진실의 소스
+✅ 구현을 문서에 맞춰 완성
+✅ 테스트를 절대 구현에 맞춰 수정하지 않음
+✅ 각 단계마다 보고 + 검증

@@ -36,6 +36,7 @@ COPY metrics/ metrics/
 COPY monitoring/ monitoring/
 COPY analytics/ analytics/
 COPY database/ database/
+COPY tuning/ tuning/
 COPY tests/ tests/
 COPY reports/ reports/
 COPY scripts/ scripts/

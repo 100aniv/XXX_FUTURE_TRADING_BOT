@@ -320,3 +320,52 @@ def regime(row: pd.Series) -> str:
         return "횡보장"
     
     return "중립"
+
+
+def detect_volatility_regime(df: pd.DataFrame, atr_col: str = 'atr', 
+                             lookback: int = 20) -> str:
+    """
+    변동성 레짐 감지 (⭐ CRITICAL_ISSUES: 동적 SL 조정용)
+    
+    Args:
+        df: DataFrame (atr 컬럼 필요)
+        atr_col: ATR 컬럼명
+        lookback: 분위수 계산 기간
+    
+    Returns:
+        str: 'high_vol', 'neutral', 'low_vol'
+        
+    Examples:
+        >>> vol_regime = detect_volatility_regime(df)
+        >>> if vol_regime == 'high_vol':
+        ...     # SL 더 넓게
+    """
+    if len(df) < lookback:
+        return 'neutral'
+    
+    # ATR % 계산 (가격 대비 변동성)
+    current_atr = df[atr_col].iloc[-1]
+    current_close = df['close'].iloc[-1]
+    atr_pct = (current_atr / current_close) * 100
+    
+    # 최근 lookback 기간 분위수 계산
+    recent_atr_pct = []
+    for i in range(-lookback, 0):
+        if i >= -len(df):
+            atr_val = df[atr_col].iloc[i]
+            close_val = df['close'].iloc[i]
+            recent_atr_pct.append((atr_val / close_val) * 100)
+    
+    if not recent_atr_pct:
+        return 'neutral'
+    
+    import numpy as np
+    q75 = np.percentile(recent_atr_pct, 75)
+    q25 = np.percentile(recent_atr_pct, 25)
+    
+    if atr_pct > q75:
+        return 'high_vol'
+    elif atr_pct < q25:
+        return 'low_vol'
+    else:
+        return 'neutral'

@@ -34,6 +34,7 @@ from .core_indicators import (
     # 통합
     add_indicators,
     regime,
+    detect_volatility_regime,  # ⭐ CRITICAL_ISSUES: 동적 SL 조정용
 )
 
 __all__ = [
@@ -55,4 +56,5 @@ __all__ = [
     # 통합
     "add_indicators",
     "regime",
+    "detect_volatility_regime",  # ⭐ CRITICAL_ISSUES: 동적 SL 조정용
 ]

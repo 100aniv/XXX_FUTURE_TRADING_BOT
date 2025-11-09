@@ -14,7 +14,7 @@ from typing import Dict, Any
 import pandas as pd
 
 from common.calculations import price_levels, leverage_suggestion
-from indicators import regime
+from indicators import regime, detect_volatility_regime
 
 
 def signal_logic(df: pd.DataFrame, config: dict) -> Dict[str, Any]:
@@ -138,10 +138,18 @@ def signal_logic(df: pd.DataFrame, config: dict) -> Dict[str, Any]:
     # 가격 레벨 계산
     entry, sl, tp = (None, None, None)
     if side:
+        # ⭐ CRITICAL: 변동성 레짐 감지
+        vol_regime = detect_volatility_regime(df)
+        atr_mult_adjusted = config["atr_mult_sl"]
+        if vol_regime == 'high_vol':
+            atr_mult_adjusted *= 1.2
+        elif vol_regime == 'low_vol':
+            atr_mult_adjusted *= 0.9
+        
         entry, sl, tp = price_levels(
             side, price, atr,
             config["rr"],
-            config["atr_mult_sl"]
+            atr_mult_adjusted
         )
     
     # 레버리지 제안

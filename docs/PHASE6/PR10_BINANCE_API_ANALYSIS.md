@@ -17,8 +17,8 @@
 | **stopPrice** | ✅ | 트리거 가격 | ✅ 구현 |
 | **positionSide** | ✅ | BOTH/LONG/SHORT | ✅ 구현 (BOTH) |
 | **closePosition** | ⚠️ | true = 전체 청산 | ✅ 구현 (true) |
-| **workingType** | ❌ | MARK_PRICE/CONTRACT_PRICE | ❌ **누락** |
-| **priceProtect** | ❌ | 가격 보호 메커니즘 | ❌ **누락** |
+| **workingType** | ✅ | MARK_PRICE/CONTRACT_PRICE | ✅ **구현 완료** (CONTRACT_PRICE) |
+| **priceProtect** | ✅ | 가격 보호 메커니즘 | ✅ **구현 완료** (TRUE) |
 | **timeInForce** | ❌ | GTC/IOC/FOK/GTD | ❌ 미사용 (기본 GTC) |
 
 ### 📋 TAKE_PROFIT_MARKET (TP 서버 등록 시 사용 가능)

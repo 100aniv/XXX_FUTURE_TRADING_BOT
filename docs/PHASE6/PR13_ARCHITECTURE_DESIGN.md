@@ -654,7 +654,7 @@ tuning:
   
   experiment:
     study_name: "ensemble_tuning_001"
-    storage: "sqlite:///optuna.db"
+    storage: "postgresql://trading_user:trading_pw_2024@localhost:5433/trading_db"
     window_hours: 24
     n_trials: 10
   

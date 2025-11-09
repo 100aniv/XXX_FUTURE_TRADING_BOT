@@ -151,17 +151,128 @@ common/redis_client.py          # ✅ 네임스페이스 키 사용
   - 단일 DB/Redis 네임스페이스 설계(충돌 없음)
 
 ### 구현 예정
-- [ ] **Phase 1: ConfigOverlay & EnsembleTuner** (P0, 2일)
-  - tuning/config_overlay.py 구현
-  - tuning/ensemble_tuner.py 구현 (기존 TunerCore 확장)
-  - 단위 테스트
-  - 통합 테스트 (24시간 페이퍼 실험)
+
+#### Phase별 참조 문서 가이드
+각 Phase 진행 시 아래 문서를 참조하여 누락 없이 구현:
+
+**Phase 1: ConfigOverlay & EnsembleTuner**
+- 📖 주 참조: `PR13_ARCHITECTURE_DESIGN.md` (2.1 ConfigOverlay, 2.2 EnsembleTuner 섹션)
+- 🧪 테스트: `PR13_BUG #8_ADD.md` (Unit 테스트 매트릭스 라인 75)
+- 📏 정책: `.windsurfrules` (Architecture Layering Policy, Redis Namespace Policy)
+
+**Phase 2: RolloutManager & GuardrailEngine**
+- 📖 주 참조: `PR13_ARCHITECTURE_DESIGN.md` (2.3 RolloutManager, 2.4 GuardrailEngine 섹션)
+- 🧪 테스트: `PR13_BUG #8_ADD.md` (Tuning 테스트 매트릭스 라인 79)
+- 📏 정책: `.windsurfrules` (Runtime & Roles)
+
+**Phase 3: ABComparisonReport & 통합**
+- 📖 주 참조: `PR13_ARCHITECTURE_DESIGN.md` (2.5 ABComparisonReport, 3절 데이터 플로우)
+- 🔗 통합: `PR13_SYSTEM_ANALYSIS.md` (5절 처리 단계 라인 234-247)
+- ✅ 수용: `PR13_BUG #8_ADD.md` (수용 기준 라인 52-70)
+
+---
+
+## 🐛 **Fix Log & 이슈 추적**
+
+### Phase 1.5 이슈
+1. **window 파라미터 타입 오류** (2025-11-09 22:49)
+   - 문제: `run_tuner.py` window 파라미터가 int로 정의되어 소수점 불가
+   - 해결: type=float로 변경
+   - 커밋: `fix(PR13): window 파라미터 float 지원`
+
+2. **EnsembleTuner 시그니처 불일치** (2025-11-09 22:49)
+   - 문제: `run_tuner.py`에서 namespace/env/run_id 파라미터 전달, 하지만 EnsembleTuner는 받지 않음
+   - 해결: 불필요한 파라미터 제거
+   - 커밋: `fix(PR13): EnsembleTuner 시그니처 수정`
+
+3. **거래 미발생 (Paper 모드)** (2025-11-09 22:52 ~ 23:53) ✅ **최종 해결**
+   - 현상: 오후 9시 38분 이후 신호 발생 → Ensemble 결정 → 거래 미발생, 텔레그램 알람 없음
+   - **근본 원인**: Docker 컨테이너가 재기동(restart)만 되고 재빌드(rebuild) 안됨
+     - broker.execute() 코드 수정했으나 구버전 이미지로 실행
+     - 멱등성 개선 코드 미적용 (해시 기반 → candle_close_time 기반)
+     - Redis에 102개 구버전 멱등 키 잔존
+   - 해결 과정:
+     1. **broker.execute() 호출 추가** (2025-11-09 23:22)
+        - 라인 1239: `fill = broker.execute(decision, qty)` 추가
+        - 라인 1247-1248: `position_id`, `entry_time` 생성
+        - 라인 1238-1420: 전체 들여쓰기 수정
+     2. **멱등성 개선** (2025-11-09 23:42)
+        - 타임프레임 기반 동적 TTL (1m=63s, 5m=315s)
+        - 멱등 키: symbol:side:candle_close_time
+        - 로그 레벨: INFO → WARNING
+     3. **Docker 재빌드 + Redis 플러시** (2025-11-09 23:50)
+        - `docker-compose build trading_bot_paper_ensemble`
+        - `docker exec trading_redis redis-cli FLUSHALL`
+   - **검증 완료** (2025-11-09 23:53):
+     - ✅ DB 저장: ICPUSDT SHORT @ 23:00, TIAUSDT LONG @ 23:53
+     - ✅ 텔레그램 알림: "[TELEGRAM] [ENSEMBLE] TIAUSDT | LONG X2🔵📈"
+     - ✅ 마지막 거래: 23:53 (2시간 15분 공백 해소)
+   - 커밋:
+     - `fix(CRITICAL): broker.execute() 호출 누락 수정`
+     - `fix(PR9): 멱등성 개선 - 타임프레임 기반 동적 TTL`
+   - 참고: `execution/engine.py` 라인 1238-1247 (broker), 137-156 (TTL), 1133-1156 (멱등)
+
+### 설계 검증
+1. **SQLite → PostgreSQL 정책** (2025-11-09)
+   - ✅ 모든 문서 및 코드에서 PostgreSQL로 통일
+   - ✅ `ensemble_tuner.py` 기본 storage 수정
+
+2. **자동 루프 설계** (2025-11-09)
+   - ✅ `run_tuner_loop.py` 구현 (while True + sleep)
+   - ✅ Redis 파라미터 발행 기능 포함
+   - ✅ 문서 명시 사항과 100% 일치
+
+---
+
+## 처리 단계
+
+- [✅] **Phase 1: ConfigOverlay & EnsembleTuner** (P0, 2일) - **✅ 완료 및 검증**
+  - [✅] tuning/config_overlay.py 구현 - **완료** (17개 테스트 통과)
+  - [✅] tuning/ensemble_tuner.py 구현 (기존 TunerCore 확장) - **완료** (13개 테스트 통과)
+  - [✅] 단위 테스트 - **Phase 1 완료** (ConfigOverlay 17개 + EnsembleTuner 13개 = 30개 전체 통과)
+  - [✅] 통합 테스트 (페이퍼 모드 검증) - **완료** (15분 실행, 에러 0건, 정상 실행)
+  - [✅] PostgreSQL 저장소 설정 - **완료** (SQLite 제거, 단일 DB 정책 준수)
+  - [✅] 최종 검증 - **2025-11-09 22:23 완료**
+
+- [✅] **Phase 1.5: 튜닝 실행 검증** (P0, 0.5일) - **✅ 완료**
+  - [✅] 튜닝 실행 스크립트 작성 (scripts/run_tuner.py) - **완료**
+  - [✅] 클린 환경 준비 (모든 컨테이너 종료 + DB/Redis 데이터 클린) - **완료**
+  - [✅] 자동 루프 스크립트 작성 (scripts/run_tuner_loop.py) - **완료**
+    - while True + sleep 구현
+    - Redis 파라미터 발행 기능
+    - 주기적 튜닝 실행
+  - [✅] Paper 모드 실행 (10분 데이터 쌓기) - **완료**
+  - [✅] 튜닝 실행 테스트 (3 trials, 10분 window) - **완료**
+    - 1개 성공, 2개 pruned
+    - Best 값: 0.3000
+    - 실행 시간: 약 1초
+  - [✅] 오버레이 파일 생성 확인 (configs/overlays/) - **완료**
+    - tuning_best_ensemble_tuning_20251109_225033.yml
+  - [✅] Best 파라미터 검증 - **완료**
+    - 9개 파라미터 정상 생성
+  - [✅] Docker Compose 설정 추가 (trading_bot_paper_tuner) - **완료**
+    - 컨테이너: trading_bot_paper_tuner
+    - 프로파일: tuner, paper
+    - 자동 루프: 1시간마다 3 trials
+    - Redis 발행: 활성화
+  - [✅] 문서 업데이트 및 커밋 - **2025-11-09 23:02 최종 완료**
 
 - [ ] **Phase 2: RolloutManager & GuardrailEngine** (P0, 2일)
   - tuning/rollout_manager.py 구현
   - tuning/guardrail_engine.py 구현
-  - 섀도우 모드 테스트
-  - 카나리 모드 테스트 (10%→30%→50%→100%)
+  - 섀도우 모드 테스트 (8시간 가드레일 위반 0건)
+  - 카나리 모드 테스트 (10%→30%→50%→100%, 각 단계 6시간)
+
+- [ ] **Phase 2.5: Live 전환 및 검증** (P0, 1일) - **NEW**
+  - [ ] 챔피언 파라미터 확정 및 커밋
+  - [ ] Live 모드 전환 (tuning.mode=full)
+  - [ ] Live 모드 실행 검증 (Binance API 호출 정상)
+  - [ ] 실거래 모니터링 (최소 24시간)
+  - [ ] Paper/Live 파리티 검증 (로직 동일, 실행만 다름)
+  - [ ] FlowGuardian READY 게이트 Live 모드 검증
+  - [ ] DB env='live' 데이터 확인
+  - [ ] Redis 네임스페이스 fa:live:{run_id}:* 확인
+  - [ ] 긴급 롤백 절차 준비 (이전 파라미터로 즉시 복귀)
 
 - [ ] **Phase 3: ABComparisonReport & 운영 모니터링** (P1, 1일)
   - analytics/ab_comparison.py 구현 (기존 report_generator.py 확장)
@@ -221,6 +332,91 @@ common/redis_client.py          # ✅ 네임스페이스 키 사용
 2. **DB 분리**: env/run_id/created_at 필드 존재 및 채움 확인
 3. **Redis 네임스페이스**: 로그에서 `:{env}:{run_id}:` 패턴 확인
 4. **로그 생성**: `logs/trial_0000.json` 및 `DB.score_total == JSON.score_total` 동등성
+
+---
+
+## ❓ **FAQ (자주 묻는 질문)**
+
+### Q1: 튜너는 Docker로 실행하나요?
+**A:** ✅ 예! `trading_bot_paper_tuner` 컨테이너로 실행합니다.
+
+**실행 방법:**
+```bash
+# Paper + Tuner 함께 실행
+docker-compose --profile paper up -d
+
+# 또는 Tuner만 실행
+docker-compose --profile tuner up -d trading_bot_paper_tuner
+```
+
+**설정:**
+- 컨테이너: `trading_bot_paper_tuner`
+- 자동 루프: 1시간마다 3 trials (24h window)
+- Redis 발행: 활성화
+- 오버레이 저장: `configs/overlays/`
+
+**참조:** 
+- docker-compose.yml 라인 254-303
+- 라인 66 (런타임/컨테이너 역할)
+
+### Q2: 오버레이 파일의 역할은?
+**A:** 튜닝된 파라미터를 저장하는 설정 파일입니다.
+- **생성**: EnsembleTuner.optimize() 완료 후 자동 생성
+- **위치**: `configs/overlays/tuning_best_{study_name}.yml`
+- **사용**: ConfigOverlay.load_overlay()로 로드하여 base config에 병합
+- **예시**: alpha_winrate, beta_rr 등 9개 파라미터
+
+### Q3: 튜닝은 1회만 실행되나요?
+**A:** 아니오, 자동 루프로 연속 실행됩니다.
+- **테스트**: `run_tuner.py` (1회 실행)
+- **운영**: `run_tuner_loop.py` (while True + sleep)
+- **주기**: 기본 1시간마다 (설정 가능)
+- **참조**: 라인 45, 199-202
+
+### Q4: 라이브 모드에 어떻게 반영되나요?
+**A:** 2가지 방식으로 반영됩니다.
+
+**방법 1: 실시간 (Redis)** - 가중치/리스크
+```python
+# tuner → Redis 발행
+redis_client.publish("fa:live:{run_id}:ensemble.weights.update", params)
+
+# live 엔진 수신 → 즉시 적용
+```
+- 채널: `ensemble.weights.update`, `risk.cap.update`
+- 지연: 거의 즉시 (초 단위)
+- 참조: 라인 263-265
+
+**방법 2: 단계적 (오버레이)** - 전략 파라미터
+```python
+# Phase 2: ConfigOverlay 로드
+overlay = ConfigOverlay("config.yml")
+overlay.load_overlay("tuning_best_*.yml")
+
+# Phase 2: RolloutManager 단계적 적용
+Shadow (8h) → Canary (10%→100%, 각 6h) → Full
+
+# Phase 2.5: Live 전환
+챔피언 파라미터 고정 커밋 → Live 모드 적용
+```
+- 단계: Shadow/Canary 검증 필수
+- 지연: 24~48시간 (안전 검증)
+- 참조: 라인 257-260
+
+### Q5: 성과 비교는 어떻게 하나요?
+**A:** Phase 3에서 ABComparisonReport 구현 예정입니다.
+- **현재**: 튜닝 실행 + 오버레이 생성 (Phase 1.5 완료)
+- **다음**: RolloutManager로 Shadow/Canary 단계 검증 (Phase 2)
+- **이후**: A/B 비교 리포트 자동 생성 (Phase 3)
+- **참조**: 라인 237-243
+
+### Q6: 거래가 발생하지 않는 이유는?
+**A:** ✅ 해결 완료! Redis 신호 멱등 TTL 문제였습니다.
+- **원인**: Redis TTL 3600초 (1시간) → 동일 신호 1시간 차단
+- **현상**: 신호 발생 → Ensemble 결정 → 멱등 차단 → 거래 미발생
+- **해결**: `Redis FLUSHALL` + Paper 재시작
+- **상태**: ✅ 해결 완료 (2025-11-09 22:57)
+- **참조**: 라인 188-194 (Fix Log)
 
 ## 릴리즈 노트(Release Notes)
 - 운영 최적화 파이프라인 및 단계적 롤아웃 도입. 전략 로직 자체 변경은 최소화.

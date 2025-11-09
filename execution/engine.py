@@ -134,7 +134,25 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict):
         logger.warning(f"⚠️  Redis 연결 실패 (Dedup/쿨다운 비활성화): {e}")
         redis_client = None
 
-    redis_ttl = redis_config.get("ttl_seconds", 3600)
+    # ⭐ PR9: 타임프레임 기반 동적 TTL (멱등성 개선)
+    # - 1m → 63s, 3m → 189s, 5m → 315s, 15m → 945s, 1h → 3780s
+    # - 기본값: 타임프레임 * 1.05 (봉 전환 지연 대응)
+    def timeframe_to_ttl(tf_str: str) -> int:
+        """타임프레임 문자열을 TTL 초로 변환 (5% 버퍼 포함)"""
+        multipliers = {"s": 1, "m": 60, "h": 3600, "d": 86400}
+        if not tf_str or len(tf_str) < 2:
+            return 63  # 기본값 1분
+        unit = tf_str[-1].lower()
+        try:
+            value = int(tf_str[:-1])
+            base_seconds = value * multipliers.get(unit, 60)
+            return int(base_seconds * 1.05)  # 5% 버퍼
+        except (ValueError, KeyError):
+            return 63
+    
+    base_timeframe = config.get("timeframe", "1m")
+    redis_ttl = timeframe_to_ttl(base_timeframe)
+    logger.info(f"✅ 멱등 TTL 설정: {base_timeframe} → {redis_ttl}초 (봉 단위 자동 조정)")
 
     # Position Sizer & Portfolio Manager & Risk Manager (config 전달)
     # ⭐ PR12: 순서 변경 - portfolio를 먼저 초기화하고 risk에 전달
@@ -1112,29 +1130,28 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict):
                     del reject_cooldown[cooldown_key]
                     logger.debug(f"✅ [{strategy_id}] {candle_symbol} 쿨다운 해제")
 
-        # ⭐⭐⭐ PR9 Phase 3: 신호 멱등성 (동일 파라미터 신호 차단)
+        # ⭐⭐⭐ PR9 Phase 3: 신호 멱등성 (타임프레임 기반 개선)
+        # - 봉 단위 멱등: symbol + side + candle_close_time 기준
+        # - TTL: 타임프레임 자동 조정 (1m=63s, 5m=315s)
         if redis_client:
-            # 신호 해시 생성 (symbol, strategy, side, entry, sl, tp)
-            signal_params = {
-                "symbol": candle_symbol,
-                "strategy": strategy_id,
-                "side": decision.get("side"),
-                "entry": round(float(decision.get("entry", 0)), 2),
-                "sl": round(float(decision.get("sl", 0)), 2),
-                "tp": round(float(decision.get("tp", 0)), 2),
-            }
-            signal_hash = hashlib.md5(
-                json.dumps(signal_params, sort_keys=True).encode()
-            ).hexdigest()
-            redis_signal_key = f"signal:{candle_symbol}:{signal_hash}"
+            # 캔들 종료 시간 (밀리초 → 초 단위, 타임프레임 단위로 정규화)
+            candle_close_ts = int(ts / 1000) if ts > 1000000000000 else int(ts)
+            # 타임프레임 초 단위로 정규화 (같은 봉 내에서는 동일한 키)
+            tf_seconds = redis_ttl / 1.05  # 버퍼 제거한 실제 봉 길이
+            normalized_ts = int(candle_close_ts / tf_seconds) * int(tf_seconds)
+            
+            # 멱등 키: symbol:side:candle_ts (가격대가 아닌 봉 단위로 차단)
+            redis_signal_key = f"signal:{candle_symbol}:{decision.get('side')}:{normalized_ts}"
 
             try:
                 if redis_client.exists(redis_signal_key):
-                    logger.info(
-                        f"🧩 신호 멱등 hit: {strategy_id} {candle_symbol} (중복 차단)"
+                    logger.warning(
+                        f"⚠️ 🧩 신호 멱등 차단: {strategy_id} {candle_symbol} {decision.get('side')} "
+                        f"(같은 봉 내 중복, TTL={redis_ttl}초)"
                     )
                     continue
                 redis_client.setex(redis_signal_key, redis_ttl, "1")
+                logger.debug(f"✅ 멱등 키 설정: {redis_signal_key} (TTL={redis_ttl}초)")
             except Exception as e:
                 logger.warning(f"⚠️  Redis 멱등성 체크 실패 (처리 계속): {e}")
 
@@ -1190,6 +1207,16 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict):
         new_side = decision.get("side")
         opposite_side = "SHORT" if new_side == "LONG" else "LONG"
         
+        # ⭐ CRITICAL: 동일 심볼 동일 방향 중복 진입 방지
+        same_direction_positions = [
+            (pos_id, pos) for pos_id, pos in list(active_positions.items())
+            if pos["symbol"] == candle_symbol and pos["side"] == new_side
+        ]
+        
+        if same_direction_positions:
+            logger.warning(f"⚠️ [중복 진입 방지] {candle_symbol} {new_side} 기존 포지션 {len(same_direction_positions)}개 존재 - 진입 스킵")
+            continue  # 중복 진입 차단
+        
         # 같은 심볼의 반대 포지션 찾기
         opposite_positions = [
             (pos_id, pos) for pos_id, pos in list(active_positions.items())
@@ -1217,183 +1244,193 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict):
                 # 포지션 제거
                 position_value = position.get("position_value", position["qty"] * position["entry"])
                 portfolio.remove_position(symbol=position["symbol"], position_id=pos_id)
-            # 포지션 정보에 entry_time 추가
-            entry_time = ts
+        
+        # ⭐ CRITICAL FIX: Broker 실행 (Paper/Live/Sim 모두)
+        fill = broker.execute(decision, qty)
+        
+        if not fill.get("success"):
+            logger.error(f"❌ 거래 실행 실패: {candle_symbol}")
+            continue
+        
+        # 포지션 ID 생성
+        import uuid
+        position_id = str(uuid.uuid4())
+        entry_time = ts
+        
+        # DB 저장 (trial_id 포함)
+        save_trade_to_db(
+            position_id=position_id,
+            symbol=candle_symbol,
+            side=decision.get("side"),
+            entry_price=fill.get("filled_price"),
+            qty=qty,
+            sl_price=decision.get("sl"),
+            tp_price=decision.get("tp"),
+            strategy_id=decision.get("strategy_id", "ensemble"),
+            timestamp=entry_time,
+            mode=mode,
+            leverage=decision.get("lev", 1),
+            trial_id=trial_id,
+        )
 
-            # DB 저장 (trial_id 포함)
-            save_trade_to_db(
-                position_id=position_id,
-                symbol=candle_symbol,
-                side=decision.get("side"),
-                entry_price=fill.get("filled_price"),
-                qty=qty,
-                sl_price=decision.get("sl"),
-                tp_price=decision.get("tp"),
-                strategy_id=decision.get("strategy_id", "ensemble"),
-                timestamp=entry_time,
-                mode=mode,
-                leverage=decision.get("lev", 1),
-                trial_id=trial_id,
+        # Risk Manager에도 등록 (⭐ candle_symbol 사용!)
+        risk.add_position(candle_symbol, position_value)
+
+        # ⭐ PR11: Slippage Guard 체크
+        expected_price = decision.get("entry_price", decision.get("entry", 0))
+        filled_price = fill.get("filled_price", 0)
+        if expected_price > 0 and filled_price > 0:
+            logger.info(f"🔍 Slippage Guard 체크: expected=${expected_price:.4f}, filled=${filled_price:.4f}")
+            if not risk.check_slippage_guard(expected_price, filled_price):
+                logger.error(f"🚨 Slippage Guard 차단 - 주문 취소: {candle_symbol}")
+                continue  # 이 주문 스킵
+
+        # ⭐ Portfolio Manager에 포지션 추가
+        portfolio.add_position(
+            symbol=candle_symbol,
+            strategy=strategy_id,
+            position_value=position_value,
+            side=decision.get("side"),
+            position_id=position_id,
+        )
+
+        # ⭐ TUNING_VIBLE: TP 레벨 계산
+        tp_levels = tracker.tp_manager.calculate_tp_levels(
+            entry=fill.get("filled_price"),
+            stop=decision.get("sl"),
+            side=decision.get("side"),
+            atr=df["atr"].iloc[-1] if "atr" in df.columns else None,
+        )
+
+        # 포지션 번호 계산 (현재 활성 포지션 수 + 1)
+        position_number = len(active_positions) + 1
+
+        # 활성 포지션 저장 (⭐ position_value + tp_levels 포함)
+        active_positions[position_id] = {
+            "symbol": candle_symbol,
+            "strategy": decision.get("strategy_id", "ensemble"),
+            "side": decision.get("side"),
+            "entry": fill.get("filled_price"),
+            "sl": decision.get("sl"),
+            "tp": decision.get("tp"),
+            "qty": qty,
+            "trailing_stop": None,
+            "entry_time": entry_time,
+            "position_value": position_value,  # ⭐ 생성 시 position_value 저장
+            "tp_levels": tp_levels,  # ⭐ TUNING_VIBLE TP 분할
+            "tp1_hit": False,
+            "tp2_hit": False,
+            "be_moved": False,
+            "remaining_pct": 100.0,
+            "highest": fill.get("filled_price"),
+            "lowest": fill.get("filled_price"),
+            "trail_price": decision.get("sl"),
+            "lev": decision.get("lev", 1),
+            "position_number": position_number,  # ⭐ P2: 포지션 번호 추가
+        }
+        
+        # ⭐ PR10: SL 서버 등록 (Option C + workingType + priceProtect)
+        if mode in ["paper", "live"]:
+            binance_api_cfg = config.get('exits', {}).get('binance_api', {})
+            working_type = binance_api_cfg.get('working_type', 'CONTRACT_PRICE')
+            price_protect = 'TRUE' if binance_api_cfg.get('price_protect', True) else 'FALSE'
+            
+            broker.create_sl_order(
+                position={'id': position_id, 'symbol': candle_symbol,
+                          'side': decision.get('side'), 'qty': qty},
+                sl_price=decision.get('sl'),
+                working_type=working_type,
+                price_protect=price_protect
             )
 
-            # Risk Manager에도 등록 (⭐ candle_symbol 사용!)
-            risk.add_position(candle_symbol, position_value)
+        logger.info(
+            f"✅ [{trade_count}] {decision.get('side')} @ {fill.get('filled_price'):.2f}"
+        )
 
-            # ⭐ PR11: Slippage Guard 체크
-            expected_price = decision.get("entry_price", decision.get("entry", 0))
-            filled_price = fill.get("filled_price", 0)
-            if expected_price > 0 and filled_price > 0:
-                logger.info(f"🔍 Slippage Guard 체크: expected=${expected_price:.4f}, filled=${filled_price:.4f}")
-                if not risk.check_slippage_guard(expected_price, filled_price):
-                    logger.error(f"🚨 Slippage Guard 차단 - 주문 취소: {candle_symbol}")
-                    continue  # 이 주문 스킵
-
-            # ⭐ Portfolio Manager에 포지션 추가
-            portfolio.add_position(
-                symbol=candle_symbol,
-                strategy=strategy_id,
-                position_value=position_value,
-                side=decision.get("side"),
-                position_id=position_id,
-            )
-
-            # ⭐ TUNING_VIBLE: TP 레벨 계산
-            tp_levels = tracker.tp_manager.calculate_tp_levels(
-                entry=fill.get("filled_price"),
-                stop=decision.get("sl"),
-                side=decision.get("side"),
-                atr=df["atr"].iloc[-1] if "atr" in df.columns else None,
-            )
-
-            # 포지션 번호 계산 (현재 활성 포지션 수 + 1)
-            position_number = len(active_positions) + 1
-
-            # 활성 포지션 저장 (⭐ position_value + tp_levels 포함)
-            active_positions[position_id] = {
-                "symbol": candle_symbol,
-                "strategy": decision.get("strategy_id", "ensemble"),
+        # ⭐ 텔레그램 알림 (페이퍼/라이브 모드) - P2 최종 확정 포맷
+        if mode in ["paper", "live"]:
+            # 신호 정보 구성
+            signal_info = {
                 "side": decision.get("side"),
                 "entry": fill.get("filled_price"),
                 "sl": decision.get("sl"),
                 "tp": decision.get("tp"),
-                "qty": qty,
-                "trailing_stop": None,
-                "entry_time": entry_time,
-                "position_value": position_value,  # ⭐ 생성 시 position_value 저장
-                "tp_levels": tp_levels,  # ⭐ TUNING_VIBLE TP 분할
-                "tp1_hit": False,
-                "tp2_hit": False,
-                "be_moved": False,
-                "remaining_pct": 100.0,
-                "highest": fill.get("filled_price"),
-                "lowest": fill.get("filled_price"),
-                "trail_price": decision.get("sl"),
                 "lev": decision.get("lev", 1),
-                "position_number": position_number,  # ⭐ P2: 포지션 번호 추가
+                "reason": decision.get("reason", ["신호 감지"]),
             }
-            
-            # ⭐ PR10: SL 서버 등록 (Option C + workingType + priceProtect)
-            if mode in ["paper", "live"]:
-                binance_api_cfg = config.get('exits', {}).get('binance_api', {})
-                working_type = binance_api_cfg.get('working_type', 'CONTRACT_PRICE')
-                price_protect = 'TRUE' if binance_api_cfg.get('price_protect', True) else 'FALSE'
-                
-                broker.create_sl_order(
-                    position={'id': position_id, 'symbol': candle_symbol,
-                              'side': decision.get('side'), 'qty': qty},
-                    sl_price=decision.get('sl'),
-                    working_type=working_type,
-                    price_protect=price_protect
-                )
 
-            logger.info(
-                f"✅ [{trade_count}] {decision.get('side')} @ {fill.get('filled_price'):.2f}"
+            # 포트폴리오 정보
+            current_equity = (
+                portfolio.get_equity()
+                if hasattr(portfolio, "get_equity")
+                else config["capital"]["initial"]
             )
+            stats_after = (
+                portfolio.get_stats() if hasattr(portfolio, "get_stats") else {}
+            )
+            total_exposure_after = stats_after.get("total_exposure", 0.0)
+            # 현재 포지션 반영 전/후 현금
+            total_exposure_before = max(0.0, total_exposure_after - position_value)
+            cash_before = max(0.0, current_equity - total_exposure_before)
+            cash_after = max(0.0, current_equity - total_exposure_after)
+            active_pos_count = len(active_positions)
+            max_pos = config.get("risk", {}).get("max_positions", 20)
 
-            # ⭐ 텔레그램 알림 (페이퍼/라이브 모드) - P2 최종 확정 포맷
-            if mode in ["paper", "live"]:
-                # 신호 정보 구성
-                signal_info = {
-                    "side": decision.get("side"),
-                    "entry": fill.get("filled_price"),
-                    "sl": decision.get("sl"),
-                    "tp": decision.get("tp"),
-                    "lev": decision.get("lev", 1),
-                    "reason": decision.get("reason", ["신호 감지"]),
+            # format_signal_alert 사용 (P2 최종 포맷)
+            msg = format_signal_alert(
+                symbol=candle_symbol,
+                I=signal_info,
+                qty=qty,
+                notional=position_value,
+                margin=position_value / signal_info["lev"],
+                config=config,
+                total_equity=current_equity,
+                active_positions=active_pos_count,
+                max_positions=max_pos,
+                position_number=position_number,
+                cash_before=cash_before,
+                cash_after=cash_after,
+            )
+            tg(msg, config)
+
+            # 📜 Detailed Entry Logging
+            emoji_cfg = config.get("telegram", {}).get("emoji", {})
+            emoji_circle = (
+                emoji_cfg.get("long_circle", "🔵")
+                if decision.get("side") == "LONG"
+                else emoji_cfg.get("short_circle", "🔴")
+            )
+            mode_tag = config.get("mode", "paper").upper()
+            strategy_tag = decision.get("strategy_id", "ensemble").upper()
+            logger.info(
+                f"{emoji_circle} [{mode_tag}|{strategy_tag}] {candle_symbol} BUY @ {fill.get('filled_price'):,.2f} | SL: {decision.get('sl'):,.2f} | TP: {decision.get('tp'):,.2f} | Qty: {qty:.2f} | Notional: ${position_value:,.0f} | x{signal_info['lev']}"
+            )
+            stats_now = (
+                portfolio.get_stats()
+                if hasattr(portfolio, "get_stats")
+                else {
+                    "total_exposure": 0.0,
+                    "total_exposure_pct": 0.0,
+                    "total_positions": len(active_positions),
+                    "max_positions": max_pos,
                 }
-
-                # 포트폴리오 정보
-                current_equity = (
-                    portfolio.get_equity()
-                    if hasattr(portfolio, "get_equity")
-                    else config["capital"]["initial"]
-                )
-                stats_after = (
-                    portfolio.get_stats() if hasattr(portfolio, "get_stats") else {}
-                )
-                total_exposure_after = stats_after.get("total_exposure", 0.0)
-                # 현재 포지션 반영 전/후 현금
-                total_exposure_before = max(0.0, total_exposure_after - position_value)
-                cash_before = max(0.0, current_equity - total_exposure_before)
-                cash_after = max(0.0, current_equity - total_exposure_after)
-                active_pos_count = len(active_positions)
-                max_pos = config.get("risk", {}).get("max_positions", 20)
-
-                # format_signal_alert 사용 (P2 최종 포맷)
-                msg = format_signal_alert(
-                    symbol=candle_symbol,
-                    I=signal_info,
-                    qty=qty,
-                    notional=position_value,
-                    margin=position_value / signal_info["lev"],
-                    config=config,
-                    total_equity=current_equity,
-                    active_positions=active_pos_count,
-                    max_positions=max_pos,
-                    position_number=position_number,
-                    cash_before=cash_before,
-                    cash_after=cash_after,
-                )
-                tg(msg, config)
-
-                # 📜 Detailed Entry Logging
-                emoji_cfg = config.get("telegram", {}).get("emoji", {})
-                emoji_circle = (
-                    emoji_cfg.get("long_circle", "🔵")
-                    if decision.get("side") == "LONG"
-                    else emoji_cfg.get("short_circle", "🔴")
-                )
-                mode_tag = config.get("mode", "paper").upper()
-                strategy_tag = decision.get("strategy_id", "ensemble").upper()
-                logger.info(
-                    f"{emoji_circle} [{mode_tag}|{strategy_tag}] {candle_symbol} BUY @ {fill.get('filled_price'):,.2f} | SL: {decision.get('sl'):,.2f} | TP: {decision.get('tp'):,.2f} | Qty: {qty:.2f} | Notional: ${position_value:,.0f} | x{signal_info['lev']}"
-                )
-                stats_now = (
-                    portfolio.get_stats()
-                    if hasattr(portfolio, "get_stats")
-                    else {
-                        "total_exposure": 0.0,
-                        "total_exposure_pct": 0.0,
-                        "total_positions": len(active_positions),
-                        "max_positions": max_pos,
-                    }
-                )
-                total_exposure = stats_now.get("total_exposure", 0.0)
-                exposure_pct = stats_now.get(
-                    "total_exposure_pct",
-                    (
-                        total_exposure / current_equity * 100
-                        if current_equity > 0
-                        else 0.0
-                    ),
-                )
-                total_positions = stats_now.get(
-                    "total_positions", len(active_positions)
-                )
-                max_positions = stats_now.get("max_positions", max_pos)
-                logger.info(
-                    f"📊 [PORTFOLIO] Positions {total_positions}/{max_positions} | Total Notional: ${total_exposure:,.0f} ({exposure_pct:.1f}%) | Equity: ${current_equity:,.0f}"
-                )
+            )
+            total_exposure = stats_now.get("total_exposure", 0.0)
+            exposure_pct = stats_now.get(
+                "total_exposure_pct",
+                (
+                    total_exposure / current_equity * 100
+                    if current_equity > 0
+                    else 0.0
+                ),
+            )
+            total_positions = stats_now.get(
+                "total_positions", len(active_positions)
+            )
+            max_positions = stats_now.get("max_positions", max_pos)
+            logger.info(
+                f"📊 [PORTFOLIO] Positions {total_positions}/{max_positions} | Total Notional: ${total_exposure:,.0f} ({exposure_pct:.1f}%) | Equity: ${current_equity:,.0f}"
+            )
 
         # 진행 상황 (백테스트용)
         if candle_count % 10000 == 0:

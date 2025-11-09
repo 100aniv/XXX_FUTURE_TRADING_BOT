@@ -232,17 +232,34 @@ docs/PHASE6/                     # 문서 업데이트 허용
 
 ## ✅ 5. 처리 단계 (.windsurfrules 준수)
 
-### Phase 1: 핵심 컴포넌트 (P0)
-1. **ConfigOverlay** (`tuning/config_overlay.py`) → 오버레이 시스템
-2. **EnsembleTuner** (`tuning/ensemble_tuner.py`) → Ensemble 튜닝
-3. **RolloutManager** (`tuning/rollout_manager.py`) → 롤아웃 관리
-4. **GuardrailEngine** (`tuning/guardrail_engine.py`) → 가드레일
+### Phase 1: 핵심 컴포넌트 (P0) - ✅ 완료
+1. **ConfigOverlay** (`tuning/config_overlay.py`) → 오버레이 시스템 ✅
+2. **EnsembleTuner** (`tuning/ensemble_tuner.py`) → Ensemble 튜닝 ✅
+3. **테스트 세트** (`tests/test_config_overlay.py`, `tests/test_ensemble_tuner.py`) → 30개 통과 ✅
 
-### Phase 2: 분석 및 테스트 (P1)
-5. **ABComparisonReport** (`analytics/ab_comparison.py`) → A/B 리포트
-6. **테스트 세트** (`tests/**`) → unit/contract/flow/gate/tuning 매트릭스
+### Phase 1.5: 튜닝 실행 검증 (P0) - ⏳ 진행 예정
+1. **튜닝 실행 스크립트** (`scripts/run_tuner.py`) → Optuna 실행 래퍼
+2. **Optuna PostgreSQL 저장소** → 단일 DB 정책 준수 (SQLite ❌)
+3. **오버레이 생성 검증** → configs/overlays/ 파일 생성 확인
+4. **Best 파라미터 추출** → Optuna study.best_params 검증
+5. **(선택) Redis 발행** → fa:tuner:{run_id}:tuning.params.set 채널
 
-### Phase 3: 통합 및 검증 (P0)
-7. **FlowGuardian 강화** (`core/flow_guardian.py`) → 모든 모드 READY 강제
-8. **DB/Redis 분리** → env/run_id/created_at 및 네임스페이스 적용
-9. **수용 기준 검증** → .windsurfrules Testing & Acceptance 준수
+### Phase 2: 롤아웃 & 가드레일 (P0)
+1. **RolloutManager** (`tuning/rollout_manager.py`) → 롤아웃 관리
+2. **GuardrailEngine** (`tuning/guardrail_engine.py`) → 가드레일
+3. **섀도우/카나리 테스트** → 8시간/각 단계 6시간 검증
+
+### Phase 2.5: Live 전환 및 검증 (P0) - ⏳ NEW
+1. **챔피언 파라미터 확정** → 최적 파라미터 커밋
+2. **Live 모드 전환** → tuning.mode=full
+3. **실거래 검증** → Binance API 호출, 24시간 모니터링
+4. **Paper/Live 파리티** → 로직 동일, 실행만 다름 검증
+5. **DB/Redis 확인** → env='live', fa:live:{run_id}:* 네임스페이스
+6. **롤백 준비** → 긴급 복귀 절차
+
+### Phase 3: 분석 및 통합 (P1)
+1. **ABComparisonReport** (`analytics/ab_comparison.py`) → A/B 리포트
+2. **FlowGuardian 강화** (`core/flow_guardian.py`) → 모든 모드 READY 강제
+3. **DB/Redis 분리** → env/run_id/created_at 및 네임스페이스 적용
+4. **수용 기준 검증** → .windsurfrules Testing & Acceptance 준수
+5. **통합 테스트** → unit/contract/flow/gate/tuning 매트릭스 완료
