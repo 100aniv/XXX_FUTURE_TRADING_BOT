@@ -26,37 +26,48 @@
 
 ## 영향 파일(확정)
 
-### 신규 파일 (구현 필요)
+### .windsurfrules 허용 파일 범위 내 작업
+**신규 파일**:
 ```
 tuning/
-├── config_overlay.py           # 🆕 설정 오버레이 시스템
-├── ensemble_tuner.py           # 🆕 Ensemble 튜닝 (TunerCore 확장)
-├── rollout_manager.py          # 🆕 롤아웃 관리
-├── guardrail_engine.py         # 🆕 가드레일
-└── tuning_api.py               # 🆕 API
+├── config_overlay.py           # 🆕 설정 오버레이 시스템 (tuning/** 허용)
+├── ensemble_tuner.py           # 🆕 Ensemble 튜닝 (tuning/** 허용)
+├── rollout_manager.py          # 🆕 롤아웃 관리 (tuning/** 허용)
+├── guardrail_engine.py         # 🆕 가드레일 (tuning/** 허용)
+└── tuning_api.py               # 🆕 API (tuning/** 허용)
 
 analytics/
-└── ab_comparison.py            # 🆕 A/B 비교 리포트
+└── ab_comparison.py            # 🆕 A/B 비교 리포트 (analytics/** 허용)
+
+tests/
+├── test_config_overlay.py      # 🆕 단위 테스트 (tests/** 허용)
+├── test_ensemble_tuner.py      # 🆕 단위 테스트 (tests/** 허용)
+└── test_rollout_manager.py     # 🆕 단위 테스트 (tests/** 허용)
 ```
 
-### 수정 파일 (기존 활용)
+**수정 파일** (.windsurfrules 허용 범위):
 ```
-tuning/
-├── tuning_core.py              # ✏️ 단일 전략용 (유지, EnsembleTuner가 확장)
-└── tuning_scheduler.py         # ✏️ 스케줄러 (Ensemble 추가)
-
-analytics/
-└── report_generator.py         # ✏️ 기존 리포트 (ABComparison이 확장)
-
-config.yml                      # ✏️ tuning.* 섹션 추가
+core/interfaces.py              # ✏️ 튜닝 관련 Protocol 추가 (허용)
+core/flow_guardian.py           # ✏️ 튜닝 모드 READY 판정 추가 (허용)
+execution/engine.py             # ✏️ ConfigOverlay 적용 (허용)
+common/messaging.py             # ✏️ 튜닝 메시지 템플릿 (허용)
+metrics/compute.py              # ✏️ 튜닝 메트릭 지원 (허용)
+docs/PHASE6/**                  # ✏️ PR13 관련 문서 업데이트 (허용)
 ```
 
-### 참조 파일 (변경 없음)
+**참조만 하는 파일** (변경 없음):
 ```
-metrics/compute.py              # ✅ 메트릭 계산 (그대로 사용)
-core/interfaces.py              # ✅ Protocol (그대로 사용)
-strategies/ensemble.py          # ✅ Ensemble 로직 (Config만 주입)
+strategies/ensemble.py          # ✅ Config 주입만 받음
+common/config_loader.py         # ✅ 오버레이 로드 지원
+common/redis_client.py          # ✅ 네임스페이스 키 사용
 ```
+
+## 런타임/컨테이너 역할
+- **trading_bot_paper_tuner**: 페이퍼 환경에서 베이시안 튜닝 루프 실행(자동). 결과를 오버레이 파일 및 Redis로 발행.
+- **trading_bot_paper**: 페이퍼 실행 엔진. 섀도우/카나리 단계에서 튜닝 파라미터 적용 검증.
+- **trading_bot_live**: 운영 엔진. 항상 안정화된 챔피언 파라미터만 사용. 실시간 조정 항목은 Redis를 통해 제한적으로 적용.
+- **postgres**: 단일 DB. `env`, `run_id`로 데이터 분리.
+- **redis**: 실시간 파라미터/상태 채널. 네임스페이스로 Paper/Live/Tuner 충돌 방지.
 
 ## 설정 키(제안)
 - tuning.enabled: bool(기본 false)
@@ -67,17 +78,65 @@ strategies/ensemble.py          # ✅ Ensemble 로직 (Config만 주입)
 - guardrails.min_trades: int
 - guardrails.max_vol_increase_pct: float
 
+### DB/Redis 설계(단일 소스 + 분리)
+- Postgres 공통 스키마(요지):
+  - 공통 컬럼: `env VARCHAR(10) NOT NULL CHECK (env IN ('paper','live','tuner'))`, `run_id UUID NOT NULL`, `created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()`
+  - 예: `trading.trades(trade_id, symbol, side, qty, pnl, score_total, ... , env, run_id, created_at)`
+  - 수용 기준 연계: `DB.score_total == JSON.score_total` 동등성 검증(샘플링 또는 전량)
+- Redis 네임스페이스(충돌 방지):
+  - 키 프리픽스: `{ns}:{env}:{run_id}:<domain>`
+  - 예: `fa:tuner:{run}:tuning.params.set`, `fa:paper:{run}:ensemble.weights.update`
+  - 채널 권장:
+    - `tuning.params.set`(오버레이 배포)
+    - `ensemble.weights.update`(가중치 실시간 조정; Live는 안전 항목만)
+    - `risk.cap.update`(일일 손실/전략 예산 상한 조정)
+    - `throttle.update`(거래 빈도 제한/쿨다운)
+    - `equity.set`(Paper 자산 동기화용)
+
+### 모드/파라미터 적용 정책
+- 모드 해석 우선순위: `config.yml(mode)` > `ENV.TRADING_MODE` > 기본값 `paper`
+- Live는 챔피언 파라미터만 사용. 실시간 변경 허용 항목은 운영 안전 파라미터에 한함(가중치 미세조정, 리스크 캡, 스로틀 등).
+- Paper/Shadow/Canary에서만 실험 파라미터 적용. Canary 단계폭: 10%→30%→50%→100%.
+
+## 아키텍처 계층/모듈 소유
+- **core/**: 계약/게이트 전담. `interfaces.py`, `flow_guardian.py`만 위치. 비즈니스 구현 금지.
+- **tuning/**: 튜닝 전담. `config_overlay.py`, `ensemble_tuner.py`, `rollout_manager.py`, `guardrail_engine.py`, `tuning_api.py` 등.
+- **metrics/**: 메트릭 전담. `metrics/compute.py::MetricsEngine` 유지. Analytics(AB 비교)는 `analytics/`로 분리.
+- **common/**: 공통 유틸. `config_loader`, `calculations`, `messaging`, `logger`, `redis_client`, `database`, `symbol_manager`, `utils` 등만.
+
+### 모듈 재배치 정책 (.windsurfrules Module Relocation Policy PR13)
+- **튜닝 모듈 통합**: `common/tuning_*.py`는 deprecated. 단일 진실 소스는 `tuning/` 하위 구현.
+  - **이전**: `common/tuning_core.py`, `common/tuning_scheduler.py`
+  - **이후**: `tuning/ensemble_tuner.py`, `tuning/rollout_manager.py` 등으로 대체
+  - **정리**: deprecated 파일은 차기 코드 정리 PR에서 제거
+- **메트릭 모듈 유지**: `metrics/compute.py`는 core로 이동 금지
+  - **이유**: 단일 책임·의존 방향 유지 (계약은 core, 구현은 metrics)
+  - **고정**: import 경로 `from metrics.compute import MetricsEngine` 유지
+
 ## FlowGuardian 게이트
 - READY 없이는 PAPER/LIVE 불가(게이트 준수)
 
 ## 수용 기준(Acceptance)
-- 24시간 페이퍼 실험에서 baseline 대비 `score_total` ≥ 15% 향상
-- Sharpe-like(analytics.kpis) ≥ 12% 향상, MDD 증가는 ≤ 0.5%p
-- 최소 거래수 ≥ 80, 승률 하락 ≤ 0.5%p, 거래 수 변화 |Δ| ≤ 15%
-- 승률: baseline 대비 유지 이상(하락 0%p) 또는 +5%p 향상 달성
-- 섀도우 모드: 8시간 이상 가드레일 위반 0건(DD 증가 한계, min_trades, 변동성 증가)
-- 카나리 단계(10%→30%→50%→100%): 각 단계 6시간 이상 가드레일 위반 0건 시에만 승격
-- logs/trial_0000.json/DB 동등성 유지, pre-commit 통과
+
+### .windsurfrules 기본 게이트 준수
+1. **FlowGuardian 게이트**: `tests/flow/test_flow_guardian.py` 통과
+2. **로그 생성**: `logs/trial_0000.json` 생성 보장
+3. **DB 동등성**: `DB.score_total == JSON.score_total` 일치 검증
+4. **코드 품질**: pre-commit(ruff/black/mypy/vulture) 통과, coverage > 85%
+
+### 튜닝/롤아웃 특화 기준 (.windsurfrules 준수)
+- **Shadow 단계**: 8시간 이상 가드레일 위반 0건
+- **Canary 단계**: 10%→30%→50%→100%, 각 단계 6시간 위반 0건
+- **성과 기준**: 페이퍼 24h baseline 대비
+  - `score_total` ≥ +15%
+  - Sharpe-like ≥ +12%
+  - MDD 증가 ≤ 0.5%p
+- **거래 안정성**: 최소 거래수 ≥ 80, 승률 하락 ≤ 0.5%p, 거래 수 변화 |Δ| ≤ 15%
+
+### DB/Redis 분리 정책 준수
+- **Postgres**: 모든 신규/핵심 테이블에 `env VARCHAR(10)`, `run_id UUID`, `created_at TIMESTAMPTZ` 필수
+- **Redis**: 모든 키/채널에 `{ns}:{env}:{run_id}:<domain>` 네임스페이스 적용
+- **검증**: DB env/run_id/created_at 채움률, Redis 네임스페이스 적용 로그 증적 포함
 
 ## 체크리스트(Checklist)
 
@@ -89,6 +148,7 @@ strategies/ensemble.py          # ✅ Ensemble 로직 (Config만 주입)
   - 5개 핵심 컴포넌트 (ConfigOverlay, EnsembleTuner, RolloutManager, GuardrailEngine, ABComparisonReport)
   - 데이터 플로우
   - 설정 스키마
+  - 단일 DB/Redis 네임스페이스 설계(충돌 없음)
 
 ### 구현 예정
 - [ ] **Phase 1: ConfigOverlay & EnsembleTuner** (P0, 2일)
@@ -132,6 +192,7 @@ strategies/ensemble.py          # ✅ Ensemble 로직 (Config만 주입)
 ## 로그/DB 산출물(Artifacts)
 - logs/trial_0000.json: 실험/롤아웃 메타, 점수, 가드레일 이벤트
 - DB: 결정/거래/리스크 이벤트의 전후 비교
+ - DB 분리 필드: `env`, `run_id`의 채움률 및 유효성(모든 인서트 경로 적용) 로그로 검증
 
 ## 배포/롤백(Release/Rollback)
 - 배포: tuning.mode 단계 변경으로 제어
@@ -141,6 +202,25 @@ strategies/ensemble.py          # ✅ Ensemble 로직 (Config만 주입)
 - 과적합 위험 → OOS 윈도/분산 페널티/최소 거래수 적용
 - 카나리 실패 → 자동 중단/롤백, 원인 로그
 - 구성 드리프트 → config.yml 단일 소스, 커밋 해시 고정
+
+## 운영 절차(Ops Runbook)
+
+### 튜닝 시작 프로세스
+1. **Paper 튜닝 시작**: `tuning.enabled=true`, `tuning.mode=shadow`
+2. **Shadow 검증**: 8시간 가드레일 위반 0건 확인
+3. **Canary 승격**: 단계별(10%→30%→50%→100%) 6시간 검증
+4. **Live 전환**: `tuning.mode=full`, 챔피언 파라미터 고정 커밋
+
+### 실시간 조정 (Redis 채널)
+- **허용 항목**: `ensemble.weights.update`, `risk.cap.update`, `throttle.update`, `equity.set`
+- **네임스페이스**: `{ns}:{env}:{run_id}:<domain>` 형식 준수
+- **제한**: Live 환경은 안전 항목만 실시간 조정
+
+### 검증 체크리스트 (.windsurfrules 준수)
+1. **FlowGuardian**: `assert_ready(mode)` 호출 확인
+2. **DB 분리**: env/run_id/created_at 필드 존재 및 채움 확인
+3. **Redis 네임스페이스**: 로그에서 `:{env}:{run_id}:` 패턴 확인
+4. **로그 생성**: `logs/trial_0000.json` 및 `DB.score_total == JSON.score_total` 동등성
 
 ## 릴리즈 노트(Release Notes)
 - 운영 최적화 파이프라인 및 단계적 롤아웃 도입. 전략 로직 자체 변경은 최소화.

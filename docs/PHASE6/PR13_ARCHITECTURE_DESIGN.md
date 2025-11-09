@@ -41,6 +41,45 @@
    └──────────────┘      └────────────────┘
 ```
 
+### 1.2 런타임 역할 & 역할 (.windsurfrules Runtime & Roles)
+- **trading_bot_paper_tuner**: 페이퍼 환경 베이시안 튜닝 자동 루프(오버레이 파일/Redis 발행)
+- **trading_bot_paper**: 섀도우/카나리 검증 엔진(실시간 파라미터 수신)
+- **trading_bot_live**: 운영 엔진(챔피언 파라미터만, 실시간은 안전 항목 제한)
+- **postgres**: 단일 DB, env/run_id로 데이터 분리
+- **redis**: 실시간 파라미터/상태 채널, 네임스페이스로 충돌 방지
+
+### 1.3 DB/Redis 분리 정책 (.windsurfrules Data Separation/Redis Namespace Policy)
+
+**Postgres 데이터 분리**:
+- 모든 신규/핵심 테이블에 `env VARCHAR(10)`, `run_id UUID`, `created_at TIMESTAMPTZ` 필수
+- 모든 INSERT 경로는 env, run_id를 누락 없이 채움. 인덱스/뷰에 (env, created_at) 포함 권장
+- 로그/리포트/DB 간 score_total 등 핵심 지표는 단일 정의에 따라 동기화
+- 예시: `trading.trades(trade_id, symbol, side, qty, pnl, score_total, env, run_id, created_at)`
+
+**Redis 네임스페이스**:
+- 모든 키/채널은 `{ns}:{env}:{run_id}:<domain>` 접두사를 사용해 충돌 방지
+- 권장 채널: `tuning.params.set`, `ensemble.weights.update`, `risk.cap.update`, `throttle.update`, `equity.set`
+- 캔들 dedup 등 상태키도 동일 네임스페이스 적용
+- 예: `fa:paper:{run_id}:candle:seen:{symbol}:{tf}:{closed_at}`
+
+### 1.4 FlowGuardian 게이트 & 모드 정책
+- **게이트 준수**: FlowGuardian.assert_ready(mode) 필수. READY 미호출 시 PAPER/LIVE 실행 금지
+- **모드 우선순위**: `config.yml(mode)` > `ENV.TRADING_MODE` > 기본값 `paper`
+- **허용 파일**: .windsurfrules [Files You May Edit] 섹션 준수 필수
+
+---
+
+## 🏠 1.5 아키텍처 계층 정책 (.windsurfrules Architecture Layering Policy)
+
+- **core/**: 계약/게이트 전담. interfaces.py, flow_guardian.py만. 비즈니스 구현/메트릭 로직 금지
+- **tuning/**: 튜닝 전담. config_overlay.py, ensemble_tuner.py, rollout_manager.py, guardrail_engine.py, tuning_api.py 등
+- **metrics/**: 메트릭 전담. metrics/compute.py::MetricsEngine 유지(계약은 core, 구현은 metrics)
+- **common/**: 공통 유틸. config_loader, calculations, messaging, logger, redis_client, database, symbol_manager, utils 등만
+
+### 모듈 재배치 정책 (PR13)
+- `common/tuning_*.py`는 deprecated. 단일 진실 소스는 `tuning/` 하위 구현
+- `metrics/compute.py`는 core로 이동 금지(단일 책임·의존 방향 유지). import 경로 `from metrics.compute ...` 고정
+
 ---
 
 ## 🔧 2. 핵심 컴포넌트
@@ -590,6 +629,19 @@ calculate_weights() with config
 final decision
 ```
 
+### 3.4 실시간 파라미터 채널
+- `tuning.params.set`: 오버레이 배포(페이퍼/섀도우/카나리에서 적용)
+- `ensemble.weights.update`: 가중치 미세 조정(Live는 안전 항목만 허용)
+- `risk.cap.update`: 일일 손실 한도/전략 예산 상한 업데이트
+- `throttle.update`: 거래 쿨다운/빈도 제한
+- `equity.set`: Paper 자산 동기화용
+
+### 3.5 로그/검증 포인트
+- logs/trial_0000.json 생성 및 `score_total` 보존
+- DB vs JSON: `DB.score_total == JSON.score_total` 동등성 체크
+- Redis 키/채널에 `{env}`/`{run_id}` 네임스페이스 포함 여부 로그로 확인
+- 큐 헬스 로그 라벨 중립화(예: "Queue Health"), 과거 `PR5 Queue` 라벨 사용 금지
+
 ---
 
 ## 📝 4. 설정 스키마
@@ -621,9 +673,33 @@ tuning:
 
 ---
 
-## ✅ 다음 단계
+## ✅ 5. 수용 기준 & 테스트 (.windsurfrules Testing & Acceptance)
 
-1. **상세 구현 설계** 작성
-2. **데이터 모델** 정의
-3. **API 설계** 명세
-4. **테스트 전략** 수립
+### 5.1 기본 게이트 수용 기준
+1. `tests/flow/test_flow_guardian.py` 통과
+2. `logs/trial_0000.json` 생성
+3. `DB.score_total == JSON.score_total` 일치
+4. pre-commit(ruff/black/mypy/vulture, coverage>85%) 통과
+
+### 5.2 튜닝/롤아웃 수용 기준 (PR13)
+- **shadow(8h) 위반 0건**
+- **canary 10%→30%→50%→100%, 각 단계 6h 위배 0건**
+- **페이퍼 24h baseline 대비 score_total ≥ +15%, Sharpe-like ≥ +12%, MDD 증가 ≤ 0.5%p**
+- **최소 거래수 ≥ 80, 승률 하락 ≤ 0.5%p, 거래 수 변화 |Δ| ≤ 15%**
+
+### 5.3 테스트 매트릭스
+- **unit/contract/flow/gate/tuning** 매트릭스 적용
+- Unit: 각 컴포넌트 단위 테스트
+- Contract: Interface/Protocol 계약 검증
+- Flow: 전체 데이터 플로우 검증
+- Gate: FlowGuardian READY 게이트 검증
+- Tuning: 베이시안 튜닝/롤아웃 검증
+
+---
+
+## ✅ 6. 다음 단계
+
+1. **상세 구현 설계** 작성 (.windsurfrules 허용 파일 범위 내)
+2. **데이터 모델** 정의 (env/run_id/created_at 포함)
+3. **API 설계** 명세 (Redis 네임스페이스 준수)
+4. **테스트 전략** 수립 (매트릭스 기반)

@@ -3,6 +3,7 @@
 - PAPER/LIVE 실행 전 READY 게이트 통과 필수.
 - trading_bot_env 가상환경 유지.
 - 변경마다 git commit (docs 포함).
+- 단일 Postgres DB(env, run_id, created_at) + Redis 네임스페이스({ns}:{env}:{run_id}:<domain>) 준수.
 
 [Scope & Flexibility]
 - 신규 파일/메서드는 “필요성 → 설계 요약 → 사용자 합의 → 생성” 순으로 진행.
@@ -17,6 +18,23 @@
 - Telegram 일일 손익은 PortfolioManager.get_daily_pnl() 기준.
 - Paper/Live 로직 100% 동일, 실행 계층(Broker)만 분리.
 
+[Architecture Layering Policy]
+- core/: 계약/게이트 전담. interfaces.py, flow_guardian.py만. 비즈니스 구현/메트릭 로직 금지.
+- tuning/: 튜닝 전담. config_overlay.py, ensemble_tuner.py, rollout_manager.py, guardrail_engine.py, tuning_api.py 등.
+- metrics/: 메트릭 전담. metrics/compute.py::MetricsEngine 유지(계약은 core, 구현은 metrics).
+- common/: 공통 유틸. config_loader, calculations, messaging, logger, redis_client, database, symbol_manager, utils 등만.
+
+[Module Relocation Policy (PR13)]
+- common/tuning_*.py는 deprecated. 단일 진실 소스는 tuning/ 하위 구현.
+- metrics/compute.py는 core로 이동 금지(단일 책임·의존 방향 유지). import 경로 from metrics.compute ... 고정.
+
+[Runtime & Roles]
+- trading_bot_paper_tuner: 페이퍼 환경 베이시안 튜닝 자동 루프(오버레이 파일/Redis 발행).
+- trading_bot_paper: 섀도우/카나리 검증 엔진(실시간 파라미터 수신).
+- trading_bot_live: 운영 엔진(챔피언 파라미터만, 실시간은 안전 항목 제한).
+- postgres: 단일 DB, env/run_id로 데이터 분리.
+- redis: 실시간 파라미터/상태 채널, 네임스페이스로 충돌 방지.
+
 [Files You May Edit]  ; 예시, PR 본문에 “허용 파일 목록” 명시 후 확장 가능
 - core/interfaces.py                 ; 게이트/계약 정의
 - core/flow_guardian.py              ; READY 판정
@@ -27,6 +45,8 @@
 - execution/adapters/*.py            ; Paper/Live 파리티
 - common/messaging.py                ; PnL 표기 데이터 소스 교정 범위
 - metrics/compute.py                 ; 계약 범위 내
+- tuning/**                          ; PR13 튜닝 전담(신규/이관)
+- analytics/**                       ; A/B 비교 등 분석(필요 시)
 - tests/**                           ; 관련 테스트 추가 허용
 - docs/PHASE6/**                     ; PR별 마스터 플랜/리포트
 
@@ -40,12 +60,23 @@
 - main.py는 흐름 제어만.
 - 문서는 기존 파일 우선(새 문서는 필요/합의 시에만 추가).
 
+[Data Separation Policy]
+- Postgres 모든 신규/핵심 테이블에 env VARCHAR(10), run_id UUID, created_at TIMESTAMPTZ 필수.
+- 모든 INSERT 경로는 env, run_id를 누락 없이 채움. 인덱스/뷰에 (env, created_at) 포함 권장.
+- 로그/리포트/DB 간 score_total 등 핵심 지표는 단일 정의에 따라 동기화.
+
+[Redis Namespace Policy]
+- 모든 키/채널은 {ns}:{env}:{run_id}:<domain> 접두사를 사용해 충돌 방지.
+- 권장 채널: tuning.params.set, ensemble.weights.update, risk.cap.update, throttle.update, equity.set.
+- 캔들 dedup 등 상태키도 동일 네임스페이스 적용.
+
 [Constraints]
 - tests/flow/test_flow_guardian.py 통과.
 - pre-commit(ruff/black/mypy/vulture) 통과, coverage>85%.
 - logs/trial_0000.json 생성 보장.
 - DB.score_total == JSON.score_total 동기화 검증.
 - FlowGuardian READY 미호출 시 PAPER/LIVE 실행 금지.
+- DB 분리/네임스페이스: Postgres env/run_id/created_at 필드 존재 및 채움률 검증, Redis 키/채널에 env/run_id 포함.
 
 [Refactor Workflow]
 - 모듈 단위로 PR 분리(게이트/DB/튜닝/포트폴리오 등).
@@ -55,7 +86,8 @@
 [Documentation Sync]
 - Docs/PHASE6 문서 필수 업데이트.
 - FlowGuardian 변경 시 REFACTORING_flow_guardian_gate.md 갱신.
-- 포트폴리오/리스크 변경 시 해당 PR 문서에 영향/테스트 결과 기록.
+- 포트폴리오/리스크/튜닝 변경 시 해당 PR 문서에 영향/테스트 결과 기록.
+- 아키텍처 계층/소유권/폴더 재배치 정책 반영(PR13 관련).
 
 [Testing & Acceptance]
 - unit/contract/flow/gate/tuning 매트릭스 적용.
@@ -70,6 +102,11 @@
   - Engine에서 portfolio.update_equity(pnl=…) 단일 호출
   - Telegram 일일 손익 = PortfolioManager.get_daily_pnl()
   - Paper: 로컬 equity, Live: Binance API 동기화 파리티
+- 튜닝/롤아웃 수용 기준(PR13):
+  - shadow(8h) 위반 0건
+  - canary 10%→30%→50%→100%, 각 단계 6h 위반 0건
+  - 페이퍼 24h baseline 대비 score_total ≥ +15%, Sharpe-like ≥ +12%, MDD 증가 ≤ 0.5%p
+  - 최소 거래수 ≥ 80, 승률 하락 ≤ 0.5%p, 거래 수 변화 |Δ| ≤ 15%
 
 [Paper/Live Parity]
 - 로직 100% 동일: TP/SL 계산, 반올림, 펀딩, 포트폴리오 가드.
@@ -101,6 +138,7 @@
 - READY 미호출 → PAPER/LIVE 실행 테스트 실패.
 - logs/trial_0000.json 누락 → 실패.
 - DB.score_total != JSON.score_total → 실패.
+- Postgres env/run_id/created_at 누락 또는 Redis 비네임스페이스 키 사용 → 실패.
 - pre-commit 실패 시 커밋 차단.
 - CODEOWNERS: core/interfaces.py, execution/engine.py, execution/portfolio_manager.py, execution/risk_manager.py 등 핵심 파일 승인 절차 유지.
 
@@ -110,7 +148,7 @@
 - PR이나 Phase가 끝나면 GitHub 저장소에서 최신 커밋 확인
 
 [Checklist Before Commit]
-1) 현 구조/데이터 흐름 요약.
+1) 현 구조/데이터 흐름 요약(아키텍처 계층/소유권/폴더 정책 포함).
 2) 기존 모듈 재사용 여부 + 신규 생성 근거 명시.
 3) config.yml 키 변경/추가 여부 + 하드코딩 제거 확인.
 4) 공개 시그니처 변경 시 계약 영향 분석.
@@ -118,22 +156,23 @@
 6) 테스트 4종 + 추가 테스트 증빙 첨부(logs/tests).
 7) 문서 업데이트 위치 명시(Docs/PHASE6).
 8) 실패 시 롤백 절차/대안 명시.
-9) PR이나 PHASE처럼 큰 작업이 끝나면 GitHub에 git push origin main 실행 필수
+9) DB env/run_id/created_at 채움률, Redis 네임스페이스 적용 로그 증적 포함.
+10) PR이나 PHASE 등 큰 작업 후 git push origin main 실행.
 
 [로그 검증 절차]
 1. 시스템 상태 로그:
    docker logs trading_bot_paper_ensemble | Select-String "✅|❌|⚠️"
-
 2. 텔레그램 메시지 로그:
    docker logs trading_bot_paper_ensemble | Select-String "\[TELEGRAM\]"
-
 3. 거래 활동 로그:
    docker logs trading_bot_paper_ensemble | Select-String "포지션|Position|order|PORTFOLIO"
-
 4. 특정 기능 검증 로그:
    - 동적 반올림: docker logs trading_bot_paper_ensemble | Select-String "round_tick|exchangeInfo"
    - 펀딩 수수료: docker logs trading_bot_paper_ensemble | Select-String "funding|fundingRate"
    - 포트폴리오 가드: docker logs trading_bot_paper_ensemble | Select-String "예산|budget|전략 예산|correlation"
+5. 네임스페이스/모드 검증:
+   - Redis 키/채널 로그에 ":paper:" 또는 ":live:" 포함 확인
+   - run_id(UUID) 포함 키 샘플 로그 확보
 
 [메서드 명명 규칙]
 - 기능별 접두사 사용: calculate_*, get_*, check_*
