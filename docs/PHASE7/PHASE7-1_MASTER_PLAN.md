@@ -161,10 +161,52 @@ if symbol in blacklist:
 
 ---
 
+### 문제 3: Precision 오류 근본 원인 (PR12 누락)
+**현상**:
+- STRKUSDT, PUMPUSDT, 0GUSDT 등 다수 심볼에서 Precision 오류 반복
+- `API Error(code=-1111): Precision is over the maximum defined for this asset`
+
+**근본 원인**:
+- PR12에서 `get_exchange_info()` API 조회는 구현했으나, **`round_qty()` 함수 누락**
+- `position_sizer.py`에서 하드코딩된 `round(qty, 3)` 사용
+- 심볼별 stepSize가 다른데 (BTCUSDT=0.001, DOGEUSDT=1 등) 일괄 처리
+
+**해결** (PR12 원래 설계 완성):
+```python
+# common/calculations.py L140-169
+def round_qty(symbol: str, qty: float, use_api: bool = True) -> float:
+    """⭐ PR12 누락 기능: 심볼별 수량 반올림 (동적 stepSize)"""
+    if use_api:
+        info = get_exchange_info(symbol)
+        if info and "stepSize" in info:
+            step_size = info["stepSize"]
+            if step_size > 0:
+                return round(qty / step_size) * step_size
+    return round(qty, 3)  # 폴백
+```
+
+```python
+# execution/position_sizer.py L9, L150-151, L163
+from common.calculations import round_qty
+symbol = signal.get('symbol', 'BTCUSDT')
+final_qty = round_qty(symbol, adjusted_qty, use_api=True)
+```
+
+**영향 파일**:
+- `common/calculations.py` (L140-169 추가)
+- `execution/position_sizer.py` (L9, L150-151, L163 수정)
+
+**블랙리스트 제거**:
+- `common/symbol_manager.py` 블랙리스트 삭제 예정 (근본 해결로 불필요)
+
+---
+
 ### 검증
 - [x] Redis 쿨다운 로그 DEBUG 레벨로 변경
-- [x] STRKUSDT 블랙리스트 추가
-- [ ] Paper 재시작 후 로그 확인 (오류 0건)
+- [x] ~~STRKUSDT 블랙리스트 추가~~ (임시방편)
+- [x] PR12 누락 기능 `round_qty()` 추가 ✅
+- [x] `position_sizer.py`에서 동적 stepSize 반올림 적용
+- [ ] Paper 재시작 후 Precision 오류 0건 확인
 
 ---
 
