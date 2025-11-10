@@ -1130,12 +1130,12 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict):
             try:
                 ttl = redis_client.ttl(redis_cooldown_key)
                 if ttl > 0:
-                    logger.info(
+                    logger.debug(
                         f"🔒 {strategy_id} {candle_symbol} 쿨다운 중 (Redis TTL: {ttl}초)"
                     )
                     continue
             except Exception as e:
-                logger.warning(f"⚠️  Redis 쿨다운 체크 실패 (처리 계속): {e}")
+                logger.debug(f"⚠️  Redis 쿨다운 체크 실패 (처리 계속): {e}")
         else:
             # Fallback: 로컬 메모리 쿨다운
             if cooldown_key in reject_cooldown:

@@ -111,6 +111,59 @@ def check_tpsl_with_partial(self, position, current_price, atr=None, candle=None
     # ...
 ```
 
+## Log Fix (2025-11-10 13:10)
+
+### 문제 1: Redis 쿨다운 중복 로그
+**현상**: 
+- ENAUSDT 쿨다운 체크 로그가 초당 10회 이상 반복
+- `logger.info()` 사용으로 로그 과다 발생
+
+**원인**:
+- 거래 시도가 쿨다운 중에도 계속 반복됨
+- INFO 레벨 로그가 과도하게 출력
+
+**수정**:
+```python
+# execution/engine.py L1133
+logger.info(...)  # 변경 전
+logger.debug(...)  # 변경 후 (DEBUG 레벨로 억제)
+```
+
+**영향 파일**:
+- `execution/engine.py` (L1133, L1138)
+
+---
+
+### 문제 2: Binance API Precision 오류 (STRKUSDT)
+**현상**:
+- STRKUSDT 심볼에서 반복적으로 Precision 오류 발생
+- `API Error(code=-1111): Precision is over the maximum defined for this asset`
+
+**원인**:
+- STRKUSDT의 수량/가격 정밀도가 Binance 규칙 초과
+- 심볼 필터링 없이 모든 USDT 선물 로드
+
+**수정**:
+```python
+# common/symbol_manager.py L45-46
+blacklist = ['STRKUSDT']  # Precision 오류 발생 심볼
+if symbol in blacklist:
+    logger.debug(f"⚠️ {symbol} 블랙리스트 제외")
+    continue
+```
+
+**영향 파일**:
+- `common/symbol_manager.py` (L45-54)
+
+---
+
+### 검증
+- [x] Redis 쿨다운 로그 DEBUG 레벨로 변경
+- [x] STRKUSDT 블랙리스트 추가
+- [ ] Paper 재시작 후 로그 확인 (오류 0건)
+
+---
+
 ## 금지 사항
 
 ❌ 하드코딩: `fee = 0.0004` → `config.get('fees', {}).get('taker', 0.0004)`  
