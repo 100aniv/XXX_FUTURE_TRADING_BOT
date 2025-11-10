@@ -634,16 +634,25 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict):
                     # 부분 청산 (TP1 또는 TP2)
                     close_qty = partial_qty
                     fee_rate = config.get('fees', {}).get('taker', 0.0004)
+                    
+                    # ⭐ PHASE7-1 FIX: TP 청산 시 TP 가격 사용
+                    if reason == 'TP1':
+                        exit_price = position.get('tp_levels', {}).get('tp1', current_price)
+                    elif reason == 'TP2':
+                        exit_price = position.get('tp_levels', {}).get('tp2', current_price)
+                    else:
+                        exit_price = current_price
+                    
                     pnl = calculate_pnl(
                         {
                             "entry": position["entry"],
                             "qty": close_qty,
                             "side": position["side"],
                         },
-                        current_price,
+                        exit_price,
                         fee_rate,
                     )
-                    logger.info(f"📊 {reason}: {close_qty:.4f} 청산, PnL: ${pnl:,.2f}")
+                    logger.info(f"📊 {reason}: {close_qty:.4f} 청산 @ ${exit_price:.4f}, PnL: ${pnl:,.2f}")
 
                     # 수량 차감
                     position["qty"] -= close_qty
@@ -659,10 +668,16 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict):
         drawdown_guard_triggered = False  # 플래그 추가
         fee_rate = config.get('fees', {}).get('taker', 0.0004)
         for pos_id, position, reason in positions_to_close:
-            pnl = calculate_pnl(position, current_price, fee_rate)
+            # ⭐ PHASE7-1 FIX: SL 청산 시 SL 가격 사용 (슬리피지 방지)
+            if reason in ['SL', 'TRAILING_SL', 'EXTREME_LOSS']:
+                exit_price = position.get('sl', current_price)
+            else:
+                exit_price = current_price
+            
+            pnl = calculate_pnl(position, exit_price, fee_rate)
             close_trade_in_db(
                 pos_id,
-                current_price,
+                exit_price,
                 pnl,
                 reason,
                 ts,
