@@ -10,6 +10,8 @@ PHASE 7-1/7-2 완료 후 성과 개선 완료. 하지만 **운영 안정성** �
 
 Live 운영을 위한 **필수 안전장치** 구축.
 
+**참고**: [PHASE7_ALGORITHM_BEST.md](PHASE7_ALGORITHM_BEST.md) - 앙상블 시스템 알고리즘 종합 개선안
+
 ## 목표 (Goals)
 
 - **Graceful Shutdown**: 종료 전 모든 포지션 정리

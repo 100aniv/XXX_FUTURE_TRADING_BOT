@@ -33,17 +33,86 @@ PHASE 7-1~7-3 완료로 기술적 안정성 확보. 이제 **전략 품질** 개
 - `analytics/backtest_analyzer.py` (신규)
 - `data/historical/*.csv` (과거 데이터)
 
-### 2. 신호 품질 개선 (1주)
+### 2. 전략별 성과 분석 및 개선 (1주) ⭐ 앙상블 특화
+
+**개선** (PHASE7_ALGORITHM_BEST.md 기반):
+
+#### A. 전략별 개별 백테스트
+
+- **목적**: 6개 전략 중 어떤 것이 좋은지 검증
+- **방법**:
+  - 각 전략 단독 백테스트 (2024년 전체)
+  - 승률, Sharpe, MDD 측정
+  - 승률 45% 미만 전략 식별
+
+**예상 결과**:
+```
+scalping: 승률 42% (조정 필요)
+daytrade: 승률 48% (양호)
+swing: 승률 52% (우수)
+breakout: 승률 38% (문제)
+trend: 승률 51% (우수)
+reversion: 승률 44% (조정 필요)
+```
+
+#### B. 성과 기반 동적 가중치 강화
+
+**현재 문제** (ensemble.py::calculate_experience_score):
+- Experience Score 있지만 약함
+- 거래 수만 강하게 반영, 승률은 약하게 반영
 
 **개선**:
-- Confidence threshold 상향 (0.6 → 0.7)
-- 변동성 regime 필터링
-- 최소 Ensemble 투표 2개 이상
-- ATR/Volume 필터 추가
+```python
+def calculate_adaptive_weight(strategy_id, perf, config):
+    """
+    성과 기반 적응형 가중치
+    
+    승률 기준:
+    - 45% 미만: 가중치 50% 감소
+    - 45-55%: 가중치 100% (기본)
+    - 55% 이상: 가중치 150% 증가
+    """
+    base_weight = config.get('ensemble', {}).get('weights', {}).get(strategy_id, 1.0)
+    
+    winrate = perf.get(strategy_id, {}).get('winrate', 0.5)
+    total_trades = perf.get(strategy_id, {}).get('total_trades', 0)
+    sharpe = perf.get(strategy_id, {}).get('sharpe', 0.0)
+    
+    # 최소 거래 수 페널티
+    if total_trades < 20:
+        data_penalty = total_trades / 20
+    else:
+        data_penalty = 1.0
+    
+    # 승률 기반 배수
+    if winrate < 0.45:
+        winrate_mult = 0.5    # 50% 감소
+    elif winrate < 0.55:
+        winrate_mult = 1.0    # 기본
+    elif winrate < 0.65:
+        winrate_mult = 1.5    # 50% 증가
+    else:
+        winrate_mult = 2.0    # 100% 증가
+    
+    # Sharpe 보너스
+    if sharpe > 1.0:
+        sharpe_bonus = 1.2
+    elif sharpe > 0.5:
+        sharpe_bonus = 1.1
+    else:
+        sharpe_bonus = 1.0
+    
+    # 최종 가중치
+    final_weight = base_weight * data_penalty * winrate_mult * sharpe_bonus
+    
+    # 클램핑 (0.1 ~ 2.0)
+    return max(0.1, min(2.0, final_weight))
+```
 
 **영향 파일**:
-- `strategies/ensemble.py`
-- `strategies/*.py` (개별 전략)
+- `strategies/ensemble.py` (calculate_adaptive_weight 추가)
+- `scripts/backtest_runner.py` (전략별 백테스트)
+- `analytics/strategy_analyzer.py` (전략별 분석)
 - `config.yml::strategies.*`
 
 ### 3. 리스크 관리 강화 (2일)

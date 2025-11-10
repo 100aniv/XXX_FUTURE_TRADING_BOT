@@ -6,6 +6,12 @@ PHASE 7-1 긴급 패치 완료 후, 시스템의 근본적 성과 개선 필요.
 - 현재 승률: 39.6% → 목표: 45% 이상
 - TP2 도달: 0건 → 목표: 5% 이상
 - 손익비: 0.45 → 목표: 0.8 이상
+- **빈번한 거래**: 시간당 310건 → 목표: 시간당 5건 이하
+
+**상용 프로그램 벤치마킹** (PHASE7_ALGORITHM_BEST.md 참조):
+- 3Commas: 승률 60-70%, 거래 쿨다운 24시간
+- Pionex: 승률 55-65%, 그리드 간격 1%+
+- TradingView: 승률 50-60%, 손익비 2:1, 엄격한 필터링
 
 포지션 관리 로직을 개선하여 **상용 수준 진입**을 위한 기반 마련.
 
@@ -71,6 +77,97 @@ PHASE 7-1 긴급 패치 완료 후, 시스템의 근본적 성과 개선 필요.
 - `execution/adapters/brokers.py::PaperBroker`
 - `config.yml::fees.slippage_model`
 
+### 4. 전략별 독립 설정 (1일) ⭐ 앙상블 시스템 특화
+
+**현재 문제** (PHASE7_ALGORITHM_BEST.md 분석):
+- **6개 전략을 동일하게 처리** (단일 전략 로직 적용)
+- scalping(1분)과 swing(1시간)이 동일한 제한
+- 전략별 특성 무시 → 시간당 310건 거래 발생
+
+**개선** (QuantConnect/Freqtrade 벤치마킹):
+
+#### 전략별 독립 설정 (config.yml)
+
+```yaml
+strategies:
+  scalping:
+    cooldown_minutes: 5        # 5분 쿨다운
+    max_positions: 5           # 최대 5개
+    max_trades_per_hour: 20    # 시간당 20개
+    confidence_threshold: 0.65 # 낮은 임계값 (빈번한 거래)
+    atr_range:
+      min_pct: 0.003
+      max_pct: 0.030
+  
+  daytrade:
+    cooldown_minutes: 15       # 15분 쿨다운
+    max_positions: 3
+    max_trades_per_hour: 12
+    confidence_threshold: 0.70
+    atr_range:
+      min_pct: 0.005
+      max_pct: 0.025
+  
+  swing:
+    cooldown_minutes: 60       # 1시간 쿨다운
+    max_positions: 2
+    max_trades_per_hour: 5
+    confidence_threshold: 0.75 # 높은 임계값 (신중한 진입)
+    atr_range:
+      min_pct: 0.008
+      max_pct: 0.030
+  
+  breakout:
+    cooldown_minutes: 30
+    max_positions: 3
+    max_trades_per_hour: 8
+    confidence_threshold: 0.78
+  
+  trend:
+    cooldown_minutes: 60
+    max_positions: 2
+    max_trades_per_hour: 3
+    confidence_threshold: 0.70
+  
+  reversion:
+    cooldown_minutes: 20
+    max_positions: 3
+    max_trades_per_hour: 10
+    confidence_threshold: 0.68
+```
+
+#### 포트폴리오 레벨 제한 (ensemble)
+
+```yaml
+ensemble:
+  max_total_positions: 10       # 20 → 10 (상용 기준)
+  max_exposure_pct: 50          # 총 노출 50%
+  max_positions_per_symbol: 1   # 심볼당 1개 (중복 방지)
+  max_trades_per_hour: 15       # 전체 시간당 15개 (310 → 15)
+```
+
+**영향 파일**:
+- `execution/engine.py` (진입 전 전략별 체크)
+- `strategies/ensemble.py` (가중치 계산 시 전략별 성과 반영)
+- `common/redis_client.py` (전략별 쿨다운 관리)
+- `config.yml::strategies.*`
+
+**예상 효과**:
+- 시간당 거래: 310건 → **15건** (95% 감소)
+- 수수료 누적: 24.8% → **1.2%** (95% 감소)
+- 승률: 신호 품질 향상으로 **45%+** 달성 예상
+
+### 5. 신호 필터링 강화 (기존 유지, 하위 호환)
+
+**현재 문제**:
+- Confidence 낮은 신호도 진입 (0.5+)
+- 최소 투표수 체크 약함
+
+**개선** (전략별 설정으로 대체):
+- 전략별 confidence_threshold 적용 (위 참조)
+- 포트폴리오 레벨에서만 최소 투표수 체크
+- 전략 자체 필터링 강화 (각 전략 파일에서)
+
 ## 제외 (Out-of-Scope)
 
 - 전략 신호 로직 (Strategy 모듈)
@@ -129,6 +226,21 @@ risk:
   duplicate_check_strict: true
   duplicate_check_db: true     # DB 재확인
   use_distributed_lock: false  # Redis 분산 락 (optional)
+
+signals:
+  # 신호 필터링 (승률 향상)
+  min_confidence: 0.70         # 0.5 → 0.70
+  min_votes: 2                 # 1 → 2
+  atr_range:
+    min_pct: 0.003             # 0.3%
+    max_pct: 0.030             # 3.0%
+  volume_threshold: 1.5        # 평균 대비 1.5배
+
+rate_limits:
+  # 거래 빈도 제한 (수수료 절감)
+  symbol_cooldown_hours: 4     # 종목별 쿨다운 4시간
+  max_trades_per_hour: 5       # 시간당 최대 5개
+  confirmation_candles: 1      # 확인 캔들 1개
 ```
 
 ## 구현 상세

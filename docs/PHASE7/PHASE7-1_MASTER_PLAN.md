@@ -372,5 +372,14 @@ WHERE mode='paper' AND ts_open >= '2025-11-10 11:10:00';
 - [x] SL 거리 8% 상한 적용 (position_sizer.py)
 - [x] TP1 가격 계산 수정 (tp_manager.py)
 - [ ] 10분 재검증 (11:50~12:00)
+- [ ] **상용 프로그램 벤치마킹 완료** (PHASE7_ALGORITHM_BEST.md)
+- [ ] PHASE7-2: 신호 필터링 + 거래 빈도 제한 (승률 45% 목표)
 - [ ] Live 소액 테스트
-- [ ] PHASE7-2 시작
+- [ ] PHASE7-3 시작
+
+### 참고 문서
+
+- **PHASE7_ALGORITHM_BEST.md**: 상용 프로그램 알고리즘 비교 분석
+  - 3Commas DCA Bot, Pionex Grid Bot, TradingView 전략 벤치마킹
+  - 승률 60%+ 달성 방법론
+  - 손익비, 거래 빈도, 필터링 기준

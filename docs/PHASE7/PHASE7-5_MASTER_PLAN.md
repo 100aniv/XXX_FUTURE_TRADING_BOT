@@ -4,11 +4,13 @@
 
 PHASE 7-1~7-4 완료로 **모든 조건 충족**:
 - ✅ 기술적 안정성 (수수료/OHLC/Shutdown/Recovery)
-- ✅ 성과 개선 (승률 50%)
+- ✅ 성과 개선 (승률 50%, 전략별 독립 설정)
 - ✅ 운영 안정성 (Dashboard/Healthcheck)
-- ✅ 전략 검증 (백테스트)
+- ✅ 전략 검증 (백테스트, 성과 기반 가중치)
 
 이제 **Live 모드 전환** 준비 및 안전한 실전 운영.
+
+**참고**: [PHASE7_ALGORITHM_BEST.md](PHASE7_ALGORITHM_BEST.md) - 앙상블 시스템 알고리즘 종합 개선안
 
 ## 목표 (Goals)
 
