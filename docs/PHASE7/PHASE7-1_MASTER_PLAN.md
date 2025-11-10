@@ -203,10 +203,11 @@ final_qty = round_qty(symbol, adjusted_qty, use_api=True)
 
 ### 검증
 - [x] Redis 쿨다운 로그 DEBUG 레벨로 변경
-- [x] ~~STRKUSDT 블랙리스트 추가~~ (임시방편)
+- [x] ~~STRKUSDT 블랙리스트 추가~~ (임시방편 → 제거)
 - [x] PR12 누락 기능 `round_qty()` 추가 ✅
 - [x] `position_sizer.py`에서 동적 stepSize 반올림 적용
-- [ ] Paper 재시작 후 Precision 오류 0건 확인
+- [x] 블랙리스트 제거 (근본 해결로 불필요)
+- [x] Paper 재시작 후 Precision 오류 0건 확인 ✅
 
 ---
 
