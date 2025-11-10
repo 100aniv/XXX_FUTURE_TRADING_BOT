@@ -13,6 +13,7 @@ from datetime import datetime
 from binance.client import Client
 from binance.exceptions import BinanceAPIException
 from common.logger import setup_logger
+from common.calculations import round_qty
 
 logger = setup_logger(__name__)
 
@@ -280,6 +281,10 @@ class LiveBroker:
         side = decision.get('side')
         symbol = decision.get('symbol', 'BTCUSDT')
         qty = float(qty)  # Decimal → float 변환
+        
+        # ⭐ PR12: 주문 직전 stepSize 반올림 (안전장치)
+        qty = round_qty(symbol, qty, use_api=True)
+        logger.info(f"🔧 [LIVE] 최종 수량 반올림: {symbol} qty={qty}")
         
         try:
             if side == 'LONG':
