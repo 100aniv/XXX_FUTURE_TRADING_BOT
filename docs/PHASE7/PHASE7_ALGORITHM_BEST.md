@@ -466,7 +466,9 @@ exits:
 
 ##  config.yml 설계안 (이식/확장 가능)
 
-아래 스키마는 현재 구조와 .windsurfrules를 모두 준수하며, 상용 파리티(전략별·포트폴리오 레벨 분리), Redis 네임스페이스, DB env/run_id 정책을 반영합니다.
+⚠️ **중요**: 아래 스키마는 **TO-BE 설계**입니다. PHASE7-2 구현 시 반영할 목표 구조이며, 현재 config.yml에는 `cooldown_minutes`, `max_trades_per_hour` 등이 **아직 존재하지 않습니다**. 현재는 `cooldown_candles` (캔들 단위)만 지원합니다.
+
+아래 스키마는 .windsurfrules를 준수하며, 상용 파리티(전략별·포트폴리오 레벨 분리), Redis 네임스페이스, DB env/run_id 정책을 반영합니다.
 
 ```yaml
 # config.yml v7 (Ensemble + Ops)
