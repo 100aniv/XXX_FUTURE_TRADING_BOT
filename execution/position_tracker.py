@@ -112,30 +112,67 @@ class PositionTracker:
         return False, ''
     
     def check_tpsl_with_partial(self, position: Dict, current_price: float, 
-                                atr: float = None) -> Tuple[bool, Optional[float], str]:
+                                atr: float = None, candle: Dict = None) -> Tuple[bool, Optional[float], str]:
         """
-        TP 분할 체크 (TUNING_VIBLE P1)
+        TP 분할 체크 (TUNING_VIBLE P1 + PHASE7-1 OHLC)
         
         Args:
             position: 포지션
             current_price: 현재 가격
             atr: ATR 값 (트레일링용)
+            candle: 캠들 OHLC 데이터 (high, low, close)
         
         Returns:
             (should_action, partial_qty, reason)
             - should_action: 액션 필요 여부
             - partial_qty: 부분 청산 수량 (None = 전체 청산)
-            - reason: 이유 (TP1/TP2/SL/TRAILING_SL)
+            - reason: 이유 (TP1/TP2/SL/TRAILING_SL/EXTREME_LOSS)
         """
         side = position['side']
         entry = position['entry']
         stop = position['sl']
         total_qty = position['qty']
         
+        # ⭐ PHASE7-1: SL 우선 체크 (OHLC 기반)
+        # - LONG: candle['low'] <= sl 체크
+        # - SHORT: candle['high'] >= sl 체크
+        if candle and stop:
+            sl_hit = False
+            if side == 'SHORT' and candle.get('high', current_price) >= stop:
+                sl_hit = True
+                logger.warning(
+                    f"❌ [SL OHLC] SHORT SL 도달: High ${candle['high']:.6f} >= SL ${stop:.6f} | "
+                    f"Entry: ${entry:.6f}"
+                )
+            elif side == 'LONG' and candle.get('low', current_price) <= stop:
+                sl_hit = True
+                logger.warning(
+                    f"❌ [SL OHLC] LONG SL 도달: Low ${candle['low']:.6f} <= SL ${stop:.6f} | "
+                    f"Entry: ${entry:.6f}"
+                )
+            
+            if sl_hit:
+                reason = 'TRAILING_SL' if position.get('tp2_hit', False) else 'SL'
+                return True, None, reason  # 전체 청산
+        
+        # ⭐ PHASE7-1: Extreme Loss -20% 체크 (SL 다음 우선순위)
+        current_pnl_pct = 0.0
+        if side == 'LONG':
+            current_pnl_pct = ((current_price - entry) / entry) * 100
+        else:  # SHORT
+            current_pnl_pct = ((entry - current_price) / entry) * 100
+        
+        if current_pnl_pct <= -20.0:
+            logger.warning(
+                f"🚨 [EXTREME_LOSS] 극단 손실 감지: {current_pnl_pct:.2f}% <= -20% | "
+                f"Entry: ${entry:.4f} → Current: ${current_price:.4f}"
+            )
+            return True, None, 'EXTREME_LOSS'  # 전체 강제 청산
+        
         # TP 레벨 확인
         tp_levels = position.get('tp_levels', {})
         if not tp_levels:
-            # TP 레벨 없으면 레거시 방식
+            # TP 레벨 없으면 레거시 방식 (SL은 위에서 이미 체크)
             should_close, reason = self.check_tpsl(position, current_price)
             return should_close, None if should_close else 0, reason
         
@@ -195,23 +232,14 @@ class PositionTracker:
                 position['sl'] = new_trail
                 logger.info(f"📈 Trailing 업데이트: ${new_trail:,.2f}")
         
-        # ⭐ PR10 Bug #7: 극단 손실 방지 (-50% 초과 시 강제 청산)
-        current_pnl_pct = 0.0
-        if side == 'LONG':
-            current_pnl_pct = ((current_price - entry) / entry) * 100
-        else:  # SHORT
-            current_pnl_pct = ((entry - current_price) / entry) * 100
-        
-        if current_pnl_pct < -50.0:
-            logger.warning(f"🚨 [EXTREME_LOSS] 극단 손실 감지: {current_pnl_pct:.2f}% < -50% | Entry: ${entry:.4f} → Current: ${current_price:.4f}")
-            return True, None, 'EXTREME_LOSS'  # 전체 강제 청산
-        
-        # SL 체크
-        current_sl = position['sl']
-        if (side == 'LONG' and current_price <= current_sl) or \
-           (side == 'SHORT' and current_price >= current_sl):
-            reason = 'TRAILING_SL' if position.get('tp2_hit', False) else 'SL'
-            logger.info(f"❌ {reason} 도달: ${current_price:,.2f} (SL: ${current_sl:,.2f})")
-            return True, None, reason  # 전체 청산
+        # ⭐ PHASE7-1: Close 가격 기반 SL 체크 (Fallback, OHLC 없을 때)
+        # - OHLC가 있으면 위에서 이미 체크했으므로 여기서는 Fallback만
+        if not candle:
+            current_sl = position['sl']
+            if (side == 'LONG' and current_price <= current_sl) or \
+               (side == 'SHORT' and current_price >= current_sl):
+                reason = 'TRAILING_SL' if position.get('tp2_hit', False) else 'SL'
+                logger.info(f"❌ {reason} 도달 (Close): ${current_price:,.2f} (SL: ${current_sl:,.2f})")
+                return True, None, reason  # 전체 청산
         
         return False, 0, ''

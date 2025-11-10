@@ -613,8 +613,9 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict):
             # ⭐ PR10: 트레일링 SL 갱신 전 기존 SL 저장
             old_sl = position.get('sl')
             
+            # ⭐ PHASE7-1: OHLC 데이터 전달 (High/Low SL 체크용)
             should_action, partial_qty, reason = tracker.check_tpsl_with_partial(
-                position, current_price, atr
+                position, current_price, atr, candle=candle
             )
             
             # ⭐ PR10: 트레일링 SL 갱신 감지 및 서버 업데이트
@@ -632,6 +633,7 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict):
                 if partial_qty and partial_qty > 0:
                     # 부분 청산 (TP1 또는 TP2)
                     close_qty = partial_qty
+                    fee_rate = config.get('fees', {}).get('taker', 0.0004)
                     pnl = calculate_pnl(
                         {
                             "entry": position["entry"],
@@ -639,6 +641,7 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict):
                             "side": position["side"],
                         },
                         current_price,
+                        fee_rate,
                     )
                     logger.info(f"📊 {reason}: {close_qty:.4f} 청산, PnL: ${pnl:,.2f}")
 
@@ -654,8 +657,9 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict):
 
         # 포지션 종료 처리
         drawdown_guard_triggered = False  # 플래그 추가
+        fee_rate = config.get('fees', {}).get('taker', 0.0004)
         for pos_id, position, reason in positions_to_close:
-            pnl = calculate_pnl(position, current_price)
+            pnl = calculate_pnl(position, current_price, fee_rate)
             close_trade_in_db(
                 pos_id,
                 current_price,
@@ -1225,9 +1229,10 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict):
         
         if opposite_positions:
             logger.info(f"🔄 [ONE-WAY MODE] {candle_symbol} 반대 포지션 감지 ({opposite_side} → {new_side}): {len(opposite_positions)}개 청산")
+            fee_rate = config.get('fees', {}).get('taker', 0.0004)
             for pos_id, position in opposite_positions:
                 # 현재가로 청산
-                pnl = calculate_pnl(position, current_price)
+                pnl = calculate_pnl(position, current_price, fee_rate)
                 close_trade_in_db(
                     pos_id,
                     current_price,
@@ -1515,18 +1520,33 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict):
             logger.warning(f"⚠️  백테스트 리포트 생성 실패: {e}")
 
 
-def calculate_pnl(position: Dict, exit_price: float) -> float:
-    """PnL 계산"""
+def calculate_pnl(position: Dict, exit_price: float, fee_rate: float = 0.0004) -> float:
+    """
+    PnL 계산 (수수료 반영)
+    
+    Args:
+        position: 포지션 정보
+        exit_price: 청산가
+        fee_rate: 수수료율 (기본값 0.0004 = 0.04%)
+    
+    Returns:
+        수수료 차감 후 순수익 (Net PnL)
+    """
     entry = position["entry"]
     qty = position["qty"]
     side = position["side"]
 
+    # Gross PnL
     if side == "LONG":
-        pnl = (exit_price - entry) * qty
+        gross_pnl = (exit_price - entry) * qty
     else:  # SHORT
-        pnl = (entry - exit_price) * qty
+        gross_pnl = (entry - exit_price) * qty
 
-    return pnl
+    # 수수료 (진입 + 청산)
+    total_fee = (entry + exit_price) * qty * fee_rate
+    
+    # Net PnL
+    return gross_pnl - total_fee
 
 
 def close_trade_in_db(
