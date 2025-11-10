@@ -216,3 +216,38 @@ WHERE mode='paper' AND ts_open >= NOW() - INTERVAL '24 hours';
 ## 릴리즈 노트
 
 PHASE7-1: 수수료 반영 + OHLC SL 체크로 Live 운영 최소 조건 달성. 8% 초과 손실 0건, TP1 손실 0건 목표.
+
+---
+
+## ✅ 구현 완료 (2025-11-10)
+
+### 변경사항
+
+1. **calculate_pnl() 수수료 반영**
+   - 파일: `execution/engine.py`
+   - 변경: 수수료(진입+청산 0.08%) 차감
+   - 호출부 3곳 모두 fee_rate 전달 (config.fees.taker)
+
+2. **check_tpsl_with_partial() OHLC 체크**
+   - 파일: `execution/position_tracker.py`
+   - 변경: candle 파라미터 추가, OHLC 기반 SL 우선 체크
+   - LONG: candle['low'] <= sl
+   - SHORT: candle['high'] >= sl
+
+3. **Extreme Loss 임계 -20%**
+   - 파일: `execution/position_tracker.py`
+   - 변경: -50% → -20% (<=)
+
+### 테스트 결과
+
+- 단위 테스트: 11개 전부 통과 ✅
+  - TestCalculatePnlWithFees: 4개 (수수료 차감 검증)
+  - TestOHLCSLCheck: 4개 (OHLC SL 우선 체크)
+  - TestExtremeLoss20Pct: 3개 (-20% 임계)
+- 파일: `tests/unit/test_phase7_1_fees_ohlc.py`
+
+### 다음 단계
+
+- [ ] Paper 24h 검증
+- [ ] Live 소액 테스트
+- [ ] PHASE7-2 시작
