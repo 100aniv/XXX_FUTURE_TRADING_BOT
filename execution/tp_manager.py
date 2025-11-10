@@ -72,17 +72,6 @@ class TPManager:
         else:
             one_r = stop - entry
         
-        # ⭐ PHASE7-1: 1R 검증 (음수 방지)
-        if one_r <= 0:
-            logger.error(f"❌ 잘못된 SL 설정: {side} Entry={entry:.4f}, SL={stop:.4f}, 1R={one_r:.4f}")
-            # SL을 Entry 기준 기본 거리로 강제 설정
-            if side == 'LONG':
-                one_r = entry * 0.02  # Entry 대비 2%
-                logger.warning(f"⚠️ 1R 강제 조정: {one_r:.4f} (Entry의 2%)")
-            else:
-                one_r = entry * 0.02
-                logger.warning(f"⚠️ 1R 강제 조정: {one_r:.4f} (Entry의 2%)")
-        
         # ⭐ 변동성 레짐 조정 (고변동성 시 SL 넓게 → 1R 증가)
         vol_mult = 1.0
         if volatility_regime == 'high_vol':
@@ -106,16 +95,6 @@ class TPManager:
             
             # ⭐ PR12: Binance tick_size에 맞게 반올림
             result[key] = round_tick(symbol, price)
-            
-            # ⭐ PHASE7-1: TP 방향 검증
-            if side == 'LONG' and price <= entry:
-                logger.error(f"❌ TP{int(r_mult)} 방향 오류: LONG인데 TP({price:.4f}) <= Entry({entry:.4f})")
-                result[key] = entry * 1.02  # Entry + 2%로 강제 조정
-                logger.warning(f"⚠️ TP{int(r_mult)} 강제 조정: {result[key]:.4f}")
-            elif side == 'SHORT' and price >= entry:
-                logger.error(f"❌ TP{int(r_mult)} 방향 오류: SHORT인데 TP({price:.4f}) >= Entry({entry:.4f})")
-                result[key] = entry * 0.98  # Entry - 2%로 강제 조정
-                logger.warning(f"⚠️ TP{int(r_mult)} 강제 조정: {result[key]:.4f}")
         
         # BE (Break Even) 가격 + ⭐ PR12: 동적 반올림
         if side == 'LONG':

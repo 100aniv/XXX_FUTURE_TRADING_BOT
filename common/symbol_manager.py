@@ -42,7 +42,6 @@ class SymbolManager:
             
             # USDT 선물만 필터링
             usdt_symbols = []
-            
             for symbol_data in data['symbols']:
                 symbol = symbol_data['symbol']
                 
