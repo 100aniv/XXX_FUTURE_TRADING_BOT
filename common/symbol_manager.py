@@ -42,20 +42,9 @@ class SymbolManager:
             
             # USDT 선물만 필터링
             usdt_symbols = []
-            # ⭐ PHASE7-1: 문제 심볼 블랙리스트
-            blacklist = [
-                'STRKUSDT',   # Precision 오류
-                'PUMPUSDT',   # Precision 오류
-                '0GUSDT',     # Precision 오류 (숫자로 시작)
-            ]
             
             for symbol_data in data['symbols']:
                 symbol = symbol_data['symbol']
-                
-                # 블랙리스트 체크
-                if symbol in blacklist:
-                    logger.debug(f"⚠️ {symbol} 블랙리스트 제외")
-                    continue
                 
                 # USDT로 끝나는 선물 계약만
                 if (symbol.endswith('USDT') and 
