@@ -83,6 +83,17 @@ class PositionSizer:
         """
         entry = signal['entry_price']
         sl = signal['sl_price']
+        side = signal.get('side', 'LONG')
+        
+        # ⭐ PHASE7-1: SL 거리 8% 상한 적용
+        sl_distance_pct = abs(sl - entry) / entry * 100
+        if sl_distance_pct > 8.0:
+            logger.warning(f"⚠️ SL 거리 {sl_distance_pct:.2f}% > 8% 상한, 조정 중...")
+            if side == 'LONG':
+                sl = entry * 0.92  # -8%
+            else:  # SHORT
+                sl = entry * 1.08  # +8%
+            logger.info(f"✅ SL 조정: {signal['sl_price']:.4f} → {sl:.4f} (8% 상한)")
         
         # 1) 컨텍스트 스케일링에 따른 유효 RPT 계산
         eff_rpt = float(self.risk_per_trade)
