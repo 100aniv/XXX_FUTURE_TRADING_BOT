@@ -163,10 +163,18 @@ def round_qty(symbol: str, qty: float, use_api: bool = True) -> float:
             step_size = info["stepSize"]
             # stepSize가 매우 작은 경우 (0.0001 등) 소수점 자릿수 계산
             if step_size > 0:
-                return round(qty / step_size) * step_size
+                rounded = round(qty / step_size) * step_size
+                logger.debug(f"🔧 round_qty({symbol}): {qty:.6f} → {rounded:.6f} (stepSize={step_size})")
+                return rounded
+            else:
+                logger.warning(f"⚠️ {symbol}: stepSize=0, 폴백 사용")
+        else:
+            logger.warning(f"⚠️ {symbol}: exchangeInfo 조회 실패, 폴백 사용")
     
     # 폴백: 기본 3자리 반올림
-    return round(qty, 3)
+    fallback = round(qty, 3)
+    logger.debug(f"🔧 round_qty({symbol}): {qty:.6f} → {fallback:.3f} (폴백)")
+    return fallback
 
 
 def position_size(
