@@ -137,38 +137,6 @@ def round_tick(symbol: str, price: float, use_api: bool = True) -> float:
     return round(price / step) * step
 
 
-def round_qty(symbol: str, qty: float, use_api: bool = True) -> float:
-    """
-    ⭐ PR12 누락 기능: 심볼별 수량 반올림 (동적 stepSize)
-    
-    Args:
-        symbol: 거래 심볼 (예: BTCUSDT)
-        qty: 원본 수량
-        use_api: Binance API 사용 여부 (False면 폴백)
-    
-    Returns:
-        float: 반올림된 수량
-        
-    Examples:
-        >>> round_qty("BTCUSDT", 1.23456)
-        1.234  # API에서 가져온 stepSize 사용
-        
-        >>> round_qty("DOGEUSDT", 123.456)
-        123  # stepSize=1인 경우
-    """
-    # ⭐ PR12: API 조회 시도
-    if use_api:
-        info = get_exchange_info(symbol)
-        if info and "stepSize" in info:
-            step_size = info["stepSize"]
-            # stepSize가 매우 작은 경우 (0.0001 등) 소수점 자릿수 계산
-            if step_size > 0:
-                return round(qty / step_size) * step_size
-    
-    # 폴백: 기본 3자리 반올림
-    return round(qty, 3)
-
-
 def position_size(
     entry: float,
     sl: float,

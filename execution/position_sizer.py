@@ -15,7 +15,7 @@ import os
 from typing import Tuple, Dict
 
 from common.logger import setup_logger
-from common.calculations import position_size, round_qty
+from common.calculations import position_size
 
 logger = setup_logger(__name__, log_type="trading")
 
@@ -146,9 +146,8 @@ class PositionSizer:
         if position_value < self.min_position_value:
             return 0.0, {"reason": "below_min_value"}
         
-        # 5) 거래소 최소 수량 (⭐ PR12: 동적 stepSize 반올림)
-        symbol = signal.get('symbol', 'BTCUSDT')
-        final_qty = round_qty(symbol, adjusted_qty, use_api=True)
+        # 5) 거래소 최소 수량
+        final_qty = float(round(adjusted_qty, 3))  # float 변환
         if final_qty < 0.001:
             return 0.0, {"reason": "below_min_qty"}
         
@@ -158,9 +157,9 @@ class PositionSizer:
         # 실제 반올림 오차는 0.01~0.5 범위이므로 1.0 USDT 허용
         epsilon = 1.0
         if final_position_value > self.max_position_value + epsilon:
-            # 한도 내로 다시 조정 (⭐ PR12: 동적 stepSize 반올림)
+            # 한도 내로 다시 조정
             logger.warning(f"⚠️ 포지션 가치 초과: ${final_position_value:.2f} > ${self.max_position_value:.2f}, 조정 중...")
-            final_qty = round_qty(symbol, self.max_position_value / entry, use_api=True)
+            final_qty = float(round(self.max_position_value / entry, 3))
             final_position_value = final_qty * entry
             logger.info(f"✅ 조정 완료: qty={final_qty}, value=${final_position_value:.2f}")
         
