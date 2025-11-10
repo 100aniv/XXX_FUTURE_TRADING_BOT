@@ -184,6 +184,10 @@ exits:
     move_to_break_even_at_r: 0.7  # 0.7R 도달 시 손절을 진입가로 이동
     type: atr  # ATR 기반
     
+  # ⭐ PHASE7-1: OHLC 기반 SL 체크
+  use_ohlc_check: true  # High/Low로 정확한 SL 체크
+  sl_priority: "BEFORE_TP"  # SL을 TP보다 우선 체크
+  
   # ⭐ PR12: 고급 가격 레벨 설정
   price_levels:
     advanced:
@@ -374,7 +378,7 @@ risk:
   # ⭐ PR11: 추가 리스크 가드 (DD cutoff, Slippage Guard)
   max_drawdown_pct: 10.0  # 최대 낙폭 한도 (10%)
   max_slippage_pct: 0.5   # 슬리피지 가드 (0.5%)
-  extreme_loss_cutoff_pct: -30.0  # 극단 손실 가드 (-30%, PR10 -50% 이전 조기 차단)
+  extreme_loss_cutoff_pct: -20.0  # ⭐ PHASE7-1: 극단 손실 가드 (-20%, -50%→-30%→-20% 단계 강화)
   profiles:
     paper:
       max_daily_loss_pct: 0.20  # ⭐ PR10 테스트: 0.05→0.20 (20%, 임시 완화)

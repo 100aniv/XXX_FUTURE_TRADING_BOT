@@ -180,27 +180,27 @@ WHERE mode='paper' AND ts_open >= NOW() - INTERVAL '24 hours';
 
 ### 구현
 
-- [ ] `calculate_pnl()` 수수료 로직
-- [ ] 모든 호출부 `fee_rate` 파라미터
-- [ ] `check_tpsl_with_partial()` `candle` 파라미터
-- [ ] OHLC SL 체크 (HIGH/LOW)
-- [ ] SL 우선 체크
-- [ ] Extreme Loss -20%
-- [ ] config.yml 키 추가
+- [x] `calculate_pnl()` 수수료 로직 ✅
+- [x] 모든 호출부 `fee_rate` 파라미터 ✅ (3곳)
+- [x] `check_tpsl_with_partial()` `candle` 파라미터 ✅
+- [x] OHLC SL 체크 (HIGH/LOW) ✅
+- [x] SL 우선 체크 ✅
+- [x] Extreme Loss -20% ✅
+- [x] config.yml 키 추가 ✅ (use_ohlc_check, sl_priority, extreme_loss_cutoff_pct)
 
 ### 테스트
 
-- [ ] 단위 테스트 (수수료/OHLC/Extreme)
-- [ ] Paper 24h 실행
-- [ ] 8% 초과 0건
-- [ ] TP1 손실 0건
-- [ ] pre-commit 통과
-- [ ] coverage > 85%
+- [x] 단위 테스트 (수수료/OHLC/Extreme) ✅ (11개 통과)
+- [ ] Paper 24h 실행 ⏳ (다음 단계)
+- [ ] 8% 초과 0건 ⏳
+- [ ] TP1 손실 0건 ⏳
+- [x] pre-commit 통과 ✅ (일부 경고, 치명적 오류 없음)
+- [ ] coverage > 85% ⏳ (확인 필요)
 
 ### 문서
 
-- [ ] IMPLEMENTATION_LOG.md
-- [ ] CRITICAL_SYSTEM_ANALYSIS 업데이트
+- [x] IMPLEMENTATION_LOG.md ✅ (PHASE7-1_MASTER_PLAN.md에 통합)
+- [ ] CRITICAL_SYSTEM_ANALYSIS 업데이트 ⏳ (Paper 24h 후)
 
 ## 배포/롤백
 
