@@ -79,8 +79,13 @@ class PaperBroker:
     def execute(self, decision: dict, qty: float) -> dict:
         """가상 실행 (슬리피지 적용하여 백테스트와 파리티 유지)"""
         side = decision.get('side')
+        symbol = decision.get('symbol', 'BTCUSDT')
         price = float(decision.get('entry', 0))
         qty = float(qty)  # Decimal → float 변환
+        
+        # ⭐ PR12: 주문 직전 stepSize 반올림 (안전장치)
+        qty = round_qty(symbol, qty, use_api=True)
+        logger.debug(f"🔧 [PAPER] 최종 수량 반올림: {symbol} qty={qty}")
         
         # 슬리피지 적용 (SimBroker와 동일 규칙)
         if side == 'LONG':
