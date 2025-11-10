@@ -80,10 +80,13 @@ docker logs trading_bot_live | Select-String "LIVE.*Binance API.*포지션 조�
 ```
 
 ### 🥈 **2순위: 운영 안정성 (HIGH)**
-**Status**: ⏸️ 1순위 완료 후 시작
-- 동적 반올림: 거래소 tick_size/step_size 기반
-- 포트폴리오 예산 배분 및 가드 
-- 시스템 종료 시 텔레그램 알림
+**Status**: ✅ **동적 반올림 완성** (PHASE7-1)
+- ✅ **동적 반올림 완성**: get_exchange_info() → round_tick() + round_qty() 
+  - tickSize: 가격 반올림 (기존)
+  - stepSize: 수량 반올림 (PHASE7-1에서 완성)
+  - Precision 오류 근본 해결
+- ⏸️ 포트폴리오 예산 배분 및 가드 (대기)
+- ⏸️ 시스템 종료 시 텔레그램 알림 (대기)
 
 ### 🥉 **3순위: 고급 기능 (MEDIUM)**
 **Status**: ⏸️ 2순위 완료 후 시작
