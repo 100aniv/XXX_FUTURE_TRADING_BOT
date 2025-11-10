@@ -145,8 +145,12 @@ logger.debug(...)  # 변경 후 (DEBUG 레벨로 억제)
 
 **수정**:
 ```python
-# common/symbol_manager.py L45-46
-blacklist = ['STRKUSDT']  # Precision 오류 발생 심볼
+# common/symbol_manager.py L45-50
+blacklist = [
+    'STRKUSDT',   # Precision 오류
+    'PUMPUSDT',   # Precision 오류
+    '0GUSDT',     # Precision 오류 (숫자로 시작)
+]
 if symbol in blacklist:
     logger.debug(f"⚠️ {symbol} 블랙리스트 제외")
     continue
