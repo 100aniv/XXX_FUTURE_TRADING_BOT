@@ -471,7 +471,7 @@ WHERE mode='paper' AND ts_open >= '2025-11-10 11:10:00';
 - [x] 31분 재검증 완료 (부분 성공)
 - [x] SL 거리 8% 상한 적용 (position_sizer.py)
 - [x] TP1 가격 계산 수정 (tp_manager.py)
-- [ ] 10분 재검증 (11:50~12:00)
+- [x] **10분 재검증 완료** ✅ (Log Fix 포함)
 - [x] **상용 프로그램 벤치마킹 완료** (PHASE7_ALGORITHM_BEST.md)
 - [ ] PHASE7-2: 신호 필터링 + 거래 빈도 제한 (승률 45% 목표)
 - [ ] Live 소액 테스트
