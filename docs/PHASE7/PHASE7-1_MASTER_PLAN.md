@@ -161,7 +161,7 @@ if symbol in blacklist:
 
 ---
 
-### 문제 3: ~~Precision 오류~~ (과도한 리팩토링 - 복구함)
+### 문제 3: Precision 오류 근본 원인 (PR12 설계 완성)
 **현상**:
 - STRKUSDT, PUMPUSDT, 0GUSDT 등 다수 심볼에서 Precision 오류 반복
 - `API Error(code=-1111): Precision is over the maximum defined for this asset`
@@ -203,8 +203,9 @@ final_qty = round_qty(symbol, adjusted_qty, use_api=True)
 
 ### 검증
 - [x] Redis 쿨다운 로그 DEBUG 레벨로 변경 ✅
-- [x] ~~round_qty() 추가~~ → **과도한 리팩토링 복구** ✅
-- [x] 원래 `round(qty, 3)` 하드코딩 유지 (e95c5b4 기준)
+- [x] **PR12 설계 완성**: round_qty() 구현 (stepSize 활용) ✅
+- [x] 하드코딩 제거: round(qty, 3) → round_qty(symbol, qty)
+- [x] Precision 오류 근본 해결 (블랙리스트 불필요) ✅
 - [ ] Paper 재시작 후 정상 작동 확인
 
 ---
