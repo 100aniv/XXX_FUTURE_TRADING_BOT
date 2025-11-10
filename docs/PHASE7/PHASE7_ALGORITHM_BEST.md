@@ -1,4 +1,4 @@
-﻿#  앙상블 시스템 알고리즘 종합 개선안
+#  앙상블 시스템 알고리즘 종합 개선안
 
 **작성일**: 2025-11-10  
 **목적**: 6개 전략 앙상블 시스템 특화 개선 (상용 프로그램 벤치마킹)  
@@ -238,7 +238,7 @@ def adjust_strategy_weight(strategy_id, performance):
 
 #### 설정 구조
 
-```yaml
+````yaml
 strategies:
   scalping:
     enabled: true
@@ -378,7 +378,7 @@ def calculate_adaptive_weight(strategy_id, perf, config):
 
 #### 개선안
 
-```yaml
+````yaml
 exits:
   # TP 재조정
   tp1_r: 2.0              # 1.5R  2.0R (보수적)
@@ -461,3 +461,153 @@ exits:
 
 **작성자**: Cascade AI (종합 분석 완료)  
 **다음 단계**: PHASE7-2~5 마스터 플랜 업데이트
+
+---
+
+##  config.yml 설계안 (이식/확장 가능)
+
+아래 스키마는 현재 구조와 .windsurfrules를 모두 준수하며, 상용 파리티(전략별·포트폴리오 레벨 분리), Redis 네임스페이스, DB env/run_id 정책을 반영합니다.
+
+```yaml
+# config.yml v7 (Ensemble + Ops)
+runtime:
+  env: "paper"                 # paper | live
+  ns: "fg"                     # Redis/DB 네임스페이스 접두사
+  run_id: ""            # 실행 시 자동 생성 (DB/Redis 키에 사용)
+
+redis:
+  host: "localhost"
+  port: 6379
+  namespace_template: "{ns}:{env}:{run_id}:{domain}"
+
+database:
+  url: "postgresql://user:pass@host:5432/trading_db"
+  schema: "trading"
+  enforce_env_run_id: true       # INSERT 시 env/run_id 강제
+
+fees:
+  taker: 0.0004                  # 0.04%
+  maker: 0.0002
+  funding_rate_check: true
+  slippage_model: "dynamic"      # fixed | dynamic
+  slippage_fixed: 0.0005         # 0.05%
+  slippage_atr_multiplier: 0.5   # ATR * 0.5%
+  slippage_max: 0.02             # 2% 상한
+
+ensemble:
+  min_votes: 2
+  confidence_threshold: 0.7      # 포트폴리오 레벨 임계
+  max_total_positions: 10
+  max_trades_per_hour: 15
+  max_positions_per_symbol: 1
+  max_exposure_pct: 50
+  max_weight_per_strategy: 0.35
+  experience:
+    enabled: true
+  theta_long: 0.6
+  theta_short: 0.6
+  consensus_bonus: 0.1
+  rr_bonus_threshold: 1.2
+  rr_bonus: 0.05
+  weights:
+    scalping: 1.0
+    daytrade: 1.0
+    swing: 1.0
+    breakout: 1.0
+    trend: 1.0
+    reversion: 1.0
+
+strategies:
+  scalping:
+    enabled: true
+    timeframe: "1m"
+    cooldown_minutes: 5
+    max_positions: 5
+    max_trades_per_hour: 20
+    confidence_threshold: 0.65
+    atr_range: { min_pct: 0.3, max_pct: 3.0 }
+  daytrade:
+    enabled: true
+    timeframe: "15m"
+    cooldown_minutes: 15
+    max_positions: 3
+    max_trades_per_hour: 12
+    confidence_threshold: 0.70
+    atr_range: { min_pct: 0.5, max_pct: 2.5 }
+  swing:
+    enabled: true
+    timeframe: "1h"
+    cooldown_minutes: 60
+    max_positions: 2
+    max_trades_per_hour: 5
+    confidence_threshold: 0.75
+    atr_range: { min_pct: 0.8, max_pct: 3.0 }
+  breakout:
+    enabled: true
+    timeframe: "15m"
+    cooldown_minutes: 30
+    max_positions: 3
+    max_trades_per_hour: 8
+    confidence_threshold: 0.78
+  trend:
+    enabled: true
+    timeframe: "1h"
+    cooldown_minutes: 60
+    max_positions: 2
+    max_trades_per_hour: 3
+    confidence_threshold: 0.70
+  reversion:
+    enabled: true
+    timeframe: "5m"
+    cooldown_minutes: 20
+    max_positions: 3
+    max_trades_per_hour: 10
+    confidence_threshold: 0.68
+
+exits:
+  tp1_r: 2.0
+  tp2_r: null
+  tp1_size_pct: 60
+  sl_max_pct: 6.0
+  sl_min_pct: 2.0
+  sl_atr_multiplier: 1.5
+  trailing_activate_at: "TP1"
+  trailing_distance_pct: 2.0
+
+risk:
+  extreme_loss_threshold_pct: -20
+  daily_loss_limit_pct: -5
+  guards:
+    slippage_cap_pct: 3.0
+    daily_loss_halt: true
+
+operations:
+  graceful_shutdown_enabled: true
+  state_recovery_enabled: true
+  healthcheck_interval: 30
+  prometheus_enabled: true
+
+logging:
+  trial_file: "logs/trial_0000.json"
+```
+
+### 적용/연계 매핑
+- **engine.py**: 전략별 제한(enforce), 포트폴리오 합산 제한(enforce)
+- **strategies/ensemble.py**: ensemble.* 임계, weights/experience, adaptive_weight(7-4)
+- **risk_manager.py**: daily loss, slippage cap, exposure/correlation(7-4)
+- **adapters/PaperBroker**: fees/slippage 모델
+- **common/redis_client.py**: namespace_template 적용, 쿨다운 키 TTL
+- **database layer**: env/run_id 필수 컬럼 채움 (INSERT 경로)
+
+---
+
+##  모듈/오버 리팩토링 로드맵 (문서 합의 단계)
+- **중복 제거**: 레짐/ATR 보정 유틸  common/calculations 단일화 (전략 내 중복 제거)
+- **소유권 준수**: PnL/Equity 단일 소스 PortfolioManager 유지. Engine은 인터페이스만 호출
+- **레이어링**: core=계약, metrics=구현 격리. from metrics.compute import MetricsEngine 유지
+- **튜닝(PR13)**: common/tuning_*.py deprecated  tuning/ 단일 소스 유지
+- **네임스페이스**: 모든 키/채널 {ns}:{env}:{run_id}:<domain> 강제
+- **데이터 분리**: Postgres 핵심 테이블 env/run_id/created_at 필드 필수 + (env, created_at) 인덱스 권장
+
+---
+

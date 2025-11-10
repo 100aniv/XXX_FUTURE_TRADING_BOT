@@ -1013,3 +1013,116 @@ Live 추가 위험:
 **작성**: AI 시스템 분석 + 실제 거래 데이터 (1,859건)  
 **검증**: DB 쿼리, 코드 분석, 상용 프로그램 비교  
 **다음 단계**: PHASE 7-1 긴급 패치 시작 (수수료 반영 + TP/SL OHLC)
+
+---
+
+##  결론 및 액션아이템
+
+### 종합 진단 요약
+
+**현재 상태 (2025-11-10 기준)**:
+-  PHASE7-1 긴급 패치 완료 (수수료 반영, OHLC SL 체크, 8% 상한)
+-  승률 39.6% (상용 60% 대비 -20%)
+-  빈번한 거래 (시간당 310건  수수료 누적 24.8%)
+-  전략별 차별화 없음 (scalping=swing 동일 제한)
+
+**근본 원인**:
+1. **앙상블 시스템 특성 무시**: 6개 전략을 단일 로직으로 처리
+2. **쿨다운/빈도 제한 부재**: 모든 신호 무제한 수용
+3. **성과 기반 가중치 약함**: Experience Score 존재하나 승률 반영 미약
+
+### 완성된 개선 계획
+
+ **[PHASE7_ALGORITHM_BEST.md](PHASE7_ALGORITHM_BEST.md)** 종합 개선안 문서화 완료:
+- 상용 앙상블 프로그램 벤치마킹 (QuantConnect, Freqtrade)
+- 전략별 특성 분석 (타임프레임/신호조건/적정빈도)
+- 앙상블 특화 개선안 (전략별 독립 설정 + 포트폴리오 레벨 제한)
+- config.yml 설계안 (이식/확장 가능, .windsurfrules 준수)
+
+### PHASE별 적용 로드맵
+
+**PHASE7-2 (승률 45% 목표)**:
+- 전략별 독립 설정 (쿨다운 5~60분, 시간당 거래 3~20건)
+- 포트폴리오 레벨 제한 (전체 10개, 시간당 15건)
+- 예상 효과: 시간당 310건  15건 (95% 감소)
+
+**PHASE7-3 (운영 안정성)**:
+- Graceful Shutdown + State Recovery
+- Docker Healthcheck + Monitoring Dashboard
+
+**PHASE7-4 (승률 50% 목표)**:
+- 전략별 개별 백테스트
+- 성과 기반 동적 가중치 강화 (adaptive_weight)
+- 승률 45% 미만 전략 자동 축소
+
+**PHASE7-5 (Live 전환)**:
+- Paper/Live 파리티 100% 검증
+- 소액 테스트 ()  단계적 확장
+
+### config.yml 이식 계획
+
+**핵심 구조** (PHASE7_ALGORITHM_BEST.md 참조):
+`yaml
+runtime:
+  env: "paper"
+  ns: "fg"
+  run_id: ""
+
+strategies:
+  scalping:
+    cooldown_minutes: 5
+    max_trades_per_hour: 20
+    confidence_threshold: 0.65
+  # ... (daytrade, swing, breakout, trend, reversion)
+
+ensemble:
+  max_total_positions: 10
+  max_trades_per_hour: 15
+  max_positions_per_symbol: 1
+`
+
+**적용 경로**:
+- execution/engine.py: 전략별 제한 enforce
+- strategies/ensemble.py: 가중치/경험치, adaptive_weight (7-4)
+- common/redis_client.py: 네임스페이스 적용, 쿨다운 키 TTL
+- database layer: env/run_id 필수 컬럼 채움
+
+### .windsurfrules 준수 확인
+
+-  **Data Separation Policy**: env/run_id/created_at 필수 (config.database.enforce_env_run_id)
+-  **Redis Namespace Policy**: {ns}:{env}:{run_id}:<domain> 템플릿
+-  **Ownership Policy**: PortfolioManager = PnL/Equity 단일 소스
+-  **Architecture Layering**: core=계약, metrics=구현 격리
+-  **Module Relocation (PR13)**: common/tuning_* deprecated  tuning/ 전담
+-  **Files You May Edit**: core/, execution/, strategies/, tuning/, common/, docs/PHASE7/
+
+### 다음 즉시 액션
+
+1. **[진행 중]** PHASE7-1 Paper 재검증 (10분, 11:50~12:00)
+2. **[대기]** PHASE7-2 시작 (전략별 독립 설정 구현)
+   - config.yml에 strategies.* 섹션 추가
+   - engine.py 진입 게이트 구현
+   - redis_client.py 쿨다운 키 관리
+3. **[문서]** 각 PHASE 마스터 플랜 최신 상태 유지 (본 문서 반영)
+
+### 수용 기준
+
+**문서 수준 (현재)**:
+-  앙상블 시스템 특성 완전 이해
+-  상용 프로그램 벤치마킹 완료
+-  config.yml 설계안 완성
+-  PHASE별 적용 계획 수립
+
+**구현 수준 (PHASE7-2 이후)**:
+- [ ] Paper 시간당 거래  15건
+- [ ] 승률  45%
+- [ ] 전략별 쿨다운/빈도 제한 작동
+- [ ] Redis 네임스페이스 적용
+- [ ] DB env/run_id 필드 채움률 100%
+
+---
+
+**최종 업데이트**: 2025-11-10  
+**참조 문서**: [PHASE7_ALGORITHM_BEST.md](PHASE7_ALGORITHM_BEST.md), [PHASE7-1 ~ PHASE7-5 마스터 플랜]  
+**상태**:  분석 완료,  개선 계획 수립 완료,  PHASE7-2 구현 대기
+
