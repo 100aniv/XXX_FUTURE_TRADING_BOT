@@ -279,10 +279,34 @@ PHASE7-1: 수수료 반영 + OHLC SL 체크로 Live 운영 최소 조건 달성.
 - OHLC High/Low 도달 시 SL 가격으로 즉시 청산 (Close 대기 X)
 - Paper 모드 청산 로직 개선 필요
 
+### 2차 테스트 (2025-11-10 11:10~, FIX 적용)
+
+**변경사항**:
+- SL/TRAILING_SL/EXTREME_LOSS 청산 시 SL 가격 사용 (current_price 대신)
+- TP1/TP2 청산 시 TP 가격 사용
+- 슬리피지 제거로 8% 초과 손실 0건 목표
+
+**모니터링 계획**:
+- 5분 체크 (11:15): 오류 없는지 확인
+- 10분 체크 (11:20): 첫 거래 발생 시 청산 가격 확인
+- 30분 체크 (11:40): 통계 분석 (8% 초과 손실, TP1 손실)
+
+**검증 쿼리**:
+```sql
+-- 30분 후 검증
+SELECT 
+  COUNT(*) as total,
+  COUNT(CASE WHEN pnl_pct < -8 THEN 1 END) as over_8pct,
+  COUNT(CASE WHEN exit_reason='TP1' AND pnl_pct < 0 THEN 1 END) as tp1_loss,
+  AVG(CASE WHEN exit_reason='SL' THEN ABS(exit_price - sl_price) / sl_price * 100 END) as sl_slippage_pct
+FROM trading.trades 
+WHERE mode='paper' AND ts_open >= '2025-11-10 11:10:00';
+```
+
 ### 다음 단계
 
 - [x] Paper 스모크 테스트 (48분 완료)
-- [ ] Paper 청산 로직 개선 (OHLC 즉시 청산)
-- [ ] 30분 재검증
+- [x] Paper 청산 로직 개선 (SL/TP 가격 사용)
+- [ ] 30분 재검증 (11:40)
 - [ ] Live 소액 테스트
 - [ ] PHASE7-2 시작
