@@ -825,25 +825,107 @@ HAVING COUNT(*) > 1;
   - **다음 단계**: 단위 테스트 → Paper 1시간 검증
   - **수용 기준**: -8% 초과 손실 0건, SL 슬리피지 < 6%
 
-- [ ] **5. 전략별 독립 설정** (Phase 3 - 개선)
+- [x] **5. 포지션 복원 시 Manager 동기화 버그 수정** (Phase 2 긴급 수정) ✅ 완료 (2025-11-11)
+  - **문제**:
+    - Paper/Live 모드 재시작 시 DB/API에서 포지션 복원
+    - `active_positions` dict만 채우고 RiskManager/PortfolioManager 미등록
+    - `risk.active_positions_count`가 0에서 시작 → 신규 포지션 추가 시만 증가
+    - **결과**: 20개 포지션 도달 → "Max positions reached: 20/20" 차단
+  - **근본 원인**:
+    - engine.py 367줄: Paper 포지션 복원 후 Manager 등록 누락
+    - engine.py 428줄: Live 포지션 복원 후 Manager 등록 누락
+  - **수정**:
+    - [x] Paper 모드: DB 복원 루프에 `risk.add_position()` + `portfolio.add_position()` 추가
+    - [x] Live 모드: Binance 동기화 루프에 Manager 등록 추가
+    - [x] 복원 로그에 "Manager 등록 완료" 메시지 추가
+  - **검증**:
+    - [x] Git commit 완료
+    - [ ] Docker 리빌드 및 재시작
+    - [ ] "포지션 추가/제거" 로그 확인
+    - [ ] 포지션 카운트 정확도 검증
+  - **영향 파일**: execution/engine.py (367-376줄, 429-440줄)
+
+- [ ] **6. 전략별 독립 설정** (Phase 3 - 개선)
   - [ ] config.yml strategies.* 구조
   - [ ] cooldown_minutes 적용
   - [ ] max_trades_per_hour 적용
   - [ ] 전략별 검증 로직
 
+### DB 스키마 (trading 스키마)
+
+**테이블 구조:**
+- `trading.trades`: 거래 기록 (포지션 추적)
+  - 핵심 필드: trade_id(PK), symbol, side, entry_price, exit_price, quantity, leverage
+  - 상태: status (OPEN/CLOSED/CANCELLED), mode (paper/live/backtest)
+  - 타임스탬프: ts_open, ts_close, created_at
+  - 전략: strategy_id, trial_id
+  - 손익: pnl, pnl_pct, fees, exit_reason
+  - **인덱스**: mode+status, symbol+ts, strategy, trial
+- `trading.positions`: 실시간 포지션 상태
+- `trading.decisions`: 신호 기록
+- `trading.executions`: 실행 기록
+
+**포지션 복원 로직:**
+- Paper: `SELECT * FROM trading.trades WHERE status='OPEN' AND mode='paper'`
+- Live: Binance API `get_positions()` → DB 동기화
+- 복원 후 필수: `risk.add_position()` + `portfolio.add_position()` 호출
+
 ### 테스트
 
-- [ ] 단위 테스트 (price_levels, duplicate, slippage)
+- [ ] 단위 테스트 (price_levels, duplicate, slippage, position restore)
 - [ ] Paper 3일 실행
 - [ ] 승률 45% 달성
 - [ ] TP2 5% 도달
 - [ ] 중복 진입 0건
+- [ ] 포지션 카운트 정확도 검증
 - [ ] pre-commit 통과
 
 ### 문서
 
+- [x] PHASE7-2_MASTER_PLAN.md (포지션 복원 버그 수정 반영)
+- [x] SYSTEM_OPERATIONS_ANALYSIS.md (운영 철학 및 모드별 동작 분석 - 2025-11-11)
 - [ ] IMPLEMENTATION_LOG.md
 - [ ] CRITICAL_SYSTEM_ANALYSIS 업데이트
+
+---
+
+## 🔄 운영 철학 및 개선 방향 (2025-11-11)
+
+### 핵심 결론
+
+**모드별 포지션 처리:**
+1. **Backtest**: ❌ 포지션 복원 없음 (올바름, 재현성 중요)
+2. **Paper**: ✅ 포지션 복원 필수 (Live 시뮬레이션, 24/7 연속성)
+3. **Live**: ✅ 포지션 복원 필수 (거래소 동기화, 손실 방지)
+
+**Manager 상태 복원:**
+- **현재 문제**: 포지션만 복원, Manager 상태 미복원
+  - `RiskManager.active_positions_count` → ✅ 수정 완료 (2025-11-11)
+  - `PortfolioManager.total_equity` → ⚠️ 초기 자본으로 리셋
+  - `RiskManager.peak_equity` → ⚠️ 복원 안 됨 (MDD 계산 오류)
+  - `RiskManager.consecutive_losses` → ⚠️ 복원 안 됨 (쿨다운 오류)
+
+**DB 역할 재정의 필요:**
+```
+현재:
+  - trading.trades: 포지션 상태(OPEN) + 거래 기록(CLOSED) 혼재
+
+권장:
+  - trading.positions: 현재 OPEN 포지션 (상태 관리)
+  - trading.trades: CLOSED 거래 기록 (보관용)
+  - trading.portfolio_state: Portfolio Manager 상태
+  - trading.risk_state: Risk Manager 상태
+```
+
+**개선 우선순위:**
+1. ✅ **긴급**: 포지션 복원 시 Manager 등록 (완료)
+2. ⚠️ **높음**: Equity, peak_equity, consecutive_losses 복원
+3. 🔵 **중간**: DB 스키마 분리 (positions/trades/states)
+4. 🔵 **낮음**: --reset 옵션 추가 (신규 vs 재시작 구분)
+
+**상세 분석**: `docs/PHASE7/SYSTEM_OPERATIONS_ANALYSIS.md` 참조
+
+---
 
 ## 배포/롤백
 
