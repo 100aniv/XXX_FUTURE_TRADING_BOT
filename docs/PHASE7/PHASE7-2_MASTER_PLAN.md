@@ -851,9 +851,74 @@ HAVING COUNT(*) > 1;
   - [ ] max_trades_per_hour 적용
   - [ ] 전략별 검증 로직
 
+- [ ] **7. 초기화 vs 재시작 명확화 (--reset 옵션)** (Phase 2 완성) ⚠️ 필수
+  - **문제** (2025-11-11 발견):
+    - 현재: 재시작 시 항상 포지션 복원 (Paper/Live)
+    - 테스트 목적 재시작: 기존 포지션 청산하고 깨끗하게 시작해야 함
+    - 초기화 vs 재시작 구분 없음 → 혼란
+  - **상용 시스템 표준**:
+    - **Backtest**: 항상 초기화 (재현성)
+    - **Paper**: --reset 옵션으로 구분
+      - 기본(재시작): 포지션 복원 (24/7 연속성)
+      - --reset: 포지션 청산 + 초기 자본 (테스트 목적)
+    - **Live**: 재시작만 허용, --reset 금지 (거래소 포지션 존재)
+  - **구현 계획**:
+    - [x] 문제 분석 및 TO-BE 설계 (SYSTEM_OPERATIONS_ANALYSIS.md)
+    - [ ] main.py: argparse --reset 옵션 추가
+    - [ ] engine.py: reset 모드 처리
+      - Paper --reset: DB OPEN 포지션 강제 청산 (가상)
+      - Live --reset: 에러 (수동 청산 필요)
+    - [ ] 로그 개선: "재시작(복원)" vs "초기화(리셋)" 구분
+    - [ ] 단위 테스트: test_reset_option.py
+  - **예상 사용**:
+    ```bash
+    # 재시작 (기본, 포지션 복원)
+    docker-compose restart trading_bot_paper_ensemble
+    
+    # 초기화 (테스트 목적, 포지션 청산)
+    docker-compose run --rm -e RESET_MODE=true trading_bot_paper_ensemble
+    
+    # Live는 --reset 금지
+    python main.py --mode live --reset  # ERROR
+    ```
+  - **영향 파일**: 
+    - main.py (argparse 추가)
+    - execution/engine.py (reset 로직)
+    - docker-compose.yml (환경변수 지원)
+  - **PHASE7-3 연결**: Graceful Shutdown과 통합 (종료 시 청산 로직 공유)
+
+- [ ] **8. Manager 상태 완전 복원** (Phase 2 완성) ⚠️ 높은 우선순위
+  - **문제** (2025-11-11 발견):
+    - 현재: 포지션만 복원, Manager 상태 부분 복원
+    - `RiskManager.active_positions_count`: ✅ 수정 완료
+    - `PortfolioManager.total_equity`: ❌ 초기 자본으로 리셋
+    - `RiskManager.peak_equity`: ❌ 복원 안 됨 (MDD 계산 오류)
+    - `RiskManager.consecutive_losses`: ❌ 복원 안 됨 (쿨다운 오류)
+  - **영향**:
+    - Paper 재시작 시 equity 손실 (실제 $52,000 → 표시 $50,000)
+    - MDD 계산 오류 → 리스크 판단 오류
+    - Consecutive losses 리셋 → 쿨다운 미작동
+  - **구현 계획**:
+    - [ ] DB 테이블 추가:
+      - `trading.portfolio_state`: equity, daily_pnl, realized_pnl
+      - `trading.risk_state`: peak_equity, consecutive_losses, cooldown_until
+    - [ ] engine.py: Paper 모드 복원 시 Manager 상태 복원
+    - [ ] portfolio_manager.py: DB 저장/복원 메서드 추가
+    - [ ] risk_manager.py: DB 저장/복원 메서드 추가
+    - [ ] 단위 테스트: test_manager_state_recovery.py
+  - **수용 기준**:
+    - Paper 재시작 후 equity 정확 (DB 마지막 값)
+    - MDD 계산 정확 (peak_equity 복원)
+    - Consecutive losses 카운트 정확
+  - **영향 파일**:
+    - database/schema.sql (테이블 추가)
+    - execution/portfolio_manager.py
+    - execution/risk_manager.py
+    - execution/engine.py (복원 로직)
+
 ### DB 스키마 (trading 스키마)
 
-**테이블 구조:**
+**기존 테이블:**
 - `trading.trades`: 거래 기록 (포지션 추적)
   - 핵심 필드: trade_id(PK), symbol, side, entry_price, exit_price, quantity, leverage
   - 상태: status (OPEN/CLOSED/CANCELLED), mode (paper/live/backtest)
@@ -865,10 +930,41 @@ HAVING COUNT(*) > 1;
 - `trading.decisions`: 신호 기록
 - `trading.executions`: 실행 기록
 
+**신규 테이블 (Phase 2 항목 8):**
+- `trading.portfolio_state`: Portfolio Manager 상태 스냅샷
+  - mode VARCHAR(10): paper/live/backtest
+  - run_id UUID: 실행 ID
+  - current_equity NUMERIC: 현재 자산
+  - daily_pnl NUMERIC: 일일 손익
+  - realized_pnl NUMERIC: 실현 손익
+  - unrealized_pnl NUMERIC: 미실현 손익
+  - updated_at TIMESTAMPTZ: 업데이트 시각
+  - **PK**: (mode, run_id, updated_at)
+- `trading.risk_state`: Risk Manager 상태 스냅샷
+  - mode VARCHAR(10): paper/live/backtest
+  - run_id UUID: 실행 ID
+  - peak_equity NUMERIC: 최고 자산 (MDD 계산용)
+  - current_drawdown NUMERIC: 현재 드로다운
+  - consecutive_losses INT: 연속 손실 횟수
+  - in_cooldown BOOLEAN: 쿨다운 상태
+  - cooldown_until TIMESTAMPTZ: 쿨다운 종료 시각
+  - updated_at TIMESTAMPTZ: 업데이트 시각
+  - **PK**: (mode, run_id, updated_at)
+
 **포지션 복원 로직:**
-- Paper: `SELECT * FROM trading.trades WHERE status='OPEN' AND mode='paper'`
-- Live: Binance API `get_positions()` → DB 동기화
-- 복원 후 필수: `risk.add_position()` + `portfolio.add_position()` 호출
+- Paper 재시작:
+  1. `SELECT * FROM trading.trades WHERE status='OPEN' AND mode='paper'` → 포지션
+  2. `SELECT * FROM trading.portfolio_state WHERE mode='paper' ORDER BY updated_at DESC LIMIT 1` → equity
+  3. `SELECT * FROM trading.risk_state WHERE mode='paper' ORDER BY updated_at DESC LIMIT 1` → peak_equity
+  4. `risk.add_position()` + `portfolio.add_position()` 호출
+- Paper 초기화 (--reset):
+  1. DB OPEN 포지션 강제 청산 (status='CLOSED', exit_reason='RESET')
+  2. equity → config.initial_capital
+  3. 새 run_id 생성
+- Live 재시작:
+  1. Binance API `get_positions()` → 포지션
+  2. Binance `get_account()` → equity 동기화
+  3. DB와 동기화
 
 ### 테스트
 
@@ -918,10 +1014,18 @@ HAVING COUNT(*) > 1;
 ```
 
 **개선 우선순위:**
-1. ✅ **긴급**: 포지션 복원 시 Manager 등록 (완료)
-2. ⚠️ **높음**: Equity, peak_equity, consecutive_losses 복원
-3. 🔵 **중간**: DB 스키마 분리 (positions/trades/states)
-4. 🔵 **낮음**: --reset 옵션 추가 (신규 vs 재시작 구분)
+1. ✅ **긴급**: 포지션 복원 시 Manager 등록 (완료 - PHASE7-2 항목 5)
+2. ⚠️ **높음**: Equity, peak_equity, consecutive_losses 복원 (PHASE7-2 항목 8)
+3. 🔵 **중간**: --reset 옵션 추가 (PHASE7-2 항목 7)
+4. 🔵 **중간**: DB 스키마 분리 (PHASE7-3 또는 리팩토링)
+
+**PHASE7-3 연결 (운영 안정성):**
+- **Graceful Shutdown**: 종료 시 포지션 청산 로직 (--reset과 공유)
+- **TP 거래소 등록**: Live 모드 TP 안전장치 (프로그램 종료해도 작동)
+  - 현재: SL만 거래소 등록 ✅, TP는 프로그램 관리 🚨
+  - 위험: 프로그램 종료 시 TP 미작동 → 수익 기회 손실
+  - 개선: 최소 TP1 50% 거래소 등록 (PHASE7-3)
+- **State Recovery**: Manager 상태 복원 강화 (PHASE7-2 항목 8 확장)
 
 **상세 분석**: `docs/PHASE7/SYSTEM_OPERATIONS_ANALYSIS.md` 참조
 

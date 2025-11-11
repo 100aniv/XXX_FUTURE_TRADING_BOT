@@ -386,33 +386,157 @@ CREATE TABLE trading.risk_state (
 
 ---
 
-## 📋 개선 작업 항목
+## 🚨 치명적 위험: TP 관리 방식
 
-### Phase 1: DB 스키마 정리 (우선순위: 높음)
-- [ ] `trading.positions` 테이블 생성 (OPEN 포지션 전용)
-- [ ] `trading.portfolio_state` 테이블 생성
-- [ ] `trading.risk_state` 테이블 생성
-- [ ] `trading.trades`는 CLOSED만 보관 (기록용)
+### 현재 시스템 (2025-11-11 분석)
 
-### Phase 2: Paper 모드 개선 (우선순위: 높음)
-- [x] 포지션 복원 시 Manager 등록 (2025-11-11 완료)
-- [ ] Equity 복원 로직 추가
-- [ ] Peak equity 복원 로직 추가
-- [ ] Consecutive losses 복원 로직 추가
-- [ ] `--reset` 옵션 추가 (신규 시작 vs 재시작 구분)
+```python
+# 진입 시 (execution/engine.py 1410줄)
+broker.create_sl_order(...)  # ✅ SL은 거래소에 등록
 
-### Phase 3: Live 모드 개선 (우선순위: 중간)
-- [x] 포지션 복원 시 Manager 등록 (2025-11-11 완료)
-- [ ] Binance 잔고로 equity 동기화
-- [ ] Binance 포지션 수량 검증 (시스템 vs 거래소)
+# TP 체크 (execution/engine.py 652줄)
+should_action, partial_qty, reason, exit_price = tracker.check_tpsl_with_partial(...)
+# ❌ TP는 프로그램 내부에서만 체크 (거래소 등록 안 됨!)
+```
 
-### Phase 4: Backtest 모드 개선 (우선순위: 낮음)
-- [ ] 종료 시 명시적 포지션 청산 로직 추가
-- [ ] 재현성 보장 (seed 고정)
+**결과:**
+1. **SL**: ✅ 거래소 관리 → 프로그램 종료해도 안전
+2. **TP**: 🚨 **프로그램 관리 → 종료 시 TP 미작동!**
+3. **Trailing Stop**: 🚨 **프로그램 관리 → 종료 시 Trailing 중단!**
+
+### 위험 시나리오
+
+#### 시나리오 1: 네트워크 단절
+```
+1. BTCUSDT LONG @ $50,000
+2. SL $49,500 (거래소) ✅
+3. TP1 $51,000 (메모리) ❌
+4. 프로그램 크래시
+5. 가격 $51,500 도달 → TP 미작동
+6. 가격 반전 → SL $49,500 터짐
+7. 손실: $1,500 (이익 기회 + 손실)
+```
+
+#### 시나리오 2: Trailing Stop 실패
+```
+1. ETHUSDT LONG @ $2,000
+2. SL $1,980 (거래소)
+3. 가격 $2,050 → Trailing → SL $2,030 (메모리)
+4. 프로그램 종료
+5. 거래소 SL은 여전히 $1,980
+6. 가격 반전 → $1,980 손실
+7. 추가 손실: $50
+```
+
+### 상용 시스템 해결 방안
+
+#### Option A: 거래소 주문 등록 (권장) ✅
+```python
+broker.create_sl_order(sl_price)  # SL
+broker.create_tp_order(tp_price)  # TP (OCO)
+```
+- 장점: 24/7 안전
+- 단점: 분할 TP 구현 복잡
+
+#### Option B: 클라우드 이중화 ✅
+```
+Primary → Secondary (Failover < 10초)
+```
+- 장점: 유연한 로직
+- 단점: 인프라 비용
+
+#### Option C: 하이브리드 (추천) ⚠️
+```python
+broker.create_sl_order(sl_price)        # SL 거래소
+broker.create_tp_order(tp1_price, 50%)  # TP1 거래소
+# TP2, Trailing은 프로그램 관리
+```
+- 장점: 최소 수익 보장
+- 단점: 비정상 종료 시 TP2 손실
+
+---
+
+## 📋 개선 작업 항목 (PHASE7-2/3 연결)
+
+### PHASE7-2 Phase 2 (긴급 - 현재 PR) ✅
+- [x] 포지션 복원 시 Manager 등록 (완료 - 2025-11-11)
+  - `RiskManager.active_positions_count` 동기화
+  - `PortfolioManager.add_position()` 동기화
+- [ ] **항목 7**: --reset 옵션 추가 (초기화 vs 재시작)
+  - main.py: argparse 추가
+  - engine.py: reset 모드 처리
+  - Docker: RESET_MODE 환경변수
+- [ ] **항목 8**: Manager 상태 완전 복원 (높은 우선순위)
+  - DB 테이블: portfolio_state, risk_state
+  - Equity, peak_equity, consecutive_losses 복원
+
+### PHASE7-3 (운영 안정성) 📋
+- [ ] **Graceful Shutdown**: 종료 시 포지션 청산
+  - Signal handler (SIGTERM, SIGINT)
+  - 신규 진입 중단 → OPEN 포지션 청산
+  - Binance SL/TP 주문 취소 (Live)
+  - 상태 저장 (DB + Redis)
+- [ ] **TP 거래소 등록**: Live 모드 안전장치
+  - LiveBroker.create_tp_order() 메서드 추가
+  - engine.py: 진입 시 TP1 50% 거래소 등록
+  - TP2, Trailing은 프로그램 관리 유지
+- [ ] **State Recovery**: 재시작 시 동기화 강화
+  - Binance 주문 ID 저장/복원
+  - 주문 상태 확인 (SL/TP 활성화 여부)
+
+### PHASE7-4 (전략 개선) 📋
+- 백테스트 파이프라인
+- 전략별 성과 분석
+- 승률 50% 달성
+
+### PHASE7-5 (Live 전환) 📋
+- Paper/Live 파리티 검증
+- 소액 테스트 ($100)
+- 단계적 확장
+
+---
+
+## 🎯 최종 권장 사항
+
+### 의도적 종료 (테스트 목적)
+```bash
+# Paper 초기화
+docker-compose run --rm -e RESET_MODE=true trading_bot_paper_ensemble
+
+# 동작:
+1. DB OPEN 포지션 강제 청산
+2. Equity → 초기 자본
+3. 새 run_id 생성
+4. 깨끗한 시작
+```
+
+### 운영 중 재시작 (24/7 연속성)
+```bash
+# Paper/Live 재시작 (기본)
+docker-compose restart trading_bot_paper_ensemble
+
+# 동작:
+1. DB/API에서 포지션 복원
+2. Manager 상태 복원 (equity, peak_equity 등)
+3. 기존 상태 이어서 계속
+```
+
+### Live 초기화 (수동 필수)
+```bash
+# 1. Binance 앱에서 모든 포지션 수동 청산
+# 2. 포지션 0개 확인
+# 3. 프로그램 시작
+python main.py --mode live
+
+# --reset 옵션은 Live에서 금지
+```
 
 ---
 
 **참조 문서:**
-- PHASE7-2_MASTER_PLAN.md
+- PHASE7-2_MASTER_PLAN.md (항목 7, 8)
+- PHASE7-3_MASTER_PLAN.md (Graceful Shutdown, TP 거래소)
 - CRITICAL_SYSTEM_ANALYSIS_2025-11-10.md
 - .windsurfrules (단일 책임, 모듈 중복 금지)
+
+**업데이트:** 2025-11-11 (상용 시스템 비교, TP 위험 분석, TO-BE 로드맵)
