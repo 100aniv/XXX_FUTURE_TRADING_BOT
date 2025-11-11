@@ -353,7 +353,7 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict):
                             f"✅ DB에서 {len(active_positions)}개 OPEN 포지션 복원"
                         )
 
-                        # TP 레벨 재생성
+                        # TP 레벨 재생성 및 Manager 등록
                         for pos_id, position in active_positions.items():
                             tp_levels = tracker.tp_manager.calculate_tp_levels(
                                 entry=position["entry"],
@@ -363,8 +363,19 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict):
                                 config=config  # ⭐ PHASE7-2 Phase 1: config 전달 (동적 TP 레벨)
                             )
                             position["tp_levels"] = tp_levels
+                            
+                            # ⭐ PHASE7-2 Phase 2: 복원된 포지션을 RiskManager와 PortfolioManager에 등록
+                            position_value = position.get("position_value", position["entry"] * position["qty"])
+                            risk.add_position(position["symbol"], position_value)
+                            portfolio.add_position(
+                                symbol=position["symbol"],
+                                strategy=position["strategy"],
+                                position_value=position_value,
+                                side=position["side"],
+                                position_id=pos_id
+                            )
 
-                        logger.info("✅ TP 레벨 재생성 완료")
+                        logger.info("✅ TP 레벨 재생성 및 Manager 등록 완료")
         except Exception as e:
             logger.error(f"❌ OPEN 포지션 복원 실패: {e}")
     
@@ -415,7 +426,18 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict):
                         logger.info(f"  - {symbol}: {position_amt} @ ${entry_price:,.2f} (PnL: ${unrealized_pnl:,.2f})")
                         
                 if active_positions:
-                    logger.info(f"✅ [LIVE] {len(active_positions)}개 실제 포지션을 시스템에 동기화")
+                    # ⭐ PHASE7-2 Phase 2: 복원된 포지션을 RiskManager와 PortfolioManager에 등록
+                    for pos_id, position in active_positions.items():
+                        position_value = position.get("position_value", position["entry"] * position["qty"])
+                        risk.add_position(position["symbol"], position_value)
+                        portfolio.add_position(
+                            symbol=position["symbol"],
+                            strategy=position["strategy"],
+                            position_value=position_value,
+                            side=position["side"],
+                            position_id=pos_id
+                        )
+                    logger.info(f"✅ [LIVE] {len(active_positions)}개 실제 포지션을 시스템에 동기화 및 Manager 등록 완료")
             else:
                 logger.info("✅ [LIVE] Binance에 OPEN 포지션 없음 (신규 시작)")
         except Exception as e:
