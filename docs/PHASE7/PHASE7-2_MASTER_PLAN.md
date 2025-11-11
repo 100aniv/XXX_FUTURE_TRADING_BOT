@@ -2,11 +2,16 @@
 
 ## 배경/의도 (Overview)
 
-PHASE 7-1 긴급 패치 완료 후, 시스템의 근본적 성과 개선 필요.
+**PHASE7-1 수용 완료 (2025-11-10 18:00)**:
+- ✅ 수수료 반영, OHLC SL 체크, TP1 손실 0건 달성
+- ✅ Telegram rate limit 처리 (429 재시도)
+
+**PHASE7-2 목표**: 시스템의 근본적 성과 개선
 - 현재 승률: 39.6% → 목표: 45% 이상
 - TP2 도달: 0건 → 목표: 5% 이상
 - 손익비: 0.45 → 목표: 0.8 이상
 - **빈번한 거래**: 시간당 310건 → 목표: 시간당 5건 이하
+- **8% 초과 손실**: PHASE7-1에서 발견 → SL 가격 설정 최적화
 
 **상용 프로그램 벤치마킹** (PHASE7_ALGORITHM_BEST.md 참조):
 - 3Commas: 승률 60-70%, 거래 쿨다운 24시간
@@ -15,15 +20,105 @@ PHASE 7-1 긴급 패치 완료 후, 시스템의 근본적 성과 개선 필요.
 
 포지션 관리 로직을 개선하여 **상용 수준 진입**을 위한 기반 마련.
 
+## 현행 vs TO-BE 요약
+
+- **현행(코드 기준)**
+  - 캔들 dedup/쿨다운 TTL/신호 멱등: 구현됨(PR9)
+  - FlowGuardian 게이트(assert_ready): PAPER/LIVE 진입 전 1회 검증(엔진)
+  - PortfolioManager PnL/Equity 일원화·일일 리셋: 구현됨(PR12)
+  - TP 서버 주문: 미사용(Option C 유지). SL 서버 주문만, TP는 로컬 관리
+  - 수량 반올림: `round(qty, 3)` 고정. stepSize 기반 `round_qty` 미구현
+  - 슬리피지: PaperBroker 고정 0.05% (동적 미구현)
+  - 전략별 독립 설정(cooldown_minutes/max_trades_per_hour): 미구현. 현재 `cooldown_candles`만 지원
+
+- **TO-BE(7-2 적용 범위)**
+  - 전략별 독립 설정 enforce (cooldown_minutes, max_trades_per_hour, max_positions)
+  - 동적 슬리피지 모델 + 설정 키 추가
+  - 중복 진입 DB 재확인(+ 선택적 분산 락)
+  - TP/SL 재조정 및 Trailing 활성화 정책
+
 ## 목표 (Goals)
 
-- **승률 45% 이상** 달성 (Paper 3일 평균)
+- **🚨 중복 진입 방지 완성** (최우선): DB-메모리 동기화, 2분간 47건 진입 방지 ← **Phase 1 테스트에서 발견**
+- **✅ 8% 초과 손실 0건**: SL 가격 설정 최적화 (ATR 기반, 최대 6%) ← **Phase 1 완료** (중복 진입 제외 시)
+- **승률 45% 이상** 달성 (Paper 3일 평균) ← Phase 2 이후 재측정
 - **TP1/TP2 비율 최적화**: 손익비 0.8 이상
-- **중복 진입 방지 완성**: DB-메모리 동기화
+- **Telegram 알림 안정성**: 중요 알림 100% 전달
 - **슬리피지 정확도**: Paper 실제 시장 반영
 - **TP2 도달**: 전체 거래의 5% 이상
 
 ## 범위 (Scope, In)
+
+### 🚨 0. Extreme Loss Guard 강화 + Flash-Guard 조정 (Phase 0 - 긴급)
+
+#### 0-1. Extreme Loss Guard 강화 (3h)
+
+**현재 문제**:
+- ZECUSDT -78.52% 손실 (Entry $652 → Exit $140, 1분 내 급락)
+- Extreme Loss Guard는 **캔들 종료 시에만 체크** (1분마다)
+- 캔들 내 급락은 다음 캔들에서야 감지 (이미 손실 발생 후)
+
+**기존 구조 분석**:
+```python
+# execution/position_tracker.py L165-170
+if current_pnl_pct <= -20.0:
+    logger.warning(f"🚨 [EXTREME_LOSS] 극단 손실 감지: {current_pnl_pct:.2f}%")
+    return True, None, 'EXTREME_LOSS'
+```
+- ✅ 로직 정상
+- ❌ 호출 주기: 캔들 종료 시에만 (`engine.py` L618)
+
+**해결 방안** (기존 모듈 활용):
+1. **OHLC High/Low 기반 체크** (기존 SL 로직 재사용)
+   - `check_tpsl_with_partial()` 내 OHLC 체크 활용
+   - SL 체크와 동일하게 Extreme Loss도 High/Low로 체크
+   - **변경 없음**: 기존 PHASE7-1 로직 그대로 사용
+
+2. **실시간 가격 체크 추가** (WebSocket 업데이트마다)
+   - `engine.py`에서 WebSocket 가격 업데이트 시 Extreme Loss 체크
+   - 기존 `flash_guard_update()` 호출 위치에 추가
+   - **최소 변경**: 1줄 추가
+
+**영향 파일**:
+- `execution/position_tracker.py`: 변경 없음 (기존 로직 활용)
+- `execution/engine.py`: Extreme Loss 체크 추가 (L596 근처)
+
+**수용 기준**:
+- -20% 초과 손실 0건
+- Paper 1일 테스트 통과
+
+#### 0-2. Flash-Guard 임계값 조정 (1h)
+
+**현재 문제**:
+- `flash_guard.threshold_pct: 0.03` (3%)
+- 정상 변동성에도 거래 보류 (14시간 중 2.3시간만 거래)
+
+**기존 구조 분석**:
+```yaml
+# config.yml L232-235
+flash_guard:
+  enabled: true
+  pause_candles: 3
+  threshold_pct: 0.03  # 3%
+```
+```python
+# execution/risk_manager.py L241
+flash_pct = self.config.get("flash_pct", 0.03)
+```
+
+**해결 방안** (config만 수정):
+- `threshold_pct: 0.03 → 0.15` (3% → 15%)
+- **하드코딩 없음**: config.yml만 수정
+- **모듈 변경 없음**: 기존 RiskManager 로직 그대로
+
+**영향 파일**:
+- `config.yml`: flash_guard.threshold_pct 수정
+
+**수용 기준**:
+- 정상 변동성 거래 허용
+- Flash-Guard 발동 시간당 1회 이하
+
+---
 
 ### 1. SL/TP 재조정 (1일)
 
@@ -50,17 +145,43 @@ PHASE 7-1 긴급 패치 완료 후, 시스템의 근본적 성과 개선 필요.
 - DB와 메모리 `active_positions` 불일치
 - ensemble_1 vs ensemble_2 별도 관리
 
+**⚠️ 실제 발견 사례 (2025-11-11 09:53)**:
+- 6건의 OPEN 포지션이 63분 이상 미정리 (SEIUSDT, XRPUSDT, WLDUSDT, ZKUSDT, XPLUSDT, UAIUSDT)
+- 최근 200줄 로그에 해당 심볼 TP/SL 체크 기록 없음
+- **의심 원인**:
+  1. DB INSERT 성공 → active_positions 추가 실패 (예외 발생)
+  2. DB에는 OPEN, 메모리에는 없음 → 영원히 청산 체크 안 됨
+  3. 캔들 심볼 필터링 문제 (`candle_symbol != position['symbol']`)
+
 **개선**:
 - DB OPEN 포지션 동기화 로직 강화
 - active_positions 상태 검증 로그 추가
 - 진입 전 DB 쿼리로 재확인
+- **포지션 복원 시 active_positions 동기화 검증**
 - Redis 분산 락 (optional)
 
 **영향 파일**:
-- `execution/engine.py` (진입 전 체크)
+- `execution/engine.py` (진입 전 체크, 포지션 복원 로직 강화)
 - `common/redis_client.py` (분산 락, optional)
 
-### 3. 슬리피지 시뮬레이션 (반나절)
+### 3. Telegram 메시지 전달 안정성 개선 (반나절)
+
+**현재 문제** (PHASE7-1에서 발견):
+- 429 rate limit 재시도 후에도 전송 실패
+- 빈번한 거래 시 알림 누락
+- 중요 알림(진입/청산)과 일반 알림 구분 없음
+
+**개선**:
+- 메시지 우선순위 큐 (진입/청산 > 일반)
+- 배치 전송 (1초당 1개 제한)
+- 실패 시 로컬 로그 보존
+- 중요 알림만 재시도 (일반 알림은 skip)
+
+**영향 파일**:
+- `common/messaging.py` (우선순위 큐 추가)
+- `config.yml::telegram.rate_limit`
+
+### 4. 슬리피지 시뮬레이션 (반나절)
 
 **현재 문제**:
 - PaperBroker 고정 슬리피지 0.05%
@@ -77,7 +198,7 @@ PHASE 7-1 긴급 패치 완료 후, 시스템의 근본적 성과 개선 필요.
 - `execution/adapters/brokers.py::PaperBroker`
 - `config.yml::fees.slippage_model`
 
-### 4. 전략별 독립 설정 (1일) ⭐ 앙상블 시스템 특화
+### 5. 전략별 독립 설정 (1일) ⭐ 앙상블 시스템 특화
 
 ⚠️ **구현 상태**: 설계 완료, 코드 구현 대기 중 (PHASE7-2)
 
@@ -543,27 +664,172 @@ HAVING COUNT(*) > 1;
 - `over_8pct`: 0건
 - 중복 진입: 0건
 
+## 📊 Paper 테스트 분석 결과 (2025-11-10 17:49 ~ 20:12)
+
+### 운영 현황
+- **거래 기간**: 2.3시간 (139건)
+- **컨테이너 가동**: 14시간 (20:12 이후 Flash-Guard로 거래 중단)
+
+### 성과 요약
+| 지표 | 값 | 목표 | 상태 |
+|------|-----|------|------|
+| 승률 | 41.73% | 45% | ❌ (-3.27%p) |
+| 평균 PnL | +3.58% | - | ✅ |
+| 손익비 | 2.67 | 0.8 | ✅ |
+| TP1 손실 | 0건 | 0건 | ✅ |
+| **-20% 초과** | **2건** | **0건** | ❌❌❌ |
+| **-8% 초과** | **19건** | **0건** | ❌ |
+
+### 🚨 CRITICAL 문제 발견
+
+#### 1. **Extreme Loss Guard 실패** (최우선)
+- **최악 손실**: -78.52% (ZECUSDT, Entry $652 → Exit $140)
+- **원인 분석**:
+  - Guard 로직은 정상 (`position_tracker.py` L165-170)
+  - 체크 주기도 정상 (1분마다)
+  - **문제**: OHLC High/Low 체크 시 **현재가만 사용**, 캔들 내 급락 미감지
+  - ZECUSDT는 1분 내 $652 → $140 급락 (78% 하락)
+  - 다음 캔들 체크 시 이미 -78% 손실 후
+
+#### 2. **Flash-Guard 과도 작동** (긴급)
+- **현상**: 3% 변동에도 거래 보류 (`config.yml` flash_guard.threshold_pct: 0.03)
+- **영향**: 19:47 ZECUSDT 78% 변동 후 모든 심볼 거래 중단
+- **결과**: 14시간 중 2.3시간만 거래
+
+#### 3. **SL 가격 설정 문제**
+- SL 청산 59% (82건), 평균 -6.66%
+- -8% 초과 손실 19건 (평균 -14.68%)
+
+---
+
+## 우선순위 및 일정 (재조정)
+
+### 🚨 Phase 0: 긴급 버그 수정 (즉시, 반나절)
+**CRITICAL**: Extreme Loss Guard 실패 및 Flash-Guard 과도 작동
+
+1. **Extreme Loss Guard 강화** (3h)
+   - **문제**: 1분 내 급락 미감지 (-78.52% 손실)
+   - **해결**: 
+     - OHLC High/Low 기반 체크 (기존 SL 로직 활용)
+     - 실시간 가격 체크 추가 (WebSocket 가격 업데이트마다)
+   - **파일**: `execution/position_tracker.py`, `execution/engine.py`
+   - **목표**: -20% 초과 손실 0건
+
+2. **Flash-Guard 임계값 조정** (1h)
+   - **문제**: 3% 변동에도 거래 보류 (과도)
+   - **해결**: threshold_pct 3% → 15%
+   - **파일**: `config.yml`
+   - **목표**: 정상 변동성 거래 허용
+
+### Phase 1: 긴급 (1일) - 8% 초과 손실 해결
+3. **SL/TP 재조정** (1일)
+   - 동적 SL (ATR 기반, 최대 6%)
+   - TP1: 2.0R, TP2: 4.5R
+   - 목표: 8% 초과 손실 0건
+
+### Phase 2: 중요 (1일) - 알림 및 중복 방지
+4. **Telegram 메시지 전달 안정성** (반나절)
+   - 우선순위 큐, 배치 전송
+   - 목표: 중요 알림 100% 전달
+
+5. **중복 진입 방지 완성** (반나절)
+   - DB 재확인, 분산 락
+   - 목표: 중복 진입 0건
+
+### Phase 3: 개선 (1일) - 정확도 향상
+6. **슬리피지 시뮬레이션** (반나절)
+   - ATR 기반 동적 슬리피지
+   - 목표: Paper 실제 시장 반영
+
+7. **전략별 독립 설정** (반나절)
+   - cooldown_minutes, max_trades_per_hour
+   - 목표: 시간당 5건 이하
+
+**총 예상 기간**: 3.5일
+
 ## 체크리스트
 
 ### 구현
 
-- [ ] **TP/SL 재조정**
-  - [ ] `price_levels()` TP1 2.0R, TP2 4.5R
-  - [ ] 동적 SL (ATR * 1.5, 2~6%)
-  - [ ] config.yml 키 추가
-  - [ ] Trailing Stop TP1 활성화
+- [x] **0-1. Extreme Loss Guard 강화** (Phase 0 - CRITICAL) ✅ 완료
+  - [x] engine.py: WebSocket 가격 업데이트 시 Extreme Loss 체크 추가
+  - [x] position_tracker.py: check_extreme_loss_realtime() 함수 추가
+  - [x] 30분 스모크 테스트: -20% 초과 0건 검증
 
-- [ ] **중복 진입 방지**
-  - [ ] `check_duplicate_entry()` 함수
-  - [ ] DB 재확인 로직
-  - [ ] Redis 분산 락 (optional)
-  - [ ] 상태 로그 추가
+- [x] **0-2. Flash-Guard 임계값 조정** (Phase 0 - 긴급) ✅ 완료
+  - [x] config.yml: flash_guard.threshold_pct 0.03 → 0.15
+  - [x] 30분 스모크 테스트: Flash-Guard 발동 0건 (정상 동작)
 
-- [ ] **슬리피지 시뮬레이션**
-  - [ ] `PaperBroker` 동적 슬리피지
-  - [ ] ATR 기반 계산
-  - [ ] LIMIT 주문 0% 슬리피지
-  - [ ] config 설정
+- [x] **1. SL/TP 재조정** (Phase 1 - 긴급) ✅ 완료 (2025-11-11)
+  - [x] config.yml: exits.tp1_r=2.0, tp2_r=null, sl_max_pct=6.0, sl_min_pct=2.0, sl_atr_multiplier=1.5
+  - [x] common/calculations.py: price_levels() config 파라미터 추가, ATR 기반 동적 SL (2~6%)
+  - [x] execution/tp_manager.py: calculate_tp_levels() config 적용
+  - [x] execution/position_tracker.py: TP1 도달 시 Trailing Stop 활성화 (trailing_activate_at="TP1")
+  - [x] execution/engine.py: config 전달 (모든 호출부)
+  - [x] **긴급 수정**: strategies/*.py 모든 전략 파일에 config 전달 추가 (scalping, daytrade, swing, trend, reversion, breakout)
+  - [x] 단위 테스트 작성 및 통과 (5/5: 동적 SL max/min/normal, 하위 호환, SHORT 포지션)
+  - [x] **12분 스모크 테스트 완료** (12:27~12:39):
+    - SL 범위: 2.05~6.05% (평균 3.12%) ✅ 100% 준수
+    - -8% 초과 손실: 0건 ✅
+    - TP1 R-Multiple: 2.90~2.93R ✅
+    - 시스템 에러: 0건 ✅
+    - 총 거래: 8건, 승률: 25% (샘플 부족)
+  - [x] **25분 확장 테스트 결과** (12:42~13:01, **중복 진입 문제로 중단**):
+    - 총 거래: 105건 (비정상 증가)
+    - COAIUSDT 중복 진입: 47건 (2분간) ❌❌❌
+    - -8% 초과 손실: 7건 (모두 COAIUSDT)
+    - **Phase 1 자체는 성공**: COAIUSDT 제외 시 SL 2.05~6.05%, -8% 초과 0건 ✅
+    - **Phase 2 긴급**: 중복 진입 방지 우선 구현 필요
+  - [ ] Phase 1 30분~1시간 최종 테스트: Phase 2 중복 진입 방지 완료 후 재실시
+
+- [ ] **2. Telegram 메시지 전달 안정성** (Phase 2 - 중요)
+  - [ ] 우선순위 큐 구현
+  - [ ] 배치 전송 (1초당 1개)
+  - [ ] 실패 시 로컬 로그 보존
+  - [ ] config.yml telegram.rate_limit 추가
+
+- [x] **3. 중복 진입 방지** (Phase 2 - 🚨 **최우선 긴급**) ✅ 완료 및 검증 (2025-11-11)
+  - [x] DB 재확인 로직 추가 (메모리 + DB 이중 체크)
+  - [x] config.yml: risk.duplicate_check_db=true
+  - [x] execution/engine.py: 기존 메모리 체크 + DB SELECT COUNT(*) 추가
+  - [x] 에러 처리: DB 오류 시 안전 우선 (메모리 체크 통과 시 진행)
+  - **긴급 사유**: COAIUSDT 2분간 47건 중복 진입 발생, -14.26% 손실
+  - [x] **테스트 완료 (15분)**: 겹치는 포지션 0건 ✅, 메모리 체크 수십 건 차단 ✅
+  - [ ] Redis 분산 락 (optional, 필요 시 추가)
+
+- [x] **4. 슬리피지 시뮬레이션 개선** (Phase 2 완성 - 🚨 **긴급**) ✅ 완료 (2025-11-11)
+  - **현재 문제**:
+    - 고정 슬리피지 0.05% → 현실과 괴리
+    - SL 청산 시 Close 가격 사용 → 급락/급등 시 손실 악화 (SL 6.05% → 실제 손실 -34.54%)
+  - **개선 방안** (방안 A: SL + 동적 슬리피지, 업계 표준):
+    - [x] `common/calculations.py`: `calculate_dynamic_slippage()` 함수 추가
+      - ATR 기반 변동성 계산
+      - 주문 타입별 승수 (MARKET: 1.0x, SL: 3.0x)
+      - 최대 6% 제한
+    - [x] `execution/adapters/brokers.py`: `PaperBroker.execute(atr=None)` 파라미터 추가
+      - 하위 호환 유지 (atr 없으면 기존 고정값 사용)
+      - config 기반 동적 슬리피지 계산
+    - [x] `execution/position_tracker.py`: `check_tpsl_with_partial()` exit_price 반환
+      - SL 도달 시 슬리피지 적용된 청산 가격 계산
+      - 반환값: (hit, qty, reason, exit_price)
+    - [x] `execution/engine.py`: ATR 전달 및 exit_price 사용
+      - decision에 ATR 추가
+      - PaperBroker.execute()에 ATR 전달
+      - SL 청산 시 position_tracker 반환 exit_price 사용
+    - [x] `config.yml`: fees.slippage_* 설정 추가
+      - slippage_base: 0.0005
+      - slippage_multiplier: {market: 1.0, sl: 3.0}
+      - slippage_max: 0.06
+  - **영향 파일**: common/calculations.py, execution/adapters/brokers.py, execution/position_tracker.py, execution/engine.py, config.yml
+  - **구현 완료**: 2025-11-11
+  - **다음 단계**: 단위 테스트 → Paper 1시간 검증
+  - **수용 기준**: -8% 초과 손실 0건, SL 슬리피지 < 6%
+
+- [ ] **5. 전략별 독립 설정** (Phase 3 - 개선)
+  - [ ] config.yml strategies.* 구조
+  - [ ] cooldown_minutes 적용
+  - [ ] max_trades_per_hour 적용
+  - [ ] 전략별 검증 로직
 
 ### 테스트
 

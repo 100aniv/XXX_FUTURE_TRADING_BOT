@@ -306,39 +306,64 @@ def price_levels(
     atr: float,
     rr: float,
     atr_mult_sl: float = 1.5,
-    max_sl_pct: float = 0.08  # ⭐ CRITICAL: SL 상한 8% (상용 시스템 기준)
+    max_sl_pct: float = 0.08,  # ⭐ CRITICAL: SL 상한 8% (상용 시스템 기준)
+    config: dict = None  # ⭐ PHASE7-2 Phase 1: config 기반 동적 SL/TP
 ) -> Tuple[float, float, float]:
     """
     진입/손절/익절 가격 계산 (⭐ CRITICAL: SL % 상한 적용)
+    
+    ⭐ PHASE7-2 Phase 1: 동적 SL/TP 지원
+    - config 전달 시: exits.sl_atr_multiplier, sl_max_pct, sl_min_pct 적용
+    - config 미전달 시: 기존 파라미터 사용 (하위 호환)
     
     Args:
         side: "LONG" 또는 "SHORT"
         price: 현재 가격
         atr: ATR 값
         rr: Risk/Reward 비율
-        atr_mult_sl: 손절 ATR 배수
-        max_sl_pct: 최대 SL % (기본 8%, 상용 시스템 권장 2~8%)
+        atr_mult_sl: 손절 ATR 배수 (config 없을 때만 사용)
+        max_sl_pct: 최대 SL % (config 없을 때만 사용)
+        config: 설정 딕셔너리 (exits 섹션 포함)
     
     Returns:
         tuple: (진입가, 손절가, 익절가)
         
     Examples:
         >>> price_levels("LONG", 100, 2, 2.0)
-        (100, 97.0, 106.0)  # 진입 100, 손절 97, 익절 106
+        (100, 97.0, 106.0)  # 진입 100, 손절 97, 익절 106 (기존 방식)
+        
+        >>> price_levels("LONG", 100, 2, 2.0, config={"exits": {"sl_atr_multiplier": 1.5, "sl_max_pct": 6.0, "sl_min_pct": 2.0}})
+        (100, 97.0, 106.0)  # config 기반 동적 SL
         
     Notes:
         - SL이 max_sl_pct를 초과하면 max_sl_pct로 제한
-        - 상용 시스템 기준: SL -2~8% (변동성 작은 코인 -2~5%, 큰 코인 -5~8%)
+        - SL이 min_sl_pct 미만이면 min_sl_pct로 제한 (PHASE7-2 Phase 1)
+        - 상용 시스템 기준: SL -2~6% (변동성 작은 코인 -2~4%, 큰 코인 -4~6%)
     """
+    # ⭐ PHASE7-2 Phase 1: config 기반 동적 SL 계산
+    if config:
+        exits_config = config.get('exits', {})
+        atr_mult_sl = exits_config.get('sl_atr_multiplier', atr_mult_sl)
+        max_sl_pct = exits_config.get('sl_max_pct', max_sl_pct) / 100.0  # 6.0 → 0.06
+        min_sl_pct = exits_config.get('sl_min_pct', 2.0) / 100.0  # 2.0 → 0.02
+    else:
+        min_sl_pct = 0.02  # 기본값 2%
+    
     # 기본 ATR 기반 SL 계산
     sl_distance = atr_mult_sl * atr
+    sl_distance_pct = sl_distance / price
     
-    # ⭐ CRITICAL: SL % 상한 적용 (비정상적으로 큰 ATR 방지)
+    # ⭐ CRITICAL: SL % 범위 제한 (비정상적으로 큰 ATR 방지)
     max_sl_distance = price * max_sl_pct
+    min_sl_distance = price * min_sl_pct
+    
     if sl_distance > max_sl_distance:
         sl_distance = max_sl_distance
         # 로그 남기기 (선택)
-        # logger.warning(f"⚠️ SL 상한 적용: ATR 기반 {sl_distance/price*100:.2f}% → {max_sl_pct*100:.1f}%")
+        # logger.warning(f"⚠️ SL 상한 적용: ATR 기반 {sl_distance_pct*100:.2f}% → {max_sl_pct*100:.1f}%")
+    elif sl_distance < min_sl_distance:
+        sl_distance = min_sl_distance
+        # logger.warning(f"⚠️ SL 하한 적용: ATR 기반 {sl_distance_pct*100:.2f}% → {min_sl_pct*100:.1f}%")
     
     if side == "LONG":
         entry = price
@@ -380,6 +405,68 @@ def tp_from_rr(signal_info: dict, rr: float) -> float:
         return entry + (risk_dist * rr)
     else:  # SHORT
         return entry - (risk_dist * rr)
+
+
+def calculate_dynamic_slippage(
+    atr: float,
+    price: float,
+    order_type: str = 'MARKET',
+    config: dict = None
+) -> float:
+    """
+    ⭐ PHASE7-2 Phase 2: ATR 기반 동적 슬리피지 계산
+    
+    상용 프로그램 분석 (QuantConnect, Backtrader, Zipline):
+    - 기본 슬리피지 + 변동성 팩터 조합
+    - 주문 타입별 차등 적용
+    - 최대값 제한
+    
+    Args:
+        atr: ATR 값 (Average True Range)
+        price: 현재 가격
+        order_type: 주문 타입 ('MARKET' | 'SL')
+        config: 설정 딕셔너리 (fees 섹션 포함)
+    
+    Returns:
+        float: 슬리피지 비율 (예: 0.0005 = 0.05%)
+    
+    Examples:
+        >>> calculate_dynamic_slippage(3.0, 100, 'MARKET', config)
+        0.0005  # 기본 슬리피지 (변동성 낮음)
+        
+        >>> calculate_dynamic_slippage(10.0, 100, 'SL', config)
+        0.0305  # 0.0005 + (0.10 * 3.0) = 3.05% (변동성 높은 SL)
+    
+    Notes:
+        - MARKET 주문: 1.0x 승수 (일반 진입/청산)
+        - SL 주문: 3.0x 승수 (급격한 가격 변동)
+        - 최대 슬리피지: 6% (config.fees.slippage_max)
+    """
+    if not config:
+        config = {}
+    
+    fees_cfg = config.get('fees', {})
+    
+    # 기본 슬리피지
+    base_slip = fees_cfg.get('slippage_base', 0.0005)
+    
+    # ATR 기반 변동성 팩터
+    volatility_pct = (atr / price) if price > 0 else 0.01
+    
+    # 주문 타입별 승수
+    multiplier_cfg = fees_cfg.get('slippage_multiplier', {})
+    if order_type == 'SL':
+        mult = multiplier_cfg.get('sl', 3.0)
+    else:  # MARKET
+        mult = multiplier_cfg.get('market', 1.0)
+    
+    # 동적 슬리피지 계산
+    dynamic_slip = base_slip + (volatility_pct * mult)
+    
+    # 최대값 제한
+    max_slip = fees_cfg.get('slippage_max', 0.06)
+    
+    return min(dynamic_slip, max_slip)
 
 
 def get_funding_rate(symbol: str, use_cache: bool = True) -> float:

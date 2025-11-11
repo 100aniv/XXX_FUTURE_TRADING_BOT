@@ -470,6 +470,16 @@ exits:
 
 아래 스키마는 .windsurfrules를 준수하며, 상용 파리티(전략별·포트폴리오 레벨 분리), Redis 네임스페이스, DB env/run_id 정책을 반영합니다.
 
+### 현행 구현 상태 요약
+
+- **FlowGuardian 게이트**: PAPER/LIVE 진입 전 assert_ready 1회 검증(엔진)
+- **캔들 dedup/쿨다운 TTL/신호 멱등**: 구현됨(PR9)
+- **PortfolioManager**: PnL/Equity 단일 소스·일일 리셋 구현(PR12)
+- **TP/SL 서버주문**: SL 서버 주문만 사용(Option C), TP는 로컬 관리
+- **수량 반올림(round_qty)**: 미구현. 현재 `round(qty, 3)` 고정(Precision 재발 소지)
+- **전략별 제한(cooldown_minutes/max_trades_per_hour)**: 미구현. 현재 `cooldown_candles`만
+- **PaperBroker 동적 슬리피지**: 미구현(고정 0.05%)
+
 ```yaml
 # config.yml v7 (Ensemble + Ops)
 runtime:

@@ -98,7 +98,8 @@ def signal_logic(df: pd.DataFrame, config: dict) -> Dict[str, Any]:
         entry, sl, tp = price_levels(
             side, price, atr, 
             config["rr"], 
-            config["atr_mult_sl"]
+            config["atr_mult_sl"],
+            config=config  # ⭐ PHASE7-2 Phase 1: config 전달 (동적 SL/TP)
         )
     
     # 레버리지 제안

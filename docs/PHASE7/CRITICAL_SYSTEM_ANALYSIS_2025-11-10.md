@@ -1122,7 +1122,78 @@ ensemble:
 
 ---
 
-**최종 업데이트**: 2025-11-10  
-**참조 문서**: [PHASE7_ALGORITHM_BEST.md](PHASE7_ALGORITHM_BEST.md), [PHASE7-1 ~ PHASE7-5 마스터 플랜]  
-**상태**:  분석 완료,  개선 계획 수립 완료,  PHASE7-2 구현 대기
+---
+
+## 🔧 PHASE7-2 슬리피지 개선 (2025-11-11 추가)
+
+### 발견 문제
+
+**2.4시간 Paper 테스트 결과 (2025-11-11)**:
+- 총 거래: 285건
+- -8% 초과 손실: **11건 (3.9%)**
+- 최악 손실: **-34.54%** (CCUSDT SHORT, SL 6.05% 설정)
+- 원인: **고정 슬리피지 0.05% + SL 청산 시 Close 가격 사용**
+
+### 해결 방안 (방안 A: SL + 동적 슬리피지, 업계 표준)
+
+#### 1. ATR 기반 동적 슬리피지 계산
+
+**신규 함수**: `common/calculations.py::calculate_dynamic_slippage()`
+```python
+def calculate_dynamic_slippage(atr: float, price: float, order_type: str = 'MARKET', config: dict = None) -> float:
+    """
+    ATR 기반 동적 슬리피지 계산
+    - base: 0.0005 (0.05%)
+    - volatility: ATR / price
+    - multiplier: MARKET=1.0x, SL=3.0x
+    - max: 6%
+    """
+```
+
+#### 2. PaperBroker 슬리피지 적용
+
+**변경**: `execution/adapters/brokers.py::PaperBroker.execute(atr=None)`
+- ATR 파라미터 추가 (하위 호환 유지)
+- 동적 슬리피지 계산 호출
+
+#### 3. SL 청산 가격 개선
+
+**변경**: `execution/position_tracker.py::check_tpsl_with_partial()`
+- SL 도달 시 슬리피지 적용된 청산 가격 계산
+- 반환값: `(hit, qty, reason, exit_price)` → exit_price 추가
+
+#### 4. config.yml 설정
+
+```yaml
+fees:
+  taker: 0.0004
+  maker: 0.0002
+  slippage_base: 0.0005      # 기본 0.05%
+  slippage_multiplier:
+    market: 1.0              # MARKET 주문
+    sl: 3.0                  # SL 청산 (3배)
+  slippage_max: 0.06         # 최대 6%
+```
+
+### 업계 표준 검증
+
+| 플랫폼 | 방식 |
+|--------|------|
+| QuantConnect | SL + 슬리피지 |
+| Backtrader | SL + 슬리피지 |
+| Zipline | ATR 기반 슬리피지 |
+| TradingView | SL + 슬리피지 |
+
+### 수용 기준
+
+- [ ] -8% 초과 손실: 0건
+- [ ] SL 슬리피지: < 6%
+- [ ] Paper 1시간 테스트 통과
+- [ ] 기존 테스트 suite 통과
+
+---
+
+**최종 업데이트**: 2025-11-11 (슬리피지 개선 추가)  
+**참조 문서**: [PHASE7_ALGORITHM_BEST.md](PHASE7_ALGORITHM_BEST.md), [PHASE7-2_MASTER_PLAN.md](PHASE7-2_MASTER_PLAN.md)  
+**상태**:  분석 완료,  슬리피지 개선 진행 중
 

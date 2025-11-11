@@ -359,6 +359,8 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict):
                                 entry=position["entry"],
                                 stop=position["sl"],
                                 side=position["side"],
+                                symbol=position.get("symbol", "BTCUSDT"),  # ⭐ PHASE7-1: symbol 전달
+                                config=config  # ⭐ PHASE7-2 Phase 1: config 전달 (동적 TP 레벨)
                             )
                             position["tp_levels"] = tp_levels
 
@@ -596,8 +598,18 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict):
         # 멀티심볼: candle_symbol 사용
         risk.flash_guard_update(candle_symbol, current_price, ts)
 
-        # 활성 포지션 체크 (TP/SL + Trailing) - ⭐ 같은 심볼만 체크
+        # ⭐ PHASE7-2 Phase 0: 실시간 Extreme Loss 체크 (WebSocket 가격 업데이트마다)
+        # - 1분 내 급락 즉시 감지 (캔들 종료 대기 없음)
         positions_to_close = []
+        for pos_id, position in list(active_positions.items()):
+            if position["symbol"] != candle_symbol:
+                continue
+            
+            should_close, reason = tracker.check_extreme_loss_realtime(position, current_price)
+            if should_close:
+                positions_to_close.append((pos_id, position, reason))
+
+        # 활성 포지션 체크 (TP/SL + Trailing) - ⭐ 같은 심볼만 체크
         for pos_id, position in list(active_positions.items()):
             # ⭐ 심볼이 다르면 스킵 (멀티 심볼 환경)
             if position["symbol"] != candle_symbol:
@@ -614,8 +626,9 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict):
             old_sl = position.get('sl')
             
             # ⭐ PHASE7-1: OHLC 데이터 전달 (High/Low SL 체크용)
-            should_action, partial_qty, reason = tracker.check_tpsl_with_partial(
-                position, current_price, atr, candle=candle
+            # ⭐ PHASE7-2 Phase 2: exit_price 반환 추가 (SL 슬리피지)
+            should_action, partial_qty, reason, exit_price = tracker.check_tpsl_with_partial(
+                position, current_price, atr, candle=candle, config=config  # ⭐ PHASE7-2 Phase 1: config 전달 (Trailing 조기 활성화)
             )
             
             # ⭐ PR10: 트레일링 SL 갱신 감지 및 서버 업데이트
@@ -653,16 +666,19 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict):
                     # close_trade_in_db에서 부분 청산 지원 필요
                 else:
                     # 전체 청산 (SL 또는 남은 30%)
-                    positions_to_close.append((pos_id, position, reason))
+                    # ⭐ PHASE7-2 Phase 2: exit_price도 전달 (SL 슬리피지)
+                    positions_to_close.append((pos_id, position, reason, exit_price))
 
         # 포지션 종료 처리
         drawdown_guard_triggered = False  # 플래그 추가
         fee_rate = config.get('fees', {}).get('taker', 0.0004)
-        for pos_id, position, reason in positions_to_close:
-            pnl = calculate_pnl(position, current_price, fee_rate)
+        for pos_id, position, reason, exit_price in positions_to_close:
+            # ⭐ PHASE7-2 Phase 2: SL/EXTREME_LOSS 시 exit_price 사용
+            close_price = exit_price if exit_price else current_price
+            pnl = calculate_pnl(position, close_price, fee_rate)
             close_trade_in_db(
                 pos_id,
-                current_price,
+                close_price,
                 pnl,
                 reason,
                 ts,
@@ -1083,6 +1099,12 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict):
         decision["sl_price"] = decision.get("sl", 0)
         decision["tp_price"] = decision.get("tp", 0)
         decision["symbol"] = candle_symbol  # ⭐ risk_manager를 위한 symbol 추가
+        
+        # ⭐ PHASE7-2 Phase 2: ATR 추가 (동적 슬리피지 계산용)
+        if df is not None and "atr" in df.columns and len(df) > 0:
+            decision["atr"] = df["atr"].iloc[-1]
+        else:
+            decision["atr"] = None
 
         # Risk 체크 (메서드 체크)
         if hasattr(risk, "allow_entry") and not risk.allow_entry(
@@ -1211,15 +1233,35 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict):
         new_side = decision.get("side")
         opposite_side = "SHORT" if new_side == "LONG" else "LONG"
         
-        # ⭐ CRITICAL: 동일 심볼 동일 방향 중복 진입 방지
+        # ⭐ CRITICAL: 동일 심볼 동일 방향 중복 진입 방지 (메모리 + DB 이중 체크)
+        # 1. 메모리 체크
         same_direction_positions = [
             (pos_id, pos) for pos_id, pos in list(active_positions.items())
             if pos["symbol"] == candle_symbol and pos["side"] == new_side
         ]
         
         if same_direction_positions:
-            logger.warning(f"⚠️ [중복 진입 방지] {candle_symbol} {new_side} 기존 포지션 {len(same_direction_positions)}개 존재 - 진입 스킵")
+            logger.warning(f"⚠️ [MEMORY] 중복 진입 방지: {candle_symbol} {new_side} 기존 포지션 {len(same_direction_positions)}개 존재 - 진입 스킵")
             continue  # 중복 진입 차단
+        
+        # 2. DB 재확인 (PHASE7-2 Phase 2: 메모리-DB 동기화 누락 방지)
+        if config.get('risk', {}).get('duplicate_check_db', True):
+            try:
+                with get_db_connection() as conn:
+                    with conn.cursor() as cur:
+                        cur.execute("""
+                            SELECT COUNT(*) FROM trading.trades
+                            WHERE symbol = %s AND side = %s 
+                              AND status = 'OPEN' AND mode = %s
+                        """, (candle_symbol, new_side, mode))
+                        db_open_count = cur.fetchone()[0]
+                        
+                        if db_open_count > 0:
+                            logger.warning(f"⚠️ [DB] 중복 진입 방지: {candle_symbol} {new_side} DB OPEN 포지션 {db_open_count}건 존재 - 진입 스킵")
+                            continue  # 중복 진입 차단
+            except Exception as e:
+                logger.error(f"❌ DB 중복 진입 체크 실패: {e}")
+                # DB 오류 시에도 메모리 체크는 통과했으므로 진행 (안전 우선)
         
         # 같은 심볼의 반대 포지션 찾기
         opposite_positions = [
@@ -1251,7 +1293,8 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict):
                 portfolio.remove_position(symbol=position["symbol"], position_id=pos_id)
         
         # ⭐ CRITICAL FIX: Broker 실행 (Paper/Live/Sim 모두)
-        fill = broker.execute(decision, qty)
+        # ⭐ PHASE7-2 Phase 2: ATR 전달 (동적 슬리피지 계산)
+        fill = broker.execute(decision, qty, atr=decision.get('atr'))
         
         if not fill.get("success"):
             logger.error(f"❌ 거래 실행 실패: {candle_symbol}")
@@ -1305,6 +1348,8 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict):
             stop=decision.get("sl"),
             side=decision.get("side"),
             atr=df["atr"].iloc[-1] if "atr" in df.columns else None,
+            symbol=candle_symbol,  # ⭐ PHASE7-1: symbol 전달 (정확한 tick_size 반올림)
+            config=config  # ⭐ PHASE7-2 Phase 1: config 전달 (동적 TP 레벨)
         )
 
         # 포지션 번호 계산 (현재 활성 포지션 수 + 1)
