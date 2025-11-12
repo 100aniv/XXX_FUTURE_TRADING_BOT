@@ -5,16 +5,24 @@
 PHASE 7-1/7-2 완료 후 성과 개선 완료. 하지만 **운영 안정성** 부족:
 - 컨테이너 재시작 시 포지션 유실 위험
 - Live 모드: Binance SL 주문 유실
+- 🚨 **TP 거래소 미등록**: 프로그램 종료 시 TP 미작동 (수익 기회 손실)
 - 헬스체크 부실 (튜너 Unhealthy 방치)
 - 모니터링 없음 (Dashboard, Alert)
+- 초기화 옵션 없음 (테스트 목적 재시작 불편)
 
 Live 운영을 위한 **필수 안전장치** 구축.
+
+**PHASE7-2 연기 항목 통합:**
+- 항목 7 (--reset 옵션): Graceful Shutdown 로직과 통합
+- TP 거래소 등록: Live 모드 안전장치
 
 **참고**: [PHASE7_ALGORITHM_BEST.md](PHASE7_ALGORITHM_BEST.md) - 앙상블 시스템 알고리즘 종합 개선안
 
 ## 목표 (Goals)
 
 - **Graceful Shutdown**: 종료 전 모든 포지션 정리
+- **--reset 옵션**: 테스트 초기화 지원 (PHASE7-2 항목 7 통합)
+- **TP 거래소 등록**: 프로그램 종료해도 TP 작동 보장 (Live 안전)
 - **State Recovery**: 재시작 시 포지션/주문 동기화
 - **Docker Healthcheck**: DB/Redis/API 연결 검증
 - **Monitoring Dashboard**: Grafana 기본 대시보드
@@ -22,14 +30,16 @@ Live 운영을 위한 **필수 안전장치** 구축.
 
 ## 범위 (Scope, In)
 
-### 1. Graceful Shutdown (1일)
+### 1. Graceful Shutdown + --reset 옵션 (1.5일) ⭐ PHASE7-2 항목 7 통합
 
 **문제**:
 - Daily Loss Limit 도달 → `sys.exit(1)` → 강제 종료
 - OPEN 포지션 방치
 - Live: Binance SL/TP 주문 남음
+- **테스트 초기화**: 기존 포지션 남아있어 깨끗한 시작 불가
 
 **구현**:
+#### A. Graceful Shutdown (기본)
 - 종료 신호 핸들러 (SIGTERM, SIGINT)
 - 포지션 정리 순서:
   1. 신규 진입 중단
@@ -38,12 +48,133 @@ Live 운영을 위한 **필수 안전장치** 구축.
   4. 상태 저장 (DB + Redis)
   5. 정상 종료
 
-**영향 파일**:
-- `main.py` (신호 핸들러)
-- `execution/engine.py` (shutdown 메서드)
-- `execution/adapters/brokers.py` (LiveBroker 주문 취소)
+#### B. --reset 옵션 (초기화 모드) ⭐ PHASE7-2 항목 7
+- **용도**: 테스트 목적 초기화 (깨끗한 시작)
+- **Paper 모드**:
+  1. DB OPEN 포지션 강제 청산 (status='CLOSED', exit_reason='RESET')
+  2. equity → config.initial_capital
+  3. 새 run_id 생성
+  4. Redis 상태 초기화
+- **Live 모드**: --reset 금지 (에러 발생)
+  - 이유: 거래소에 실제 포지션 존재
+  - 절차: 수동 청산 후 시작
 
-### 2. State Recovery (1일)
+**사용 예시**:
+```bash
+# Paper 재시작 (기본, 포지션 복원)
+docker-compose restart trading_bot_paper_ensemble
+
+# Paper 초기화 (테스트 목적)
+docker-compose run --rm -e RESET_MODE=true trading_bot_paper_ensemble
+
+# Live는 --reset 금지
+python main.py --mode live --reset  # ERROR: Live 모드는 수동 청산 필요
+```
+
+**영향 파일**:
+- `main.py` (신호 핸들러 + argparse --reset)
+- `execution/engine.py` (shutdown 메서드 + reset_mode 처리)
+- `execution/adapters/brokers.py` (LiveBroker 주문 취소)
+- `docker-compose.yml` (RESET_MODE 환경변수 지원)
+
+**로직 공유**:
+- Graceful Shutdown과 --reset은 동일한 "포지션 청산" 로직 재사용
+- 차이점: --reset은 DB 강제 청산 + equity 초기화 추가
+
+### 2. TP 거래소 등록 (1일) 🚨 높은 우선순위
+
+**문제 (2025-11-11 SYSTEM_OPERATIONS_ANALYSIS.md)**:
+- 현재: SL만 거래소 등록 ✅, TP는 프로그램 메모리 ❌
+- 위험: 프로그램 종료 시 TP 미작동 → 수익 기회 손실
+- 시나리오:
+  ```
+  1. BTCUSDT LONG @ $50,000
+  2. SL $49,500 (거래소) ✅
+  3. TP1 $51,000 (메모리) ❌
+  4. 프로그램 크래시
+  5. 가격 $51,500 도달 → TP 미작동
+  6. 가격 반전 → SL $49,500 터짐
+  7. 손실: $1,500 (이익 기회 + 손실)
+  ```
+
+**구현 (Option C: 하이브리드)**:
+```python
+# execution/adapters/brokers.py (LiveBroker)
+def create_tp_order(self, position: dict, tp_price: float, qty_pct: float = 100) -> dict:
+    """
+    TP 주문 등록 (Binance TAKE_PROFIT_MARKET)
+    
+    Args:
+        position: 포지션 정보 {'id': int, 'symbol': str, 'side': str, 'qty': float}
+        tp_price: TP 가격
+        qty_pct: 청산 비율 (50 = 50% 청산)
+    
+    Returns:
+        {'success': bool, 'order_id': int}
+    """
+    try:
+        symbol = position['symbol']
+        side = position['side']
+        qty = position['qty'] * (qty_pct / 100)
+        
+        close_side = 'SELL' if side == 'LONG' else 'BUY'
+        
+        tp_order = self.client.futures_create_order(
+            symbol=symbol,
+            side=close_side,
+            type='TAKE_PROFIT_MARKET',
+            stopPrice=tp_price,
+            quantity=qty,
+            positionSide='BOTH',
+            reduceOnly=True  # 포지션 감소만
+        )
+        
+        if not hasattr(self, 'tp_orders'):
+            self.tp_orders = {}
+        self.tp_orders[position['id']] = tp_order['orderId']
+        
+        logger.info(f"✅ [LIVE] TP 주문 등록: {symbol} @ ${tp_price:.2f} ({qty_pct}%)")
+        return {'success': True, 'order_id': tp_order['orderId']}
+        
+    except BinanceAPIException as e:
+        logger.error(f"❌ [LIVE] TP 주문 등록 실패: {e}")
+        return {'success': False, 'error': str(e)}
+
+# execution/engine.py (진입 시 호출)
+if mode == "live":
+    # SL 등록 (기존)
+    broker.create_sl_order(...)
+    
+    # TP1 등록 (신규, 50%)
+    if tp_levels.get('TP1'):
+        broker.create_tp_order(
+            position={'id': position_id, 'symbol': symbol, 'side': side, 'qty': qty},
+            tp_price=tp_levels['TP1'],
+            qty_pct=50
+        )
+    
+    # TP2는 프로그램 관리 (유연성 유지)
+```
+
+**장점**:
+- SL + TP1 거래소 보호 → 최소 수익 보장
+- TP2, Trailing은 프로그램 관리 → 유연성 유지
+- 프로그램 종료해도 TP1 50% 작동
+
+**단점**:
+- 비정상 종료 시 TP2 손실 (허용 가능)
+
+**영향 파일**:
+- `execution/adapters/brokers.py` (LiveBroker.create_tp_order 추가)
+- `execution/engine.py` (진입 시 TP1 거래소 등록)
+- `config.yml` (tp_exchange_registration 설정)
+
+**수용 기준**:
+- Live 모드 진입 시 TP1 주문 ID 로그 확인
+- 프로그램 재시작 후 TP1 주문 유지 확인
+- Binance 주문 목록에서 TAKE_PROFIT_MARKET 확인
+
+### 3. State Recovery (1일)
 
 **문제**:
 - 재시작 시 DB OPEN 포지션 복구 시도
@@ -66,7 +197,7 @@ Live 운영을 위한 **필수 안전장치** 구축.
 - `execution/adapters/brokers.py` (LiveBroker 동기화)
 - `common/redis_client.py` (상태 저장/로드)
 
-### 3. Docker Healthcheck (반나절)
+### 4. Docker Healthcheck (반나절)
 
 **문제**:
 - 현재: Python 프로세스만 체크
@@ -87,7 +218,7 @@ Live 운영을 위한 **필수 안전장치** 구축.
 - `docker-compose.yml`
 - `Dockerfile` (HEALTHCHECK 추가)
 
-### 4. Monitoring Dashboard (2일)
+### 5. Monitoring Dashboard (2일)
 
 **문제**:
 - 텔레그램 로그만 존재
@@ -113,6 +244,7 @@ Live 운영을 위한 **필수 안전장치** 구축.
 ## 제외 (Out-of-Scope)
 
 - 전략/리스크 로직 (Strategy, Risk Manager)
+- Manager 상태 복원 (PHASE7-2 항목 8에서 구현)
 - 백테스트 파이프라인 (PHASE 7-4)
 - 신호 품질 개선 (PHASE 7-4)
 - Live 전환 (PHASE 7-5)
@@ -149,6 +281,14 @@ operations:
   graceful_shutdown_timeout: 60     # 최대 60초
   close_positions_on_shutdown: true # 포지션 정리
   cancel_orders_on_shutdown: true   # 주문 취소 (Live)
+  
+  # Reset 옵션
+  allow_reset_paper: true           # Paper --reset 허용
+  allow_reset_live: false           # Live --reset 금지 (안전)
+  
+  # TP 거래소 등록 (Live)
+  tp_exchange_registration: true    # TP1 거래소 등록
+  tp_exchange_percentage: 50        # TP1 청산 비율 (50%)
   
   # State Recovery
   state_recovery_enabled: true
@@ -542,6 +682,8 @@ def start_exporter(port=9090):
 
 - [ ] 컨테이너 재시작: 포지션 유실 **0건**
 - [ ] Graceful Shutdown: 모든 OPEN 포지션 청산
+- [ ] --reset 옵션: Paper 초기화 동작 확인
+- [ ] TP 거래소 등록: Live 모드 TP1 주문 ID 확인
 - [ ] State Recovery: DB-Binance 불일치 알림
 - [ ] Healthcheck: Unhealthy 3회 연속 → 자동 재시작
 - [ ] Dashboard: Equity/PnL/승률 실시간 표시
@@ -609,11 +751,20 @@ docker unpause trading_db_postgres
 
 ### 구현
 
-- [ ] **Graceful Shutdown**
+- [ ] **Graceful Shutdown + --reset**
   - [ ] 신호 핸들러 (SIGTERM/SIGINT)
-  - [ ] 포지션 청산 로직
+  - [ ] 포지션 청산 로직 (공통)
   - [ ] Binance 주문 취소 (Live)
   - [ ] Redis 상태 저장
+  - [ ] --reset 옵션: argparse + 환경변수
+  - [ ] Paper 초기화 로직
+  - [ ] Live --reset 금지 (에러 처리)
+
+- [ ] **TP 거래소 등록**
+  - [ ] LiveBroker.create_tp_order() 메서드
+  - [ ] engine.py: 진입 시 TP1 50% 등록
+  - [ ] 주문 ID 저장/복원
+  - [ ] State Recovery 연동
 
 - [ ] **State Recovery**
   - [ ] DB OPEN 포지션 로드
@@ -659,6 +810,12 @@ docker unpause trading_db_postgres
 - Healthcheck 오탐? → 재시도 3회
 - Dashboard 리소스? → Sampling rate 조정
 
+## 연관 문서
+
+- **PHASE7-2_MASTER_PLAN.md**: 항목 7(--reset) 원본 설계
+- **SYSTEM_OPERATIONS_ANALYSIS.md**: TP 위험 분석 및 TO-BE 방안
+- **CRITICAL_SYSTEM_ANALYSIS_2025-11-10.md**: 포지션 관리 분석
+
 ## 릴리즈 노트
 
-PHASE7-3: Graceful Shutdown + State Recovery + Healthcheck + Dashboard로 Live 운영 안정성 확보. 컨테이너 재시작 안전, 포지션 유실 0건.
+PHASE7-3: Graceful Shutdown + --reset 옵션 + TP 거래소 등록 + State Recovery + Healthcheck + Dashboard로 Live 운영 안정성 확보. 컨테이너 재시작 안전, 포지션 유실 0건, TP 안전 보장.
