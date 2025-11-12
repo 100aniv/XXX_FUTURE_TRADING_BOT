@@ -797,10 +797,14 @@ HAVING COUNT(*) > 1;
   - [x] **테스트 완료 (15분)**: 겹치는 포지션 0건 ✅, 메모리 체크 수십 건 차단 ✅
   - [ ] Redis 분산 락 (optional, 필요 시 추가)
 
-- [ ] **4. 슬리피지 시뮬레이션 개선** (Phase 2 완성 - 🚨 **긴급**) ⚠️ 구현 완료, 테스트 대기
+- [ ] **4. 슬리피지 시뮬레이션 개선** (Phase 2 완성 - 🚨 **긴급**) ⚠️ 구현 완료, 이중 검증 문제 발견 (2025-11-12)
   - **현재 문제**:
     - 고정 슬리피지 0.05% → 현실과 괴리
     - SL 청산 시 Close 가격 사용 → 급락/급등 시 손실 악화 (SL 6.05% → 실제 손실 -34.54%)
+    - **🚨 신규 발견 (2025-11-12)**: 슬리피지 가드 이중 검증 문제
+      - `calculate_dynamic_slippage()`: 최대 6% 허용
+      - `check_slippage_guard()`: 0.5%만 허용
+      - 결과: 대부분의 진입 차단 (정상 변동성 4-5%도 차단)
   - **개선 방안** (방안 A: SL + 동적 슬리피지, 업계 표준):
     - [x] `common/calculations.py`: `calculate_dynamic_slippage()` 함수 추가 (구현 완료)
       - ATR 기반 변동성 계산
@@ -820,13 +824,22 @@ HAVING COUNT(*) > 1;
       - slippage_base: 0.0005
       - slippage_multiplier: {market: 1.0, sl: 3.0}
       - slippage_max: 0.06
-  - **영향 파일**: common/calculations.py, execution/adapters/brokers.py, execution/position_tracker.py, execution/engine.py, config.yml
-  - **구현 완료**: 2025-11-11
-  - **⚠️ 테스트 미완료**: 단위 테스트 + Paper 실행 검증 필요
+    - [x] `execution/engine.py`: 슬리피지 가드 순서 수정 (2025-11-12)
+      - Broker 실행 → 슬리피지 가드 → DB 저장 순서로 변경
+      - Manager 등록 전 검증으로 카운트 불일치 문제 해결
+    - [ ] **⚠️ 추가 수정 필요**: 슬리피지 가드 이중 검증 제거
+      - Option 1: `check_slippage_guard()` 제거 (상용 프로그램 패턴)
+      - Option 2: 극단 이상치만 감지 (10%+ 초과, API 오류)
+  - **영향 파일**: common/calculations.py, execution/adapters/brokers.py, execution/position_tracker.py, execution/engine.py, config.yml, execution/risk_manager.py
+  - **구현 완료**: 2025-11-11, 순서 수정: 2025-11-12
+  - **⚠️ 테스트 중**: 단위 테스트 완료 (8개 통과), Paper 검증 대기
   - **다음 단계**:
-    - [ ] 단위 테스트: test_dynamic_slippage.py (ATR 계산, 슬리피지 범위)
+    - [x] 단위 테스트: test_dynamic_slippage.py (ATR 계산, 슬리피지 범위)
+    - [ ] 슬리피지 가드 역할 재정의 (제거 또는 극단 이상치 감지)
     - [ ] Paper 1시간 검증: SL 청산 로그 확인
     - [ ] 수용 기준 검증: -8% 초과 손실 0건, SL 슬리피지 < 6%
+  - **상용 프로그램 비교**: QuantConnect, Backtrader, Zipline은 별도 슬리피지 가드 없음 (모델 내장 max만 사용)
+  - **참조 문서**: [GUARD_EXECUTION_ORDER_ANALYSIS.md](GUARD_EXECUTION_ORDER_ANALYSIS.md)
   - **주의**: 체크 표시 착각 금지! 구현 != 검증
 
 - [x] **5. 포지션 복원 시 Manager 동기화 버그 수정** (Phase 2 긴급 수정) ✅ 완료 (2025-11-11)
