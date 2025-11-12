@@ -94,7 +94,7 @@ class PaperBroker:
         # ⭐ PHASE7-2 Phase 2: 동적 슬리피지 계산
         if atr:
             from common.calculations import calculate_dynamic_slippage
-            slip = calculate_dynamic_slippage(atr, price, 'MARKET', self.config)
+            slip = calculate_dynamic_slippage(atr, price, 'MARKET', self.config, mode='paper')
         else:
             slip = self.slippage_pct  # 기존 고정값 폴백 (하위 호환)
         

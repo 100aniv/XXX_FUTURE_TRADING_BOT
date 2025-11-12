@@ -1350,14 +1350,6 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict):
             logger.error(f"❌ 거래 실행 실패: {candle_symbol}")
             continue
         
-        # ⭐ PR11: Slippage Guard 체크 (DB 저장 및 Manager 등록 전에 먼저 체크)
-        expected_price = decision.get("entry_price", decision.get("entry", 0))
-        filled_price = fill.get("filled_price", 0)
-        if expected_price > 0 and filled_price > 0:
-            if not risk.check_slippage_guard(expected_price, filled_price):
-                logger.error(f"🚨 슬리피지 초과: {candle_symbol} - 진입 스킵 (예상=${expected_price:.4f}, 체결=${filled_price:.4f})")
-                continue  # 이 주문 스킵
-        
         # 포지션 ID 생성
         import uuid
         position_id = str(uuid.uuid4())

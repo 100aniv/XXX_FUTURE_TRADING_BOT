@@ -853,13 +853,22 @@ HAVING COUNT(*) > 1;
     - [x] 동적 슬리피지 구현 (ATR 기반, 주문 타입별 차등)
     - [x] 슬리피지 가드 순서 수정 (Manager 등록 전 검증)
     - [x] DB 포지션 카운트 = Manager 카운트 일치 검증
-    - [ ] **슬리피지 가드 역할 재정의** (제거 또는 극단 이상치만)
-    - [ ] Paper 진입 성공률 정상화 (현재: 거의 0% 차단)
+    - [x] **슬리피지 가드 제거** (2025-11-12, 상용 프로그램 패턴)
+      - engine.py L1353-1359 제거
+      - config.yml max_slippage_pct 주석 처리
+      - Live 모드 슬리피지 상한 강화 (Paper: 6%, Live: 4%)
+    - [ ] Paper 진입 성공률 정상화 (현재: 거의 0% 차단 → 목표: 정상)
     - [ ] Paper 1시간 검증:
       - [ ] 슬리피지 평균: < 2%
-      - [ ] 슬리피지 최대: < 6%
+      - [ ] 슬리피지 최대: Paper < 6%, Live < 4%
       - [ ] -8% 초과 손실: 0건
       - [ ] 진입 성공률: > 50%
+  - **구현 완료 (2025-11-12)**:
+    - execution/engine.py: 슬리피지 가드 체크 제거
+    - config.yml: max_slippage_pct 주석, slippage_max_live 추가 (4%)
+    - common/calculations.py: mode 파라미터 추가 (paper/live 구분)
+    - execution/adapters/brokers.py: Paper 모드 명시
+    - execution/position_tracker.py: Paper 모드 명시
   - **주의**: 체크 표시 착각 금지! 구현 != 검증
 
 - [x] **5. 포지션 복원 시 Manager 동기화 버그 수정** (Phase 2 긴급 수정) ✅ 완료 (2025-11-11)

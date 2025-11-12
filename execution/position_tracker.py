@@ -166,7 +166,8 @@ class PositionTracker:
                 
                 # 슬리피지 계산 (ATR 제공 시)
                 if atr and config:
-                    sl_slip = calculate_dynamic_slippage(atr, stop, 'SL', config)
+                    # Paper 모드 기준 (Live는 실제 API 체결가 사용)
+                    sl_slip = calculate_dynamic_slippage(atr, stop, 'SL', config, mode='paper')
                     # SL 가격에서 슬리피지만큼 악화
                     exit_price = stop * (1 + sl_slip) if side == 'SHORT' else stop * (1 - sl_slip)
                     logger.warning(

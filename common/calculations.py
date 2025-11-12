@@ -411,7 +411,8 @@ def calculate_dynamic_slippage(
     atr: float,
     price: float,
     order_type: str = 'MARKET',
-    config: dict = None
+    config: dict = None,
+    mode: str = 'paper'
 ) -> float:
     """
     ⭐ PHASE7-2 Phase 2: ATR 기반 동적 슬리피지 계산
@@ -426,21 +427,22 @@ def calculate_dynamic_slippage(
         price: 현재 가격
         order_type: 주문 타입 ('MARKET' | 'SL')
         config: 설정 딕셔너리 (fees 섹션 포함)
+        mode: 실행 모드 ('paper' | 'live')
     
     Returns:
         float: 슬리피지 비율 (예: 0.0005 = 0.05%)
     
     Examples:
-        >>> calculate_dynamic_slippage(3.0, 100, 'MARKET', config)
+        >>> calculate_dynamic_slippage(3.0, 100, 'MARKET', config, 'paper')
         0.0005  # 기본 슬리피지 (변동성 낮음)
         
-        >>> calculate_dynamic_slippage(10.0, 100, 'SL', config)
+        >>> calculate_dynamic_slippage(10.0, 100, 'SL', config, 'live')
         0.0305  # 0.0005 + (0.10 * 3.0) = 3.05% (변동성 높은 SL)
     
     Notes:
         - MARKET 주문: 1.0x 승수 (일반 진입/청산)
         - SL 주문: 3.0x 승수 (급격한 가격 변동)
-        - 최대 슬리피지: 6% (config.fees.slippage_max)
+        - 최대 슬리피지: Paper 6%, Live 4% (더 엄격)
     """
     if not config:
         config = {}
@@ -463,8 +465,11 @@ def calculate_dynamic_slippage(
     # 동적 슬리피지 계산
     dynamic_slip = base_slip + (volatility_pct * mult)
     
-    # 최대값 제한
-    max_slip = fees_cfg.get('slippage_max', 0.06)
+    # 최대값 제한 (Live 모드는 더 엄격)
+    if mode == 'live':
+        max_slip = fees_cfg.get('slippage_max_live', 0.04)  # Live: 4%
+    else:
+        max_slip = fees_cfg.get('slippage_max', 0.06)  # Paper: 6%
     
     return min(dynamic_slip, max_slip)
 

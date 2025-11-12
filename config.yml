@@ -232,7 +232,8 @@ fees:
   slippage_multiplier:
     market: 1.0               # MARKET 주문 (1.0x)
     sl: 3.0                   # SL 청산 (3.0x, 급격한 움직임)
-  slippage_max: 0.06          # 최대 슬리피지 (6%)
+  slippage_max: 0.06          # 최대 슬리피지 (6%, Paper 모드)
+  slippage_max_live: 0.04     # Live 모드 최대 슬리피지 (4%, 더 엄격)
 filters:
   atr_window: 14
   htf: 1h
@@ -398,9 +399,9 @@ risk:
   # ⭐ PHASE7-2 Phase 2: 중복 진입 방지 강화
   duplicate_check_db: true  # DB 재확인 활성화 (메모리 + DB 이중 체크)
   
-  # ⭐ PR11: 추가 리스크 가드 (DD cutoff, Slippage Guard)
+  # ⭐ PR11: 추가 리스크 가드 (DD cutoff)
   max_drawdown_pct: 10.0  # 최대 낙폭 한도 (10%)
-  max_slippage_pct: 0.5   # 슬리피지 가드 (0.5%)
+  # max_slippage_pct: 제거 (2025-11-12) - 동적 슬리피지 모델 사용, 상용 프로그램 패턴
   extreme_loss_cutoff_pct: -20.0  # ⭐ PHASE7-1: 극단 손실 가드 (-20%, -50%→-30%→-20% 단계 강화)
   profiles:
     paper:
