@@ -1350,14 +1350,21 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict):
             logger.error(f"❌ 거래 실행 실패: {candle_symbol}")
             continue
         
+        # ⭐ PR11: Slippage Guard 체크 (DB 저장 및 Manager 등록 전에 먼저 체크)
+        expected_price = decision.get("entry_price", decision.get("entry", 0))
+        filled_price = fill.get("filled_price", 0)
+        if expected_price > 0 and filled_price > 0:
+            if not risk.check_slippage_guard(expected_price, filled_price):
+                logger.error(f"🚨 슬리피지 초과: {candle_symbol} - 진입 스킵 (예상=${expected_price:.4f}, 체결=${filled_price:.4f})")
+                continue  # 이 주문 스킵
+        
         # 포지션 ID 생성
         import uuid
         position_id = str(uuid.uuid4())
         entry_time = ts
         
-        # DB 저장 (trial_id 포함)
-        save_trade_to_db(
-            position_id=position_id,
+        # Trade DB 저장
+        position_id = save_trade_to_db(
             symbol=candle_symbol,
             side=decision.get("side"),
             entry_price=fill.get("filled_price"),
@@ -1371,17 +1378,8 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict):
             trial_id=trial_id,
         )
 
-        # Risk Manager에도 등록 (⭐ candle_symbol 사용!)
+        # Risk Manager에 포지션 등록 (⭐ candle_symbol 사용!)
         risk.add_position(candle_symbol, position_value)
-
-        # ⭐ PR11: Slippage Guard 체크
-        expected_price = decision.get("entry_price", decision.get("entry", 0))
-        filled_price = fill.get("filled_price", 0)
-        if expected_price > 0 and filled_price > 0:
-            logger.info(f"🔍 Slippage Guard 체크: expected=${expected_price:.4f}, filled=${filled_price:.4f}")
-            if not risk.check_slippage_guard(expected_price, filled_price):
-                logger.error(f"🚨 Slippage Guard 차단 - 주문 취소: {candle_symbol}")
-                continue  # 이 주문 스킵
 
         # ⭐ Portfolio Manager에 포지션 추가
         portfolio.add_position(
