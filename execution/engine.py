@@ -715,20 +715,20 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict):
         drawdown_guard_triggered = False  # 플래그 추가
         fee_rate = config.get('fees', {}).get('taker', 0.0004)
         for pos_id, position, reason, exit_price in positions_to_close:
-            # ⭐ PHASE7-2 Phase 2: SL/EXTREME_LOSS 시 exit_price 사용
+            # PHASE7-2 Phase 2: SL/EXTREME_LOSS 시 exit_price 사용
             close_price = exit_price if exit_price else current_price
             pnl = calculate_pnl(position, close_price, fee_rate)
             close_trade_in_db(
                 pos_id,
-                close_price,
-                pnl,
+                float(close_price),
+                float(pnl),
                 reason,
                 ts,
                 mode=mode,
-                leverage=position.get("lev", 1),
+                leverage=int(position.get("lev", 1)),
             )
 
-            # ⭐ PR12: PnL 업데이트 단일화 (포트폴리오로 통합)
+            # PR12: PnL 업데이트 단일화 (포트폴리오로 통합)
             portfolio.update_equity(pnl=pnl)  # 포트폴리오만 업데이트
             current_equity = portfolio.get_equity()
             
@@ -1327,8 +1327,8 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict):
                 pnl = calculate_pnl(position, current_price, fee_rate)
                 close_trade_in_db(
                     pos_id,
-                    current_price,
-                    pnl,
+                    float(current_price),
+                    float(pnl),
                     "ONE_WAY_MODE",  # 청산 이유
                     ts,
                     mode=mode,
@@ -1355,19 +1355,19 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict):
         position_id = str(uuid.uuid4())
         entry_time = ts
         
-        # Trade DB 저장
+        # Trade DB 저장 (numpy 타입을 Python 기본 타입으로 변환)
         position_id = save_trade_to_db(
             position_id,  # 첫 번째 위치 인자
             symbol=candle_symbol,
             side=decision.get("side"),
-            entry_price=fill.get("filled_price"),
-            qty=qty,
-            sl_price=decision.get("sl"),
-            tp_price=decision.get("tp"),
+            entry_price=float(fill.get("filled_price")),
+            qty=float(qty),
+            sl_price=float(decision.get("sl")) if decision.get("sl") else None,
+            tp_price=float(decision.get("tp")) if decision.get("tp") else None,
             strategy_id=decision.get("strategy_id", "ensemble"),
             timestamp=entry_time,
             mode=mode,
-            leverage=decision.get("lev", 1),
+            leverage=int(decision.get("lev", 1)),
             trial_id=trial_id,
         )
 
