@@ -851,7 +851,7 @@ HAVING COUNT(*) > 1;
   - [ ] max_trades_per_hour 적용
   - [ ] 전략별 검증 로직
 
-- [ ] **7. 초기화 vs 재시작 명확화 (--reset 옵션)** (Phase 2 완성) ⚠️ 필수
+- [ ] **7. 초기화 vs 재시작 명확화 (--reset 옵션)** (Phase 3 연기) 🔵 낮은 우선순위
   - **문제** (2025-11-11 발견):
     - 현재: 재시작 시 항상 포지션 복원 (Paper/Live)
     - 테스트 목적 재시작: 기존 포지션 청산하고 깨끗하게 시작해야 함
@@ -885,7 +885,8 @@ HAVING COUNT(*) > 1;
     - main.py (argparse 추가)
     - execution/engine.py (reset 로직)
     - docker-compose.yml (환경변수 지원)
-  - **PHASE7-3 연결**: Graceful Shutdown과 통합 (종료 시 청산 로직 공유)
+  - **⏳ PHASE7-3 이후 구현 권장**: Graceful Shutdown과 통합 (종료 시 청산 로직 공유)
+  - 현재 PR에서 구현하지 않음 (범위 확대 방지)
 
 - [ ] **8. Manager 상태 완전 복원** (Phase 2 완성) ⚠️ 높은 우선순위
   - **문제** (2025-11-11 발견):
@@ -1013,19 +1014,20 @@ HAVING COUNT(*) > 1;
   - trading.risk_state: Risk Manager 상태
 ```
 
-**개선 우선순위:**
-1. ✅ **긴급**: 포지션 복원 시 Manager 등록 (완료 - PHASE7-2 항목 5)
-2. ⚠️ **높음**: Equity, peak_equity, consecutive_losses 복원 (PHASE7-2 항목 8)
-3. 🔵 **중간**: --reset 옵션 추가 (PHASE7-2 항목 7)
-4. 🔵 **중간**: DB 스키마 분리 (PHASE7-3 또는 리팩토링)
+**개선 우선순위 (PHASE7-2 범위):**
+1. ✅ **긴급**: 포지션 복원 시 Manager 등록 (완료 - 항목 5)
+2. ⚠️ **높음**: Manager 상태 완전 복원 (항목 8) ← **현재 PR 구현**
+   - DB 테이블: portfolio_state, risk_state
+   - equity, peak_equity, consecutive_losses 복원
+3. ⏳ **연기**: --reset 옵션 (항목 7) → PHASE7-3 이후 구현 권장
 
-**PHASE7-3 연결 (운영 안정성):**
-- **Graceful Shutdown**: 종료 시 포지션 청산 로직 (--reset과 공유)
-- **TP 거래소 등록**: Live 모드 TP 안전장치 (프로그램 종료해도 작동)
-  - 현재: SL만 거래소 등록 ✅, TP는 프로그램 관리 🚨
-  - 위험: 프로그램 종료 시 TP 미작동 → 수익 기회 손실
-  - 개선: 최소 TP1 50% 거래소 등록 (PHASE7-3)
-- **State Recovery**: Manager 상태 복원 강화 (PHASE7-2 항목 8 확장)
+**PHASE7-3 예정 (운영 안정성):**
+- **Graceful Shutdown**: 종료 시 포지션 청산 + 상태 저장
+- **TP 거래소 등록**: Live 모드 안전장치
+  - 현재: SL만 거래소 ✅, TP는 메모리 🚨
+  - 개선: TP1 50% 거래소 등록
+- **State Recovery**: Binance 주문 ID 복원/동기화
+- **--reset 옵션**: Graceful Shutdown 로직 재사용
 
 **상세 분석**: `docs/PHASE7/SYSTEM_OPERATIONS_ANALYSIS.md` 참조
 

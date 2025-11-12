@@ -456,33 +456,47 @@ broker.create_tp_order(tp1_price, 50%)  # TP1 거래소
 
 ---
 
-## 📋 개선 작업 항목 (PHASE7-2/3 연결)
+## 📋 개선 작업 항목 (PR별 명확히 분리)
 
-### PHASE7-2 Phase 2 (긴급 - 현재 PR) ✅
-- [x] 포지션 복원 시 Manager 등록 (완료 - 2025-11-11)
+### ✅ PHASE7-2 (포지션 관리 개선) - 현재 PR
+**완료:**
+- [x] 포지션 복원 시 Manager 등록 (2025-11-11)
   - `RiskManager.active_positions_count` 동기화
   - `PortfolioManager.add_position()` 동기화
-- [ ] **항목 7**: --reset 옵션 추가 (초기화 vs 재시작)
-  - main.py: argparse 추가
-  - engine.py: reset 모드 처리
-  - Docker: RESET_MODE 환경변수
-- [ ] **항목 8**: Manager 상태 완전 복원 (높은 우선순위)
+
+**진행:**
+- [ ] **항목 8**: Manager 상태 완전 복원 ⚠️ 높은 우선순위
   - DB 테이블: portfolio_state, risk_state
   - Equity, peak_equity, consecutive_losses 복원
+  - Paper 재시작 시 정확한 상태 이어가기
 
-### PHASE7-3 (운영 안정성) 📋
-- [ ] **Graceful Shutdown**: 종료 시 포지션 청산
+**연기 (PHASE7-3 이후):**
+- [ ] **항목 7**: --reset 옵션 (초기화 vs 재시작)
+  - Graceful Shutdown 로직과 통합 권장
+  - 범위 확대 방지
+
+### 📋 PHASE7-3 (운영 안정성) - 다음 PR
+**Live 모드 준비:**
+- [ ] **Graceful Shutdown**: 종료 시 안전한 청산
   - Signal handler (SIGTERM, SIGINT)
   - 신규 진입 중단 → OPEN 포지션 청산
   - Binance SL/TP 주문 취소 (Live)
   - 상태 저장 (DB + Redis)
-- [ ] **TP 거래소 등록**: Live 모드 안전장치
-  - LiveBroker.create_tp_order() 메서드 추가
+  - **항목 7 통합**: --reset 옵션 구현
+
+- [ ] **TP 거래소 등록**: 프로그램 종료 시 TP 안전 보장
+  - LiveBroker.create_tp_order() 메서드
   - engine.py: 진입 시 TP1 50% 거래소 등록
-  - TP2, Trailing은 프로그램 관리 유지
-- [ ] **State Recovery**: 재시작 시 동기화 강화
+  - TP2, Trailing은 프로그램 관리 (유연성)
+  - **현재 위험**: SL만 거래소, TP는 메모리 🚨
+
+- [ ] **State Recovery 강화**: 재시작 시 완전한 동기화
   - Binance 주문 ID 저장/복원
   - 주문 상태 확인 (SL/TP 활성화 여부)
+  - 불일치 시 알림
+
+- [ ] **Docker Healthcheck**: 연결 상태 모니터링
+- [ ] **Monitoring Dashboard**: Grafana 기본 설정
 
 ### PHASE7-4 (전략 개선) 📋
 - 백테스트 파이프라인
