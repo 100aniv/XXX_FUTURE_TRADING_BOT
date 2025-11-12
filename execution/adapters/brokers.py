@@ -117,7 +117,7 @@ class PaperBroker:
         }
         
         self.virtual_orders.append(order)
-        logger.info(f"📄 [PAPER] {side} @ {filled_price:.2f} qty={qty:.4f} (slip={self.slippage_pct*100:.2f}%)")
+        logger.info(f"📄 [PAPER] {side} @ {filled_price:.2f} qty={qty:.4f} (slip={slip*100:.2f}%)")
         
         return order
     
