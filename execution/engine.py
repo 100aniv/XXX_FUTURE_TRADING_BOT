@@ -1357,6 +1357,7 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict):
         
         # Trade DB 저장
         position_id = save_trade_to_db(
+            position_id,  # 첫 번째 위치 인자
             symbol=candle_symbol,
             side=decision.get("side"),
             entry_price=fill.get("filled_price"),
