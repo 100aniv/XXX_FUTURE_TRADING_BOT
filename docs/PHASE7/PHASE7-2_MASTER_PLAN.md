@@ -797,33 +797,37 @@ HAVING COUNT(*) > 1;
   - [x] **테스트 완료 (15분)**: 겹치는 포지션 0건 ✅, 메모리 체크 수십 건 차단 ✅
   - [ ] Redis 분산 락 (optional, 필요 시 추가)
 
-- [x] **4. 슬리피지 시뮬레이션 개선** (Phase 2 완성 - 🚨 **긴급**) ✅ 완료 (2025-11-11)
+- [ ] **4. 슬리피지 시뮬레이션 개선** (Phase 2 완성 - 🚨 **긴급**) ⚠️ 구현 완료, 테스트 대기
   - **현재 문제**:
     - 고정 슬리피지 0.05% → 현실과 괴리
     - SL 청산 시 Close 가격 사용 → 급락/급등 시 손실 악화 (SL 6.05% → 실제 손실 -34.54%)
   - **개선 방안** (방안 A: SL + 동적 슬리피지, 업계 표준):
-    - [x] `common/calculations.py`: `calculate_dynamic_slippage()` 함수 추가
+    - [x] `common/calculations.py`: `calculate_dynamic_slippage()` 함수 추가 (구현 완료)
       - ATR 기반 변동성 계산
       - 주문 타입별 승수 (MARKET: 1.0x, SL: 3.0x)
       - 최대 6% 제한
-    - [x] `execution/adapters/brokers.py`: `PaperBroker.execute(atr=None)` 파라미터 추가
+    - [x] `execution/adapters/brokers.py`: `PaperBroker.execute(atr=None)` 파라미터 추가 (구현 완료)
       - 하위 호환 유지 (atr 없으면 기존 고정값 사용)
       - config 기반 동적 슬리피지 계산
-    - [x] `execution/position_tracker.py`: `check_tpsl_with_partial()` exit_price 반환
+    - [x] `execution/position_tracker.py`: `check_tpsl_with_partial()` exit_price 반환 (구현 완료)
       - SL 도달 시 슬리피지 적용된 청산 가격 계산
       - 반환값: (hit, qty, reason, exit_price)
-    - [x] `execution/engine.py`: ATR 전달 및 exit_price 사용
+    - [x] `execution/engine.py`: ATR 전달 및 exit_price 사용 (구현 완료)
       - decision에 ATR 추가
       - PaperBroker.execute()에 ATR 전달
       - SL 청산 시 position_tracker 반환 exit_price 사용
-    - [x] `config.yml`: fees.slippage_* 설정 추가
+    - [x] `config.yml`: fees.slippage_* 설정 추가 (구현 완료)
       - slippage_base: 0.0005
       - slippage_multiplier: {market: 1.0, sl: 3.0}
       - slippage_max: 0.06
   - **영향 파일**: common/calculations.py, execution/adapters/brokers.py, execution/position_tracker.py, execution/engine.py, config.yml
   - **구현 완료**: 2025-11-11
-  - **다음 단계**: 단위 테스트 → Paper 1시간 검증
-  - **수용 기준**: -8% 초과 손실 0건, SL 슬리피지 < 6%
+  - **⚠️ 테스트 미완료**: 단위 테스트 + Paper 실행 검증 필요
+  - **다음 단계**:
+    - [ ] 단위 테스트: test_dynamic_slippage.py (ATR 계산, 슬리피지 범위)
+    - [ ] Paper 1시간 검증: SL 청산 로그 확인
+    - [ ] 수용 기준 검증: -8% 초과 손실 0건, SL 슬리피지 < 6%
+  - **주의**: 체크 표시 착각 금지! 구현 != 검증
 
 - [x] **5. 포지션 복원 시 Manager 동기화 버그 수정** (Phase 2 긴급 수정) ✅ 완료 (2025-11-11)
   - **문제**:
@@ -967,15 +971,45 @@ HAVING COUNT(*) > 1;
   2. Binance `get_account()` → equity 동기화
   3. DB와 동기화
 
+### 📋 우선순위 및 진행 순서 (2025-11-12 최종 확정)
+
+**Phase 2 완성 순서:**
+1. ⚠️ **항목 8 (Manager 상태 복원)** - 지금 진행
+   - DB 테이블 추가
+   - Manager 메서드 추가
+   - 복원 로직 구현
+   - 단위 테스트
+   
+2. 🔥 **항목 4 (슬리피지) 검증** - 항목 8 완료 후
+   - ⚠️ 주의: 구현만 완료, 테스트 미완료!
+   - 코드 리뷰 (계산 로직 검증)
+   - 단위 테스트 작성
+   - Paper 1시간 실행 검증
+   - 수용 기준 확인
+
+**주의사항:**
+- ❌ 체크 표시 착각 금지: [x] = 구현 완료 ≠ 검증 완료
+- ✅ 항목 3, 5는 완료 및 검증됨
+- ⏳ 항목 4는 구현만 완료, 반드시 테스트 필요
+
 ### 테스트
 
-- [ ] 단위 테스트 (price_levels, duplicate, slippage, position restore)
-- [ ] Paper 3일 실행
-- [ ] 승률 45% 달성
-- [ ] TP2 5% 도달
-- [ ] 중복 진입 0건
-- [ ] 포지션 카운트 정확도 검증
-- [ ] pre-commit 통과
+- [ ] **항목 8 테스트**: Manager 상태 복원
+  - [ ] 단위 테스트: test_manager_state_recovery.py
+  - [ ] Paper 재시작 검증: equity, peak_equity, consecutive_losses
+  
+- [ ] **항목 4 테스트**: 슬리피지 시뮬레이션
+  - [ ] 단위 테스트: test_dynamic_slippage.py
+  - [ ] Paper 1시간 검증: SL 청산 로그
+  - [ ] 수용 기준: -8% 초과 손실 0건, SL 슬리피지 < 6%
+  
+- [ ] **통합 테스트**
+  - [ ] Paper 3일 실행
+  - [ ] 승률 45% 달성
+  - [ ] TP2 5% 도달
+  - [ ] 중복 진입 0건
+  - [ ] 포지션 카운트 정확도 검증
+  - [ ] pre-commit 통과
 
 ### 문서
 
