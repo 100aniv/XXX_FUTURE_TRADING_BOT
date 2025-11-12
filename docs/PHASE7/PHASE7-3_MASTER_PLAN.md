@@ -812,9 +812,12 @@ docker unpause trading_db_postgres
 
 ## 연관 문서
 
-- **PHASE7-2_MASTER_PLAN.md**: 항목 7(--reset) 원본 설계, 항목 4(가드/슬리피지 검증 통합)
+- **PHASE7-2_MASTER_PLAN.md**: 항목 7(--reset) 원본 설계
 - **SYSTEM_OPERATIONS_ANALYSIS.md**: TP 위험 분석 및 TO-BE 방안
 - **CRITICAL_SYSTEM_ANALYSIS_2025-11-10.md**: 포지션 관리 분석
+- **GUARD_EXECUTION_ORDER_ANALYSIS.md**: 가드/차단 기능 실행 순서 분석
+- **SLIPPAGE_PERFORMANCE_COMPARISON.md**: 슬리피지 성능 비교
+- **체크리스트**: [PHASE7-2_MASTER_PLAN.md 항목 4](PHASE7-2_MASTER_PLAN.md) 참조
 
 ## 릴리즈 노트
 

@@ -1224,11 +1224,12 @@ fees:
 3. 실행 및 상태 변경 (Broker, DB, Manager)
 ```
 
-**상세**: [PHASE7-2_MASTER_PLAN.md 항목 4](PHASE7-2_MASTER_PLAN.md) 참조
+**상세**: [GUARD_EXECUTION_ORDER_ANALYSIS.md](GUARD_EXECUTION_ORDER_ANALYSIS.md), [SLIPPAGE_PERFORMANCE_COMPARISON.md](SLIPPAGE_PERFORMANCE_COMPARISON.md)
 
 ---
 
 **최종 업데이트**: 2025-11-12 (가드 순서 분석 및 슬리피지 검증 완료)  
 **참조 문서**: [PHASE7_ALGORITHM_BEST.md](PHASE7_ALGORITHM_BEST.md), [PHASE7-2_MASTER_PLAN.md](PHASE7-2_MASTER_PLAN.md)  
+**체크리스트**: [PHASE7-2_MASTER_PLAN.md 항목 4](PHASE7-2_MASTER_PLAN.md) 참조  
 **상태**: ✅ 슬리피지 검증 완료, ⚠️ 슬리피지 가드 역할 재정의 필요
 
