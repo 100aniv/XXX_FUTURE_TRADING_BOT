@@ -323,6 +323,15 @@ WHERE mode='paper'
 - [ ] Paper 1주 검증
 - [ ] 승률 50% 달성
 
+## 연관 문서
+
+- **PHASE7_ALGORITHM_BEST.md**: 상용 프로그램 알고리즘 비교 및 앙상블 개선안
+- **GUARD_EXECUTION_ORDER_ANALYSIS.md**: 가드/차단 기능 실행 순서 분석 (2025-11-12)
+  - 진입 검증 단계 최적화 (쿨다운, 멱등성, 중복 방지, Risk/Portfolio 체크)
+  - 슬리피지 가드 이중 검증 문제 해결
+- **SLIPPAGE_PERFORMANCE_COMPARISON.md**: 슬리피지 성능 비교 (2025-11-12)
+  - 상용 프로그램 대비 벤치마크 (✅ 우리 프로그램은 상용 수준)
+
 ## 릴리즈 노트
 
 PHASE7-4: 백테스트 + 신호 품질 개선 + 리스크 강화로 승률 50% 달성. 상용 수준 근접.

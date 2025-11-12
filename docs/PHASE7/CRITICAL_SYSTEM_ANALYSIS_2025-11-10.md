@@ -1193,7 +1193,42 @@ fees:
 
 ---
 
-**최종 업데이트**: 2025-11-11 (슬리피지 개선 추가)  
-**참조 문서**: [PHASE7_ALGORITHM_BEST.md](PHASE7_ALGORITHM_BEST.md), [PHASE7-2_MASTER_PLAN.md](PHASE7-2_MASTER_PLAN.md)  
-**상태**:  분석 완료,  슬리피지 개선 진행 중
+---
+
+## 🔄 2025-11-12 업데이트: 가드 실행 순서 및 슬리피지 검증
+
+### 슬리피지 성능 검증
+
+**결론**: ✅ **우리 프로그램의 슬리피지는 상용 프로그램 수준**
+
+| 항목 | 상용 프로그램 | 우리 프로그램 | 평가 |
+|------|--------------|--------------|------|
+| 정상 시장 | 0.5% ~ 1.0% | 0.57% ~ 2.0% | ✅ 허용 범위 |
+| 고변동성 | 2% ~ 5% | 2.0% ~ 4.0% | ✅ 적절 |
+| 극단 상황 | 5% ~ 10% | 4.0% ~ 6.0% | ✅ 보수적 |
+
+**추가 수정 불필요** - ATR 기반 동적 슬리피지는 업계 표준에 부합
+
+### 가드 실행 순서 최적화
+
+**발견된 문제**: 슬리피지 가드 이중 검증
+- `calculate_dynamic_slippage()`: 최대 6%
+- `check_slippage_guard()`: 0.5% (충돌!)
+
+**해결**: 슬리피지 가드 제거 또는 극단 이상치(10%+) 감지로 역할 변경
+
+**최적 가드 순서** (상용 프로그램 패턴):
+```
+1. 빠른 사전 검증 (쿨다운, 멱등성, 중복)
+2. 비즈니스 로직 검증 (Risk, Portfolio)
+3. 실행 및 상태 변경 (Broker, DB, Manager)
+```
+
+**참조**: [GUARD_EXECUTION_ORDER_ANALYSIS.md](GUARD_EXECUTION_ORDER_ANALYSIS.md), [SLIPPAGE_PERFORMANCE_COMPARISON.md](SLIPPAGE_PERFORMANCE_COMPARISON.md)
+
+---
+
+**최종 업데이트**: 2025-11-12 (가드 순서 분석 및 슬리피지 검증 완료)  
+**참조 문서**: [PHASE7_ALGORITHM_BEST.md](PHASE7_ALGORITHM_BEST.md), [PHASE7-2_MASTER_PLAN.md](PHASE7-2_MASTER_PLAN.md), [GUARD_EXECUTION_ORDER_ANALYSIS.md](GUARD_EXECUTION_ORDER_ANALYSIS.md), [SLIPPAGE_PERFORMANCE_COMPARISON.md](SLIPPAGE_PERFORMANCE_COMPARISON.md)  
+**상태**: ✅ 슬리피지 검증 완료, ⚠️ 슬리피지 가드 역할 재정의 필요
 
