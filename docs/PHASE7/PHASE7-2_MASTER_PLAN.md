@@ -1076,6 +1076,100 @@ HAVING COUNT(*) > 1;
 
 ---
 
+## 🚨 HOTFIX 내역 (2025-11-13)
+
+### HOTFIX #4: import os 누락으로 인한 포지션 복원 실패 (commit 9466d8e)
+
+**문제**:
+- 슬리피지 가드 제거 커밋(`133b3d3`) 이후 `execution/engine.py`에서 `import os` 누락
+- 증상: `name 'os' is not defined` 에러
+- 영향:
+  ```python
+  # line 383: os.getenv("RUN_ID", "default") 호출 시 에러 발생
+  ❌ DB 트랜잭션 실패: name 'os' is not defined
+  ❌ OPEN 포지션 복원 실패: name 'os' is not defined
+  ❌ Manager 상태 복원 실패: name 'os' is not defined
+  ```
+
+**수정**:
+```python
+# execution/engine.py line 10
+import os  # 추가
+```
+
+**검증**:
+- ✅ 23개 OPEN 포지션 복원 성공
+- ✅ ERROR 로그 제거 완료
+- ✅ 실시간 거래 정상 작동
+
+**추가 조치**: RUN_ID 환경변수 설정
+```yaml
+# docker-compose.yml (trading_bot_paper_ensemble)
+- RUN_ID=paper-ensemble-default  # 추가
+```
+
+---
+
+### ⚠️ 발견된 심각한 버그: 포지션 복원 시 TP/SL 상태 미복원
+
+**문제**:
+```python
+# execution/engine.py line 347-349 (포지션 복원 시)
+"tp1_hit": False,  # ❌ 항상 False로 초기화
+"tp2_hit": False,  # ❌ DB에 저장된 실제 상태 무시
+"be_moved": False,
+```
+
+**시나리오**:
+```
+프로그램 종료 중 가격 변동:
+  $50,000 (Entry) → $52,000 (TP1 $51,000, TP2 $51,500 통과) → $50,800 (하락)
+
+재시작 시 ($50,800):
+  - TP1 체크: current_price < TP1 → 미도달 판정 ❌
+  - TP2 체크: TP1=False라서 체크조차 안함 ❌
+  - 결과: 이미 TP 도달했었는데 청산 안됨!
+
+SL도 동일 문제:
+  $50,000 → $48,000 (SL $49,000 통과) → $49,500
+  → 재시작 시 SL 미도달로 판정 ❌
+```
+
+**영향**:
+- 프로그램 종료 중 가격이 TP/SL을 넘어갔다가 돌아오면 청산 안됨
+- 수익 기회 손실 및 손실 확대 위험
+
+**해결 방안 (PHASE7-3 또는 긴급 패치 필요)**:
+
+Option 1: DB 스키마 확장 (권장)
+```sql
+ALTER TABLE trading.trades 
+ADD COLUMN tp1_hit BOOLEAN DEFAULT FALSE,
+ADD COLUMN tp2_hit BOOLEAN DEFAULT FALSE,
+ADD COLUMN be_moved BOOLEAN DEFAULT FALSE,
+ADD COLUMN highest_price DECIMAL(20, 8),
+ADD COLUMN lowest_price DECIMAL(20, 8);
+```
+
+Option 2: 복원 시 즉시 체크 (임시)
+```python
+# 포지션 복원 후 현재 시장가로 TP/SL 도달 여부 즉시 판단
+current_price = broker.get_current_price(symbol)
+if (side == 'LONG' and current_price >= tp1):
+    position['tp1_hit'] = True
+    # 즉시 청산 처리
+```
+
+Option 3: --reset으로 테스트 시 초기화 (현재 임시 방편)
+```bash
+# 테스트 시 깨끗한 시작 (PHASE7-3 항목 1)
+docker-compose run --rm -e RESET_MODE=true trading_bot_paper_ensemble
+```
+
+**권장**: Option 1로 긴급 패치 진행 후 PHASE7-3에서 --reset 옵션 구현
+
+---
+
 ## 🔄 운영 철학 및 개선 방향 (2025-11-11)
 
 ### 핵심 결론

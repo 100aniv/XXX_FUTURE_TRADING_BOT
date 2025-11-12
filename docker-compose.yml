@@ -225,6 +225,9 @@ services:
       - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID:-}
       - SYSTEM_NAME=ENSEMBLE_PAPER
       
+      # Run ID for state tracking (Paper 모드는 고정 ID 사용)
+      - RUN_ID=paper-ensemble-default
+      
       # Encoding
       - PYTHONIOENCODING=utf-8
       - LANG=C.UTF-8
