@@ -376,6 +376,16 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict):
                             )
 
                         logger.info("✅ TP 레벨 재생성 및 Manager 등록 완료")
+                        
+                        # ⭐ PHASE7-2 항목 8: Manager 상태 복원
+                        logger.info("🔄 Manager 상태 복원 시도...")
+                        portfolio_restored = portfolio.restore_state(conn, mode="paper", run_id=os.getenv("RUN_ID", "default"))
+                        risk_restored = risk.restore_state(conn, mode="paper", run_id=os.getenv("RUN_ID", "default"))
+                        
+                        if portfolio_restored and risk_restored:
+                            logger.info("✅ Manager 상태 복원 완료")
+                        else:
+                            logger.warning("⚠️ Manager 상태 복원 실패 또는 데이터 없음 (초기 실행일 수 있음)")
         except Exception as e:
             logger.error(f"❌ OPEN 포지션 복원 실패: {e}")
     
@@ -438,6 +448,16 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict):
                             position_id=pos_id
                         )
                     logger.info(f"✅ [LIVE] {len(active_positions)}개 실제 포지션을 시스템에 동기화 및 Manager 등록 완료")
+                    
+                    # ⭐ PHASE7-2 항목 8: Manager 상태 복원
+                    logger.info("🔄 [LIVE] Manager 상태 복원 시도...")
+                    portfolio_restored = portfolio.restore_state(conn, mode="live", run_id=os.getenv("RUN_ID", "default"))
+                    risk_restored = risk.restore_state(conn, mode="live", run_id=os.getenv("RUN_ID", "default"))
+                    
+                    if portfolio_restored and risk_restored:
+                        logger.info("✅ [LIVE] Manager 상태 복원 완료")
+                    else:
+                        logger.warning("⚠️ [LIVE] Manager 상태 복원 실패 또는 데이터 없음 (초기 실행일 수 있음)")
             else:
                 logger.info("✅ [LIVE] Binance에 OPEN 포지션 없음 (신규 시작)")
         except Exception as e:
@@ -745,6 +765,14 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict):
 
             # ⭐⭐⭐ active_positions에서 제거 (중요!)
             active_positions.pop(pos_id, None)
+            
+            # ⭐ PHASE7-2 항목 8: Manager 상태 저장 (포지션 종료 시)
+            if mode in ["paper", "live"]:
+                try:
+                    portfolio.save_state(conn, mode=mode, run_id=os.getenv("RUN_ID", "default"))
+                    risk.save_state(conn, mode=mode, run_id=os.getenv("RUN_ID", "default"))
+                except Exception as e:
+                    logger.warning(f"⚠️ Manager 상태 저장 실패 (무시하고 계속): {e}")
 
             closed_count += 1
 

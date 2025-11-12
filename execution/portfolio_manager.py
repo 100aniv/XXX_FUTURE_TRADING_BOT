@@ -89,6 +89,71 @@ class PortfolioManager:
         
         logger.info(f"✅ PortfolioManager 초기화: Equity=${self.equity:,.0f}, Max Positions={self.max_positions}, Max Exposure/Symbol={self.max_exposure_per_symbol*100:.0f}%, Max Total={self.max_total_exposure*100:.0f}%, Symbol Cooldown={self.cooldown_seconds}s")
     
+    def save_state(self, db_conn, mode: str, run_id: str):
+        """
+        ⭐ PHASE7-2 항목 8: Portfolio Manager 상태 저장 (DB)
+        
+        Args:
+            db_conn: psycopg2 connection
+            mode: 'paper' | 'live' | 'backtest'
+            run_id: 실행 ID (UUID)
+        """
+        try:
+            with db_conn.cursor() as cur:
+                cur.execute("""
+                    INSERT INTO trading.portfolio_state 
+                    (mode, run_id, current_equity, daily_pnl, realized_pnl, unrealized_pnl, updated_at)
+                    VALUES (%s, %s, %s, %s, %s, %s, NOW())
+                """, (mode, run_id, self.equity, self.daily_pnl, self.realized_pnl, self.unrealized_pnl))
+                db_conn.commit()
+                logger.debug(f"💾 [Portfolio] 상태 저장: equity=${self.equity:,.0f}, daily_pnl=${self.daily_pnl:,.2f}")
+        except Exception as e:
+            logger.error(f"❌ [Portfolio] 상태 저장 실패: {e}")
+            db_conn.rollback()
+    
+    def restore_state(self, db_conn, mode: str, run_id: str) -> bool:
+        """
+        ⭐ PHASE7-2 항목 8: Portfolio Manager 상태 복원 (DB 최신 행)
+        
+        Args:
+            db_conn: psycopg2 connection
+            mode: 'paper' | 'live' | 'backtest'
+            run_id: 실행 ID (UUID)
+        
+        Returns:
+            bool: 복원 성공 여부
+        """
+        try:
+            with db_conn.cursor() as cur:
+                cur.execute("""
+                    SELECT current_equity, daily_pnl, realized_pnl, unrealized_pnl, updated_at
+                    FROM trading.portfolio_state
+                    WHERE mode = %s AND run_id = %s
+                    ORDER BY updated_at DESC
+                    LIMIT 1
+                """, (mode, run_id))
+                
+                row = cur.fetchone()
+                if row:
+                    self.equity = float(row[0])
+                    self.daily_pnl = float(row[1])
+                    self.realized_pnl = float(row[2])
+                    self.unrealized_pnl = float(row[3])
+                    updated_at = row[4]
+                    
+                    logger.info(
+                        f"✅ [Portfolio] 상태 복원: equity=${self.equity:,.0f}, "
+                        f"daily_pnl=${self.daily_pnl:,.2f}, realized=${self.realized_pnl:,.2f} "
+                        f"(마지막 업데이트: {updated_at})"
+                    )
+                    return True
+                else:
+                    logger.warning(f"⚠️ [Portfolio] 복원할 상태 없음 (mode={mode}, run_id={run_id})")
+                    return False
+        except Exception as e:
+            logger.error(f"❌ [Portfolio] 상태 복원 실패: {e}")
+            return False
+    
     def can_open_position(
         self,
         symbol: str,
