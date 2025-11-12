@@ -1002,14 +1002,15 @@ HAVING COUNT(*) > 1;
 
 ### 테스트
 
-- [ ] **항목 8 테스트**: Manager 상태 복원
-  - [ ] 단위 테스트: test_manager_state_recovery.py
-  - [ ] Paper 재시작 검증: equity, peak_equity, consecutive_losses
+- [x] **항목 8 테스트**: Manager 상태 복원 ✅ 완료 (2025-11-12)
+  - [x] DB Migration 실행: trading.portfolio_state, trading.risk_state
+  - [x] 단위 테스트: test_manager_state_recovery.py (11개 통과)
+  - [ ] Paper 재시작 검증: equity, peak_equity, consecutive_losses (다음 단계)
   
-- [ ] **항목 4 테스트**: 슬리피지 시뮬레이션
-  - [ ] 단위 테스트: test_dynamic_slippage.py
-  - [ ] Paper 1시간 검증: SL 청산 로그
-  - [ ] 수용 기준: -8% 초과 손실 0건, SL 슬리피지 < 6%
+- [x] **항목 4 테스트**: 슬리피지 시뮬레이션 ✅ 완료 (2025-11-12)
+  - [x] 단위 테스트: test_dynamic_slippage.py (8개 통과)
+  - [ ] Paper 1시간 검증: SL 청산 로그 (다음 단계)
+  - [ ] 수용 기준: -8% 초과 손실 0건, SL 슬리피지 < 6% (다음 단계)
   
 - [ ] **통합 테스트**
   - [ ] Paper 3일 실행
