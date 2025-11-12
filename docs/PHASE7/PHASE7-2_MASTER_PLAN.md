@@ -892,7 +892,7 @@ HAVING COUNT(*) > 1;
   - **⏳ PHASE7-3 이후 구현 권장**: Graceful Shutdown과 통합 (종료 시 청산 로직 공유)
   - 현재 PR에서 구현하지 않음 (범위 확대 방지)
 
-- [ ] **8. Manager 상태 완전 복원** (Phase 2 완성) ⚠️ 높은 우선순위
+- [x] **8. Manager 상태 완전 복원** (Phase 2 완성) ✅ 구현 완료 (2025-11-12)
   - **문제** (2025-11-11 발견):
     - 현재: 포지션만 복원, Manager 상태 부분 복원
     - `RiskManager.active_positions_count`: ✅ 수정 완료
@@ -903,23 +903,31 @@ HAVING COUNT(*) > 1;
     - Paper 재시작 시 equity 손실 (실제 $52,000 → 표시 $50,000)
     - MDD 계산 오류 → 리스크 판단 오류
     - Consecutive losses 리셋 → 쿨다운 미작동
-  - **구현 계획**:
-    - [ ] DB 테이블 추가:
-      - `trading.portfolio_state`: equity, daily_pnl, realized_pnl
+  - **구현 완료**:
+    - [x] DB 테이블 추가:
+      - `trading.portfolio_state`: equity, daily_pnl, realized_pnl, unrealized_pnl
       - `trading.risk_state`: peak_equity, consecutive_losses, cooldown_until
-    - [ ] engine.py: Paper 모드 복원 시 Manager 상태 복원
-    - [ ] portfolio_manager.py: DB 저장/복원 메서드 추가
-    - [ ] risk_manager.py: DB 저장/복원 메서드 추가
-    - [ ] 단위 테스트: test_manager_state_recovery.py
+      - Migration: `db/migrations/add_manager_state_tables.sql`
+    - [x] portfolio_manager.py: save_state(), restore_state() 메서드 추가 (L92-155)
+    - [x] risk_manager.py: save_state(), restore_state() 메서드 추가 (L176-262)
+      - 쿨다운 복원 로직: cooldown_until 기반 남은 시간 계산
+    - [x] engine.py: Manager 상태 복원/저장 로직
+      - Paper 모드 복원: L380-388
+      - Live 모드 복원: L452-460
+      - 포지션 종료 시 저장: L769-775
+    - [x] 단위 테스트: tests/unit/test_manager_state_recovery.py (13개 테스트)
   - **수용 기준**:
-    - Paper 재시작 후 equity 정확 (DB 마지막 값)
-    - MDD 계산 정확 (peak_equity 복원)
-    - Consecutive losses 카운트 정확
+    - [x] Paper 재시작 후 equity 정확 (DB 최신 값)
+    - [x] MDD 계산 정확 (peak_equity 복원)
+    - [x] Consecutive losses 카운트 정확
+    - [x] 쿨다운 상태 복원 (남은 시간 계산)
+    - [ ] Paper 실행 검증 (다음 단계)
   - **영향 파일**:
-    - database/schema.sql (테이블 추가)
-    - execution/portfolio_manager.py
-    - execution/risk_manager.py
-    - execution/engine.py (복원 로직)
+    - db/migrations/add_manager_state_tables.sql (신규)
+    - execution/portfolio_manager.py (메서드 추가)
+    - execution/risk_manager.py (메서드 추가)
+    - execution/engine.py (복원/저장 로직)
+    - tests/unit/test_manager_state_recovery.py (신규)
 
 ### DB 스키마 (trading 스키마)
 
