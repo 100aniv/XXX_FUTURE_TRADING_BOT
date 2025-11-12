@@ -517,11 +517,8 @@ WHERE mode='paper' AND ts_open >= '2025-11-10 11:10:00';
   - 3Commas DCA Bot, Pionex Grid Bot, TradingView 전략 벤치마킹
   - 승률 60%+ 달성 방법론
   - 손익비, 거래 빈도, 필터링 기준
-- **GUARD_EXECUTION_ORDER_ANALYSIS.md**: 가드/차단 기능 실행 순서 분석 (2025-11-12)
+- **PHASE7-2_MASTER_PLAN.md 항목 4**: 가드/슬리피지 검증 통합 (2025-11-12)
   - 전체 검증 단계 순서 최적화
   - 슬리피지 가드 이중 검증 문제 해결
-  - 상용 프로그램 패턴 비교
-- **SLIPPAGE_PERFORMANCE_COMPARISON.md**: 슬리피지 성능 비교 (2025-11-12)
-  - 상용 프로그램 대비 우리 프로그램 슬리피지 벤치마크
-  - QuantConnect, Backtrader, Zipline, TradingView 비교
+  - 상용 프로그램 벤치마크 (QuantConnect, Backtrader, Zipline, TradingView)
   - 결론: ✅ 우리 프로그램은 상용 수준
