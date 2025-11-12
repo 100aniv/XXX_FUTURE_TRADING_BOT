@@ -649,7 +649,7 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict):
             
             should_close, reason = tracker.check_extreme_loss_realtime(position, current_price)
             if should_close:
-                positions_to_close.append((pos_id, position, reason))
+                positions_to_close.append((pos_id, position, reason, None))  # exit_price=None (현재가 사용)
 
         # 활성 포지션 체크 (TP/SL + Trailing) - ⭐ 같은 심볼만 체크
         for pos_id, position in list(active_positions.items()):
