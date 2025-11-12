@@ -869,6 +869,10 @@ HAVING COUNT(*) > 1;
     - common/calculations.py: mode 파라미터 추가 (paper/live 구분)
     - execution/adapters/brokers.py: Paper 모드 명시
     - execution/position_tracker.py: Paper 모드 명시
+  - **HOTFIX (2025-11-12 23:57~00:05)**:
+    - commit 5b9dabd: save_trade_to_db() position_id 파라미터 누락 수정
+    - commit bd223e7: numpy 타입을 Python 기본 타입으로 변환 (DB 저장 오류)
+    - 모니터링 중 발견 및 즉시 수정
   - **주의**: 체크 표시 착각 금지! 구현 != 검증
 
 - [x] **5. 포지션 복원 시 Manager 동기화 버그 수정** (Phase 2 긴급 수정) ✅ 완료 (2025-11-11)
