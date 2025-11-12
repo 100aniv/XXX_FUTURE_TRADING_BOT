@@ -5,11 +5,23 @@ PHASE7-2 항목 8: Manager 상태 복원 단위 테스트
 ==============================================
 PortfolioManager 및 RiskManager의 상태 저장/복원 기능 검증
 """
+import sys
+import os
 import pytest
 import psycopg2
-from unittest.mock import Mock, MagicMock
+from unittest.mock import Mock, MagicMock, patch
 from datetime import datetime, timedelta
 import time
+
+# 프로젝트 루트를 sys.path에 추가
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
+
+# Import 오류 방지를 위한 Mock
+sys.modules['indicators'] = MagicMock()
+sys.modules['indicators.add_indicators'] = MagicMock()
+
+# DATABASE_URL 환경변수 설정
+os.environ['DATABASE_URL'] = 'postgresql://test:test@localhost:5432/test'
 
 from execution.portfolio_manager import PortfolioManager
 from execution.risk_manager import RiskManager
@@ -49,6 +61,7 @@ def risk_config():
         'capital': {'initial': 50000},
         'risk': {
             'max_positions': 20,
+            'max_exposure_per_symbol': 0.3,  # 추가
             'max_daily_loss_pct': 2.0,
             'max_drawdown_pct': 10.0,
             'max_consecutive_losses': 4,
