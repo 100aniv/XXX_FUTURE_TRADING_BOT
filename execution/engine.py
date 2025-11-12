@@ -7,6 +7,7 @@ Trading Engine
 
 어댑터만 교체하면 모든 모드 작동
 """
+import os
 from collections import deque
 from typing import Dict
 from uuid import uuid4
