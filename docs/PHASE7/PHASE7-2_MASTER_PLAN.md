@@ -1382,3 +1382,91 @@ ZENUSDT:      2건 (SHORT + LONG)
 4. 검증 기준 재확인
 
 **업데이트:** 2025-11-13 08:15 (5시간 운영 검증 완료)
+
+---
+
+## 🔧 긴급 HOTFIX (2025-11-13 09:00)
+
+### HOTFIX #5: EXTREME_LOSS 감지 시점 가격 미저장 (commit 즉시)
+
+**문제:**
+```python
+# execution/engine.py L653 (수정 전)
+positions_to_close.append((pos_id, position, reason, None))  # ❌ exit_price=None
+```
+
+**증상:**
+- EXTREME_LOSS -20% 감지했지만 -124%에서 청산됨 (MMTUSDT SHORT)
+- 감지 시점 가격을 저장하지 않고 `None` 전달
+- 청산 처리할 때 `current_price` 사용 → 가격이 더 악화됨
+
+**영향:**
+- 6시간 동안 2건 발생 (MMTUSDT -124%, POPCATUSDT -23%)
+- EXTREME_LOSS 가드가 무용지물
+
+**수정:**
+```python
+# execution/engine.py L654
+positions_to_close.append((pos_id, position, reason, current_price))  # ✅ 감지 시점 가격 저장
+```
+
+**검증:**
+- [ ] Paper 재실행 후 EXTREME_LOSS 발생 시 -20%에서 정확히 청산 확인
+
+---
+
+### HOTFIX #6: Manager 상태 저장 시 닫힌 DB 연결 사용 (commit 즉시)
+
+**문제:**
+```python
+# execution/engine.py L774-775 (수정 전)
+portfolio.save_state(conn, ...)  # ❌ conn이 정의되지 않음
+risk.save_state(conn, ...)
+```
+
+**증상:**
+```
+[ERROR] [Portfolio] 상태 저장 실패: connection already closed
+```
+- `close_trade_in_db()` 컨텍스트가 끝나면 연결 닫힘
+- 그 이후 `portfolio.save_state(conn, ...)`에서 닫힌 연결 사용 시도
+- 결과: `trading.portfolio_state` 테이블에 0건 저장
+
+**영향:**
+- Manager 상태 완전 미저장 (6시간 동안 0건)
+- Paper 재시작 시 equity, peak_equity, consecutive_losses 복원 불가
+- MDD 계산 불가
+
+**수정:**
+```python
+# execution/engine.py L774-778
+from database.postgres import get_db_connection
+with get_db_connection() as conn:  # ✅ 새 연결 생성
+    portfolio.save_state(conn, mode=mode, run_id=os.getenv("RUN_ID", "default"))
+    risk.save_state(conn, mode=mode, run_id=os.getenv("RUN_ID", "default"))
+```
+
+**검증:**
+- [ ] Paper 재실행 후 `portfolio_state`, `risk_state` 정상 저장 확인
+
+---
+
+### 중복 진입 방지: 실제로는 정상 작동
+
+**현상:**
+- 6개 심볼에 LONG + SHORT 동시 존재 (METUSDT, KITEUSDT 등)
+
+**조사 결과:**
+1. **중복 진입 방지는 정상 작동**: 같은 방향만 차단 (LONG+LONG ❌, LONG+SHORT ✅)
+2. **ONE-WAY MODE 작동**: 반대 방향 진입 시 기존 포지션 청산
+   ```
+   [ONE-WAY MODE] KITEUSDT 반대 포지션 감지 (SHORT → LONG): 1개 청산
+   ```
+3. **DB 청산 기록 실패**: 위 HOTFIX #6로 해결됨
+
+**결론:**
+- 중복 진입 자체는 문제 아님 (설계대로 작동)
+- DB 연결 문제로 청산 기록 실패 → HOTFIX #6으로 해결
+- 재실행 후 LONG + SHORT 동시 존재 사라질 것
+
+**업데이트:** 2025-11-13 09:00 (HOTFIX 2건 완료)

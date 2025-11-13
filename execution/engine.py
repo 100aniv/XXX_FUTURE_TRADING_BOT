@@ -650,7 +650,8 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict):
             
             should_close, reason = tracker.check_extreme_loss_realtime(position, current_price)
             if should_close:
-                positions_to_close.append((pos_id, position, reason, None))  # exit_price=None (현재가 사용)
+                # ⭐ HOTFIX: 감지 시점 가격 저장 (가격 악화 방지)
+                positions_to_close.append((pos_id, position, reason, current_price))
 
         # 활성 포지션 체크 (TP/SL + Trailing) - ⭐ 같은 심볼만 체크
         for pos_id, position in list(active_positions.items()):
@@ -770,8 +771,11 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict):
             # ⭐ PHASE7-2 항목 8: Manager 상태 저장 (포지션 종료 시)
             if mode in ["paper", "live"]:
                 try:
-                    portfolio.save_state(conn, mode=mode, run_id=os.getenv("RUN_ID", "default"))
-                    risk.save_state(conn, mode=mode, run_id=os.getenv("RUN_ID", "default"))
+                    # ⭐ HOTFIX: DB 연결 새로 생성 (닫힌 연결 사용 방지)
+                    from database.postgres import get_db_connection
+                    with get_db_connection() as conn:
+                        portfolio.save_state(conn, mode=mode, run_id=os.getenv("RUN_ID", "default"))
+                        risk.save_state(conn, mode=mode, run_id=os.getenv("RUN_ID", "default"))
                 except Exception as e:
                     logger.warning(f"⚠️ Manager 상태 저장 실패 (무시하고 계속): {e}")
 
