@@ -1,5 +1,63 @@
 # PHASE7-1 스모크 테스트 모니터링
 
+**최종 업데이트**: 2025-11-13  
+**현행 코드(b84c03c)**: 슬리피지 미구현, OHLC SL 활성, 중복 진입/ONE-WAY 정상  
+
+## ⚠️ 현재 상태 스냅샷 (최근 30/60분 · Paper)
+
+- **60분**: closed=394, win_rate=31.2%, >8% 손실=20건  
+  - Exit breakdown: SL 201건(avg -3.83%, min -16.65%), TP1 196건(avg +2.28%, min -4.86%), ONE_WAY_MODE 2건
+- **30분**: closed=151, win_rate=26.5%, avg_pnl=-0.84%, min=-12.05%, max=+25.30%  
+- **무결성**: 중복 진입 0, 양방향 OPEN 0, OPEN=13
+
+### 사용한 SQL 쿼리
+
+```sql
+-- 60m 승률/총합
+SELECT COUNT(*) FILTER (WHERE status='CLOSED') AS closed,
+       COUNT(*) FILTER (WHERE status='CLOSED' AND pnl_pct > 0) AS wins,
+       ROUND(100.0 * COUNT(*) FILTER (WHERE status='CLOSED' AND pnl_pct > 0)/ NULLIF(COUNT(*) FILTER (WHERE status='CLOSED'),0), 1) AS win_rate
+FROM trading.trades
+WHERE mode='paper' AND created_at >= NOW() - INTERVAL '60 minutes';
+
+-- 30m 요약
+WITH t AS (
+  SELECT * FROM trading.trades WHERE mode='paper' AND created_at >= NOW() - INTERVAL '30 minutes'
+)
+SELECT COUNT(*) FILTER (WHERE status='CLOSED') AS closed,
+       ROUND(100.0 * COUNT(*) FILTER (WHERE status='CLOSED' AND pnl_pct > 0)/ NULLIF(COUNT(*) FILTER (WHERE status='CLOSED'),0), 1) AS win_rate,
+       ROUND(AVG(pnl_pct)::numeric,2) AS avg_pnl,
+       ROUND(MIN(pnl_pct)::numeric,2) AS min_pnl,
+       ROUND(MAX(pnl_pct)::numeric,2) AS max_pnl
+FROM t;
+
+-- 60m 종료 사유
+WITH t AS (
+  SELECT * FROM trading.trades WHERE mode='paper' AND status='CLOSED' AND created_at >= NOW() - INTERVAL '60 minutes'
+)
+SELECT exit_reason, COUNT(*) AS cnt,
+       ROUND(AVG(pnl_pct)::numeric,2) AS avg_pnl,
+       ROUND(MIN(pnl_pct)::numeric,2) AS min_pnl,
+       ROUND(MAX(pnl_pct)::numeric,2) AS max_pnl
+FROM t GROUP BY exit_reason ORDER BY cnt DESC;
+
+-- >8% 손실 수
+SELECT COUNT(*) AS losses_over_8pct
+FROM trading.trades
+WHERE mode='paper' AND status='CLOSED' AND created_at >= NOW() - INTERVAL '60 minutes' AND pnl_pct <= -8;
+
+-- 양방향/중복 체크와 OPEN 카운트
+WITH d AS (
+  SELECT DISTINCT symbol, side FROM trading.trades WHERE mode='paper' AND status='OPEN'
+), c AS (
+  SELECT symbol, COUNT(*) AS sides FROM d GROUP BY symbol
+)
+SELECT COUNT(*) AS symbols_with_both_sides FROM c WHERE sides >= 2;
+
+SELECT COUNT(*) AS open_positions FROM trading.trades WHERE mode='paper' AND status='OPEN';
+```
+
+---
 ## 시작 시간
 - **시작**: 2025-11-10 10:13 KST
 - **리빌드**: --no-cache 완전 재빌드
@@ -102,9 +160,108 @@ WHERE mode='paper' AND ts_open >= '2025-11-10 10:13:00';
 - 변경사항 모두 적용 확인
 
 ### 10:28 - 초기 5분 체크
-- ✅ 오류 없음
-- ✅ 정상 작동
-- ✅ PHASE7-1 변경사항 적용 확인 완료
+- 오류 없음
+- 정상 작동
+- PHASE7-1 변경사항 적용 확인 완료
+
+---
+
+## A/B 1시간 대조 실험 절차
+
+### 목적
+- 설정 차이가 승률/PnL/손실 상한/무결성에 미치는 영향을 1h 단위로 비교.
+
+### 사전 준비
+- env=paper 고정, 동일 심볼/전략/브로커 사용.
+- `run_id` 2개 생성(A/B)로 DB/Redis 완전 격리.
+- A: 현행 설정(복원 후 HEAD). B: 복원 전 설정(플래시가드 15%, TP/트레일링 구조 등).
+
+### 실행 개요
+1) A 실행: RUN_ID_A로 60분 운용.
+2) B 실행: 복원 전 `config.yml`만 임시 적용 후 RUN_ID_B로 60분 운용.
+3) 두 실험 종료 즉시 DB 스냅샷 쿼리 실행(아래 SQL, run_id 필터 필수).
+
+### 수집 SQL (run_id 필터 예시)
+```sql
+-- 1h 요약 (A 또는 B)
+SELECT COUNT(*) FILTER (WHERE status='CLOSED') AS closed,
+       ROUND(100.0 * COUNT(*) FILTER (WHERE status='CLOSED' AND pnl_pct > 0)
+             / NULLIF(COUNT(*) FILTER (WHERE status='CLOSED'),0), 1) AS win_rate,
+       ROUND(AVG(pnl_pct)::numeric,2) AS avg_pnl,
+       ROUND(MIN(pnl_pct)::numeric,2) AS min_pnl,
+       ROUND(MAX(pnl_pct)::numeric,2) AS max_pnl
+FROM trading.trades
+WHERE mode='paper' AND run_id='${RUN_ID_X}' AND created_at >= NOW() - INTERVAL '60 minutes';
+
+-- 1h 종료 사유
+WITH t AS (
+  SELECT * FROM trading.trades
+  WHERE mode='paper' AND status='CLOSED' AND run_id='${RUN_ID_X}'
+    AND created_at >= NOW() - INTERVAL '60 minutes'
+)
+SELECT exit_reason, COUNT(*) AS cnt,
+       ROUND(AVG(pnl_pct)::numeric,2) AS avg_pnl,
+       ROUND(MIN(pnl_pct)::numeric,2) AS min_pnl,
+       ROUND(MAX(pnl_pct)::numeric,2) AS max_pnl
+FROM t GROUP BY exit_reason ORDER BY cnt DESC;
+
+-- 무결성 (오픈/양방향/중복)
+WITH d AS (
+  SELECT DISTINCT symbol, side FROM trading.trades
+  WHERE mode='paper' AND status='OPEN' AND run_id='${RUN_ID_X}'
+), c AS (
+  SELECT symbol, COUNT(*) AS sides FROM d GROUP BY symbol
+)
+SELECT COUNT(*) AS symbols_with_both_sides FROM c WHERE sides >= 2;
+
+SELECT COUNT(*) AS open_positions
+FROM trading.trades WHERE mode='paper' AND status='OPEN' AND run_id='${RUN_ID_X}';
+```
+
+### 판정 기준(예시)
+- 승률 우위(±3%p 이상) AND >8% 손실 0건 AND 무결성 100% → 채택.
+- 거래 수가 크게 다르면 PF/avg PnL 함께 비교.
+
+---
+
+## 24h 베이스라인 스냅샷 절차
+
+### 목적
+- “현재 설정”의 24시간 성과를 베이스라인으로 고정(변경 전/후 비교 기준).
+
+### 방법
+- 별도 실험 없이, DB에서 최근 24h 집계만 수행.
+- 단, “설정 변경 효과의 24h 유효성”을 보려면 변경 후 24h 연속 운용 후 동일 쿼리를 재수행.
+
+### SQL
+```sql
+-- 24h 요약
+SELECT COUNT(*) FILTER (WHERE status='CLOSED') AS closed,
+       ROUND(100.0 * COUNT(*) FILTER (WHERE status='CLOSED' AND pnl_pct > 0)
+             / NULLIF(COUNT(*) FILTER (WHERE status='CLOSED'),0), 1) AS win_rate,
+       ROUND(AVG(pnl_pct)::numeric,2) AS avg_pnl,
+       ROUND(MIN(pnl_pct)::numeric,2) AS min_pnl,
+       ROUND(MAX(pnl_pct)::numeric,2) AS max_pnl
+FROM trading.trades
+WHERE mode='paper' AND created_at >= NOW() - INTERVAL '24 hours';
+
+-- 24h 종료 사유
+WITH t AS (
+  SELECT * FROM trading.trades WHERE mode='paper' AND status='CLOSED'
+    AND created_at >= NOW() - INTERVAL '24 hours'
+)
+SELECT exit_reason, COUNT(*) AS cnt,
+       ROUND(AVG(pnl_pct)::numeric,2) AS avg_pnl,
+       ROUND(MIN(pnl_pct)::numeric,2) AS min_pnl,
+       ROUND(MAX(pnl_pct)::numeric,2) AS max_pnl
+FROM t GROUP BY exit_reason ORDER BY cnt DESC;
+
+-- 24h >8% 손실
+SELECT COUNT(*) AS losses_over_8pct
+FROM trading.trades
+WHERE mode='paper' AND status='CLOSED'
+  AND created_at >= NOW() - INTERVAL '24 hours' AND pnl_pct <= -8;
+```
 
 ---
 
