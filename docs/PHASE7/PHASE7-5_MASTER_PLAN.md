@@ -4,6 +4,27 @@
 **현행 코드(b84c03c)**: Paper/Live 파리티 일부 미흡, TP 거래소 등록 미구현, Manager 상태 DB 미구현  
 **상태**: ⚠️ PHASE7-2/3/4 선행 필요. 본 문서 내용은 TO-BE(미구현)
  
+## 📌 Executive Summary (TL;DR)
+
+- **역할**: Live 전환을 위한 최종 게이트 문서. 파리티 검증, 소액 실전, 단계적 확장 로드맵.
+- **현행**: 안정 버전(b84c03c). 파리티/TP 거래소 등록/상태 DB 미구현 → 선행 Phase 완료 후 재개.
+- **방침**: Paper/Live 로직 완전 일치 검증 후 소액 테스트 → 점진 확장. 안전 장치 우선.
+- **스냅샷**: 최근 2h/24h 성과는 아래 Standard Snapshot 및 SMOKE_TEST_MONITOR.md 참조.
+
+## 🔎 Quick Nav
+
+- [목표](#-목표-goals)
+- [범위](#-범위-scope-in)
+- [수용 기준](#-수용-기준-게이트)
+- [검증/테스트](#-paperlive-파리티-검증-2일)
+- [업데이트 로그](#-구현-상세)
+
+## 📊 Standard Snapshot (Paper)
+
+- **최근 2시간**: closed=818, win_rate=38.3%, avg_pnl=-0.24%, min=-31.01%, max=+62.25, >8% 손실=29, 무결성 OK(양방향 0, OPEN 11)
+- **최근 24시간**: closed=1,550, win_rate=35.8%, avg_pnl=-0.38%, min=-32.47, max=+70.40, >8% 손실=64, 무결성 OK(양방향 0)
+- 출처: SMOKE_TEST_MONITOR.md 실측 스냅샷 (2025-11-13)
+
 ## ⚠️ 현재 상태 스냅샷 (최근 30/60분 · Paper)
 
 - **60분**: closed=394, win_rate=31.2%, >8% 손실=20건  
