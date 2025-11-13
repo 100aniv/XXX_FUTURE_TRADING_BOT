@@ -188,21 +188,6 @@ exits:
   use_ohlc_check: true  # High/Low로 정확한 SL 체크
   sl_priority: "BEFORE_TP"  # SL을 TP보다 우선 체크
   
-  # ⭐ PHASE7-2 Phase 1: 동적 SL/TP 재조정
-  tp1_r: 2.0              # TP1 Risk 배수 (1.5R → 2.0R, 보수적 조정)
-  tp2_r: null             # TP2 비활성화 (3.0R → null, Trailing으로 대체)
-  tp1_pct: 50             # TP1 청산 비율 (30% → 50%)
-  tp2_pct: 0              # TP2 비활성화
-  
-  # 동적 SL 설정 (ATR 기반)
-  sl_max_pct: 6.0         # 최대 SL 거리 (8% → 6%)
-  sl_min_pct: 2.0         # 최소 SL 거리
-  sl_atr_multiplier: 1.5  # ATR * 1.5 (변동성 기반)
-  
-  # Trailing Stop 조기 활성화
-  trailing_activate_at: "TP1"  # TP1 도달 시 즉시 활성화 (기존: TP2)
-  trailing_distance_pct: 2.0   # Trailing 거리 2%
-  
   # ⭐ PR12: 고급 가격 레벨 설정
   price_levels:
     advanced:
@@ -226,14 +211,8 @@ exposure:
     - XRPUSDT
 fees:
   maker: 0.0002
+  slippage: 0.0005
   taker: 0.0004
-  # ⭐ PHASE7-2 Phase 2: 동적 슬리피지 설정
-  slippage_base: 0.0005       # 기본 슬리피지 (0.05%)
-  slippage_multiplier:
-    market: 1.0               # MARKET 주문 (1.0x)
-    sl: 3.0                   # SL 청산 (3.0x, 급격한 움직임)
-  slippage_max: 0.06          # 최대 슬리피지 (6%, Paper 모드)
-  slippage_max_live: 0.04     # Live 모드 최대 슬리피지 (4%, 더 엄격)
 filters:
   atr_window: 14
   htf: 1h
@@ -253,7 +232,7 @@ session_windows_utc:
 flash_guard:
   enabled: true
   pause_candles: 3
-  threshold_pct: 0.15  # ⭐ PHASE7-2 Phase 0: 3% → 15% (정상 변동성 허용)
+  threshold_pct: 0.03
   window_sec: 60
   log_throttle_sec: 300
 indicators:
@@ -396,12 +375,9 @@ risk:
   per_trade: 0.003  # 거래당 리스크 비율 (0.3%) ⭐ 0.005→0.003
   max_sl_pct: 0.05  # ⭐ 신규: SL 최대 한도 (entry의 ±5%)
   
-  # ⭐ PHASE7-2 Phase 2: 중복 진입 방지 강화
-  duplicate_check_db: true  # DB 재확인 활성화 (메모리 + DB 이중 체크)
-  
-  # ⭐ PR11: 추가 리스크 가드 (DD cutoff)
+  # ⭐ PR11: 추가 리스크 가드 (DD cutoff, Slippage Guard)
   max_drawdown_pct: 10.0  # 최대 낙폭 한도 (10%)
-  # max_slippage_pct: 제거 (2025-11-12) - 동적 슬리피지 모델 사용, 상용 프로그램 패턴
+  max_slippage_pct: 0.5   # 슬리피지 가드 (0.5%)
   extreme_loss_cutoff_pct: -20.0  # ⭐ PHASE7-1: 극단 손실 가드 (-20%, -50%→-30%→-20% 단계 강화)
   profiles:
     paper:
