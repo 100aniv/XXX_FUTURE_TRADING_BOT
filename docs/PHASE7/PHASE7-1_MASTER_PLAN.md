@@ -1,5 +1,27 @@
 # PHASE7-1 마스터 플랜: 긴급 패치 (수수료 + TP/SL OHLC)
 
+## 📌 Executive Summary (TL;DR)
+
+- **역할**: 긴급 패치의 기준 문서. 수수료 반영, OHLC SL, Extreme Loss 강화를 통해 최소 안전선 확보.
+- **현행**: 안정 버전(b84c03c)에 모두 포함되어 Live 이전 필수 안전장치 충족.
+- **방침**: 추가 회귀 없음 확인 시 PHASE7-2/3로 진행. 스냅샷 지표는 아래 Standard Snapshot 및 SMOKE_TEST_MONITOR.md 우선.
+
+## 🔎 Quick Nav
+
+- [원래 계획](#-원래-계획-참고용)
+- [목표](#-목표-goals)
+- [범위](#-범위-scope-in)
+- [제외](#-제외-out-of-scope)
+- [영향 파일](#-영향-파일)
+- [설정 키](#-설정-키)
+- [구현 상세](#-구현-상세)
+
+## 📊 Standard Snapshot (Paper)
+
+- **최근 2시간**: closed=818, win_rate=38.3%, avg_pnl=-0.24%, min=-31.01%, max=+62.25, >8% 손실=29, 무결성 OK(양방향 0, OPEN 11)
+- **최근 24시간**: closed=1,550, win_rate=35.8%, avg_pnl=-0.38%, min=-32.47, max=+70.40, >8% 손실=64, 무결성 OK(양방향 0)
+- 출처: SMOKE_TEST_MONITOR.md 실측 스냅샷 (2025-11-13)
+
 ## ⚠️ **현재 상태 (2025-11-13)**
 
 **프로젝트 상태**: ✅ **구현 완료** (b84c03c에 포함)
