@@ -128,7 +128,7 @@ ensemble:
 - [ ] .windsurfrules 준수: 단계별 3파일 이하
 
 **구현 중**:
-- [ ] 전략별 쿨다운/제한 (engine.py)
+- [진행중] 전략별 쿨다운/제한 (engine.py) - Phase 1 착수 (2025-11-13 23:41)
 - [ ] 포트폴리오 레벨 제한 (engine.py)
 - [ ] TP/SL 최적화 (calculations.py, position_tracker.py)
 - [ ] 회귀 테스트: 중복 방지, ONE-WAY, OHLC SL
