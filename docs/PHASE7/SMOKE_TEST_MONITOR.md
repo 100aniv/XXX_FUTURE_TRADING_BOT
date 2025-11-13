@@ -10,6 +10,20 @@
 - **30분**: closed=151, win_rate=26.5%, avg_pnl=-0.84%, min=-12.05%, max=+25.30%  
 - **무결성**: 중복 진입 0, 양방향 OPEN 0, OPEN=13
 
+## 실측 스냅샷 결과 (최근 2시간)
+
+- closed=818, win_rate=38.3%, avg_pnl=-0.24%, min=-31.01%, max=+62.25
+- Exit: TP1 532(avg 1.77, min -5.90, max 62.25), SL 283(avg -3.97, min -31.01, max 4.98), ONE_WAY_MODE 3(avg -1.15, min -7.45, max 4.50)
+- >8% 손실: 29
+- 무결성: 양방향 OPEN 0, 현재 OPEN 11
+
+## 실측 스냅샷 결과 (최근 24시간)
+
+- closed=1,550, win_rate=35.8%, avg_pnl=-0.38%, min=-32.47, max=+70.40
+- Exit: TP1 901(avg 2.08, min -5.90, max 70.40), SL 644(avg -3.83, min -32.47, max 4.98), ONE_WAY_MODE 5(avg 0.75, min -0.88, max 4.50)
+- >8% 손실: 64
+- 무결성: 양방향 OPEN 0, 현재 OPEN 11
+
 ### 사용한 SQL 쿼리
 
 ```sql
@@ -45,17 +59,6 @@ FROM t GROUP BY exit_reason ORDER BY cnt DESC;
 SELECT COUNT(*) AS losses_over_8pct
 FROM trading.trades
 WHERE mode='paper' AND status='CLOSED' AND created_at >= NOW() - INTERVAL '60 minutes' AND pnl_pct <= -8;
-
--- 양방향/중복 체크와 OPEN 카운트
-WITH d AS (
-  SELECT DISTINCT symbol, side FROM trading.trades WHERE mode='paper' AND status='OPEN'
-), c AS (
-  SELECT symbol, COUNT(*) AS sides FROM d GROUP BY symbol
-)
-SELECT COUNT(*) AS symbols_with_both_sides FROM c WHERE sides >= 2;
-
-SELECT COUNT(*) AS open_positions FROM trading.trades WHERE mode='paper' AND status='OPEN';
-```
 
 ---
 ## 시작 시간
