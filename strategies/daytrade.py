@@ -126,8 +126,7 @@ def signal_logic(df: pd.DataFrame, config: dict) -> Dict[str, Any]:
         entry, sl, tp = price_levels(
             side, price, atr,
             config["rr"],
-            atr_mult_adjusted,  # 조정된 배수 사용
-            config=config  # ⭐ PHASE7-2 Phase 1: config 전달 (동적 SL/TP)
+            atr_mult_adjusted  # 조정된 배수 사용
         )
     
     # 레버리지 제안
