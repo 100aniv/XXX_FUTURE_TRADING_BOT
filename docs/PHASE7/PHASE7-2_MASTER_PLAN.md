@@ -23,6 +23,30 @@
 
 ---
 
+## 📌 Executive Summary (TL;DR)
+
+- **상태**: 7-2 중단 → 안정 버전(b84c03c) 복원 완료. 슬리피지 기능 없음.
+- **핵심 목표(재개 시)**: 승률 45% 유지, 거래 빈도 정상화, >8% 손실 0건, TP1 손실 0건.
+- **즉시 방침**: 슬리피지/쿨다운 재설계 선행 → A/B(1h, run_id 격리)는 재설계 후 수행.
+- **표준 스냅샷**: 최근 2h/24h 성과는 아래 Standard Snapshot 및 SMOKE_TEST_MONITOR.md 참조.
+
+## 🔎 Quick Nav
+
+- [현행 vs TO-BE 요약](#현행-vs-to-be-요약)
+- [목표(Goals)](#목표-goals-원래-계획-vs-실제)
+- [범위(Scope)](#범위-scope-in)
+- [설정 키](#설정-키)
+- [테스트/게이트](#-수용-기준-게이트)
+- [체크리스트](#-체크리스트)
+- [업데이트 로그](#-업데이트-로그)
+- [SMOKE_TEST_MONITOR](SMOKE_TEST_MONITOR.md)
+
+## 📊 Standard Snapshot (Paper)
+
+- **최근 2시간**: closed=818, win_rate=38.3%, avg_pnl=-0.24%, min=-31.01%, max=+62.25, >8% 손실=29, 무결성 OK(양방향 0, OPEN 11)
+- **최근 24시간**: closed=1,550, win_rate=35.8%, avg_pnl=-0.38%, min=-32.47, max=+70.40, >8% 손실=64, 무결성 OK(양방향 0)
+- 출처: SMOKE_TEST_MONITOR.md의 실측 스냅샷. 시점: 2025-11-13.
+
 ## ✅ 수용 기준 (게이트)
 
 - 본 문서는 현재 “중단” 상태로, 구현 게이트는 보류
