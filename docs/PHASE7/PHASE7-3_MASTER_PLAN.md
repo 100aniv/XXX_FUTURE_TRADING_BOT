@@ -13,6 +13,34 @@
 
 ---
 
+## ✅ 수용 기준 (게이트)
+
+- Graceful 종료: 작업 중단 시 누락 이벤트/오더 0건, 종료 로그/텔레그램 알림 필수
+- 재기동 복원: 재시작 직후 포지션/주문 상태 일치율 100%, 유령 포지션 0
+- 헬스체크: unhealthy 자동 복구(재기동 또는 격리) 성공률 100%
+- 모니터링: 대시보드/알림이 5분 내 이상 감지, 경고→크리티컬 단계화
+- 무결성: 중복 진입 0, 양방향 동시 0, 미결 주문 유실 0
+
+## 📋 체크리스트
+
+- 종료 훅 구현(try/finally)과 큐 drain → 오더 cancel/replace 정책 적용
+- 상태 복원 순서 정의: Symbols → Positions → Orders → Engine clocks
+- Docker healthcheck + restart policy + backoff 설정 확인
+- 텔레그램/로그 레벨 및 샘플링 정책 확정(과다/누락 방지)
+- Redis/DB 네임스페이스: `{ns}:{env}:{run_id}:*` 준수
+
+## 🔗 참조 문서
+
+- SYSTEM_OPERATIONS_ANALYSIS.md
+- PHASE7_ALGORITHM_BEST.md (MASTER)
+- SMOKE_TEST_MONITOR.md
+
+## 📝 업데이트 로그
+
+- 2025-11-13: 2차 표준화(수용 기준/체크리스트/참조 추가)
+
+---
+
 ## 배경/의도 (Overview) — 원래 계획 (참고용)
 
 PHASE 7-1/7-2 완료 후 성과 개선 완료. 하지만 **운영 안정성** 부족:

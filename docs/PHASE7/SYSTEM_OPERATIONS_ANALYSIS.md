@@ -2,9 +2,43 @@
 # 트레이딩 시스템 운영 철학 및 모드별 동작 분석
 
 **작성일**: 2025-11-11  
-**목적**: Paper/Live 모드에서 프로그램 종료/재시작 시 포지션 및 Manager 상태 처리 전략 정의
+**최종 업데이트**: 2025-11-13  
+**목적**: Paper/Live 모드에서 프로그램 종료/재시작 시 포지션 및 Manager 상태 처리 전략 정의  
+**현행 코드(b84c03c)**: Manager 상태 DB 테이블 미구현, TP 거래소 등록 미구현, SL 거래소 등록만 사용
+ 
+## ⚠️ 현재 상태 스냅샷 (최근 30/60분 · Paper)
+
+- **60분**: closed=394, win_rate=31.2%, >8% 손실=20건  
+  - Exit breakdown: SL 201건(avg -3.83%, min -16.65%), TP1 196건(avg +2.28%, min -4.86%), ONE_WAY_MODE 2건
+- **30분**: closed=151, win_rate=26.5%, avg_pnl=-0.84%, min=-12.05%, max=+25.30%  
+- **무결성**: 중복 진입 0, 양방향 OPEN 0, OPEN=13
 
 ---
+
+## ✅ 수용 기준 (게이트)
+
+- 종료/재시작 정책 문서-코드 일치 100%
+- 재시작 복원 직후 포지션/주문/Manager 상태 일치율 100%
+- Paper/Live 공통: 중복 진입 0, 양방향 동시 0, 미결 주문 유실 0
+- 비정상 종료 시에도 SL 보장(거래소 측 주문) 및 경고 알림 확인
+
+## 📋 체크리스트
+
+- 종료 훅(Signal handler)과 상태 저장(save_shutdown_state) 구현 여부
+- 재시작 시 순서: Positions → Orders → Risk/Portfolio 동기화 로그 확인
+- Docker healthcheck와 restart policy 설정 검증, 알림 경로 확인
+- Redis/DB 네임스페이스 {ns}:{env}:{run_id}:* 적용, env/run_id 삽입률 100%
+
+## 🔗 참조 문서
+
+- PHASE7-3_MASTER_PLAN.md (운영 안정성)
+- PHASE7-5_MASTER_PLAN.md (Live 전환 게이트)
+- PHASE7_ALGORITHM_BEST.md (MASTER)
+- SMOKE_TEST_MONITOR.md (관측/SQL)
+
+## 📝 업데이트 로그
+
+- 2025-11-13: 2차 표준화(수용 기준/체크리스트/참조 추가)
 
 ## 📋 목차
 1. [상용 시스템 표준](#상용-시스템-표준)

@@ -13,6 +13,31 @@
 
 ---
 
+## ✅ 수용 기준 (게이트)
+
+- Paper 1주 평균 승률 ≥ 50%
+- Sharpe Ratio > 1.0, Profit Factor > 1.1
+- 24h 기준 >8% 손실 0건, TP1 손실 0건
+- 시간당 거래 ≤ 15건, 포지션 수 ≤ 10개(포트폴리오)
+
+## 📋 체크리스트
+
+- 전략별 독립 설정 설계안 확정(cooldown_minutes, max_trades_per_hour, max_positions)
+- 백테스트 파이프라인 가동(2024년 전체, 전략별)
+- 성과 기반 동적 가중치(adaptive_weight) 검증 및 클램핑
+- Correlation/Exposure 한도 도입 계획 수립
+- SQL/리포트 지표 정의 고정(win_rate, PF, Sharpe, >8%)
+
+## 🔗 참조 문서
+
+- PHASE7_ALGORITHM_BEST.md (MASTER)
+- PHASE7-3_MASTER_PLAN.md (운영 안정성 선행)
+- SMOKE_TEST_MONITOR.md (관측/SQL)
+
+## 📝 업데이트 로그
+
+- 2025-11-13: 2차 표준화(수용 기준/체크리스트/참조 추가)
+
 ## 배경/의도 (Overview)
 
 PHASE 7-1~7-3 완료로 기술적 안정성 확보. 이제 **전략 품질** 개선:

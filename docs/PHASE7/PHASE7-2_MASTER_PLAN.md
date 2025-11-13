@@ -23,6 +23,32 @@
 
 ---
 
+## ✅ 수용 기준 (게이트)
+
+- 본 문서는 현재 “중단” 상태로, 구현 게이트는 보류
+- 재개 시 최소 게이트(Phase7-3 이전):
+  - 24h 기준 >8% 손실 0건, TP1 손실 0건
+  - 24h Paper 승률 ≥ 45% (전략 변경 없이 파라미터/가드 조정 내)
+  - 중복 진입 0, 양방향 동시 0, ONE-WAY 차단 100%
+
+## 📋 체크리스트
+
+- 변경 범위 최소화(.windsurfrules): 단계별 3파일 이하
+- 회귀 테스트 우선: 중복 방지, ONE-WAY, OHLC SL, PnL 수수료 반영
+- 설정 변경 시 diff 기록: config.yml 키 변경 내역/근거/가설
+- DB/Redis 네임스페이스 {ns}:{env}:{run_id}:* 적용, run_id 격리 검증
+
+## 🔗 참조 문서
+
+- PHASE7_ALGORITHM_BEST.md (MASTER)
+- GUARD_EXECUTION_ORDER_ANALYSIS.md
+- SYSTEM_OPERATIONS_ANALYSIS.md
+- SMOKE_TEST_MONITOR.md (관측/SQL)
+
+## 📝 업데이트 로그
+
+- 2025-11-13: 2차 표준화(수용 기준/체크리스트/참조 추가)
+
 ## 📋 **원래 계획 (참고용)**
 
 **주의**: 아래 내용은 PHASE7-2 원래 계획이나, **현재 코드(b84c03c)에는 구현되지 않았습니다.**
