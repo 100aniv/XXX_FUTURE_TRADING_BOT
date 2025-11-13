@@ -81,29 +81,13 @@ def send_telegram(
             "text": text,
             "parse_mode": parse_mode
         }
+        resp = requests.post(url, data=data, timeout=10)
         
-        # ⭐ PHASE7-1: Rate limit 처리 (429 에러 재시도)
-        max_retries = 3
-        retry_delay = 1.0  # 초
+        if resp.status_code != 200:
+            logger.error(f"❌ 텔레그램 전송 실패: {resp.status_code}")
+            return False
         
-        for attempt in range(max_retries):
-            resp = requests.post(url, data=data, timeout=10)
-            
-            if resp.status_code == 200:
-                return True
-            elif resp.status_code == 429:
-                # Rate limit 도달, 재시도
-                if attempt < max_retries - 1:
-                    time.sleep(retry_delay * (attempt + 1))  # 지수 백오프
-                    continue
-                else:
-                    logger.warning(f"⚠️  텔레그램 rate limit (429), 재시도 {max_retries}회 실패")
-                    return False
-            else:
-                logger.error(f"❌ 텔레그램 전송 실패: {resp.status_code}")
-                return False
-        
-        return False
+        return True
         
     except Exception as e:
         logger.error(f"❌ 텔레그램 오류: {e}")

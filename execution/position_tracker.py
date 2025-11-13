@@ -112,30 +112,21 @@ class PositionTracker:
         return False, ''
     
     def check_tpsl_with_partial(self, position: Dict, current_price: float, 
-                                atr: float = None, candle: Dict = None, config: dict = None) -> Tuple[bool, Optional[float], str]:
+                                atr: float = None, candle: Dict = None) -> Tuple[bool, Optional[float], str]:
         """
         TP 분할 체크 (TUNING_VIBLE P1 + PHASE7-1 OHLC)
-        
-        ⭐ PHASE7-2 Phase 1: Trailing Stop 조기 활성화 지원
-        - config 전달 시: exits.trailing_activate_at 적용 (TP1/TP2)
-        - config 미전달 시: 기존 동작 (TP2 이후 trailing)
-        
-        ⭐ PHASE7-2 Phase 2: SL 청산 가격 슬리피지 적용
-        - SL/EXTREME_LOSS 시 동적 슬리피지 반영된 청산 가격 반환
         
         Args:
             position: 포지션
             current_price: 현재 가격
-            atr: ATR 값 (트레일링용, 슬리피지 계산용)
+            atr: ATR 값 (트레일링용)
             candle: 캠들 OHLC 데이터 (high, low, close)
-            config: 설정 딕셔너리 (exits 섹션 포함, PHASE7-2 Phase 1)
         
         Returns:
-            (should_action, partial_qty, reason, exit_price)
+            (should_action, partial_qty, reason)
             - should_action: 액션 필요 여부
             - partial_qty: 부분 청산 수량 (None = 전체 청산)
             - reason: 이유 (TP1/TP2/SL/TRAILING_SL/EXTREME_LOSS)
-            - exit_price: 청산 가격 (SL/EXTREME_LOSS 시만 사용, 나머지는 None)
         """
         side = position['side']
         entry = position['entry']
@@ -161,24 +152,8 @@ class PositionTracker:
                 )
             
             if sl_hit:
-                # ⭐ PHASE7-2 Phase 2: SL 청산 가격 슬리피지 적용
-                from common.calculations import calculate_dynamic_slippage
-                
-                # 슬리피지 계산 (ATR 제공 시)
-                if atr and config:
-                    # Paper 모드 기준 (Live는 실제 API 체결가 사용)
-                    sl_slip = calculate_dynamic_slippage(atr, stop, 'SL', config, mode='paper')
-                    # SL 가격에서 슬리피지만큼 악화
-                    exit_price = stop * (1 + sl_slip) if side == 'SHORT' else stop * (1 - sl_slip)
-                    logger.warning(
-                        f"💸 [SL 슬리피지] {sl_slip*100:.2f}% 적용: "
-                        f"SL ${stop:.6f} → 청산 ${exit_price:.6f}"
-                    )
-                else:
-                    exit_price = current_price  # ATR 없으면 현재가 사용 (기존 동작)
-                
                 reason = 'TRAILING_SL' if position.get('tp2_hit', False) else 'SL'
-                return True, None, reason, exit_price  # 전체 청산 + 청산 가격
+                return True, None, reason  # 전체 청산
         
         # ⭐ PHASE7-1: Extreme Loss -20% 체크 (SL 다음 우선순위)
         current_pnl_pct = 0.0
@@ -192,15 +167,14 @@ class PositionTracker:
                 f"🚨 [EXTREME_LOSS] 극단 손실 감지: {current_pnl_pct:.2f}% <= -20% | "
                 f"Entry: ${entry:.4f} → Current: ${current_price:.4f}"
             )
-            # EXTREME_LOSS도 슬리피지 적용 (급격한 손실 시)
-            return True, None, 'EXTREME_LOSS', current_price  # 전체 강제 청산
+            return True, None, 'EXTREME_LOSS'  # 전체 강제 청산
         
         # TP 레벨 확인
         tp_levels = position.get('tp_levels', {})
         if not tp_levels:
             # TP 레벨 없으면 레거시 방식 (SL은 위에서 이미 체크)
             should_close, reason = self.check_tpsl(position, current_price)
-            return should_close, None if should_close else 0, reason, None  # exit_price 없음
+            return should_close, None if should_close else 0, reason
         
         # TP1 체크
         if not position.get('tp1_hit', False):
@@ -211,19 +185,8 @@ class PositionTracker:
                     partial_qty = self.tp_manager.calculate_partial_size(total_qty, 1)
                     position['tp1_hit'] = True
                     position['remaining_pct'] = 70.0
-                    
-                    # ⭐ PHASE7-2 Phase 1: TP1 도달 시 Trailing Stop 활성화
-                    if config:
-                        exits_config = config.get('exits', {})
-                        trailing_activate_at = exits_config.get('trailing_activate_at', 'TP2')
-                        if trailing_activate_at == 'TP1':
-                            position['trailing_active'] = True
-                            position['highest'] = current_price if side == 'LONG' else entry
-                            position['lowest'] = entry if side == 'LONG' else current_price
-                            logger.info(f"✅ TP1 도달 → Trailing Stop 활성화: {position.get('symbol', 'N/A')}")
-                    
-                    logger.info(f"🎯 TP1 도달: ${tp1_price:.6f} | 청산 {partial_qty:.4f} (30%)")
-                    return True, partial_qty, 'TP1', None  # TP는 current_price 사용
+                    logger.info(f"🎯 TP1 도달: {partial_qty:.4f} 청산 (30%)")
+                    return True, partial_qty, 'TP1'
         
         # TP2 체크
         if not position.get('tp2_hit', False) and position.get('tp1_hit', False):
@@ -234,16 +197,8 @@ class PositionTracker:
                     partial_qty = self.tp_manager.calculate_partial_size(total_qty, 2)
                     position['tp2_hit'] = True
                     position['remaining_pct'] = 30.0
-                    
-                    # ⭐ PHASE7-2 Phase 1: TP2 도달 시에도 Trailing 활성화 (하위 호환)
-                    if not position.get('trailing_active', False):
-                        position['trailing_active'] = True
-                        position['highest'] = current_price if side == 'LONG' else entry
-                        position['lowest'] = entry if side == 'LONG' else current_price
-                        logger.info(f"✅ TP2 도달 → Trailing Stop 활성화: {position.get('symbol', 'N/A')}")
-                    
-                    logger.info(f"🎯 TP2 도달: ${tp2_price:.6f} | 청산 {partial_qty:.4f} (40%)")
-                    return True, partial_qty, 'TP2', None  # TP는 current_price 사용
+                    logger.info(f"🎯 TP2 도달: {partial_qty:.4f} 청산 (40%)")
+                    return True, partial_qty, 'TP2'
         
         # BE 이동 체크 (TP1 이후)
         if position.get('tp1_hit', False) and not position.get('be_moved', False):
@@ -255,11 +210,8 @@ class PositionTracker:
                     position['sl'] = new_sl
                     position['be_moved'] = True
         
-        # ⭐ PHASE7-2 Phase 1: 트레일링 업데이트 (TP1 또는 TP2 이후, config에 따라)
-        # - trailing_active가 True면 업데이트 (TP1에서 활성화 가능)
-        # - 하위 호환: trailing_active 없으면 tp2_hit 조건 사용
-        is_trailing_active = position.get('trailing_active', False) or position.get('tp2_hit', False)
-        if is_trailing_active and atr:
+        # 트레일링 업데이트 (TP2 이후)
+        if position.get('tp2_hit', False) and atr:
             highest = position.get('highest', entry)
             lowest = position.get('lowest', entry)
             
@@ -288,43 +240,6 @@ class PositionTracker:
                (side == 'SHORT' and current_price >= current_sl):
                 reason = 'TRAILING_SL' if position.get('tp2_hit', False) else 'SL'
                 logger.info(f"❌ {reason} 도달 (Close): ${current_price:,.2f} (SL: ${current_sl:,.2f})")
-                return True, None, reason, None  # 전체 청산 (Close 가격 사용)
+                return True, None, reason  # 전체 청산
         
-        return False, 0, '', None  # 액션 없음
-    
-    def check_extreme_loss_realtime(self, position: dict, current_price: float) -> tuple[bool, str]:
-        """
-        실시간 Extreme Loss 체크 (WebSocket 가격 업데이트마다)
-        
-        ⭐ PHASE7-2 Phase 0: 1분 내 급락 감지용
-        - 기존 check_tpsl_with_partial()은 캔들 종료 시에만 호출
-        - 이 함수는 WebSocket 가격 업데이트마다 호출되어 즉시 감지
-        
-        Args:
-            position: 포지션 정보
-            current_price: 현재 가격
-        
-        Returns:
-            (should_close, reason): 청산 여부 및 사유
-        """
-        entry = position.get('entry', 0)
-        side = position.get('side', 'LONG')
-        
-        if entry <= 0:
-            return False, ''
-        
-        # PnL 계산
-        if side == 'LONG':
-            current_pnl_pct = ((current_price - entry) / entry) * 100
-        else:  # SHORT
-            current_pnl_pct = ((entry - current_price) / entry) * 100
-        
-        # -20% 체크
-        if current_pnl_pct <= -20.0:
-            logger.warning(
-                f"🚨 [EXTREME_LOSS_REALTIME] 극단 손실 감지: {current_pnl_pct:.2f}% <= -20% | "
-                f"Entry: ${entry:.4f} → Current: ${current_price:.4f}"
-            )
-            return True, 'EXTREME_LOSS'
-        
-        return False, ''
+        return False, 0, ''

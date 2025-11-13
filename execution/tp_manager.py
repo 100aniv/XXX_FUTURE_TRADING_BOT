@@ -51,13 +51,9 @@ class TPManager:
     
     def calculate_tp_levels(self, entry: float, stop: float, side: str, 
                            atr: float = None, volatility_regime: str = None,
-                           symbol: str = "BTCUSDT", config: dict = None) -> Dict[str, float]:
+                           symbol: str = "BTCUSDT") -> Dict[str, float]:
         """
         TP 레벨 계산 (⭐ PR12: 동적 반올림 적용)
-        
-        ⭐ PHASE7-2 Phase 1: config 기반 TP 레벨 지원
-        - config 전달 시: exits.tp1_r, tp2_r 적용
-        - config 미전달 시: self.tp_levels 사용 (하위 호환)
         
         Args:
             entry: 진입가
@@ -66,7 +62,6 @@ class TPManager:
             atr: ATR 값 (트레일링용)
             volatility_regime: 'low_vol', 'neutral', 'high_vol' (선택)
             symbol: 거래 심볼 (⭐ PR12: 반올림용)
-            config: 설정 딕셔너리 (exits 섹션 포함, PHASE7-2 Phase 1)
         
         Returns:
             {'tp1': price, 'tp2': price, 'trail': price, 'be': price}
@@ -88,39 +83,18 @@ class TPManager:
         
         result = {}
         
-        # ⭐ PHASE7-2 Phase 1: config 기반 TP 레벨 계산
-        if config:
-            exits_config = config.get('exits', {})
-            tp1_r = exits_config.get('tp1_r', 1.5)  # 기본값 1.5
-            tp2_r = exits_config.get('tp2_r')  # None이면 TP2 비활성화
+        # TP 레벨 계산 (조정된 1R 사용) + ⭐ PR12: 동적 반올림
+        for level in self.tp_levels:
+            r_mult = level['r_multiple']
+            key = f"tp{int(r_mult)}"
             
-            # TP1 계산
             if side == 'LONG':
-                price = entry + (adjusted_one_r * tp1_r)
+                price = entry + (adjusted_one_r * r_mult)
             else:
-                price = entry - (adjusted_one_r * tp1_r)
-            result['tp1'] = round_tick(symbol, price)
+                price = entry - (adjusted_one_r * r_mult)
             
-            # TP2 계산 (tp2_r이 None이 아닐 때만)
-            if tp2_r is not None:
-                if side == 'LONG':
-                    price = entry + (adjusted_one_r * tp2_r)
-                else:
-                    price = entry - (adjusted_one_r * tp2_r)
-                result['tp2'] = round_tick(symbol, price)
-        else:
-            # 기존 방식: self.tp_levels 사용
-            for level in self.tp_levels:
-                r_mult = level['r_multiple']
-                key = f"tp{int(r_mult)}"
-                
-                if side == 'LONG':
-                    price = entry + (adjusted_one_r * r_mult)
-                else:
-                    price = entry - (adjusted_one_r * r_mult)
-                
-                # ⭐ PR12: Binance tick_size에 맞게 반올림
-                result[key] = round_tick(symbol, price)
+            # ⭐ PR12: Binance tick_size에 맞게 반올림
+            result[key] = round_tick(symbol, price)
         
         # BE (Break Even) 가격 + ⭐ PR12: 동적 반올림
         if side == 'LONG':

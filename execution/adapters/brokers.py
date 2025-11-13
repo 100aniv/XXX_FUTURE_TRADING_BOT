@@ -75,34 +75,17 @@ class PaperBroker:
         
         logger.info(f"✅ PaperBroker 초기화: Equity=${self.equity:,.0f}")
     
-    def execute(self, decision: dict, qty: float, atr: float = None) -> dict:
-        """
-        ⭐ PHASE7-2 Phase 2: 가상 실행 (동적 슬리피지)
-        
-        Args:
-            decision: ensemble 결정 {'side': 'LONG', 'entry': 100, ...}
-            qty: 수량
-            atr: ATR 값 (동적 슬리피지 계산용, None이면 고정값 사용)
-        
-        Returns:
-            체결 결과 {'success': bool, 'filled_price': float, ...}
-        """
+    def execute(self, decision: dict, qty: float) -> dict:
+        """가상 실행 (슬리피지 적용하여 백테스트와 파리티 유지)"""
         side = decision.get('side')
         price = float(decision.get('entry', 0))
         qty = float(qty)  # Decimal → float 변환
         
-        # ⭐ PHASE7-2 Phase 2: 동적 슬리피지 계산
-        if atr:
-            from common.calculations import calculate_dynamic_slippage
-            slip = calculate_dynamic_slippage(atr, price, 'MARKET', self.config, mode='paper')
-        else:
-            slip = self.slippage_pct  # 기존 고정값 폴백 (하위 호환)
-        
-        # 슬리피지 적용
+        # 슬리피지 적용 (SimBroker와 동일 규칙)
         if side == 'LONG':
-            filled_price = price * (1 + slip)
+            filled_price = price * (1 + self.slippage_pct)
         else:
-            filled_price = price * (1 - slip)
+            filled_price = price * (1 - self.slippage_pct)
         value = filled_price * qty
         fee = value * self.fee_rate
         
@@ -117,7 +100,7 @@ class PaperBroker:
         }
         
         self.virtual_orders.append(order)
-        logger.info(f"📄 [PAPER] {side} @ {filled_price:.2f} qty={qty:.4f} (slip={slip*100:.2f}%)")
+        logger.info(f"📄 [PAPER] {side} @ {filled_price:.2f} qty={qty:.4f} (slip={self.slippage_pct*100:.2f}%)")
         
         return order
     
