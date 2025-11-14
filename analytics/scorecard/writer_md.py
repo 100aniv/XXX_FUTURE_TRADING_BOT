@@ -39,6 +39,11 @@ def save_scorecard_md(scorecard: Dict[str, Any], output_dir: Path) -> Path:
     passed = _check_criteria(scorecard)
     status_emoji = "✅ 합격" if passed else "❌ 불합격"
     
+    # ⭐ PHASE8-4: 실제 사용 기간 정보 추가
+    period_str = ""
+    if scorecard.get('period_start') and scorecard.get('period_end'):
+        period_str = f"- **Period**: {scorecard['period_start']} ~ {scorecard['period_end']} ({scorecard.get('period_days', 0)} days)\n"
+    
     # Markdown 작성
     content = f"""# 📊 Backtest Scorecard
 
@@ -46,7 +51,7 @@ def save_scorecard_md(scorecard: Dict[str, Any], output_dir: Path) -> Path:
 
 - **Symbol**: {scorecard['symbol']}
 - **Timeframe**: {scorecard['timeframe']}
-- **Status**: {status_emoji}
+{period_str}- **Status**: {status_emoji}
 
 ---
 

@@ -285,9 +285,19 @@ def create_adapters(mode: str, symbols: List[str], config: dict, logger: Any) ->
                     csv_path = sorted(csv_files)[-1]
                     logger.warning(f"⚠️ 정확한 파일 없음, fallback: {csv_path}")
             
-            feed = HistoricalFeed(str(csv_path), symbol=single_symbol, timeframe=timeframe)
+            # ⭐ PHASE8-4: days 파라미터 전달 (config에서 읽기)
+            days = config.get('backtest', {}).get('days')
+            
+            feed = HistoricalFeed(
+                str(csv_path), 
+                symbol=single_symbol, 
+                timeframe=timeframe,
+                days=days
+            )
             logger.info(f"📊 백테스트 모드: 단일 심볼 ({single_symbol})")
             logger.info(f"   파일: {csv_path}")
+            if days:
+                logger.info(f"   Days: {days}")
         else:
             # 멀티 심볼 백테스트
             from collectors import MultiSymbolHistoricalFeed

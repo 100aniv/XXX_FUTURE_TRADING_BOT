@@ -15,16 +15,18 @@ from .writer_md import save_scorecard_md
 class ScorecardGenerator:
     """Scorecard 생성기"""
     
-    def __init__(self, strategy_name: str, symbol: str, timeframe: str):
+    def __init__(self, strategy_name: str, symbol: str, timeframe: str, period_info: Dict[str, Any] = None):
         """
         Args:
             strategy_name: 전략 이름 (예: 'scalping')
             symbol: 심볼 (예: 'BTCUSDT')
             timeframe: 타임프레임 (예: '5m')
+            period_info: 실제 사용 기간 정보 (start_date, end_date, actual_days)
         """
         self.strategy_name = strategy_name
         self.symbol = symbol
         self.timeframe = timeframe
+        self.period_info = period_info or {}
     
     def generate(
         self, 
@@ -62,7 +64,11 @@ class ScorecardGenerator:
             'max_drawdown': metrics['max_drawdown'],
             'loss_over_8pct': metrics['loss_over_8pct'],
             'tp_hit': metrics['tp_hit'],
-            'sharpe_ratio': sharpe
+            'sharpe_ratio': sharpe,
+            # ⭐ PHASE8-4: 실제 사용 기간 정보 포함
+            'period_start': self.period_info.get('start_date', 'N/A'),
+            'period_end': self.period_info.get('end_date', 'N/A'),
+            'period_days': self.period_info.get('actual_days', 0)
         }
         
         # CSV 저장

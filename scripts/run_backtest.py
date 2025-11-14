@@ -129,6 +129,9 @@ def main():
     cfg['backtest']['data_dir'] = 'data'
     if args.data_path:
         cfg['backtest']['data_file'] = args.data_path
+    # ⭐ PHASE8-4: days 파라미터 config에 저장
+    if args.days:
+        cfg['backtest']['days'] = args.days
     
     # 3. Config 검증
     logger.info("✓ Config 검증...")
@@ -308,10 +311,21 @@ def main():
     logger.info("📈 Scorecard 생성...")
     output_dir = Path(f"artifacts/{args.mode}/{run_id}")
     
+    # ⭐ PHASE8-4: feed 객체에서 실제 사용 기간 정보 추출
+    period_info = {}
+    if hasattr(feed, 'first_used_ts') and hasattr(feed, 'last_used_ts'):
+        if feed.first_used_ts and feed.last_used_ts:
+            period_info['start_date'] = feed.first_used_ts.strftime('%Y-%m-%d')
+            period_info['end_date'] = feed.last_used_ts.strftime('%Y-%m-%d')
+            period_info['actual_days'] = (feed.last_used_ts - feed.first_used_ts).days
+            
+            logger.info(f"  📅 실제 사용 기간: {period_info['start_date']} ~ {period_info['end_date']} ({period_info['actual_days']}일)")
+    
     generator = ScorecardGenerator(
         strategy_name=args.strategy,
         symbol=args.symbol,
-        timeframe=args.timeframe
+        timeframe=args.timeframe,
+        period_info=period_info  # 기간 정보 전달
     )
     
     scorecard = generator.generate(trades, output_dir)

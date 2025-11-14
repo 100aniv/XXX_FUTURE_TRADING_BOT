@@ -50,13 +50,14 @@ class HistoricalFeed:
     CSV 파일을 한 줄씩 읽어서 캔들 스트림 생성
     """
     
-    def __init__(self, csv_path: str, symbol: str = None, timeframe: str = None, tz: str = None):
+    def __init__(self, csv_path: str, symbol: str = None, timeframe: str = None, tz: str = None, days: int = None):
         """
         Args:
             csv_path: CSV 파일 경로
             symbol: 심볼 (예: 'BTCUSDT')
             timeframe: 타임프레임 (예: '5m')
             tz: 시간대 (예: 'Asia/Seoul', None이면 UTC)
+            days: 최근 N일 데이터만 사용 (None이면 전체 사용)
         """
         self.csv_path = csv_path
         self.symbol = symbol or 'BTCUSDT'
@@ -97,8 +98,39 @@ class HistoricalFeed:
         
         # 3. 시간순 정렬
         self.df = self.df.sort_values("time").reset_index(drop=True)
+        
+        # ⭐ PHASE8-4: CSV 원본 정보 로깅
+        raw_candles_total = len(self.df)
+        raw_first_ts = self.df["time"].iloc[0] if len(self.df) > 0 else None
+        raw_last_ts = self.df["time"].iloc[-1] if len(self.df) > 0 else None
+        
+        logger.info("=" * 60)
+        logger.info("[BACKTEST] Raw CSV info:")
+        logger.info(f"  - candles_total={raw_candles_total:,}")
+        if raw_first_ts:
+            logger.info(f"  - first_ts={raw_first_ts}")
+        if raw_last_ts:
+            logger.info(f"  - last_ts={raw_last_ts}")
+        logger.info("=" * 60)
 
-        # 3.5 요청 TF로 업샘플(resample) 지원 (예: 15m CSV → 1h/4h)
+        # 3.5 --days 옵션 기반 데이터 슬라이싱 (PHASE8-4)
+        if days is not None and len(self.df) > 0:
+            # 마지막 캔들 기준으로 N일 전부터의 데이터만 사용
+            last_time = self.df["time"].iloc[-1]
+            cutoff_time = last_time - pd.Timedelta(days=days)
+            
+            # 슬라이싱
+            before_count = len(self.df)
+            self.df = self.df[self.df["time"] >= cutoff_time].reset_index(drop=True)
+            after_count = len(self.df)
+            
+            logger.info("=" * 60)
+            logger.info(f"[BACKTEST] --days={days} 슬라이싱 적용:")
+            logger.info(f"  - cutoff_time={cutoff_time}")
+            logger.info(f"  - before={before_count:,} → after={after_count:,} ({after_count/before_count*100:.1f}%)")
+            logger.info("=" * 60)
+        
+        # 3.6 요청 TF로 업샘플(resample) 지원 (예: 15m CSV → 1h/4h)
         try:
             req_min = _tf_to_minutes(self.timeframe)
             # 기준 TF 추정: 가장 빈도가 높은 간격 사용
@@ -131,7 +163,31 @@ class HistoricalFeed:
         self.total = len(self.df)
         self.index = 0
         
-        logger.info(f"✅ HistoricalFeed 초기화: {self.total:,}개 캔들 ({csv_path})")
+        # ⭐ PHASE8-4: 실제 사용 구간 정보 로깅 및 저장
+        self.used_candles_total = len(self.df)
+        self.first_used_ts = self.df["time"].iloc[0] if len(self.df) > 0 else None
+        self.last_used_ts = self.df["time"].iloc[-1] if len(self.df) > 0 else None
+        
+        if self.first_used_ts and self.last_used_ts:
+            actual_days = (self.last_used_ts - self.first_used_ts).days
+            
+            logger.info("=" * 60)
+            logger.info("[BACKTEST] Used window:")
+            logger.info(f"  - used_candles={self.used_candles_total:,}")
+            logger.info(f"  - first_used_ts={self.first_used_ts}")
+            logger.info(f"  - last_used_ts={self.last_used_ts}")
+            logger.info(f"  - approx_days={actual_days}")
+            
+            # days 옵션과 실제 일수 비교
+            if days is not None:
+                if abs(actual_days - days) > 1:
+                    logger.warning(f"⚠️  [BACKTEST] Requested days={days}, actual_days={actual_days} (CSV too short)")
+                else:
+                    logger.info(f"  ✅ Requested days={days}, actual_days={actual_days} (매칭)")
+            
+            logger.info("=" * 60)
+        
+        logger.info(f"✅ HistoricalFeed 초기화 완료: {self.total:,}개 캔들 ({csv_path})")
     
     def stream(self) -> Iterator[Dict]:
         """
