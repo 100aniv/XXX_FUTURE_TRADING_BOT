@@ -285,19 +285,26 @@ def create_adapters(mode: str, symbols: List[str], config: dict, logger: Any) ->
                     csv_path = sorted(csv_files)[-1]
                     logger.warning(f"⚠️ 정확한 파일 없음, fallback: {csv_path}")
             
-            # ⭐ PHASE8-4: days 파라미터 전달 (config에서 읽기)
-            days = config.get('backtest', {}).get('days')
+            # ⭐ PHASE8-4/5: days, start_date, end_date 파라미터 전달 (config에서 읽기)
+            backtest_cfg = config.get('backtest', {})
+            days = backtest_cfg.get('days')
+            start_date = backtest_cfg.get('start_date')
+            end_date = backtest_cfg.get('end_date')
             
             feed = HistoricalFeed(
                 str(csv_path), 
                 symbol=single_symbol, 
                 timeframe=timeframe,
-                days=days
+                days=days,
+                start_date=start_date,
+                end_date=end_date
             )
             logger.info(f"📊 백테스트 모드: 단일 심볼 ({single_symbol})")
             logger.info(f"   파일: {csv_path}")
             if days:
                 logger.info(f"   Days: {days}")
+            if start_date or end_date:
+                logger.info(f"   Period: {start_date or 'start'} ~ {end_date or 'end'}")
         else:
             # 멀티 심볼 백테스트
             from collectors import MultiSymbolHistoricalFeed

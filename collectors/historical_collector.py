@@ -50,7 +50,8 @@ class HistoricalFeed:
     CSV 파일을 한 줄씩 읽어서 캔들 스트림 생성
     """
     
-    def __init__(self, csv_path: str, symbol: str = None, timeframe: str = None, tz: str = None, days: int = None):
+    def __init__(self, csv_path: str, symbol: str = None, timeframe: str = None, tz: str = None, 
+                 days: int = None, start_date: str = None, end_date: str = None):
         """
         Args:
             csv_path: CSV 파일 경로
@@ -58,6 +59,8 @@ class HistoricalFeed:
             timeframe: 타임프레임 (예: '5m')
             tz: 시간대 (예: 'Asia/Seoul', None이면 UTC)
             days: 최근 N일 데이터만 사용 (None이면 전체 사용)
+            start_date: 시작 날짜 (YYYY-MM-DD, days보다 우선)
+            end_date: 종료 날짜 (YYYY-MM-DD, days보다 우선)
         """
         self.csv_path = csv_path
         self.symbol = symbol or 'BTCUSDT'
@@ -113,8 +116,33 @@ class HistoricalFeed:
             logger.info(f"  - last_ts={raw_last_ts}")
         logger.info("=" * 60)
 
-        # 3.5 --days 옵션 기반 데이터 슬라이싱 (PHASE8-4)
-        if days is not None and len(self.df) > 0:
+        # 3.5 날짜 범위 필터링 (PHASE8-5: start_date/end_date 우선, 그 다음 days)
+        if (start_date or end_date) and len(self.df) > 0:
+            # start_date/end_date 기반 필터링
+            before_count = len(self.df)
+            
+            if start_date:
+                start_dt = pd.to_datetime(start_date, utc=True)
+                self.df = self.df[self.df["time"] >= start_dt].reset_index(drop=True)
+            
+            if end_date:
+                end_dt = pd.to_datetime(end_date, utc=True)
+                # end_date는 해당 날짜의 마지막까지 포함
+                end_dt_inclusive = end_dt + pd.Timedelta(days=1) - pd.Timedelta(seconds=1)
+                self.df = self.df[self.df["time"] <= end_dt_inclusive].reset_index(drop=True)
+            
+            after_count = len(self.df)
+            
+            logger.info("=" * 60)
+            logger.info(f"[BACKTEST] start_date/end_date 필터링 적용:")
+            if start_date:
+                logger.info(f"  - start_date={start_date}")
+            if end_date:
+                logger.info(f"  - end_date={end_date}")
+            logger.info(f"  - before={before_count:,} → after={after_count:,} ({after_count/before_count*100:.1f}%)")
+            logger.info("=" * 60)
+        
+        elif days is not None and len(self.df) > 0:
             # 마지막 캔들 기준으로 N일 전부터의 데이터만 사용
             last_time = self.df["time"].iloc[-1]
             cutoff_time = last_time - pd.Timedelta(days=days)

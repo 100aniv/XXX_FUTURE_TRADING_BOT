@@ -80,10 +80,24 @@ def parse_args():
     )
     
     parser.add_argument(
+        '--start-date',
+        type=str,
+        default=None,
+        help='시작 날짜 (예: 2024-10-01, days보다 우선)'
+    )
+    
+    parser.add_argument(
+        '--end-date',
+        type=str,
+        default=None,
+        help='종료 날짜 (예: 2024-10-31, days보다 우선)'
+    )
+    
+    parser.add_argument(
         '--timerange',
         type=str,
         default=None,
-        help='날짜 범위 (예: 2023-04-01:2023-04-05)'
+        help='날짜 범위 (예: 2023-04-01:2023-04-05) [deprecated, use --start-date/--end-date]'
     )
     
     parser.add_argument(
@@ -108,6 +122,8 @@ def main():
     logger.info(f"📋 설정: mode={args.mode}, strategy={args.strategy}, symbol={args.symbol}, tf={args.timeframe}")
     if args.days:
         logger.info(f"  - Days: {args.days}")
+    if args.start_date or args.end_date:
+        logger.info(f"  - Period: {args.start_date or 'start'} ~ {args.end_date or 'end'}")
     if args.timerange:
         logger.info(f"  - Timerange: {args.timerange}")
     
@@ -129,9 +145,13 @@ def main():
     cfg['backtest']['data_dir'] = 'data'
     if args.data_path:
         cfg['backtest']['data_file'] = args.data_path
-    # ⭐ PHASE8-4: days 파라미터 config에 저장
+    # ⭐ PHASE8-4/5: days, start_date, end_date 파라미터 config에 저장
     if args.days:
         cfg['backtest']['days'] = args.days
+    if args.start_date:
+        cfg['backtest']['start_date'] = args.start_date
+    if args.end_date:
+        cfg['backtest']['end_date'] = args.end_date
     
     # 3. Config 검증
     logger.info("✓ Config 검증...")
