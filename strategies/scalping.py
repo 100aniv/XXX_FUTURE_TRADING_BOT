@@ -133,24 +133,34 @@ def signal_logic(df: pd.DataFrame, config: dict) -> Dict[str, Any]:
     import logging
     logger_debug = logging.getLogger(__name__)
     
-    # ⭐ 신호 조건 (강화: 5가지 조건 모두 충족)
-    # LONG: BB 반등 + MACD 크로스 + EMA 3선 정렬 + RSI + 거래량
-    pullback_long = (bb_bounce_long and (macd_cross_up or macd_up) and 
-                     ema_trend_long and rsi_ok_long and vol_ok)
+    # ⭐ PHASE9-3.3: 신호 조건 (BB Bounce 선택 OR 구조)
+    # LONG: (BB 반등) OR (EMA 정렬 + MACD + RSI + 거래량)
+    # - BB Bounce가 있으면 → 즉시 진입 가능
+    # - BB Bounce 없어도 → EMA+MACD+RSI+VOL 조건 만족 시 진입 가능
+    macd_ok_long = (macd_cross_up or macd_up)
+    macd_ok_short = (macd_cross_down or macd_down)
     
-    # SHORT: BB 반등 + MACD 크로스 + EMA 3선 역정렬 + RSI + 거래량
-    pullback_short = (bb_bounce_short and (macd_cross_down or macd_down) and 
-                      ema_trend_short and rsi_ok_short and vol_ok)
+    pullback_long = (
+        bb_bounce_long or  # ⭐ BB Bounce 있으면 OK
+        (ema_trend_long and macd_ok_long and rsi_ok_long and vol_ok)  # ⭐ 없어도 다른 조건 만족 시 OK
+    )
     
-    # ⭐ PHASE9-3.1: 조건별 상태 로그 (샘플링: 100캔들마다)
+    # SHORT: (BB 반등) OR (EMA 역정렬 + MACD + RSI + 거래량)
+    pullback_short = (
+        bb_bounce_short or  # ⭐ BB Bounce 있으면 OK
+        (ema_trend_short and macd_ok_short and rsi_ok_short and vol_ok)  # ⭐ 없어도 다른 조건 만족 시 OK
+    )
+    
+    # ⭐ PHASE9-3.3: 조건별 상태 로그 (샘플링: 100캔들마다) - OR 구조 확인
     if len(df) % 100 == 0:
         logger_debug.info(f"🔍 [SCALPING DEBUG] 신호 조건 체크 (캔들 #{len(df)}):")
         logger_debug.info(f"  - bb_bounce_long: {bb_bounce_long} | bb_bounce_short: {bb_bounce_short} (tolerance={bb_tolerance:.4f})")
-        logger_debug.info(f"  - macd: up={macd_up}, down={macd_down}, cross_up={macd_cross_up}, cross_down={macd_cross_down}")
+        logger_debug.info(f"  - macd_ok: long={macd_ok_long}, short={macd_ok_short} (up={macd_up}, down={macd_down})")
         logger_debug.info(f"  - ema_trend: long={ema_trend_long}, short={ema_trend_short} (required={ema_required})")
         logger_debug.info(f"  - rsi: {last['rsi']:.1f} (long_ok={rsi_ok_long}, short_ok={rsi_ok_short}, tolerance={rsi_tolerance:.1f})")
         logger_debug.info(f"  - vol: {last['volume']:.0f} vs ma={last['vol_ma']:.0f} (ok={vol_ok}, mult={volume_mult})")
-        logger_debug.info(f"  → pullback_long={pullback_long}, pullback_short={pullback_short}")
+        logger_debug.info(f"  ⭐ [OR 구조] pullback_long={pullback_long} (bb={bb_bounce_long} OR ema+macd+rsi+vol={ema_trend_long and macd_ok_long and rsi_ok_long and vol_ok})")
+        logger_debug.info(f"  ⭐ [OR 구조] pullback_short={pullback_short} (bb={bb_bounce_short} OR ema+macd+rsi+vol={ema_trend_short and macd_ok_short and rsi_ok_short and vol_ok})")
     
     # 돌파 전략 제거 (스캘핑에서는 위험)
     
