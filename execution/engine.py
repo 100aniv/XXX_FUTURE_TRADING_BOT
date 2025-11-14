@@ -165,7 +165,8 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict):
     # ⭐ PHASE8-2b: backtest 모드에서는 기존 포지션 로드 스킵
     sizer = PositionSizer(config)
     
-    is_backtest_mode = mode in ['backtest', 'backtest_clean']
+    # ⭐ PHASE9-1 ROOT CAUSE FIX: backtest_raw 포함
+    is_backtest_mode = mode in ['backtest', 'backtest_clean', 'backtest_raw']
     portfolio = PortfolioManager(config, load_existing=not is_backtest_mode)
     
     risk = RiskManager(config, portfolio=portfolio)  # ⭐ PR12: 포트폴리오 참조 추가
@@ -1344,6 +1345,9 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict):
             "lev": decision.get("lev", 1),
             "position_number": position_number,  # ⭐ P2: 포지션 번호 추가
         }
+        
+        # ⭐ PHASE9-1 CRITICAL FIX: 진입 거래 카운트 증가
+        trade_count += 1
         
         # ⭐ PR10: SL 서버 등록 (Option C + workingType + priceProtect)
         if mode in ["paper", "live"]:
