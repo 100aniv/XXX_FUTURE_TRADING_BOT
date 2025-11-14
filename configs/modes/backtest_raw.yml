@@ -36,22 +36,25 @@ risk:
   stop_outlier: true              # 이상치 제거 유지 (시스템 보호)
   
   # 연속 손실 제한 - 사실상 무제한
-  max_consecutive_losses: 99999   # ⭐ 무제한 (backtest_clean: 4~15건)
+  max_consecutive_losses: 99999   # 무제한 (backtest_clean: 4~15건)
   
   # 일일 손실 제한 - 완화
-  max_daily_loss_pct: 50.0        # ⭐ 하루 -50%까지 허용 (backtest_clean: 2~20%)
+  max_daily_loss_pct: 50.0        # 하루 -50%까지 허용 (backtest_clean: 2~20%)
   
   # 극단 손실 컷오프 - 완화
-  extreme_loss_cutoff_pct: -60.0  # ⭐ -60%까지 허용 (backtest_clean: -20%)
+  extreme_loss_cutoff_pct: -60.0  # -60%까지 허용 (backtest_clean: -20%)
+  
+  # PHASE9-1 ROOT CAUSE FIX: 심볼별 노출 한도 완화
+  max_exposure_per_symbol: 0.99   # 심볼당 99% (base.yml: 30%)
   
   # 페이퍼 프로파일 완화
   profiles:
     paper:
-      max_daily_loss_pct: 50.0              # ⭐ 하루 -50%
-      max_consecutive_losses: 99999         # ⭐ 무제한
-      cooldown_after_consecutive: 0         # ⭐ 쿨다운 제거
-      enforce_daily_loss_in_backtest: false # ⭐ 일일 손실 강제 OFF
-      equity_stop_pct: 80.0                 # ⭐ 80% 손실까지 허용
+      max_daily_loss_pct: 50.0              # 하루 -50%
+      max_consecutive_losses: 99999         # 무제한
+      cooldown_after_consecutive: 0         # 쿨다운 제거
+      enforce_daily_loss_in_backtest: false # 일일 손실 강제 OFF
+      equity_stop_pct: 80.0                 # 80% 손실까지 허용
 
 # ========================================
 # 포트폴리오 (Portfolio) 설정 - 제한 완화 + 완전 격리

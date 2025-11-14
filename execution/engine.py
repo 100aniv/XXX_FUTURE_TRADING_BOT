@@ -1098,7 +1098,8 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict):
         if hasattr(risk, "allow_entry") and not risk.allow_entry(
             candle_symbol, decision.get("side")
         ):
-            logger.debug(f"⚠️ Risk 거부: {decision.get('side')}")
+            logger.warning(f"⛔ [{candle_symbol}] Risk 거부: {decision.get('side')}")
+            continue  # ⭐ PHASE9-1 FIX: 진입 거부 시 신호 스킵
 
         # 포지션 사이즈 계산
         qty, meta = sizer.calculate(
