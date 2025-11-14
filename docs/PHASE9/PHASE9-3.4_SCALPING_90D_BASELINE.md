@@ -9,6 +9,21 @@
 
 ---
 
+## ⭐ PHASE9-5 업데이트: 전략 분리 완료
+
+**PHASE9-5에서 다음 작업이 완료되었습니다:**
+- ✅ 기존 scalping 로직을 `swing_bb` 전략으로 분리
+- ✅ 동일한 CONFIG 파라미터 사용 (초기에는 완전히 동일한 동작)
+- ✅ `--strategy swing_bb` 지원 (backtest_clean/raw 모두)
+- ✅ 문서 라벨링 정리 (이 전략은 실제로 swing 수준임을 명시)
+
+**현재 상태:**
+- `scalping`: 기존 로직 유지 (backward compatibility)
+- `swing_bb`: scalping과 동일한 로직 (새 전략 ID)
+- 향후 `scalping`은 진정한 고빈도 스캘핑 전략으로 교체될 예정
+
+---
+
 ## 🔧 코드 변경 내역
 
 ### 1. OR 구조 → AND 구조 롤백

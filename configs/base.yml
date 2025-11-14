@@ -528,6 +528,37 @@ strategies:
       ema_alignment_required: 3       # EMA 정렬 요구 개수 (3=전체, 2=fast>mid만, 1=없음)
       macd_tolerance: 0.0             # MACD 조건 완화 (기본값: 0.0 = 완화 없음)
       rsi_tolerance: 0.0              # RSI 조건 완화 (기본값: 0.0 = 완화 없음)
+  
+  # ⭐ PHASE9-5: swing_bb 전략 추가 (기존 scalping 로직 분리)
+  # 실제 동작: 저빈도 BB 기반 스윙/데이 트레이딩 (0.3건/일 수준)
+  # 진정한 고빈도 스캘핑은 별도 전략으로 향후 개발 예정
+  swing_bb:
+    atr_mult_sl: 0.9  # ⭐ 스윙 BB: 좁은 SL (빠른 진입/청산, 단타)
+    cooldown_candles: 3
+    min_bars_for_signal: 60  # PR7-4: 통일 (지표 warmup + 안전 margin)
+    timeframe: 5m
+    enabled: true
+    filters:
+      mtf_confirm: false
+      regime: false
+      volume_spike: true
+      volume_spike_guard: false
+      allow_short: true
+      session_whitelist: []
+    volume_mult: 1.1
+    bb_bounce_lower_now_mult: 1.0
+    bb_bounce_lower_prev_mult: 1.008
+    risk_per_trade: 0.003  # ⭐ 0.3%
+    rr: 1.6
+    
+    # ⭐ PHASE9-3.1: 조건 완화 파라미터 (거래 빈도 증가용)
+    condition_relax:
+      entry_mode: "strict"            # ⭐ PHASE9-3.4: 진입 모드 (strict=AND, or=OR, hybrid=혼합)
+      bb_bounce_tolerance: 0.002      # BB Bounce 허용 범위 확대 (기본값: 0.002 = 0.2%)
+      ema_alignment_required: 3       # EMA 정렬 요구 개수 (3=전체, 2=fast>mid만, 1=없음)
+      macd_tolerance: 0.0             # MACD 조건 완화 (기본값: 0.0 = 완화 없음)
+      rsi_tolerance: 0.0              # RSI 조건 완화 (기본값: 0.0 = 완화 없음)
+  
   swing:
     atr_mult_sl: 2.2  # ⭐ 스윙: 넓은 SL (장기 추세 추종, 일시 조정 수용)
     cooldown_candles: 5

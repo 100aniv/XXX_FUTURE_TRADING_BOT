@@ -1,20 +1,19 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-SCALPING Strategy
+SWING_BB Strategy
 =================
-스캘핑 전략 (BB 터치 + EMA 정렬)
+스윙 BB 반등 전략 (저빈도 BB 기반 스윙/데이 트레이딩)
 
-⭐ PHASE9-5: 전략 분리 알림
-- 이 전략은 실제로는 저빈도 BB 기반 스윙/데이 트레이딩 수준입니다 (0.3건/일).
-- PHASE9-5에서 동일한 로직을 swing_bb 전략으로 분리했습니다.
-- 향후 이 scalping 전략은 진정한 고빈도 스캘핑 전략으로 교체될 예정입니다.
-- 현재는 backward compatibility를 위해 유지됩니다.
+⭐ PHASE9-5: 기존 scalping 전략을 swing_bb로 분리/라벨링
+- 실제 동작: 저빈도 BB 기반 스윙/데이 트레이딩 (0.3건/일 수준)
+- 진정한 고빈도 스캘핑은 별도 전략으로 향후 개발 예정
 
 전략 개요:
-- 타임프레임: 1분/3분
-- 핵심: BB 밴드 터치 + 빠른 EMA 정렬
-- 조건 완화 (레짐 무시, 빠른 진입)
+- 타임프레임: 5분봉 (저빈도 거래)
+- 핵심: BB 밴드 반등 + EMA 정렬 + MACD 확인
+- 거래 빈도: 약 0.3건/일 (3~5일마다 1건)
+- 조건 완화 (condition_relax 파라미터 지원)
 """
 from typing import Dict, Any
 import pandas as pd
@@ -25,7 +24,11 @@ from indicators import regime, detect_volatility_regime
 
 def signal_logic(df: pd.DataFrame, config: dict) -> Dict[str, Any]:
     """
-    SCALPING 전략: BB 터치 + EMA 정렬 (조건 완화)
+    SWING_BB 전략: BB 반등 + EMA 정렬 + MACD (조건 완화)
+    
+    ⭐ PHASE9-5: 기존 scalping 로직을 swing_bb로 분리
+    - 이 전략은 실제로는 저빈도 스윙/데이 트레이딩 수준
+    - 진정한 고빈도 스캘핑은 별도 전략으로 개발 예정
     
     Args:
         df: OHLCV + 지표가 포함된 DataFrame
@@ -35,10 +38,9 @@ def signal_logic(df: pd.DataFrame, config: dict) -> Dict[str, Any]:
         dict: 신호 정보
     
     전략 로직:
-    - 스캘핑 (1분/3분): BB 터치 + EMA 정렬로 빠른 진입
-    - 레짐 무시 (빠른 대응)
-    - LONG: BB 하단 근접 + EMA fast > mid + MACD 상승
-    - SHORT: BB 상단 근접 + EMA fast < mid + MACD 하락
+    - LONG: BB 하단 반등 + EMA 정렬 + MACD 상승 + RSI + 거래량
+    - SHORT: BB 상단 조정 + EMA 역정렬 + MACD 하락 + RSI + 거래량
+    - 모든 조건 만족 필수 (AND 구조)
     """
     # 데이터 충분성 검사
     if len(df) < 2:
@@ -81,7 +83,7 @@ def signal_logic(df: pd.DataFrame, config: dict) -> Dict[str, Any]:
     import logging
     logger_debug = logging.getLogger(__name__)
     if len(df) == config.get('min_bars_for_signal', 60):  # 첫 신호 가능 시점
-        logger_debug.info(f"✅ [CONDITION_RELAX] 조건 완화 파라미터 적용됨:")
+        logger_debug.info(f"✅ [CONDITION_RELAX] 조건 완화 파라미터 적용됨 (SWING_BB):")
         logger_debug.info(f"  - bb_bounce_tolerance: {bb_tolerance:.4f} (BB 범위 확대)")
         logger_debug.info(f"  - ema_alignment_required: {ema_required} (3=전체, 2=fast>mid만, 1=없음)")
         logger_debug.info(f"  - macd_tolerance: {macd_tolerance:.4f} (MACD 완화)")
@@ -139,7 +141,7 @@ def signal_logic(df: pd.DataFrame, config: dict) -> Dict[str, Any]:
     import logging
     logger_debug = logging.getLogger(__name__)
     
-    # ⭐ PHASE9-3.4: 신호 조건 (AND 구조 복원)
+    # ⭐ PHASE9-3.4: 신호 조건 (AND 구조)
     # LONG/SHORT: BB 반등 + MACD + EMA 정렬 + RSI + 거래량 (모두 만족 필수)
     # - condition_relax 파라미터는 각 조건 내부에서 적용됨
     # - entry_mode는 향후 OR/Hybrid 실험용 훅 (현재는 strict만 사용)
@@ -158,7 +160,7 @@ def signal_logic(df: pd.DataFrame, config: dict) -> Dict[str, Any]:
     
     # ⭐ PHASE9-3.4: 조건별 상태 로그 (샘플링: 100캔들마다) - AND 구조
     if len(df) % 100 == 0:
-        logger_debug.info(f"🔍 [SCALPING DEBUG] 신호 조건 체크 (캔들 #{len(df)}):")
+        logger_debug.info(f"🔍 [SWING_BB DEBUG] 신호 조건 체크 (캔들 #{len(df)}):")
         logger_debug.info(f"  - bb_bounce_long: {bb_bounce_long} | bb_bounce_short: {bb_bounce_short} (tolerance={bb_tolerance:.4f})")
         logger_debug.info(f"  - macd_ok: long={macd_ok_long}, short={macd_ok_short} (up={macd_up}, down={macd_down})")
         logger_debug.info(f"  - ema_trend: long={ema_trend_long}, short={ema_trend_short} (required={ema_required})")
@@ -167,7 +169,7 @@ def signal_logic(df: pd.DataFrame, config: dict) -> Dict[str, Any]:
         logger_debug.info(f"  ⭐ [AND 구조] pullback_long={pullback_long} (entry_mode={entry_mode})")
         logger_debug.info(f"  ⭐ [AND 구조] pullback_short={pullback_short} (entry_mode={entry_mode})")
     
-    # 돌파 전략 제거 (스캘핑에서는 위험)
+    # 돌파 전략 제거 (스윙에서는 위험)
     
     # 옵션: 숏 허용 여부 (기본 True)
     allow_short = (config.get('filters', {}) or {}).get('allow_short', config.get('allow_short', True))
@@ -184,7 +186,7 @@ def signal_logic(df: pd.DataFrame, config: dict) -> Dict[str, Any]:
         reason.append("EMA 정렬 + 강한 MACD")
         reason.append("거래량 급증")
         # ⭐ PHASE9 DEBUG: 신호 생성 로그
-        logger_debug.info(f"✅ [SCALPING SIGNAL] LONG 신호 생성! (캔들 #{len(df)})")
+        logger_debug.info(f"✅ [SWING_BB SIGNAL] LONG 신호 생성! (캔들 #{len(df)})")
         logger_debug.info(f"  - Price: {price:.2f} | RSI: {last['rsi']:.1f} | MACD: {last['macd']:.4f}")
     
     elif allow_short and pullback_short:
@@ -194,7 +196,7 @@ def signal_logic(df: pd.DataFrame, config: dict) -> Dict[str, Any]:
         reason.append("EMA 역정렬 + 강한 MACD")
         reason.append("거래량 급증")
         # ⭐ PHASE9 DEBUG: 신호 생성 로그
-        logger_debug.info(f"✅ [SCALPING SIGNAL] SHORT 신호 생성! (캔들 #{len(df)})")
+        logger_debug.info(f"✅ [SWING_BB SIGNAL] SHORT 신호 생성! (캔들 #{len(df)})")
         logger_debug.info(f"  - Price: {price:.2f} | RSI: {last['rsi']:.1f} | MACD: {last['macd']:.4f}")
     
     # 가격 레벨 계산

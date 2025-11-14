@@ -99,11 +99,29 @@ filters:
   session_whitelist: []        # ⭐ 세션 화이트리스트 없음
 
 # ========================================
-# 전략별 설정 - scalping 가드 제거
+# 전략별 설정 - scalping/swing_bb 가드 제거
 # ========================================
 strategies:
   scalping:
     timeframe: 5m         # ⭐ CLI 인자와 일치 (base.yml: 3m)
+    cooldown_candles: 0   # ⭐ 쿨다운 제거 (base.yml: 3개)
+    filters:
+      mtf_confirm: false           # ⭐ MTF 확인 OFF
+      regime: false                # ⭐ 레짐 필터 OFF
+      volume_spike: false          # ⭐ 거래량 급증 필터 OFF
+      volume_spike_guard: false    # ⭐ 거래량 급증 가드 OFF
+      session_whitelist: []        # ⭐ 세션 제한 없음
+    
+    # ⭐ PHASE9-3.1: 조건 완화 (연구용 - 거래 빈도 증가)
+    condition_relax:
+      bb_bounce_tolerance: 0.005   # ⭐ BB Bounce 범위 확대 (0.2% → 0.5%)
+      ema_alignment_required: 2    # ⭐ EMA 정렬 완화 (3선 → 2선만 요구)
+      macd_tolerance: 0.0          # MACD 완화 없음 (기본값 유지)
+      rsi_tolerance: 5.0           # ⭐ RSI 범위 확대 (±5)
+  
+  # ⭐ PHASE9-5: swing_bb 전략 설정 (scalping과 동일)
+  swing_bb:
+    timeframe: 5m         # ⭐ CLI 인자와 일치 (base.yml: 5m)
     cooldown_candles: 0   # ⭐ 쿨다운 제거 (base.yml: 3개)
     filters:
       mtf_confirm: false           # ⭐ MTF 확인 OFF
