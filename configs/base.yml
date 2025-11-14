@@ -523,6 +523,7 @@ strategies:
     
     # ⭐ PHASE9-3.1: 조건 완화 파라미터 (거래 빈도 증가용)
     condition_relax:
+      entry_mode: "strict"            # ⭐ PHASE9-3.4: 진입 모드 (strict=AND, or=OR, hybrid=혼합) - 현재는 strict만 사용
       bb_bounce_tolerance: 0.002      # BB Bounce 허용 범위 확대 (기본값: 0.002 = 0.2%)
       ema_alignment_required: 3       # EMA 정렬 요구 개수 (3=전체, 2=fast>mid만, 1=없음)
       macd_tolerance: 0.0             # MACD 조건 완화 (기본값: 0.0 = 완화 없음)
