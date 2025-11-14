@@ -219,4 +219,90 @@ artifacts/
 - 진입 조건 강화
 - 장기 백테스트 (90일+) 필요
 
+## ✅ PHASE8-4: 백테스트 데이터 구간 투명화 (완료)
+
+### 목표
+- CSV 원본 정보 로깅
+- `--days` 옵션 실제 반영 (데이터 슬라이싱)
+- scorecard에 실제 사용 기간 표시
+
+### 구현 내역
+
+**1. HistoricalFeed 개선** (`collectors/historical_collector.py`)
+- `days` 파라미터 추가
+- CSV 로드 직후 원본 정보 로깅:
+  ```
+  [BACKTEST] Raw CSV info:
+    - candles_total=26,101
+    - first_ts=2024-10-01 00:00:00
+    - last_ts=2024-12-30 15:00:00
+  ```
+- `--days` 옵션 기반 데이터 슬라이싱 (마지막 캔들 기준 N일 전부터):
+  ```
+  [BACKTEST] --days=30 슬라이싱 적용:
+    - cutoff_time=2024-11-30 15:00:00
+    - before=26,101 → after=8,641 (33.1%)
+  ```
+- 실제 사용 구간 정보 로깅:
+  ```
+  [BACKTEST] Used window:
+    - used_candles=8,641
+    - first_used_ts=2024-11-30 15:00:00
+    - last_used_ts=2024-12-30 15:00:00
+    - approx_days=30
+    ✅ Requested days=30, actual_days=30 (매칭)
+  ```
+
+**2. 데이터 흐름 개선**
+- `run_backtest.py`: CLI `args.days` → `config['backtest']['days']` 저장
+- `create_adapters()`: `config['backtest']['days']` → `HistoricalFeed(days=...)` 전달
+- `feed` 객체에서 실제 사용 기간 정보 추출 (`first_used_ts`, `last_used_ts`)
+
+**3. Scorecard 개선**
+- `ScorecardGenerator`: `period_info` 파라미터 추가 (start_date, end_date, actual_days)
+- `scorecard.md`에 실제 사용 기간 표시:
+  ```markdown
+  - **Period**: 2024-11-30 ~ 2024-12-30 (30 days)
+  ```
+
+### 검증 결과
+
+**Run ID**: `20251114_192123_n1uq`
+
+**데이터 슬라이싱 검증:**
+- ✅ CSV 원본: 26,101개 캔들 (2024-10-01 ~ 2024-12-30)
+- ✅ --days=30 슬라이싱: 8,641개 캔들 (33.1%)
+- ✅ 실제 사용: 2024-11-30 ~ 2024-12-30 (30일)
+- ✅ Requested days = Actual days (30 = 30)
+
+**성능 지표 (참고):**
+- Trades: 14건
+- Winrate: 28.57%
+- PF: 0.35
+- Max DD: -2.51%
+
+**산출물:**
+- `artifacts/backtest_clean/20251114_192123_n1uq/scorecard.md` (Period 정보 포함)
+- `artifacts/backtest_clean/20251114_192123_n1uq/effective_config.yml`
+
+### 주요 성과
+
+1. **데이터 사용 완전 투명화**
+   - CSV 원본 vs 실제 사용 구간 명확히 구분
+   - 로그에서 모든 정보 확인 가능
+
+2. **--days 옵션 정확한 반영**
+   - 마지막 캔들 기준 N일 전부터 슬라이싱
+   - 요청 일수 vs 실제 일수 비교 로깅
+
+3. **scorecard 정합성 확보**
+   - 실제 사용 기간 = 로그 = scorecard
+   - 모든 artifact가 동일한 기준 사용
+
+### 제약 준수
+- ✅ 전략 로직 변경 금지
+- ✅ Risk/Portfolio/Broker 로직 변경 금지
+- ✅ DB 스키마 변경 금지
+- ✅ 기존 backtest_clean 격리 기능 유지
+
 ---
