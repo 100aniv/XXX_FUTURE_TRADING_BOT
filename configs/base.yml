@@ -183,6 +183,12 @@ exits:
     k: 3.0  # ATR 배수 (×3.0) - 중요!
     move_to_break_even_at_r: 0.7  # 0.7R 도달 시 손절을 진입가로 이동
     type: atr  # ATR 기반
+  
+  # ⭐ PHASE9-3: 변동성 레짐 배수
+  volatility_regime_multipliers:
+    high_vol: 1.2   # 고변동성 시 SL/TP 거리 20% 증가
+    neutral: 1.0    # 중립 변동성 (조정 없음)
+    low_vol: 0.9    # 저변동성 시 SL/TP 거리 10% 감소
     
   # ⭐ PHASE7-1: OHLC 기반 SL 체크
   use_ohlc_check: true  # High/Low로 정확한 SL 체크
@@ -323,6 +329,11 @@ portfolio:
   use_dynamic_exposure: true   # 변동성 기반 심볼별 exposure 동적 조정
   use_dynamic_budget: true     # 성과 기반 전략별 budget 동적 배분
   symbol_cooldown_seconds: 60  # 심볼별 쿨다운 (거부 후 재시도 방지)
+  
+  # ⭐ PHASE9-3: 중복 진입 방지 정책
+  allow_duplicate_entry: false        # 중복 진입 허용 여부 (기본값: 안전)
+  duplicate_entry_policy: "reject"    # reject | average_down | pyramid
+  max_duplicate_entries: 1            # 최대 중복 진입 횟수
   
   # ⭐ PR12: 상관관계 가드 설정
   correlation:

@@ -1223,15 +1223,24 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict):
         new_side = decision.get("side")
         opposite_side = "SHORT" if new_side == "LONG" else "LONG"
         
-        # ⭐ CRITICAL: 동일 심볼 동일 방향 중복 진입 방지
+        # ⭐ PHASE9-3: 중복 진입 방지 (Config 제어)
+        allow_dup = config.get('portfolio', {}).get('allow_duplicate_entry', False)
+        dup_policy = config.get('portfolio', {}).get('duplicate_entry_policy', 'reject')
+        max_dup = config.get('portfolio', {}).get('max_duplicate_entries', 1)
+        
         same_direction_positions = [
             (pos_id, pos) for pos_id, pos in list(active_positions.items())
             if pos["symbol"] == candle_symbol and pos["side"] == new_side
         ]
         
         if same_direction_positions:
-            logger.warning(f"⚠️ [중복 진입 방지] {candle_symbol} {new_side} 기존 포지션 {len(same_direction_positions)}개 존재 - 진입 스킵")
-            continue  # 중복 진입 차단
+            current_dup_count = len(same_direction_positions)
+            
+            if not allow_dup or current_dup_count >= max_dup:
+                logger.warning(f"⚠️ [중복 진입 방지] {candle_symbol} {new_side} 기존 포지션 {current_dup_count}개 존재 (정책: {dup_policy}, 최대: {max_dup}) - 진입 스킵")
+                continue  # 중복 진입 차단
+            else:
+                logger.info(f"✅ [중복 진입 허용] {candle_symbol} {new_side} 기존 포지션 {current_dup_count}개 (정책: {dup_policy}, 한도: {max_dup}개) - 진입 진행")
         
         # 같은 심볼의 반대 포지션 찾기
         opposite_positions = [

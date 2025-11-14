@@ -158,13 +158,15 @@ def signal_logic(df: pd.DataFrame, config: dict) -> Dict[str, Any]:
     # 가격 레벨 계산
     entry, sl, tp = (None, None, None)
     if side:
-        # ⭐ CRITICAL: 변동성 레짐 감지
+        # ⭐ PHASE9-3: 변동성 레짐 감지 (Config 제어)
         vol_regime = detect_volatility_regime(df)
-        atr_mult_adjusted = config["atr_mult_sl"]
-        if vol_regime == 'high_vol':
-            atr_mult_adjusted *= 1.2
-        elif vol_regime == 'low_vol':
-            atr_mult_adjusted *= 0.9
+        vol_mults = config.get('exits', {}).get('volatility_regime_multipliers', {
+            'high_vol': 1.2,
+            'neutral': 1.0,
+            'low_vol': 0.9
+        })
+        vol_mult = vol_mults.get(vol_regime, vol_mults.get('neutral', 1.0))
+        atr_mult_adjusted = config["atr_mult_sl"] * vol_mult
         
         entry, sl, tp = price_levels(
             side, price, atr,

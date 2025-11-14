@@ -72,12 +72,13 @@ class TPManager:
         else:
             one_r = stop - entry
         
-        # ⭐ 변동성 레짐 조정 (고변동성 시 SL 넓게 → 1R 증가)
-        vol_mult = 1.0
-        if volatility_regime == 'high_vol':
-            vol_mult = 1.2  # SL 20% 넓게
-        elif volatility_regime == 'low_vol':
-            vol_mult = 0.9  # SL 10% 좁게
+        # ⭐ PHASE9-3: 변동성 레짐 조정 (Config 제어)
+        vol_mults = self.config.get('exits', {}).get('volatility_regime_multipliers', {
+            'high_vol': 1.2,
+            'neutral': 1.0,
+            'low_vol': 0.9
+        })
+        vol_mult = vol_mults.get(volatility_regime, vol_mults.get('neutral', 1.0))
         
         adjusted_one_r = one_r * vol_mult
         

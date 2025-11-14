@@ -70,6 +70,10 @@ portfolio:
   
   # ⭐ PHASE9 CRITICAL FIX: 완전 격리 강제
   load_existing: false            # ⭐ 기존 포지션 로드 절대 금지
+  
+  # ⭐ PHASE9-3: 중복 진입 허용 (연구용)
+  allow_duplicate_entry: true     # ⭐ 중복 진입 허용
+  max_duplicate_entries: 10       # ⭐ 최대 10개까지 허용
 
 # ========================================
 # 전략 (Strategy) 설정
