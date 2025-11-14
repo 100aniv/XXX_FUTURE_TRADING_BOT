@@ -151,6 +151,7 @@ def main():
     # 6. 어댑터 생성 (feed, broker, clock)
     logger.info("📊 어댑터 생성...")
     from execution.adapters import create_adapters
+    from common.database import get_db_connection
     
     try:
         feed, broker, clock = create_adapters(
@@ -168,7 +169,20 @@ def main():
         logger.error(traceback.format_exc())
         sys.exit(1)
     
-    # 7. 전략 로드
+    # 7. DB 초기화 (backtest 모드 격리)
+    logger.info(f"🗑️  DB 초기화: {args.mode} 모드 기존 거래 삭제...")
+    try:
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                # backtest_clean 모드의 기존 거래 삭제
+                cur.execute("DELETE FROM trading.trades WHERE mode = %s", (args.mode,))
+                deleted = cur.rowcount
+                conn.commit()
+                logger.info(f"  ✅ {deleted}개 기존 거래 삭제 완료")
+    except Exception as e:
+        logger.warning(f"⚠️ DB 초기화 실패 (계속 진행): {e}")
+    
+    # 8. 전략 로드
     logger.info(f"🎯 전략 로드: {args.strategy}")
     from strategies import load_strategies
     
@@ -179,7 +193,7 @@ def main():
     
     logger.info(f"  ✅ 전략 로드 완료: {list(strategies.keys())}")
     
-    # 8. 백테스트 실행 (실제 엔진)
+    # 9. 백테스트 실행 (실제 엔진)
     logger.info("⚙️  백테스트 엔진 실행...")
     from execution import engine
     
@@ -200,9 +214,8 @@ def main():
         logger.error(traceback.format_exc())
         sys.exit(1)
     
-    # 9. 거래 내역 조회 (DB)
+    # 10. 거래 내역 조회 (DB)
     logger.info("📊 거래 내역 조회...")
-    from common.database import get_db_connection
     
     trades = []
     try:
@@ -247,7 +260,7 @@ def main():
             {'pnl_pct': -1.2, 'status': 'closed', 'exit_reason': 'sl'},
         ]
     
-    # 10. Scorecard 생성
+    # 11. Scorecard 생성
     logger.info("📈 Scorecard 생성...")
     output_dir = Path(f"artifacts/{args.mode}/{run_id}")
     
@@ -259,7 +272,7 @@ def main():
     
     scorecard = generator.generate(trades, output_dir)
     
-    # 11. 결과 요약
+    # 12. 결과 요약
     logger.info("=" * 60)
     logger.info("✅ 백테스트 완료!")
     logger.info("=" * 60)
