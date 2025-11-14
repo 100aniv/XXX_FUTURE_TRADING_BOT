@@ -18,23 +18,40 @@ logger = setup_logger(__name__)
 
 
 class SimBroker:
-    """백테스트용 브로커"""
+    """백테스트용 브로커 (PHASE8-2: fill_policy 지원)"""
     
-    def __init__(self, fee_rate: float = 0.0004, slippage_pct: float = 0.0005):
+    def __init__(self, fee_rate: float = 0.0004, slippage_pct: float = 0.0005, 
+                 fill_policy: str = 'current_close', config: dict = None, clock=None):
+        """
+        Args:
+            fee_rate: 수수료 비율 (예: 0.001 = 0.1%)
+            slippage_pct: 슬리피지 비율 (예: 0.0005 = 0.05%)
+            fill_policy: 'current_close' or 'next_open'
+            config: 전체 설정
+            clock: 시계 (재현성을 위해 datetime.now() 대신 사용)
+        """
         self.fee_rate = fee_rate
         self.slippage_pct = slippage_pct
-        logger.info(f"✅ SimBroker 초기화")
+        self.fill_policy = fill_policy
+        self.config = config or {}
+        self.clock = clock
+        logger.info(f"✅ SimBroker 초기화: fee={fee_rate:.6f}, slippage={slippage_pct:.6f}, fill_policy={fill_policy}")
     
-    def execute(self, decision: dict, qty: float) -> dict:
+    def execute(self, decision: dict, qty: float, candle_ts: int = None) -> dict:
         """
         시뮬레이션 실행
         
         Args:
             decision: ensemble 결정 {'side': 'LONG', 'entry': 100, ...}
             qty: 수량
+            candle_ts: 캔들 timestamp (재현성용, optional)
         
         Returns:
             체결 결과 {'success': bool, 'filled_price': float, 'qty': float, ...}
+        
+        Note:
+            fill_policy 적용은 engine에서 decision['entry']를 조정하여 전달
+            SimBroker는 받은 entry 가격을 그대로 사용
         """
         side = decision.get('side')
         price = float(decision.get('entry', 0))
@@ -49,14 +66,22 @@ class SimBroker:
         value = filled_price * qty
         fee = value * self.fee_rate
         
+        # ⭐ PHASE8-2: 재현성을 위해 candle_ts 또는 clock 사용
+        if candle_ts:
+            timestamp = candle_ts
+        elif self.clock:
+            timestamp = self.clock.now()
+        else:
+            timestamp = int(datetime.now().timestamp() * 1000)
+        
         return {
             'success': True,
             'filled_price': filled_price,
             'qty': qty,
             'value': value,
             'fee': fee,
-            'timestamp': datetime.now(),
-            'order_id': f"SIM_{int(datetime.now().timestamp() * 1000)}"
+            'timestamp': timestamp,
+            'order_id': f"SIM_{timestamp}"
         }
 
 

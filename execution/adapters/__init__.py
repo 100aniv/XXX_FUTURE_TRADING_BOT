@@ -302,11 +302,42 @@ def create_adapters(mode: str, symbols: List[str], config: dict, logger: Any) ->
             logger.info(f"📊 백테스트 모드: 멀티 심볼 ({len(symbols)}개)")
             logger.info(f"   기간: {start_date} ~ {end_date}")
         
-        broker = SimBroker(
-            fee_rate=fees_cfg.get('taker', 0.0004),
-            slippage_pct=fees_cfg.get('slippage', 0.0005)
-        )
+        # ⭐ PHASE8-2: execution 설정에서 fees_bps/slippage.bps 읽기
+        exec_cfg = config.get('execution', {})
+        
+        # fees_bps (예: 10) → fee_rate (0.001)
+        fees_bps = exec_cfg.get('fees_bps')
+        if fees_bps is not None:
+            fee_rate = fees_bps / 10000
+            logger.info(f"✅ [BACKTEST] execution.fees_bps={fees_bps} → fee_rate={fee_rate:.6f}")
+        else:
+            fee_rate = fees_cfg.get('taker', 0.0004)
+            logger.warning(f"⚠️ [BACKTEST] execution.fees_bps 없음, fallback: fees.taker={fee_rate}")
+        
+        # slippage.bps (예: 5) → slippage_pct (0.0005)
+        slippage_cfg = exec_cfg.get('slippage', {})
+        slippage_bps = slippage_cfg.get('bps')
+        if slippage_bps is not None:
+            slippage_pct = slippage_bps / 10000
+            logger.info(f"✅ [BACKTEST] execution.slippage.bps={slippage_bps} → slippage_pct={slippage_pct:.6f}")
+        else:
+            slippage_pct = fees_cfg.get('slippage', 0.0005)
+            logger.warning(f"⚠️ [BACKTEST] execution.slippage.bps 없음, fallback: fees.slippage={slippage_pct}")
+        
+        # fill_policy
+        fill_policy = exec_cfg.get('fill_policy', 'current_close')
+        logger.info(f"✅ [BACKTEST] fill_policy={fill_policy}")
+        
+        # clock 먼저 생성
         clock = SimClock()
+        
+        broker = SimBroker(
+            fee_rate=fee_rate,
+            slippage_pct=slippage_pct,
+            fill_policy=fill_policy,
+            config=config,
+            clock=clock
+        )
     
     elif mode == 'paper':
         # ⭐ PR10 Bug #4: OPEN 포지션 심볼을 WebSocket 구독 목록에 추가
