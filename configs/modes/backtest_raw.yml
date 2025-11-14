@@ -79,6 +79,10 @@ strategy:
 # ========================================
 cooldown_candles: 0   # ⭐ 전역 쿨다운 제거 (base.yml: 5개)
 
+# ⭐ PHASE9-1 CRITICAL FIX: signal_generator 전역 필터 OFF
+enable_vol_spike_filter: false   # ⭐ 거래량 급증 전역 필터 OFF
+enable_mtf_confirm: false        # ⭐ MTF 확인 전역 필터 OFF
+
 # 필터 대부분 OFF
 filters:
   regime_filter: false         # ⭐ 레짐 필터 OFF
