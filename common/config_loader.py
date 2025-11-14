@@ -539,3 +539,132 @@ def merge_strategy_config(base_config: Dict[str, Any], strategy_id: str) -> Dict
         merged[key] = value
     
     return merged
+
+
+# ============================================
+# PHASE8: Config 병합 및 스냅샷 (재현성)
+# ============================================
+
+def load_config_with_mode(mode: str = None, base_path: str = "configs/base.yml") -> Dict[str, Any]:
+    """
+    PHASE8: 병합 순서에 따른 설정 로드
+    
+    병합 순서 (우선순위):
+        1. configs/base.yml
+        2. configs/modes/{mode}.yml (mode 지정 시)
+        3. configs/active/current.yml
+        4. CLI/ENV (TRADING_MODE, CONFIG_PATH 등)
+    
+    Args:
+        mode: 모드 이름 (backtest_clean, paper, live 등)
+        base_path: base.yml 경로
+    
+    Returns:
+        Dict[str, Any]: 병합된 설정 딕셔너리
+    
+    Examples:
+        >>> cfg = load_config_with_mode(mode='backtest_clean')
+        >>> print(cfg['execution']['fill_policy'])
+        'next_open'
+    """
+    # 1. base.yml 로드
+    base_cfg = {}
+    if Path(base_path).exists():
+        with open(base_path, 'r', encoding='utf-8') as f:
+            base_cfg = yaml.safe_load(f) or {}
+        logger.info(f"✅ [1/4] base.yml 로드 완료")
+    else:
+        logger.warning(f"⚠️  base.yml 없음: {base_path}")
+    
+    # 2. modes/{mode}.yml 로드 및 병합 (mode 지정 시)
+    if mode:
+        mode_path = Path(f"configs/modes/{mode}.yml")
+        if mode_path.exists():
+            with open(mode_path, 'r', encoding='utf-8') as f:
+                mode_cfg = yaml.safe_load(f) or {}
+            base_cfg = deep_merge(base_cfg, mode_cfg)
+            logger.info(f"✅ [2/4] modes/{mode}.yml 병합 완료")
+        else:
+            logger.warning(f"⚠️  modes/{mode}.yml 없음")
+    else:
+        logger.info(f"ℹ️  [2/4] mode 미지정, 건너뜀")
+    
+    # 3. active/current.yml 로드 및 병합
+    active_path = Path("configs/active/current.yml")
+    if active_path.exists():
+        with open(active_path, 'r', encoding='utf-8') as f:
+            active_cfg = yaml.safe_load(f) or {}
+        base_cfg = deep_merge(base_cfg, active_cfg)
+        logger.info(f"✅ [3/4] active/current.yml 병합 완료")
+    else:
+        logger.info(f"ℹ️  [3/4] active/current.yml 없음, 건너뜀")
+    
+    # 4. CLI/ENV 오버라이드
+    env_mode = os.getenv('TRADING_MODE', '').strip()
+    if env_mode:
+        base_cfg['mode'] = env_mode
+        logger.info(f"✅ [4/4] ENV 오버라이드: mode={env_mode}")
+    else:
+        logger.info(f"ℹ️  [4/4] ENV 오버라이드 없음")
+    
+    # mode 기본값 설정
+    if 'mode' not in base_cfg and mode:
+        base_cfg['mode'] = mode
+    
+    return base_cfg
+
+
+def generate_run_id() -> str:
+    """
+    PHASE8: run_id 생성 (YYYYMMDD_HHMMSS_random4)
+    
+    Returns:
+        str: run_id (예: 20251114_135030_a7f3)
+    
+    Examples:
+        >>> run_id = generate_run_id()
+        >>> print(run_id)
+        '20251114_135030_a7f3'
+    """
+    import datetime
+    import random
+    import string
+    
+    now = datetime.datetime.now()
+    timestamp = now.strftime("%Y%m%d_%H%M%S")
+    random_suffix = ''.join(random.choices(string.ascii_lowercase + string.digits, k=4))
+    
+    return f"{timestamp}_{random_suffix}"
+
+
+def save_effective_config(cfg: Dict[str, Any], env: str, run_id: str) -> Path:
+    """
+    PHASE8: effective_config.yml 스냅샷 저장
+    
+    Args:
+        cfg: 병합된 설정 딕셔너리
+        env: 환경 이름 (backtest_clean, paper, live)
+        run_id: 실행 ID
+    
+    Returns:
+        Path: 저장된 파일 경로
+    
+    Examples:
+        >>> cfg = load_config_with_mode('backtest_clean')
+        >>> run_id = generate_run_id()
+        >>> path = save_effective_config(cfg, 'backtest_clean', run_id)
+        >>> print(path)
+        artifacts/backtest_clean/20251114_135030_a7f3/effective_config.yml
+    """
+    # artifacts 디렉토리 생성
+    artifacts_dir = Path(f"artifacts/{env}/{run_id}")
+    artifacts_dir.mkdir(parents=True, exist_ok=True)
+    
+    # effective_config.yml 저장
+    config_path = artifacts_dir / "effective_config.yml"
+    with open(config_path, 'w', encoding='utf-8') as f:
+        yaml.dump(cfg, f, default_flow_style=False, allow_unicode=True, sort_keys=False)
+    
+    logger.info(f"✅ [SNAPSHOT] effective_config.yml 저장: {config_path}")
+    
+    return config_path

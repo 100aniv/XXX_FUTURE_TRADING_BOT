@@ -1,0 +1,23 @@
+# ====================================
+# BACKTEST_CLEAN MODE
+# ====================================
+# 결정적 환경 백테스트 모드
+# - 재현성 100% 보장
+# - 수수료/슬리피지 고정
+# - 쿨다운/Flash Guard OFF
+# - Ensemble OFF (단일 전략만)
+
+execution:
+  fill_policy: next_open
+  fees_bps: 10  # 0.1% 수수료
+  slippage:
+    type: fixed
+    bps: 5  # 0.05% 고정 슬리피지
+  cooldown_minutes: 0  # 쿨다운 없음
+
+risk:
+  flash_guard: false  # Flash Guard 비활성화
+  stop_outlier: true  # 이상치 제거는 유지
+
+ensemble:
+  enabled: false  # 앙상블 비활성화 (단일 전략만)
