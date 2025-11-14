@@ -634,6 +634,7 @@ class PortfolioManager:
                             leverage, ts_open, sl_price, tp_price, mode, pnl, pnl_pct = row
                         
                         position = {
+                            'id': trade_id,  # ⭐ PHASE9 FIX: remove_position과 일관성 유지
                             'trade_id': trade_id,
                             'symbol': symbol,
                             'strategy': strategy_id,
