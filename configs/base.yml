@@ -520,6 +520,13 @@ strategies:
     bb_bounce_lower_prev_mult: 1.008
     risk_per_trade: 0.003  # ⭐ 0.005→0.003 (0.3%)
     rr: 1.6
+    
+    # ⭐ PHASE9-3.1: 조건 완화 파라미터 (거래 빈도 증가용)
+    condition_relax:
+      bb_bounce_tolerance: 0.002      # BB Bounce 허용 범위 확대 (기본값: 0.002 = 0.2%)
+      ema_alignment_required: 3       # EMA 정렬 요구 개수 (3=전체, 2=fast>mid만, 1=없음)
+      macd_tolerance: 0.0             # MACD 조건 완화 (기본값: 0.0 = 완화 없음)
+      rsi_tolerance: 0.0              # RSI 조건 완화 (기본값: 0.0 = 완화 없음)
   swing:
     atr_mult_sl: 2.2  # ⭐ 스윙: 넓은 SL (장기 추세 추종, 일시 조정 수용)
     cooldown_candles: 5

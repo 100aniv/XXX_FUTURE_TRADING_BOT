@@ -51,6 +51,13 @@ def signal_logic(df: pd.DataFrame, config: dict) -> Dict[str, Any]:
     macd_up = last["macd"] > last["macd_signal"]  # 단순화
     macd_down = last["macd"] < last["macd_signal"]
     
+    # ⭐ PHASE9-3.1: 조건 완화 파라미터 로드
+    relax = config.get('condition_relax', {})
+    bb_tolerance = relax.get('bb_bounce_tolerance', 0.002)
+    ema_required = relax.get('ema_alignment_required', 3)
+    macd_tolerance = relax.get('macd_tolerance', 0.0)
+    rsi_tolerance = relax.get('rsi_tolerance', 0.0)
+    
     # 파라미터 (기본값은 기존 상수와 동일)
     bb_touch_upper_pct = config.get('bb_touch_upper_pct', 0.995)
     bb_touch_lower_pct = config.get('bb_touch_lower_pct', 1.005)
@@ -63,20 +70,40 @@ def signal_logic(df: pd.DataFrame, config: dict) -> Dict[str, Any]:
     bb_bounce_lower_prev_mult = config.get('bb_bounce_lower_prev_mult', 1.008)
     bb_bounce_upper_now_mult = config.get('bb_bounce_upper_now_mult', 0.997)
     bb_bounce_upper_prev_mult = config.get('bb_bounce_upper_prev_mult', 0.992)
+    
+    # ⭐ PHASE9-3.1: 조건 완화 로그 (1회만)
+    import logging
+    logger_debug = logging.getLogger(__name__)
+    if len(df) == config.get('min_bars_for_signal', 60):  # 첫 신호 가능 시점
+        logger_debug.info(f"✅ [CONDITION_RELAX] 조건 완화 파라미터 적용됨:")
+        logger_debug.info(f"  - bb_bounce_tolerance: {bb_tolerance:.4f} (BB 범위 확대)")
+        logger_debug.info(f"  - ema_alignment_required: {ema_required} (3=전체, 2=fast>mid만, 1=없음)")
+        logger_debug.info(f"  - macd_tolerance: {macd_tolerance:.4f} (MACD 완화)")
+        logger_debug.info(f"  - rsi_tolerance: {rsi_tolerance:.1f} (RSI 범위 확대)")
 
     # BB 터치 (근접) - ⭐ 조건 강화
     bb_touch_upper = last["close"] >= last["bb_upper"] * bb_touch_upper_pct  # BB 상단 근접
     bb_touch_lower = last["close"] <= last["bb_lower"] * bb_touch_lower_pct  # BB 하단 근접
     
-    # ⭐ EMA 추세 확인 (강화: mid도 포함)
-    ema_trend_long = (last["ema_fast"] > last["ema_mid"] and 
-                      last["ema_mid"] > last["ema_slow"])  # 3선 정렬
-    ema_trend_short = (last["ema_fast"] < last["ema_mid"] and 
-                       last["ema_mid"] < last["ema_slow"])  # 3선 역정렬
+    # ⭐ PHASE9-3.1: EMA 추세 확인 (조건 완화 적용)
+    if ema_required == 3:
+        # 3선 정렬 (기본값)
+        ema_trend_long = (last["ema_fast"] > last["ema_mid"] and 
+                          last["ema_mid"] > last["ema_slow"])
+        ema_trend_short = (last["ema_fast"] < last["ema_mid"] and 
+                           last["ema_mid"] < last["ema_slow"])
+    elif ema_required == 2:
+        # 2선 정렬 (fast > mid만)
+        ema_trend_long = last["ema_fast"] > last["ema_mid"]
+        ema_trend_short = last["ema_fast"] < last["ema_mid"]
+    else:
+        # EMA 조건 없음
+        ema_trend_long = True
+        ema_trend_short = True
     
-    # ⭐ RSI 범위 (축소: 과매수/과매도 근처만)
-    rsi_ok_long = rsi_min < last["rsi"] < rsi_max  # 중립~약간 과매도
-    rsi_ok_short = rsi_min < last["rsi"] < rsi_max  # 중립~약간 과매수
+    # ⭐ PHASE9-3.1: RSI 범위 (조건 완화 적용)
+    rsi_ok_long = (rsi_min - rsi_tolerance) < last["rsi"] < (rsi_max + rsi_tolerance)
+    rsi_ok_short = (rsi_min - rsi_tolerance) < last["rsi"] < (rsi_max + rsi_tolerance)
     
     # ⭐ 거래량 (평균 배수)
     vol_ok = (last["volume"] > last["vol_ma"] * volume_mult) if volume_filter_required else True
@@ -87,18 +114,18 @@ def signal_logic(df: pd.DataFrame, config: dict) -> Dict[str, Any]:
     macd_cross_down = (last["macd"] < last["macd_signal"] and 
                        prev["macd"] >= prev["macd_signal"])  # 하향 크로스
     
-    # ⭐ BB 밴드 반등 확인 (강화: 허용치 축소)
+    # ⭐ PHASE9-3.1: BB 밴드 반등 확인 (조건 완화 적용)
     # LONG: 이전에 하단 터치 → 현재 반등 중
     bb_bounce_long = (
-        last["close"] > last["bb_lower"] * bb_bounce_lower_now_mult and  # 현재 하단 위
-        prev["close"] <= prev["bb_lower"] * bb_bounce_lower_prev_mult and  # 이전 하단 근처
+        last["close"] > last["bb_lower"] * (bb_bounce_lower_now_mult - bb_tolerance) and  # 현재 하단 위 (완화)
+        prev["close"] <= prev["bb_lower"] * (bb_bounce_lower_prev_mult + bb_tolerance) and  # 이전 하단 근처 (완화)
         last["close"] > prev["close"]  # 상승 캔들
     )
     
     # SHORT: 이전에 상단 터치 → 현재 조정 중
     bb_bounce_short = (
-        last["close"] < last["bb_upper"] * bb_bounce_upper_now_mult and  # 현재 상단 아래
-        prev["close"] >= prev["bb_upper"] * bb_bounce_upper_prev_mult and  # 이전 상단 근처
+        last["close"] < last["bb_upper"] * (bb_bounce_upper_now_mult + bb_tolerance) and  # 현재 상단 아래 (완화)
+        prev["close"] >= prev["bb_upper"] * (bb_bounce_upper_prev_mult - bb_tolerance) and  # 이전 상단 근처 (완화)
         last["close"] < prev["close"]  # 하락 캔들
     )
     
@@ -115,13 +142,13 @@ def signal_logic(df: pd.DataFrame, config: dict) -> Dict[str, Any]:
     pullback_short = (bb_bounce_short and (macd_cross_down or macd_down) and 
                       ema_trend_short and rsi_ok_short and vol_ok)
     
-    # ⭐ PHASE9 DEBUG: 조건별 상태 로그 (샘플링: 100캔들마다)
+    # ⭐ PHASE9-3.1: 조건별 상태 로그 (샘플링: 100캔들마다)
     if len(df) % 100 == 0:
         logger_debug.info(f"🔍 [SCALPING DEBUG] 신호 조건 체크 (캔들 #{len(df)}):")
-        logger_debug.info(f"  - bb_bounce_long: {bb_bounce_long} | bb_bounce_short: {bb_bounce_short}")
+        logger_debug.info(f"  - bb_bounce_long: {bb_bounce_long} | bb_bounce_short: {bb_bounce_short} (tolerance={bb_tolerance:.4f})")
         logger_debug.info(f"  - macd: up={macd_up}, down={macd_down}, cross_up={macd_cross_up}, cross_down={macd_cross_down}")
-        logger_debug.info(f"  - ema_trend: long={ema_trend_long}, short={ema_trend_short}")
-        logger_debug.info(f"  - rsi: {last['rsi']:.1f} (long_ok={rsi_ok_long}, short_ok={rsi_ok_short})")
+        logger_debug.info(f"  - ema_trend: long={ema_trend_long}, short={ema_trend_short} (required={ema_required})")
+        logger_debug.info(f"  - rsi: {last['rsi']:.1f} (long_ok={rsi_ok_long}, short_ok={rsi_ok_short}, tolerance={rsi_tolerance:.1f})")
         logger_debug.info(f"  - vol: {last['volume']:.0f} vs ma={last['vol_ma']:.0f} (ok={vol_ok}, mult={volume_mult})")
         logger_debug.info(f"  → pullback_long={pullback_long}, pullback_short={pullback_short}")
     
