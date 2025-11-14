@@ -1633,24 +1633,46 @@ def save_trade_to_db(
                 cur.execute(
                     """
                     INSERT INTO trading.trades (
-                        trade_id, symbol, strategy_id, side,
-                        entry_price, quantity, sl_price, tp_price,
-                        leverage, status, ts_open, mode
-                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW(), %s)
+                        trade_id, decision_id, symbol, side,
+                        entry_price, exit_price, quantity, leverage,
+                        sl_price, tp_price, ts_open, ts_close,
+                        pnl, pnl_pct, fees, status,
+                        strategy_id, exit_reason, created_at, trial_id, mode
+                    ) VALUES (
+                        %s, %s, %s, %s,
+                        %s, %s, %s, %s,
+                        %s, %s, NOW(), %s,
+                        %s, %s, %s, %s,
+                        %s, %s, NOW(), %s, %s
+                    )
                 """,
                     (
-                        position_id,
-                        symbol,
-                        strategy_id,
-                        side,
-                        entry_price,
-                        qty,
-                        sl_price,
-                        tp_price,
-                        leverage,
-                        "OPEN",
-                        mode,  # ⭐ PR12: Paper/Live 모드 분리
+                        position_id,           # trade_id (NOT NULL)
+                        None,                   # decision_id (nullable)
+                        symbol,                 # symbol (NOT NULL)
+                        side,                   # side (NOT NULL)
+                        entry_price,            # entry_price (NOT NULL)
+                        None,                   # exit_price (nullable, OPEN 상태이므로 NULL)
+                        qty,                    # quantity (NOT NULL)
+                        leverage,               # leverage (NOT NULL)
+                        sl_price,               # sl_price (nullable)
+                        tp_price,               # tp_price (nullable)
+                        # ts_open: NOW() (NOT NULL)
+                        None,                   # ts_close (nullable, OPEN 상태이므로 NULL)
+                        0,                      # pnl (nullable, 시작 시 0)
+                        0,                      # pnl_pct (nullable, 시작 시 0)
+                        0,                      # fees (nullable, 기본값 0)
+                        "OPEN",                 # status (NOT NULL)
+                        strategy_id,            # strategy_id (NOT NULL)
+                        None,                   # exit_reason (nullable, OPEN 상태이므로 NULL)
+                        # created_at: NOW() (NOT NULL)
+                        trial_id,               # trial_id (nullable)
+                        mode,                   # mode (NOT NULL, default='paper')
                     ),
                 )
+                logger.info(f"✅ [DB] 거래 저장 성공: {position_id[:8]}... | {symbol} {side} @ {entry_price} | mode={mode}")
     except Exception as e:
-        logger.error(f"❌ DB 저장 실패: {e}")
+        logger.error(f"❌ [DB] 거래 저장 실패: {e}")
+        logger.error(f"   trade_id={position_id}, symbol={symbol}, side={side}, mode={mode}")
+        import traceback
+        logger.error(traceback.format_exc())
