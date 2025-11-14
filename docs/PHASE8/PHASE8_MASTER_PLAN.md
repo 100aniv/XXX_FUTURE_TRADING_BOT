@@ -160,3 +160,63 @@ artifacts/
 7) artifacts 저장 구조 구현  
 8) 단일 전략(backtest_clean) 테스트  
 9) scorecard 제출  
+
+---
+
+# 7. PHASE8 진행 현황
+
+## ✅ PHASE8-1: Config 시스템 정비 (완료)
+- base.yml / modes/*.yml / active/current.yml 병합 구조 확립
+- config_validation 추가 (필수 키, 타입, 충돌 검사)
+- effective_config.yml 자동 저장
+
+## ✅ PHASE8-2: Backtest Clean 환경 구축 (완료)
+- backtest_clean 모드 생성 (fill_policy: next_open, fees_bps: 10, slippage: fixed_5bps)
+- run_backtest.py 단일 엔트리 스크립트 작성
+- PortfolioManager 완전 격리 (load_existing=False)
+- Redis dedup 비활성화
+- DB env별 격리 (trading.trades, positions, metrics, signals)
+
+## ✅ PHASE8-2c: DB Trades INSERT 수정 (완료)
+- trading.trades INSERT 문 21개 컬럼 명시
+- decision_id 컬럼 추가
+- trades_mode_check 제약 수정 (backtest_clean 추가)
+- DB 저장 성공 확인 (17/17건)
+
+## ✅ PHASE8-3: Strategy Baseline Backtest (완료)
+
+### scalping / BTCUSDT / 5m / 30d backtest_clean baseline
+
+**Run ID**: `20251114_184356_pfmz`  
+**기간**: 2024-10-01 ~ 2024-10-31 (30일, OOS 데이터)  
+**총 캔들**: 26,101개  
+
+**성능 지표:**
+- **Trades Closed**: 25건 (목표: ≥100, ❌ 데이터 부족)
+- **Winrate**: 44.0% (목표: ≥40%, ✅ 통과)
+- **Profit Factor**: 0.68 (목표: ≥1.10, ❌ 손실 상태)
+- **Max Drawdown**: -2.03% (목표: >-20%, ✅ 통과)
+- **Loss > 8%**: 0건 (목표: =0, ✅ 통과)
+- **TP Hit Rate**: 0.0%
+- **Sharpe Ratio**: -0.18
+
+**Overall Result**: ❌ 불합격 (PF < 1.10, 거래 수 부족)
+
+**산출물:**
+- `artifacts/backtest_clean/20251114_184356_pfmz/scorecard.md`
+- `artifacts/backtest_clean/20251114_184356_pfmz/effective_config.yml`
+- `artifacts/backtest_clean/20251114_184356_pfmz/scorecard.csv`
+
+**분석:**
+- scalping 전략은 현재 손실 상태 (PF 0.68)
+- Winrate는 목표 달성했으나 손실 크기가 더 큼
+- 30일 데이터로도 거래 수 25건에 불과 (목표 100건 미달)
+- 리스크 관리는 양호 (DD -2.03%, 큰 손실 0건)
+
+**다음 단계 고려사항:**
+- 전략 파라미터 튜닝 필요 (PHASE9)
+- TP/SL 비율 재검토
+- 진입 조건 강화
+- 장기 백테스트 (90일+) 필요
+
+---
