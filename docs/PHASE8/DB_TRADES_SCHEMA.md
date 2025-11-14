@@ -48,10 +48,14 @@
 
 ## PHASE8-2c 수정 내역
 
-### 문제
+### 문제 1: INSERT 문 컬럼 누락
 
 기존 INSERT 문에서 `decision_id` 컬럼이 빠져있어, 모든 값이 한 칸씩 밀려서 저장되었음.
 결과적으로 NOT NULL 제약이 있는 `mode` 컬럼에 NULL이 들어가서 에러 발생.
+
+### 문제 2: mode CHECK 제약
+
+`trades_mode_check` 제약이 `['paper', 'live', 'backtest']`만 허용하고 `'backtest_clean'`을 불허함.
 
 **에러 로그 예시:**
 ```
@@ -97,12 +101,29 @@ INSERT INTO trading.trades (
 
 ### 주요 변경점
 
+**코드 수정 (execution/engine.py):**
 | Before | After | 설명 |
 |--------|-------|------|
 | 컬럼 12개 명시 | **컬럼 21개 명시** | 모든 컬럼 명시적 지정 |
 | decision_id 누락 | **decision_id 추가 (NULL)** | 컬럼 순서 정렬 |
 | nullable 컬럼 생략 | **nullable 컬럼도 명시 (NULL)** | 명확성 향상 |
 | 로그 없음 | **성공/실패 로그 추가** | 디버깅 편의성 |
+
+**DB 제약 수정 (trading.trades):**
+
+```sql
+-- Before
+ALTER TABLE trading.trades 
+ADD CONSTRAINT trades_mode_check 
+CHECK (mode = ANY (ARRAY['paper'::text, 'live'::text, 'backtest'::text]));
+
+-- After
+ALTER TABLE trading.trades 
+ADD CONSTRAINT trades_mode_check 
+CHECK (mode = ANY (ARRAY['paper'::text, 'live'::text, 'backtest'::text, 'backtest_clean'::text]));
+```
+
+**변경 이유**: backtest_clean 모드 지원 추가
 
 ## 사용 예시
 
