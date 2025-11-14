@@ -117,22 +117,28 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict):
     cooldown_seconds = config.get("execution", {}).get("reject_cooldown_seconds", 60)
 
     # ⭐ PR9: Redis 연결 (캔들 dedup, 쿨다운 TTL, 신호 멱등성)
+    # ⭐ PHASE8-2b: backtest 모드에서는 Redis 비활성화 (완전 격리)
     redis_config = config.get("monitoring", {}).get("redis", {})
     redis_client = None
-    try:
-        redis_client = redis.Redis(
-            host=redis_config.get("host", "localhost"),
-            port=redis_config.get("port", 6379),
-            db=redis_config.get("db", 0),
-            decode_responses=True,
-        )
-        redis_client.ping()
-        logger.info(
-            f"✅ Redis 연결 성공: {redis_config.get('host')}:{redis_config.get('port')}"
-        )
-    except Exception as e:
-        logger.warning(f"⚠️  Redis 연결 실패 (Dedup/쿨다운 비활성화): {e}")
+    
+    if mode in ['backtest', 'backtest_clean']:
+        logger.info("🔒 [BACKTEST] Redis dedup 비활성화 (완전 격리)")
         redis_client = None
+    else:
+        try:
+            redis_client = redis.Redis(
+                host=redis_config.get("host", "localhost"),
+                port=redis_config.get("port", 6379),
+                db=redis_config.get("db", 0),
+                decode_responses=True,
+            )
+            redis_client.ping()
+            logger.info(
+                f"✅ Redis 연결 성공: {redis_config.get('host')}:{redis_config.get('port')}"
+            )
+        except Exception as e:
+            logger.warning(f"⚠️  Redis 연결 실패 (Dedup/쿨다운 비활성화): {e}")
+            redis_client = None
 
     # ⭐ PR9: 타임프레임 기반 동적 TTL (멱등성 개선)
     # - 1m → 63s, 3m → 189s, 5m → 315s, 15m → 945s, 1h → 3780s
@@ -156,8 +162,12 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict):
 
     # Position Sizer & Portfolio Manager & Risk Manager (config 전달)
     # ⭐ PR12: 순서 변경 - portfolio를 먼저 초기화하고 risk에 전달
+    # ⭐ PHASE8-2b: backtest 모드에서는 기존 포지션 로드 스킵
     sizer = PositionSizer(config)
-    portfolio = PortfolioManager(config)
+    
+    is_backtest_mode = mode in ['backtest', 'backtest_clean']
+    portfolio = PortfolioManager(config, load_existing=not is_backtest_mode)
+    
     risk = RiskManager(config, portfolio=portfolio)  # ⭐ PR12: 포트폴리오 참조 추가
     tracker = PositionTracker(config)  # ⭐ TUNING_VIBLE TP 분할 지원
 

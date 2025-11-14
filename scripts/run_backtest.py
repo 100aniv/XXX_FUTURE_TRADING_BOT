@@ -169,18 +169,62 @@ def main():
         logger.error(traceback.format_exc())
         sys.exit(1)
     
-    # 7. DB 초기화 (backtest 모드 격리)
-    logger.info(f"🗑️  DB 초기화: {args.mode} 모드 기존 거래 삭제...")
+    # 7. DB 완전 초기화 (backtest 모드 격리)
+    logger.info("=" * 60)
+    logger.info(f"🗑️  [DB CLEANUP] {args.mode} 모드 완전 격리 시작")
+    logger.info("=" * 60)
+    
     try:
         with get_db_connection() as conn:
             with conn.cursor() as cur:
-                # backtest_clean 모드의 기존 거래 삭제
+                # 1. trading.trades 삭제 전 카운트
+                cur.execute("SELECT COUNT(*) FROM trading.trades WHERE mode = %s", (args.mode,))
+                before_trades = cur.fetchone()[0]
+                logger.info(f"📊 [BEFORE] trading.trades ({args.mode}): {before_trades}개")
+                
+                # 2. trading.trades 삭제
                 cur.execute("DELETE FROM trading.trades WHERE mode = %s", (args.mode,))
-                deleted = cur.rowcount
+                deleted_trades = cur.rowcount
                 conn.commit()
-                logger.info(f"  ✅ {deleted}개 기존 거래 삭제 완료")
+                logger.info(f"  ✅ trading.trades 삭제: {deleted_trades}개")
+                
+                # 3. 기타 테이블 정리 시도 (없으면 무시)
+                tables_to_clean = [
+                    ('trading.positions', 'mode'),  # 포지션 테이블 (있으면)
+                    ('trading.metrics', 'env'),      # 메트릭 테이블 (있으면)
+                    ('trading.signals', 'mode'),     # 신호 테이블 (있으면)
+                ]
+                
+                for table_name, mode_column in tables_to_clean:
+                    try:
+                        # 삭제 전 카운트
+                        cur.execute(f"SELECT COUNT(*) FROM {table_name} WHERE {mode_column} = %s", (args.mode,))
+                        before_count = cur.fetchone()[0]
+                        
+                        if before_count > 0:
+                            # 삭제
+                            cur.execute(f"DELETE FROM {table_name} WHERE {mode_column} = %s", (args.mode,))
+                            deleted_count = cur.rowcount
+                            conn.commit()
+                            logger.info(f"  ✅ {table_name} 삭제: {deleted_count}개")
+                    except Exception:
+                        # 테이블이 없으면 무시
+                        pass
+                
+                # 4. 삭제 후 최종 확인
+                cur.execute("SELECT COUNT(*) FROM trading.trades WHERE mode = %s", (args.mode,))
+                after_trades = cur.fetchone()[0]
+                
+                logger.info("=" * 60)
+                logger.info(f"✅ [AFTER] trading.trades ({args.mode}): {after_trades}개")
+                logger.info(f"✅ [DB CLEANUP] 완전 격리 완료 ({deleted_trades}개 삭제됨)")
+                logger.info("=" * 60)
+                
     except Exception as e:
-        logger.warning(f"⚠️ DB 초기화 실패 (계속 진행): {e}")
+        logger.error(f"❌ DB 초기화 실패: {e}")
+        logger.error("백테스트 계속 진행하지만 결과가 오염될 수 있음")
+        import traceback
+        logger.error(traceback.format_exc())
     
     # 8. 전략 로드
     logger.info(f"🎯 전략 로드: {args.strategy}")

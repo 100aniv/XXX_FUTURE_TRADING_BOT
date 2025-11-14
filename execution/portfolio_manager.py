@@ -30,14 +30,16 @@ class PortfolioManager:
     - 동시 포지션 수 제어
     """
     
-    def __init__(self, config: Dict):
+    def __init__(self, config: Dict, load_existing: bool = True):
         """
         초기화
         
         Args:
             config: 전체 설정 (config.yml)
+            load_existing: 기존 OPEN 포지션 로드 여부 (backtest=False, paper/live=True)
         """
         self.config = config
+        self.load_existing = load_existing
         
         # 기본 설정 (필수 파라미터 - config.yml 필수)
         self.equity = config['capital']['initial']
@@ -52,9 +54,15 @@ class PortfolioManager:
         self.use_dynamic_exposure = config.get('portfolio', {}).get('use_dynamic_exposure', True)
         self.use_dynamic_budget = config.get('portfolio', {}).get('use_dynamic_budget', True)
         
-        # 현재 상태 추적
+        # ⭐ PHASE8-2b: 현재 상태 추적 (backtest 모드에서는 빈 상태로 시작)
         self.positions: Dict[str, List[Dict]] = defaultdict(list)  # {symbol: [positions]}
         self.strategy_positions: Dict[str, int] = defaultdict(int)  # {strategy: count}
+        
+        # ⭐ PHASE8-2b: 기존 포지션 로드 (paper/live에서만)
+        if load_existing:
+            self._load_existing_positions()
+        else:
+            logger.info("🔒 [BACKTEST] 기존 포지션 로드 스킵 (완전 격리 모드)")
         
         # ⭐ PR8: 심볼별 쿨다운 (거부 후 반복 시도 방지)
         self.symbol_cooldown: Dict[str, float] = {}  # {symbol: last_reject_time}
@@ -593,6 +601,66 @@ class PortfolioManager:
         logger.debug(f"📊 [{strategy}] 동적 Budget: {dynamic_positions}개 (Sharpe={sharpe:.2f}, WR={winrate*100:.0f}%, mult={total_mult:.2f})")
         
         return dynamic_positions
+    
+    def _load_existing_positions(self):
+        """
+        DB에서 OPEN 상태의 포지션을 로드하여 portfolio.positions에 추가
+        paper/live 모드에서만 호출됨 (backtest에서는 스킵)
+        """
+        try:
+            from common.database import get_db_connection
+            
+            with get_db_connection() as conn:
+                with conn.cursor() as cur:
+                    # mode와 상관없이 모든 OPEN 거래 조회 (paper/live 구분 안 함)
+                    cur.execute("""
+                        SELECT trade_id, symbol, strategy_id, side, entry_price, 
+                               quantity, leverage, ts_open, sl_price, tp_price, 
+                               mode, pnl, pnl_pct
+                        FROM trading.trades
+                        WHERE status = 'OPEN'
+                        ORDER BY ts_open ASC
+                    """)
+                    
+                    rows = cur.fetchall()
+                    
+                    if not rows:
+                        logger.info("✅ 기존 OPEN 포지션 없음")
+                        return
+                    
+                    # 각 row를 positions에 추가
+                    for row in rows:
+                        trade_id, symbol, strategy_id, side, entry_price, quantity, \
+                            leverage, ts_open, sl_price, tp_price, mode, pnl, pnl_pct = row
+                        
+                        position = {
+                            'trade_id': trade_id,
+                            'symbol': symbol,
+                            'strategy': strategy_id,
+                            'side': side,
+                            'entry_price': float(entry_price) if entry_price else 0,
+                            'quantity': float(quantity) if quantity else 0,
+                            'leverage': int(leverage) if leverage else 1,
+                            'value': float(entry_price * quantity) if entry_price and quantity else 0,
+                            'ts_open': ts_open,
+                            'sl_price': float(sl_price) if sl_price else None,
+                            'tp_price': float(tp_price) if tp_price else None,
+                            'mode': mode,
+                            'pnl': float(pnl) if pnl else 0,
+                            'pnl_pct': float(pnl_pct) if pnl_pct else 0
+                        }
+                        
+                        self.positions[symbol].append(position)
+                        self.strategy_positions[strategy_id] += 1
+                    
+                    logger.info(f"✅ 기존 OPEN 포지션 로드: {len(rows)}개")
+                    
+                    # 심볼별 포지션 수 로그
+                    for symbol, pos_list in self.positions.items():
+                        logger.info(f"  - {symbol}: {len(pos_list)}개 ({', '.join([p['strategy'] for p in pos_list])})")
+                        
+        except Exception as e:
+            logger.warning(f"⚠️ 기존 포지션 로드 실패 (계속 진행): {e}")
 
 
 if __name__ == '__main__':
