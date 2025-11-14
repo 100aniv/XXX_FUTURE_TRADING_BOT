@@ -19,5 +19,5 @@ risk:
   flash_guard: false  # Flash Guard 비활성화
   stop_outlier: true  # 이상치 제거는 유지
 
-ensemble:
-  enabled: false  # 앙상블 비활성화 (단일 전략만)
+strategy:
+  use_ensemble: false  # 앙상블 비활성화 (단일 전략만)

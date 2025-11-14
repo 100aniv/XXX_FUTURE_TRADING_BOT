@@ -1,14 +1,3 @@
-ensemble:
-  alpha_winrate: 0.26239780813448105
-  beta_rr: 0.11742508365045984
-  delta_confidence: 0.17022300234864177
-  epsilon_regime: 0.10621088666940683
-  experience:
-    min_trades: 10
-  gamma_sharpe: 0.3598528437324806
-  max_weight_per_strategy: 0.4939819704323989
-  theta_long: 0.22486639612006326
-  theta_short: 0.13185086660174142
 strategies:
   ensemble:
     alpha_winrate: 0.4
