@@ -1,0 +1,102 @@
+# ====================================
+# BACKTEST_RAW MODE (PHASE9-0)
+# ====================================
+# 가드/필터 최소화 모드 - 순수 전략 성향 확인용
+# 
+# 목적:
+# - 전략이 가드/필터 없이 "순수하게" 어떤 행동을 하는지 확인
+# - backtest_clean과 비교하여 가드에 의한 거래 억제 효과 정량화
+# 
+# 주의:
+# - 연구/분석 전용 모드 (실거래 절대 금지!)
+# - 계좌 손실 -60%까지 허용 (연구 목적)
+# - 재현성/격리는 backtest_clean과 동일하게 유지
+# 
+# PHASE9 작업:
+# - PHASE9-0: Guard baseline 비교
+# - PHASE9-1: 전략 구조 분석
+# - PHASE9-2: 파라미터 튜닝
+
+# ========================================
+# 실행 (Execution) 설정
+# ========================================
+execution:
+  fill_policy: next_open  # backtest_clean과 동일
+  fees_bps: 10            # 0.1% 수수료 (동일)
+  slippage:
+    type: fixed
+    bps: 5                # 0.05% 고정 슬리피지 (동일)
+  cooldown_minutes: 0     # ⭐ 전역 쿨다운 제거
+
+# ========================================
+# 리스크 (Risk) 설정 - 대폭 완화
+# ========================================
+risk:
+  flash_guard: false              # Flash Guard OFF
+  stop_outlier: true              # 이상치 제거 유지 (시스템 보호)
+  
+  # 연속 손실 제한 - 사실상 무제한
+  max_consecutive_losses: 99999   # ⭐ 무제한 (backtest_clean: 4~15건)
+  
+  # 일일 손실 제한 - 완화
+  max_daily_loss_pct: 50.0        # ⭐ 하루 -50%까지 허용 (backtest_clean: 2~20%)
+  
+  # 극단 손실 컷오프 - 완화
+  extreme_loss_cutoff_pct: -60.0  # ⭐ -60%까지 허용 (backtest_clean: -20%)
+  
+  # 페이퍼 프로파일 완화
+  profiles:
+    paper:
+      max_daily_loss_pct: 50.0              # ⭐ 하루 -50%
+      max_consecutive_losses: 99999         # ⭐ 무제한
+      cooldown_after_consecutive: 0         # ⭐ 쿨다운 제거
+      enforce_daily_loss_in_backtest: false # ⭐ 일일 손실 강제 OFF
+      equity_stop_pct: 80.0                 # ⭐ 80% 손실까지 허용
+
+# ========================================
+# 포트폴리오 (Portfolio) 설정 - 제한 완화 + 완전 격리
+# ========================================
+portfolio:
+  max_strategy_positions: 50      # ⭐ 바이낸스 최대치 (backtest_clean: 5개)
+  max_total_exposure: 0.99        # ⭐ 거의 전액 사용 (backtest_clean: 0.95)
+  max_positions: 50               # ⭐ 최대치 (backtest_clean: 20개)
+  
+  use_dynamic_exposure: false     # ⭐ 동적 exposure OFF
+  use_dynamic_budget: false       # ⭐ 동적 budget OFF
+  symbol_cooldown_seconds: 0      # ⭐ 심볼 쿨다운 제거
+  
+  # ⭐ PHASE9 CRITICAL FIX: 완전 격리 강제
+  load_existing: false            # ⭐ 기존 포지션 로드 절대 금지
+
+# ========================================
+# 전략 (Strategy) 설정
+# ========================================
+strategy:
+  use_ensemble: false   # 단일 전략만 (backtest_clean과 동일)
+
+# ========================================
+# 전역 설정 - 쿨다운/필터 제거
+# ========================================
+cooldown_candles: 0   # ⭐ 전역 쿨다운 제거 (base.yml: 5개)
+
+# 필터 대부분 OFF
+filters:
+  regime_filter: false         # ⭐ 레짐 필터 OFF
+  require_trend_align: false   # ⭐ 추세 정렬 요구 OFF
+  mtf_confirm: false           # ⭐ 멀티 타임프레임 확인 OFF
+  volume_spike: false          # ⭐ 거래량 급증 필터 OFF
+  session_whitelist: []        # ⭐ 세션 화이트리스트 없음
+
+# ========================================
+# 전략별 설정 - scalping 가드 제거
+# ========================================
+strategies:
+  scalping:
+    timeframe: 5m         # ⭐ CLI 인자와 일치 (base.yml: 3m)
+    cooldown_candles: 0   # ⭐ 쿨다운 제거 (base.yml: 3개)
+    filters:
+      mtf_confirm: false           # ⭐ MTF 확인 OFF
+      regime: false                # ⭐ 레짐 필터 OFF
+      volume_spike: false          # ⭐ 거래량 급증 필터 OFF
+      volume_spike_guard: false    # ⭐ 거래량 급증 가드 OFF
+      session_whitelist: []        # ⭐ 세션 제한 없음

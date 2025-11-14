@@ -122,7 +122,7 @@ def validate_config(cfg: Dict[str, Any]) -> bool:
     # 6. mode 검증
     # ============================================
     if 'mode' in cfg:
-        valid_modes = ['backtest', 'backtest_clean', 'paper', 'live']
+        valid_modes = ['backtest', 'backtest_clean', 'backtest_raw', 'paper', 'live']
         if cfg['mode'] not in valid_modes:
             warnings.append(f"알 수 없는 mode: '{cfg['mode']}' (권장: {valid_modes})")
     

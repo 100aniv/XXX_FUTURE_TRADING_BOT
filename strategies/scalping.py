@@ -102,6 +102,10 @@ def signal_logic(df: pd.DataFrame, config: dict) -> Dict[str, Any]:
         last["close"] < prev["close"]  # 하락 캔들
     )
     
+    # ⭐ PHASE9 DEBUG: 로깅 추가
+    import logging
+    logger_debug = logging.getLogger(__name__)
+    
     # ⭐ 신호 조건 (강화: 5가지 조건 모두 충족)
     # LONG: BB 반등 + MACD 크로스 + EMA 3선 정렬 + RSI + 거래량
     pullback_long = (bb_bounce_long and (macd_cross_up or macd_up) and 
@@ -110,6 +114,16 @@ def signal_logic(df: pd.DataFrame, config: dict) -> Dict[str, Any]:
     # SHORT: BB 반등 + MACD 크로스 + EMA 3선 역정렬 + RSI + 거래량
     pullback_short = (bb_bounce_short and (macd_cross_down or macd_down) and 
                       ema_trend_short and rsi_ok_short and vol_ok)
+    
+    # ⭐ PHASE9 DEBUG: 조건별 상태 로그 (샘플링: 100캔들마다)
+    if len(df) % 100 == 0:
+        logger_debug.info(f"🔍 [SCALPING DEBUG] 신호 조건 체크 (캔들 #{len(df)}):")
+        logger_debug.info(f"  - bb_bounce_long: {bb_bounce_long} | bb_bounce_short: {bb_bounce_short}")
+        logger_debug.info(f"  - macd: up={macd_up}, down={macd_down}, cross_up={macd_cross_up}, cross_down={macd_cross_down}")
+        logger_debug.info(f"  - ema_trend: long={ema_trend_long}, short={ema_trend_short}")
+        logger_debug.info(f"  - rsi: {last['rsi']:.1f} (long_ok={rsi_ok_long}, short_ok={rsi_ok_short})")
+        logger_debug.info(f"  - vol: {last['volume']:.0f} vs ma={last['vol_ma']:.0f} (ok={vol_ok}, mult={volume_mult})")
+        logger_debug.info(f"  → pullback_long={pullback_long}, pullback_short={pullback_short}")
     
     # 돌파 전략 제거 (스캘핑에서는 위험)
     
@@ -127,6 +141,9 @@ def signal_logic(df: pd.DataFrame, config: dict) -> Dict[str, Any]:
         reason.append("BB 하단 반등")
         reason.append("EMA 정렬 + 강한 MACD")
         reason.append("거래량 급증")
+        # ⭐ PHASE9 DEBUG: 신호 생성 로그
+        logger_debug.info(f"✅ [SCALPING SIGNAL] LONG 신호 생성! (캔들 #{len(df)})")
+        logger_debug.info(f"  - Price: {price:.2f} | RSI: {last['rsi']:.1f} | MACD: {last['macd']:.4f}")
     
     elif allow_short and pullback_short:
         side = "SHORT"
@@ -134,6 +151,9 @@ def signal_logic(df: pd.DataFrame, config: dict) -> Dict[str, Any]:
         reason.append("BB 상단 조정")
         reason.append("EMA 역정렬 + 강한 MACD")
         reason.append("거래량 급증")
+        # ⭐ PHASE9 DEBUG: 신호 생성 로그
+        logger_debug.info(f"✅ [SCALPING SIGNAL] SHORT 신호 생성! (캔들 #{len(df)})")
+        logger_debug.info(f"  - Price: {price:.2f} | RSI: {last['rsi']:.1f} | MACD: {last['macd']:.4f}")
     
     # 가격 레벨 계산
     entry, sl, tp = (None, None, None)

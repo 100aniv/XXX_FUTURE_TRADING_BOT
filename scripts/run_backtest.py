@@ -47,8 +47,8 @@ def parse_args():
         '--mode',
         type=str,
         required=True,
-        choices=['backtest_clean', 'backtest', 'paper', 'live'],
-        help='실행 모드 (PHASE8에서는 backtest_clean 권장)'
+        choices=['backtest_clean', 'backtest_raw', 'backtest', 'paper', 'live'],
+        help='실행 모드 (PHASE8: backtest_clean, PHASE9: backtest_raw 연구용)'
     )
     
     parser.add_argument(
@@ -138,6 +138,14 @@ def main():
     cfg['timeframe'] = args.timeframe
     cfg['strategy'] = {'use_ensemble': False, 'selector': args.strategy}
     
+    # ⭐ PHASE9 CRITICAL FIX: 전략 타임프레임을 CLI 타임프레임으로 강제 override
+    if 'strategies' not in cfg:
+        cfg['strategies'] = {}
+    if args.strategy not in cfg['strategies']:
+        cfg['strategies'][args.strategy] = {}
+    cfg['strategies'][args.strategy]['timeframe'] = args.timeframe
+    logger.info(f"✅ 전략 타임프레임 강제 설정: {args.strategy}.timeframe = {args.timeframe}")
+    
     # 백테스트 설정 추가
     if 'backtest' not in cfg:
         cfg['backtest'] = {}
@@ -145,6 +153,9 @@ def main():
     cfg['backtest']['data_dir'] = 'data'
     if args.data_path:
         cfg['backtest']['data_file'] = args.data_path
+    else:
+        # ⭐ PHASE9: OOS 데이터 기본값 (PHASE8-5에서 검증된 완벽한 데이터)
+        cfg['backtest']['data_file'] = 'BTCUSDT_5m_2024-10-01_2024-12-31_OOS.csv'
     # ⭐ PHASE8-4/5: days, start_date, end_date 파라미터 config에 저장
     if args.days:
         cfg['backtest']['days'] = args.days
