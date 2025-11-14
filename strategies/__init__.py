@@ -5,6 +5,7 @@ Strategies Module
 
 전략:
 - scalping: 스캘핑 전략 (1분/3분) - BB 터치 + EMA 정렬
+- swing_bb: 스윙 BB 반등 전략 (5분) - BB 반등 + EMA 정렬 (⭐ PHASE9-5: 기존 scalping 로직 분리)
 - daytrade: 단타 전략 (5분) - 레짐 기반 + EMA 정렬
 - swing: 스윙 전략 (15분) - 레짐 기반 + EMA 정렬
 - trend: 추세 전략 (1시간) - EMA 크로스 + MACD
@@ -16,6 +17,7 @@ from typing import Dict, Any
 from common.logger import setup_logger
 
 from . import scalping
+from . import swing_bb
 from . import daytrade
 from . import swing
 from . import trend
@@ -36,10 +38,11 @@ def get_all_strategies() -> Dict[str, Any]:
     Examples:
         >>> strategies = get_all_strategies()
         >>> print(strategies.keys())
-        dict_keys(['scalping', 'daytrade', 'swing', 'trend', 'reversion', 'breakout'])
+        dict_keys(['scalping', 'swing_bb', 'daytrade', 'swing', 'trend', 'reversion', 'breakout'])
     """
     return {
         'scalping': scalping,
+        'swing_bb': swing_bb,
         'daytrade': daytrade,
         'swing': swing,
         'trend': trend,
@@ -103,6 +106,7 @@ def load_strategies(config: dict, all_strategies: dict = None) -> Dict[str, Any]
 
 __all__ = [
     'scalping',
+    'swing_bb',
     'daytrade',
     'swing',
     'trend',

@@ -27,7 +27,7 @@ from common.messaging import format_signal_alert
 from common.calculations import round_tick, price_levels, leverage_suggestion
 from common.utils import buffer_to_df, qty_notional_margin, maybe_regime_alert
 from indicators import add_indicators, regime
-from strategies import scalping, daytrade, swing
+from strategies import scalping, daytrade, swing, swing_bb
 
 logger = setup_logger('signals', log_type='signals')
 
