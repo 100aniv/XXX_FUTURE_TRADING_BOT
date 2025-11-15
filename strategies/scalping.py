@@ -187,50 +187,92 @@ def signal_logic(df: pd.DataFrame, config: dict) -> Dict[str, Any]:
     # 5. 신호 조건 결합 (PHASE11: 3-Pattern OR 로직)
     # ========================================
     
-    # ⭐ PHASE11 개선: 고빈도 스캘핑을 위한 다중 진입 패턴
-    # 기존 (PHASE10): (EMA AND RSI) OR (EMA AND Volume) → 7 trades/7days (너무 적음)
-    # 개선 (PHASE11): 
-    #   - Pattern A: EMA + RSI (극단값 기반)
-    #   - Pattern B: EMA + Volume (거래량 급증)
-    #   - Pattern C: RSI + Momentum (대체 진입)
-    # 결과: A OR B OR C → 고빈도 진입 기회 증가
+    # ========================================
+    # 5-1. PHASE11-D: Fresh Cross Tracking
+    # ========================================
+    # ⭐ Late Entry 방지: 최근 크로스 기준 Fresh Trend 판단
     
-    # ⭐ PHASE11-C: Pattern 토글 기반 신호 생성 (Core vs Aggressive 분리)
-    # Core Patterns (EMA 필터 O, 기본 활성):
-    # - Pattern A: EMA bullish AND RSI oversold
-    # - Pattern B: EMA bullish AND Volume spike
-    # Aggressive Patterns (기본 비활성, 역트렌드 위험):
-    # - Pattern C: RSI alone (EMA 필터 X)
-    # - Pattern D: Volume alone (EMA/RSI 필터 X)
-    # - Pattern E: RSI + Volume (EMA 필터 X)
+    # Config 파라미터
+    max_cross_age = config.get('strategies', {}).get('scalping', {}).get('max_cross_age_candles', 80)
+    use_price_align = config.get('strategies', {}).get('scalping', {}).get('use_price_alignment', True)
     
-    # ⭐ PHASE11-C: Config에서 Pattern 토글 가져오기
+    # Cross 추적을 위한 DataFrame 컬럼 생성 (첫 호출 시만)
+    if 'last_cross_dir' not in df.columns:
+        # Golden cross 발생 시 bullish=1, Dead cross 시 bearish=-1, 없으면 0
+        df['cross_event'] = 0
+        df.loc[df['ema_fast'] > df['ema_slow'], 'cross_event'] = 1
+        df.loc[df['ema_fast'] < df['ema_slow'], 'cross_event'] = -1
+        
+        # 이전 값과 다른 경우만 cross 이벤트로 간주
+        df['cross_change'] = df['cross_event'].diff().fillna(0)
+        
+        # 마지막 크로스 방향: forward fill
+        df['last_cross_dir'] = 0
+        df.loc[df['cross_change'] == 2, 'last_cross_dir'] = 1   # -1→1: Golden
+        df.loc[df['cross_change'] == -2, 'last_cross_dir'] = -1  # 1→-1: Death
+        df['last_cross_dir'] = df['last_cross_dir'].replace(0, pd.NA).ffill().fillna(0)
+        
+        # 크로스 이후 경과 캔들 수 계산
+        cross_indices = df[df['cross_change'].abs() == 2].index
+        df['last_cross_age'] = 999  # 기본값: 매우 오래됨
+        for i in range(len(cross_indices)):
+            start_idx = cross_indices[i]
+            end_idx = cross_indices[i+1] if i+1 < len(cross_indices) else len(df)
+            age = range(0, end_idx - start_idx)
+            df.loc[start_idx:end_idx-1, 'last_cross_age'] = age
+    
+    # 현재 캔들의 Trend 상태
+    cross_dir = int(last.get('last_cross_dir', 0))
+    cross_age = int(last.get('last_cross_age', 999))
+    
+    # Fresh Trend 조건
+    bullish_trend_fresh = (cross_dir == 1) and (cross_age <= max_cross_age)
+    bearish_trend_fresh = (cross_dir == -1) and (cross_age <= max_cross_age)
+    
+    # Price Alignment (가격이 EMA 방향과 일치)
+    price_above_fast = price > ema_fast
+    price_below_fast = price < ema_fast
+    
+    # ========================================
+    # 5-2. PHASE11-D: Trend-Aware Patterns
+    # ========================================
+    # Core Patterns: Fresh Trend + Price Alignment + Filter
+    
+    # Config에서 Pattern 토글 가져오기
     enable_a = config.get('strategies', {}).get('scalping', {}).get('enable_pattern_a', True)
     enable_b = config.get('strategies', {}).get('scalping', {}).get('enable_pattern_b', True)
     enable_c = config.get('strategies', {}).get('scalping', {}).get('enable_pattern_c', False)
     enable_d = config.get('strategies', {}).get('scalping', {}).get('enable_pattern_d', False)
     enable_e = config.get('strategies', {}).get('scalping', {}).get('enable_pattern_e', False)
     
-    # LONG 조건 (토글 적용)
-    ema_long = ema_bullish  # fast > slow
-    pattern_a_long = enable_a and (ema_long and rsi_oversold_signal)
-    pattern_b_long = enable_b and (ema_long and vol_spike)
-    pattern_c_long = enable_c and rsi_oversold_signal  # ⭐ RSI alone
-    pattern_d_long = enable_d and vol_spike  # ⭐ Volume alone
-    pattern_e_long = enable_e and (rsi_oversold_signal and vol_spike)  # ⭐ RSI + Volume
+    # LONG 조건 (Fresh Bullish Trend 기반)
+    if use_price_align:
+        trend_long_ok = bullish_trend_fresh and price_above_fast
+    else:
+        trend_long_ok = bullish_trend_fresh
     
-    # 최종 LONG 신호: 활성화된 패턴들의 OR
+    pattern_a_long = enable_a and trend_long_ok and rsi_oversold_signal
+    pattern_b_long = enable_b and trend_long_ok and vol_spike
+    pattern_c_long = enable_c and rsi_oversold_signal  # Aggressive: no trend filter
+    pattern_d_long = enable_d and vol_spike  # Aggressive: no trend filter
+    pattern_e_long = enable_e and trend_long_ok and rsi_oversold_signal and vol_spike
+    
+    # 최종 LONG 신호
     signal_long = pattern_a_long or pattern_b_long or pattern_c_long or pattern_d_long or pattern_e_long
     
-    # SHORT 조건 (토글 적용)
-    ema_short = ema_bearish  # fast < slow
-    pattern_a_short = enable_a and (ema_short and rsi_overbought_signal)
-    pattern_b_short = enable_b and (ema_short and vol_spike)
-    pattern_c_short = enable_c and rsi_overbought_signal  # ⭐ RSI alone
-    pattern_d_short = enable_d and vol_spike  # ⭐ Volume alone
-    pattern_e_short = enable_e and (rsi_overbought_signal and vol_spike)  # ⭐ RSI + Volume
+    # SHORT 조건 (Fresh Bearish Trend 기반)
+    if use_price_align:
+        trend_short_ok = bearish_trend_fresh and price_below_fast
+    else:
+        trend_short_ok = bearish_trend_fresh
     
-    # 최종 SHORT 신호: 활성화된 패턴들의 OR
+    pattern_a_short = enable_a and trend_short_ok and rsi_overbought_signal
+    pattern_b_short = enable_b and trend_short_ok and vol_spike
+    pattern_c_short = enable_c and rsi_overbought_signal  # Aggressive: no trend filter
+    pattern_d_short = enable_d and vol_spike  # Aggressive: no trend filter
+    pattern_e_short = enable_e and trend_short_ok and rsi_overbought_signal and vol_spike
+    
+    # 최종 SHORT 신호
     signal_short = pattern_a_short or pattern_b_short or pattern_c_short or pattern_d_short or pattern_e_short
     
     # ========================================
@@ -241,19 +283,20 @@ def signal_logic(df: pd.DataFrame, config: dict) -> Dict[str, Any]:
         logger.info(f"  📊 Price: {price:.2f}")
         logger.info(f"  📈 EMA: fast={ema_fast:.2f}, slow={ema_slow:.2f} | bullish={ema_bullish}, bearish={ema_bearish}")
         logger.info(f"  🔀 EMA Cross: golden={golden_cross}, dead={dead_cross}")
+        logger.info(f"  ⭐ PHASE11-D Fresh Trend: dir={cross_dir} age={cross_age}/{max_cross_age} | bullish_fresh={bullish_trend_fresh}, bearish_fresh={bearish_trend_fresh}")
+        logger.info(f"  ⭐ Price Alignment: above_fast={price_above_fast}, below_fast={price_below_fast}")
         logger.info(f"  📉 RSI: {rsi:.1f} | oversold_signal={rsi_oversold_signal}, overbought_signal={rsi_overbought_signal}")
-        logger.info(f"  🔄 Momentum: higher_low={higher_low}, lower_high={lower_high} (enabled={momentum_enabled})")
-        logger.info(f"  📦 Volume: {volume:.0f} vs ma={vol_ma:.0f} | spike={vol_spike} (required={volume_required})")
-        logger.info(f"  🎯 Pattern A LONG: {pattern_a_long} (EMA+RSI) [{'ON' if enable_a else 'OFF'}]")
-        logger.info(f"  🎯 Pattern B LONG: {pattern_b_long} (EMA+Volume) [{'ON' if enable_b else 'OFF'}]")
+        logger.info(f"  📦 Volume: {volume:.0f} vs ma={vol_ma:.0f} | spike={vol_spike}")
+        logger.info(f"  🎯 Pattern A LONG: {pattern_a_long} (Fresh+RSI) [{'ON' if enable_a else 'OFF'}]")
+        logger.info(f"  🎯 Pattern B LONG: {pattern_b_long} (Fresh+Volume) [{'ON' if enable_b else 'OFF'}]")
         logger.info(f"  🎯 Pattern C LONG: {pattern_c_long} (RSI alone) [{'ON' if enable_c else 'OFF'}]")
         logger.info(f"  🎯 Pattern D LONG: {pattern_d_long} (Volume alone) [{'ON' if enable_d else 'OFF'}]")
-        logger.info(f"  🎯 Pattern E LONG: {pattern_e_long} (RSI+Volume) [{'ON' if enable_e else 'OFF'}]")
-        logger.info(f"  🎯 Pattern A SHORT: {pattern_a_short} (EMA+RSI) [{'ON' if enable_a else 'OFF'}]")
-        logger.info(f"  🎯 Pattern B SHORT: {pattern_b_short} (EMA+Volume) [{'ON' if enable_b else 'OFF'}]")
+        logger.info(f"  🎯 Pattern E LONG: {pattern_e_long} (Fresh+RSI+Volume) [{'ON' if enable_e else 'OFF'}]")
+        logger.info(f"  🎯 Pattern A SHORT: {pattern_a_short} (Fresh+RSI) [{'ON' if enable_a else 'OFF'}]")
+        logger.info(f"  🎯 Pattern B SHORT: {pattern_b_short} (Fresh+Volume) [{'ON' if enable_b else 'OFF'}]")
         logger.info(f"  🎯 Pattern C SHORT: {pattern_c_short} (RSI alone) [{'ON' if enable_c else 'OFF'}]")
         logger.info(f"  🎯 Pattern D SHORT: {pattern_d_short} (Volume alone) [{'ON' if enable_d else 'OFF'}]")
-        logger.info(f"  🎯 Pattern E SHORT: {pattern_e_short} (RSI+Volume) [{'ON' if enable_e else 'OFF'}]")
+        logger.info(f"  🎯 Pattern E SHORT: {pattern_e_short} (Fresh+RSI+Volume) [{'ON' if enable_e else 'OFF'}]")
         logger.info(f"  ✅ FINAL: LONG={signal_long}, SHORT={signal_short}")
     
     # ========================================
@@ -267,26 +310,26 @@ def signal_logic(df: pd.DataFrame, config: dict) -> Dict[str, Any]:
         side = "LONG"
         action = "진입"
         
-        # 패턴 구분
+        # ⭐ PHASE11-D: Pattern 구분
         if pattern_a_long:
-            reason.append("Pattern A (EMA+RSI)")
+            reason.append("Pattern A (Fresh+RSI)")
         if pattern_b_long:
-            reason.append("Pattern B (EMA+Volume)")
+            reason.append("Pattern B (Fresh+Volume)")
         if pattern_c_long:
-            reason.append("Pattern C (RSI alone) [PHASE11 Iter2]")
+            reason.append("Pattern C (RSI alone)")
         if pattern_d_long:
-            reason.append("Pattern D (Volume alone) [PHASE11 Iter2]")
+            reason.append("Pattern D (Volume alone)")
         if pattern_e_long:
-            reason.append("Pattern E (RSI+Volume) [PHASE11 Iter2 NEW]")
+            reason.append("Pattern E (Fresh+RSI+Volume)")
         
-        if golden_cross:
-            reason.append("EMA 골든크로스")
-        elif ema_bullish:
-            reason.append("EMA bullish 정렬")
+        # ⭐ PHASE11-D: Fresh Trend 정보
+        if bullish_trend_fresh:
+            reason.append(f"Fresh Bullish (age={cross_age})")
+        if price_above_fast:
+            reason.append("Price>EMA_fast")
         
         if rsi_oversold_signal:
-            reason.append(f"RSI 과매도 반등 ({rsi:.1f})")
-        # ⭐ PHASE11 Iter2: Momentum 패턴 제거됨
+            reason.append(f"RSI {rsi:.1f}")
         if vol_spike:
             reason.append("거래량 급증")
         
@@ -299,20 +342,23 @@ def signal_logic(df: pd.DataFrame, config: dict) -> Dict[str, Any]:
         side = "SHORT"
         action = "진입"
         
-        # 패턴 구분
+        # ⭐ PHASE11-D: Pattern 구분
         if pattern_a_short:
-            reason.append("Pattern A (EMA+RSI)")
+            reason.append("Pattern A (Fresh+RSI)")
         if pattern_b_short:
-            reason.append("Pattern B (EMA+Volume)")
+            reason.append("Pattern B (Fresh+Volume)")
         if pattern_c_short:
-            reason.append("Pattern C (RSI alone) [PHASE11 Iter2]")
+            reason.append("Pattern C (RSI alone)")
         if pattern_d_short:
-            reason.append("Pattern D (Volume alone) [PHASE11 Iter2]")
+            reason.append("Pattern D (Volume alone)")
         if pattern_e_short:
-            reason.append("Pattern E (RSI+Volume) [PHASE11 Iter2 NEW]")
+            reason.append("Pattern E (Fresh+RSI+Volume)")
         
-        if dead_cross:
-            reason.append("EMA 데드크로스")
+        # ⭐ PHASE11-D: Fresh Trend 정보
+        if bearish_trend_fresh:
+            reason.append(f"Fresh Bearish (age={cross_age})")
+        if price_below_fast:
+            reason.append("Price<EMA_fast")
         elif ema_bearish:
             reason.append("EMA bearish 정렬")
         
