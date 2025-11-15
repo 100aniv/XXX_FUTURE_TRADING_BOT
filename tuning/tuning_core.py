@@ -7,14 +7,19 @@
 
 주요 기능:
 - 페이퍼 모드: Postgres trading.trades 테이블에서 7일 롤링 메트릭 수집
-- 백테스트 모드: 향후 추가 가능 (메트릭 fetcher 교체 방식)
+- 백테스트 모드: subprocess로 백테스트 실행, scorecard.csv 파싱, train/val 분할
 - Optuna TPE 샘플러 + MedianPruner로 효율적 탐색
 - 파라미터 자동 발행 (configs/<전략>/active.yml)
 
 사용법:
-    from common.tuning_core import TunerCore
-    tuner = TunerCore(strategy_id='scalping', study_name='scalp_paper', ...)
+    # 페이퍼 모드
+    tuner = TunerCore(strategy_id='scalping', study_name='scalp_paper', mode='paper', ...)
     tuner.optimize(n_trials=10)
+    
+    # 백테스트 모드
+    tuner = TunerCore(strategy_id='scalping', study_name='scalp_bt', mode='backtest',
+                      symbol='BTCUSDT', timeframe='1m', start_date='2024-10-01', end_date='2024-12-30', ...)
+    tuner.optimize(n_trials=30)
 """
 from __future__ import annotations
 import os
@@ -22,6 +27,9 @@ import math
 import json
 import yaml
 import statistics
+import subprocess
+import csv
+import tempfile
 from dataclasses import dataclass
 from datetime import datetime, timedelta, date
 from pathlib import Path
@@ -40,6 +48,74 @@ from database import get_db_connection
 from common.config_loader import deep_merge, load_config
 
 # -------------------------
+# Optuna Storage 헬퍼
+# -------------------------
+
+def get_optuna_storage() -> str:
+    """
+    Optuna Storage URL 결정 (PostgreSQL ONLY)
+    
+    🚫 CRITICAL: SQLite는 절대 허용하지 않음
+    - 병렬 실행 시 race condition 발생
+    - Study 손실 위험
+    - 프로덕션 환경 부적합
+    
+    우선순위:
+    1. 환경변수 TUNING_DB_URL (명시적 지정)
+    2. 환경변수 DATABASE_URL (공유 DB)
+    3. Postgres 기본값 (Docker: db_postgres, 로컬: localhost)
+    
+    Returns:
+        Storage URL (PostgreSQL connection string ONLY)
+    
+    Raises:
+        ValueError: SQLite 경로 감지 시
+    """
+    # 1. 환경변수 TUNING_DB_URL 우선
+    if "TUNING_DB_URL" in os.environ:
+        storage = os.environ["TUNING_DB_URL"]
+        
+        # SQLite 감지 → 즉시 에러
+        if "sqlite" in storage.lower():
+            raise ValueError(
+                "❌ CRITICAL ERROR: SQLite is FORBIDDEN for tuning storage!\n"
+                f"   Detected: {storage}\n"
+                "   Solution: Use PostgreSQL URL\n"
+                "   Example: postgresql://trading_user:trading_pw_2024@localhost:5432/trading_db"
+            )
+        
+        print(f"📌 [TUNING STORAGE] 환경변수 사용: {storage.split('@')[1] if '@' in storage else storage}")
+        return storage
+    
+    # 2. DATABASE_URL 환경변수 (공유 DB)
+    if "DATABASE_URL" in os.environ:
+        db_url = os.environ["DATABASE_URL"]
+        
+        # SQLite 감지 → 즉시 에러
+        if "sqlite" in db_url.lower():
+            raise ValueError(
+                "❌ CRITICAL ERROR: DATABASE_URL contains SQLite path!\n"
+                f"   Detected: {db_url}\n"
+                "   Solution: Set DATABASE_URL to PostgreSQL"
+            )
+        
+        # localhost vs docker 호스트 판단
+        if "localhost" in db_url or "127.0.0.1" in db_url:
+            storage = "postgresql://trading_user:trading_pw_2024@localhost:5432/trading_db"
+            print(f"📌 [TUNING STORAGE] Postgres (로컬): localhost:5432/trading_db")
+        else:
+            storage = "postgresql://trading_user:trading_pw_2024@db_postgres:5432/trading_db"
+            print(f"📌 [TUNING STORAGE] Postgres (Docker): db_postgres:5432/trading_db")
+        
+        return storage
+    
+    # 3. 기본값: Docker Postgres
+    storage = "postgresql://trading_user:trading_pw_2024@db_postgres:5432/trading_db"
+    print(f"📌 [TUNING STORAGE] Postgres 기본값 (Docker): db_postgres:5432/trading_db")
+    print(f"   💡 로컬 환경이면 DATABASE_URL을 localhost로 설정하세요")
+    return storage
+
+# -------------------------
 # 롤링 메트릭 유틸리티
 # -------------------------
 
@@ -51,6 +127,17 @@ class RollingMetrics:
     mdd_pct: float     # 최대 낙폭 % (양수, 예: 7.5 = -7.5% 낙폭)
     roi_pct: float     # 수익률 %
     days: int          # 실제 거래 일수
+
+
+@dataclass
+class BacktestMetrics:
+    """백테스트 메트릭 데이터 클래스 (scorecard.csv 기반)"""
+    pf: float          # Profit Factor
+    winrate: float     # 승률 % (0~100)
+    trades: int        # 총 거래 수
+    mdd_pct: float     # 최대 낙폭 % (양수)
+    sharpe: float      # 샤프 비율
+    roi_pct: float     # 수익률 %
 
 
 def _daily_returns_from_trades(rows: List[Tuple[datetime, float]], capital: float = 10000.0) -> List[float]:
@@ -167,21 +254,56 @@ ParamSampler = Callable[["optuna.trial.Trial"], Dict[str, Any]]
 
 
 def _sample_scalping(trial: "optuna.trial.Trial") -> Dict[str, Any]:
-    rsi_low = trial.suggest_float("rsi_low", 20.0, 40.0)
-    rsi_high = trial.suggest_float("rsi_high", 55.0, 75.0)
-    allow_short = trial.suggest_categorical("allow_short", [True, False])
+    """PHASE10: 1분봉 고빈도 스캘핑 V1 파라미터 샘플링
+    
+    튜닝 대상 (PHASE9-6 scalping 전략):
+    - EMA 교차 (fast/slow)
+    - RSI 극단 (oversold/overbought)
+    - 모멘텀 패턴 (lookback)
+    - 거래량 급증 (volume_mult)
+    - 위험 관리 (RR, SL 배수, 최대 보유 시간)
+    
+    PHASE10.4 개선: 거래 빈도 증가를 위한 범위 완화
+    - RSI 범위 확대 (25~45, 55~75)
+    - volume_mult 하한 완화 (0.8~2.0)
+    - momentum_lookback 최소값 완화 (1~8)
+    - 기타 파라미터 최적화
+    """
+    # RSI 임계값 (완화: 진입 기회 증가)
+    rsi_oversold = trial.suggest_int("rsi_oversold", 25, 45)
+    rsi_overbought = trial.suggest_int("rsi_overbought", 55, 75)
+    
+    # EMA 기간 (fast/slow 범위 확대)
+    ema_fast = trial.suggest_int("ema_fast", 5, 20)
+    ema_slow = trial.suggest_int("ema_slow", 15, 60)
+    
+    # 모멘텀 & 거래량 (완화: 최소값 낮춤)
+    momentum_lookback = trial.suggest_int("momentum_lookback", 1, 8)
     volume_mult = trial.suggest_float("volume_mult", 0.8, 2.0)
-    min_rr = trial.suggest_float("min_rr_required", 1.0, 1.6)
+    
+    # 위험 관리 (보수적 범위)
+    rr = trial.suggest_float("rr", 1.1, 1.6)
+    atr_mult_sl = trial.suggest_float("atr_mult_sl", 0.5, 1.2)
+    max_hold_minutes = trial.suggest_int("max_hold_minutes", 10, 45)
+    
+    # 숏 허용 여부
+    allow_short = trial.suggest_categorical("allow_short", [True, False])
+    
     return {
         "strategies": {
             "scalping": {
-                "rsi_low": float(rsi_low),
-                "rsi_high": float(rsi_high),
-                "filters": {"allow_short": bool(allow_short)},
+                "rsi_oversold": int(rsi_oversold),
+                "rsi_overbought": int(rsi_overbought),
+                "ema_fast": int(ema_fast),
+                "ema_slow": int(ema_slow),
+                "momentum_lookback": int(momentum_lookback),
                 "volume_mult": float(volume_mult),
+                "rr": float(rr),
+                "atr_mult_sl": float(atr_mult_sl),
+                "max_hold_minutes": int(max_hold_minutes),
+                "filters": {"allow_short": bool(allow_short)},
             }
-        },
-        "entries": {"min_rr_required": float(min_rr)},
+        }
     }
 
 
@@ -302,20 +424,49 @@ class TunerCore:
         strategy_id: str,
         study_name: str,
         storage: str,
+        mode: str = "paper",  # paper|backtest
         window_days: int = 7,
         t_min: Optional[int] = None,
         mdd_cap: float = 8.0,
         publish_mode: str = "none",  # none|file
         publish_dir: Optional[str] = None,
+        # 백테스트 전용 파라미터
+        symbol: Optional[str] = None,
+        timeframe: Optional[str] = None,
+        start_date: Optional[str] = None,
+        end_date: Optional[str] = None,
+        data_path: Optional[str] = None,
+        train_val_split: bool = True,  # train/validation 분할 여부
+        val_penalty_weight: float = 0.3,  # validation penalty 가중치
     ) -> None:
         if strategy_id not in PARAM_SAMPLERS:
             raise ValueError(f"Unknown strategy: {strategy_id}")
+        if mode not in ["paper", "backtest"]:
+            raise ValueError(f"Unknown mode: {mode} (paper|backtest)")
+        
         self.strategy_id = strategy_id
+        self.mode = mode
         self.window_days = int(window_days)
         self.t_min = int(t_min) if t_min is not None else self._default_tmin(strategy_id)
         self.mdd_cap = float(mdd_cap)
         self.publish_mode = publish_mode
         self.publish_dir = publish_dir
+        
+        # 백테스트 모드 파라미터
+        if mode == "backtest":
+            if not all([symbol, timeframe, start_date, end_date]):
+                raise ValueError("백테스트 모드는 symbol, timeframe, start_date, end_date 필수")
+            self.symbol = symbol
+            self.timeframe = timeframe
+            self.start_date = start_date
+            self.end_date = end_date
+            self.data_path = data_path
+            self.train_val_split = train_val_split
+            self.val_penalty_weight = val_penalty_weight
+            
+            # train/val 날짜 계산 (10~11월 train, 12월 val)
+            if train_val_split:
+                self._calculate_train_val_dates()
 
         self.study = optuna.create_study(
             study_name=study_name,
@@ -326,6 +477,25 @@ class TunerCore:
             pruner=MedianPruner(n_startup_trials=10, n_warmup_steps=0),
         )
 
+    def _calculate_train_val_dates(self):
+        """train/validation 날짜 자동 분할 (10~11월 train, 12월 val)"""
+        from datetime import datetime
+        start = datetime.strptime(self.start_date, "%Y-%m-%d")
+        end = datetime.strptime(self.end_date, "%Y-%m-%d")
+        
+        # 전체 기간의 2/3를 train으로
+        total_days = (end - start).days
+        train_days = int(total_days * 0.67)
+        
+        train_end = start + timedelta(days=train_days)
+        
+        self.train_start = self.start_date
+        self.train_end = train_end.strftime("%Y-%m-%d")
+        self.val_start = (train_end + timedelta(days=1)).strftime("%Y-%m-%d")
+        self.val_end = self.end_date
+        
+        print(f"📅 Train/Val 분할: Train={self.train_start}~{self.train_end}, Val={self.val_start}~{self.val_end}")
+    
     @staticmethod
     def _default_tmin(strategy_id: str) -> int:
         return {
@@ -349,6 +519,16 @@ class TunerCore:
         return max(0.0, score)
 
     def _objective(self, trial: "optuna.trial.Trial") -> float:
+        """Objective 함수 (mode에 따라 분기)"""
+        if self.mode == "paper":
+            return self._objective_paper(trial)
+        elif self.mode == "backtest":
+            return self._objective_backtest(trial)
+        else:
+            raise ValueError(f"Unknown mode: {self.mode}")
+    
+    def _objective_paper(self, trial: "optuna.trial.Trial") -> float:
+        """페이퍼 모드 objective (기존 로직)"""
         # sample params and build overlay
         sampler = PARAM_SAMPLERS[self.strategy_id]
         overlay = sampler(trial)
@@ -368,6 +548,312 @@ class TunerCore:
         if m.trades < max(3, int(0.3 * self.t_min)):
             raise optuna.TrialPruned()
         return float(score)
+    
+    def _objective_backtest(self, trial: "optuna.trial.Trial") -> float:
+        """백테스트 모드 objective
+        
+        작업 흐름:
+        1. 파라미터 샘플링
+        2. 임시 config 오버레이 생성
+        3. train 백테스트 실행
+        4. validation 백테스트 실행 (선택)
+        5. scorecard.csv 파싱
+        6. composite score 계산
+        """
+        # 1. 파라미터 샘플링
+        sampler = PARAM_SAMPLERS[self.strategy_id]
+        overlay = sampler(trial)
+        
+        # 2. 임시 오버레이 파일 생성
+        temp_overlay_path = self._create_temp_overlay(overlay, trial.number)
+        
+        try:
+            # 3. Train 백테스트 실행
+            if self.train_val_split:
+                train_metrics = self._run_backtest(
+                    overlay_path=temp_overlay_path,
+                    start_date=self.train_start,
+                    end_date=self.train_end,
+                    phase="train"
+                )
+                
+                # 4. Validation 백테스트 실행
+                val_metrics = self._run_backtest(
+                    overlay_path=temp_overlay_path,
+                    start_date=self.val_start,
+                    end_date=self.val_end,
+                    phase="val"
+                )
+                
+                # 5. Train/Val composite score 계산
+                train_score = self._score_backtest(train_metrics, "Train")
+                val_score = self._score_backtest(val_metrics, "Val")
+                
+                # Validation penalty: train/val 점수 차이가 크면 페널티
+                score_diff = abs(train_score - val_score)
+                val_penalty = self.val_penalty_weight * score_diff
+                
+                final_score = train_score - val_penalty
+                
+                print(f"\n{'='*80}")
+                print(
+                    f"🎯 [TUNER BT] Trial#{trial.number} 최종 결과:\n"
+                    f"   📈 TRAIN: PF={train_metrics.pf:.3f}, WR={train_metrics.winrate:.1f}%, T={train_metrics.trades}, score={train_score:.3f}\n"
+                    f"   📊 VAL:   PF={val_metrics.pf:.3f}, WR={val_metrics.winrate:.1f}%, T={val_metrics.trades}, score={val_score:.3f}\n"
+                    f"   ⚖️  VAL PENALTY: {self.val_penalty_weight} * |{train_score:.3f} - {val_score:.3f}| = {val_penalty:.3f}\n"
+                    f"   ✅ FINAL SCORE: {train_score:.3f} - {val_penalty:.3f} = {final_score:.3f}"
+                )
+                print(f"{'='*80}\n", flush=True)
+                
+                # Prune 조건: train trades가 너무 적으면
+                if train_metrics.trades < max(3, int(0.3 * self.t_min)):
+                    raise optuna.TrialPruned()
+                
+                return float(final_score)
+            
+            else:
+                # Train/Val 분할 없이 전체 기간 백테스트
+                metrics = self._run_backtest(
+                    overlay_path=temp_overlay_path,
+                    start_date=self.start_date,
+                    end_date=self.end_date,
+                    phase="Full"
+                )
+                
+                score = self._score_backtest(metrics, "Full")
+                
+                print(f"\n{'='*80}")
+                print(
+                    f"🎯 [TUNER BT] Trial#{trial.number} 최종 결과:\n"
+                    f"   📈 FULL: PF={metrics.pf:.3f}, WR={metrics.winrate:.1f}%, T={metrics.trades}, MDD={metrics.mdd_pct:.2f}%, score={score:.3f}"
+                )
+                print(f"{'='*80}\n", flush=True)
+                
+                # Prune 조건
+                if metrics.trades < max(3, int(0.3 * self.t_min)):
+                    raise optuna.TrialPruned()
+                
+                return float(score)
+        
+        finally:
+            # 임시 파일 정리
+            if temp_overlay_path.exists():
+                temp_overlay_path.unlink()
+    
+    def _create_temp_overlay(self, overlay: Dict[str, Any], trial_number: int) -> Path:
+        """임시 오버레이 파일 생성 (디버그 로그 포함)"""
+        temp_dir = Path(tempfile.gettempdir()) / "tuning_overlays"
+        temp_dir.mkdir(parents=True, exist_ok=True)
+        
+        temp_path = temp_dir / f"trial_{trial_number}_{self.strategy_id}.yml"
+        
+        # 디버그: 샘플링된 파라미터 출력
+        print(f"\n🔧 [OVERLAY] Trial#{trial_number} 파라미터 샘플링 완료:")
+        if "strategies" in overlay and self.strategy_id in overlay["strategies"]:
+            strategy_params = overlay["strategies"][self.strategy_id]
+            print(f"   strategies.{self.strategy_id}:")
+            for key, val in strategy_params.items():
+                if key == "filters" and isinstance(val, dict):
+                    print(f"     filters:")
+                    for fk, fv in val.items():
+                        print(f"       {fk}: {fv}")
+                else:
+                    print(f"     {key}: {val}")
+        else:
+            print(f"   ⚠️  overlay에 strategies.{self.strategy_id} 없음!")
+        
+        with open(temp_path, 'w', encoding='utf-8') as f:
+            yaml.safe_dump(overlay, f, allow_unicode=True, sort_keys=False)
+        
+        print(f"   📄 Overlay 파일: {temp_path}")
+        return temp_path
+    
+    def _run_backtest(self, overlay_path: Path, start_date: str, end_date: str, phase: str) -> BacktestMetrics:
+        """subprocess로 백테스트 실행 및 scorecard.csv 파싱"""
+        # run_backtest.py 실행 명령 구성
+        cmd = [
+            "python", "scripts/run_backtest.py",
+            "--mode", "backtest_clean",
+            "--strategy", self.strategy_id,
+            "--symbol", self.symbol,
+            "--timeframe", self.timeframe,
+            "--start-date", start_date,
+            "--end-date", end_date,
+        ]
+        
+        if self.data_path:
+            cmd.extend(["--data-path", self.data_path])
+        
+        # overlay config 전달
+        if overlay_path:
+            cmd.extend(["--overlay-config", str(overlay_path)])
+        
+        # 실행 전 로그
+        print(f"\n🔧 [TUNER BT] {phase.upper()} 백테스트 실행 중...")
+        print(f"   - Strategy: {self.strategy_id}")
+        print(f"   - Symbol/TF: {self.symbol} / {self.timeframe}")
+        print(f"   - Period: {start_date} ~ {end_date}")
+        if self.data_path:
+            print(f"   - Data: {self.data_path}")
+        
+        # 백테스트 실행
+        try:
+            result = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                timeout=1200,  # 20분 타임아웃
+                check=False
+            )
+            
+            if result.returncode != 0:
+                print(f"❌ [TUNER BT] 백테스트 실행 실패 ({phase})")
+                print(f"   Return code: {result.returncode}")
+                print(f"   STDERR: {result.stderr[:500]}")
+                # 실패 시 페널티 메트릭 반환
+                return BacktestMetrics(pf=0.0, winrate=0.0, trades=0, mdd_pct=100.0, sharpe=-10.0, roi_pct=-100.0)
+            
+            # artifacts 경로에서 최신 run_id 찾기
+            artifacts_dir = Path("artifacts/backtest_clean")
+            if not artifacts_dir.exists():
+                print(f"❌ [TUNER BT] artifacts 디렉토리 없음: {artifacts_dir}")
+                return BacktestMetrics(pf=0.0, winrate=0.0, trades=0, mdd_pct=100.0, sharpe=-10.0, roi_pct=-100.0)
+            
+            # 최신 run_id 디렉토리 찾기 (생성 시간 기준)
+            run_dirs = sorted(artifacts_dir.glob("*"), key=lambda p: p.stat().st_mtime, reverse=True)
+            if not run_dirs:
+                print(f"❌ [TUNER BT] 백테스트 결과 없음 (artifacts 비어있음)")
+                return BacktestMetrics(pf=0.0, winrate=0.0, trades=0, mdd_pct=100.0, sharpe=-10.0, roi_pct=-100.0)
+            
+            latest_run = run_dirs[0]
+            scorecard_path = latest_run / "scorecard.csv"
+            
+            print(f"✅ [TUNER BT] 백테스트 완료 ({phase})")
+            print(f"   - Artifacts: {latest_run.name}")
+            print(f"   - Scorecard: {scorecard_path}")
+            
+            if not scorecard_path.exists():
+                print(f"❌ [TUNER BT] scorecard.csv 파일 없음: {scorecard_path}")
+                return BacktestMetrics(pf=0.0, winrate=0.0, trades=0, mdd_pct=100.0, sharpe=-10.0, roi_pct=-100.0)
+            
+            # scorecard.csv 파싱
+            metrics = self._parse_scorecard(scorecard_path, phase)
+            return metrics
+        
+        except subprocess.TimeoutExpired:
+            print(f"⏱️  [TUNER BT] 백테스트 타임아웃 ({phase}) - 10분 초과")
+            return BacktestMetrics(pf=0.0, winrate=0.0, trades=0, mdd_pct=100.0, sharpe=-10.0, roi_pct=-100.0)
+        except Exception as e:
+            print(f"❌ [TUNER BT] 백테스트 실행 오류 ({phase}): {e}")
+            import traceback
+            traceback.print_exc()
+            return BacktestMetrics(pf=0.0, winrate=0.0, trades=0, mdd_pct=100.0, sharpe=-10.0, roi_pct=-100.0)
+    
+    def _parse_scorecard(self, scorecard_path: Path, phase: str = "unknown") -> BacktestMetrics:
+        """scorecard.csv 파싱 (에러 처리 강화)"""
+        try:
+            if not scorecard_path.exists():
+                raise FileNotFoundError(f"scorecard.csv가 존재하지 않음: {scorecard_path}")
+            
+            with open(scorecard_path, 'r', encoding='utf-8') as f:
+                reader = csv.DictReader(f)
+                data = next(reader)
+                
+                # 각 필드 안전하게 파싱 (NaN, 빈 문자열 처리)
+                def safe_float(val, default=0.0):
+                    try:
+                        v = float(val) if val else default
+                        return default if math.isnan(v) or math.isinf(v) else v
+                    except (ValueError, TypeError):
+                        return default
+                
+                def safe_int(val, default=0):
+                    try:
+                        return int(float(val)) if val else default
+                    except (ValueError, TypeError):
+                        return default
+                
+                pf = safe_float(data.get('Profit Factor', 0.0), 0.0)
+                winrate = safe_float(data.get('Winrate (%)', 0.0), 0.0)
+                trades = safe_int(data.get('Trades', 0), 0)
+                mdd_pct = abs(safe_float(data.get('Max Drawdown (%)', 0.0), 0.0))
+                sharpe = safe_float(data.get('Sharpe Ratio', 0.0), 0.0)
+                roi_pct = safe_float(data.get('ROI (%)', 0.0), 0.0)
+                
+                # 파싱 결과 로그
+                print(f"📊 [TUNER BT] {phase.upper()} Metrics:")
+                print(f"   PF={pf:.3f}, WR={winrate:.1f}%, Trades={trades}, MDD={mdd_pct:.2f}%, Sharpe={sharpe:.2f}, ROI={roi_pct:.2f}%")
+                
+                # Trades가 0이면 경고
+                if trades == 0:
+                    print(f"⚠️  [TUNER BT] {phase} 기간 거래 없음 (전략 조건 너무 엄격)")
+                
+                return BacktestMetrics(
+                    pf=pf,
+                    winrate=winrate,
+                    trades=trades,
+                    mdd_pct=mdd_pct,
+                    sharpe=sharpe,
+                    roi_pct=roi_pct
+                )
+        except StopIteration:
+            print(f"❌ [TUNER BT] scorecard.csv가 비어있음: {scorecard_path}")
+            return BacktestMetrics(pf=0.0, winrate=0.0, trades=0, mdd_pct=100.0, sharpe=-10.0, roi_pct=-100.0)
+        except Exception as e:
+            print(f"❌ [TUNER BT] scorecard.csv 파싱 실패: {e}")
+            print(f"   Path: {scorecard_path}")
+            import traceback
+            traceback.print_exc()
+            return BacktestMetrics(pf=0.0, winrate=0.0, trades=0, mdd_pct=100.0, sharpe=-10.0, roi_pct=-100.0)
+    
+    def _score_backtest(self, m: BacktestMetrics, phase: str = "unknown") -> float:
+        """백테스트 메트릭을 composite score로 변환
+        
+        PHASE10.4 개선: Trades 패널티 강화
+        - 거래 0건: -100.0 (최악의 Trial)
+        - 거래 < MIN_TRADES: 강한 패널티 (한 건당 -0.5)
+        - 정상: PF + 0.1*Winrate - DD_penalty
+        
+        최소 거래수 기준:
+        - Train: 10건 (7일 기준 ~1.4건/일)
+        - Val: 5건 (3일 기준 ~1.7건/일)
+        """
+        # 최소 거래수 기준 (phase별 차등)
+        MIN_TRADES_TRAIN = 10
+        MIN_TRADES_VAL = 5
+        min_trades = MIN_TRADES_TRAIN if phase.lower() == "train" else MIN_TRADES_VAL
+        
+        # 거래 0건: 즉시 실격
+        if m.trades == 0:
+            print(f"   ❌ {phase.upper()} score=-100.0 (거래 없음 - Trial 실격)")
+            return -100.0
+        
+        # 거래 수 부족: 강한 패널티
+        if m.trades < min_trades:
+            shortage = min_trades - m.trades
+            trades_penalty = shortage * 0.5  # 한 건당 0.5점 감점
+            penalized_score = -trades_penalty
+            print(f"   ⚠️  {phase.upper()} score={penalized_score:.3f} (거래 부족: {m.trades}/{min_trades}건)")
+            return penalized_score
+        
+        # 정상: 기본 점수 계산
+        base_score = m.pf + 0.1 * m.winrate
+        
+        # DD penalty
+        dd_penalty = 0.0
+        if m.mdd_pct > self.mdd_cap:
+            dd_penalty = (m.mdd_pct - self.mdd_cap) * 0.05
+        
+        final_score = base_score - dd_penalty
+        
+        # 점수 계산 과정 로그
+        print(f"💯 [TUNER BT] {phase.upper()} Score 계산:")
+        print(f"   base_score = PF({m.pf:.3f}) + 0.1*WR({m.winrate:.1f}) = {base_score:.3f}")
+        print(f"   dd_penalty = max(0, (MDD {m.mdd_pct:.2f}% - cap {self.mdd_cap:.1f}%) * 0.05) = {dd_penalty:.3f}")
+        print(f"   trades: {m.trades}건 (✅ 기준 충족: >={min_trades})")
+        print(f"   final_score = {base_score:.3f} - {dd_penalty:.3f} = {final_score:.3f}")
+        
+        return final_score
 
     def optimize(self, n_trials: int = 1) -> None:
         for _ in range(int(n_trials)):

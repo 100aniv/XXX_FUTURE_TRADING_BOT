@@ -26,10 +26,42 @@ from common.logger import setup_logger
 
 logger = setup_logger(__name__, log_type="application")
 
-# DB URL (환경변수에서 로드)
-DB_URL = os.getenv("DATABASE_URL")
-if not DB_URL:
-    raise ValueError("DATABASE_URL environment variable is required")
+
+def get_database_url() -> str:
+    """
+    DATABASE_URL 자동 결정 (Docker vs Local, Port 매핑 반영)
+    
+    우선순위:
+    1. DATABASE_URL 환경변수
+    2. Docker 내부: postgresql://trading_user:trading_pw_2024@db_postgres:5432/trading_db
+    3. Local (Host): postgresql://trading_user:trading_pw_2024@localhost:5433/trading_db
+    
+    Returns:
+        str: PostgreSQL connection URL
+    """
+    # 1. 환경변수 우선
+    env_url = os.getenv("DATABASE_URL")
+    if env_url:
+        logger.debug(f"✅ DATABASE_URL from env: {env_url}")
+        return env_url
+    
+    # 2. Docker 내부 여부 확인 (/.dockerenv 파일 존재 여부)
+    is_docker = os.path.exists("/.dockerenv")
+    
+    if is_docker:
+        # Docker 내부: db_postgres:5432
+        url = "postgresql://trading_user:trading_pw_2024@db_postgres:5432/trading_db"
+        logger.debug(f"🐳 Docker 내부 감지: {url}")
+    else:
+        # Local (Host): localhost:5433 (docker-compose port mapping)
+        url = "postgresql://trading_user:trading_pw_2024@localhost:5433/trading_db"
+        logger.debug(f"💻 Local 환경 감지: {url}")
+    
+    return url
+
+
+# DB URL (자동 결정)
+DB_URL = get_database_url()
 
 
 @contextmanager

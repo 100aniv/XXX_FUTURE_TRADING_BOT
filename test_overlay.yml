@@ -1,0 +1,13 @@
+strategies:
+  scalping:
+    rsi_oversold: 25
+    rsi_overbought: 75
+    ema_fast: 10
+    ema_slow: 25
+    momentum_lookback: 4
+    volume_mult: 1.2
+    rr: 1.5
+    atr_mult_sl: 0.7
+    max_hold_minutes: 20
+    filters:
+      allow_short: true

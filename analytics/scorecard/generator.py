@@ -77,7 +77,7 @@ class ScorecardGenerator:
         # Markdown 저장
         md_path = save_scorecard_md(scorecard, output_dir)
         
-        print(f"✅ [SCORECARD] 생성 완료:")
+        print(f"[SCORECARD] 생성 완료:")
         print(f"  - CSV: {csv_path}")
         print(f"  - MD:  {md_path}")
         
