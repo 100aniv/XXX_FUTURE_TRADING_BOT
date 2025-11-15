@@ -1,180 +1,210 @@
+# ============================
+# WindsurfRule v2
+# (AI 개발자 구조 붕괴 방지 규칙)
+# ============================
+
 [Objective]
-- FlowGuardian 게이트 유지 + 포트폴리오/리스크/튜닝 리팩토링 병행.
-- PAPER/LIVE 실행 전 READY 게이트 통과 필수.
-- trading_bot_env 가상환경 유지.
-- 변경마다 git commit (docs 포함).
-- 단일 Postgres DB(env, run_id, created_at) + Redis 네임스페이스({ns}:{env}:{run_id}:<domain>) 준수.
+이 프로젝트는 이미 설계된 아키텍처를 기반으로 개발된다.
+AI는 새로운 아키텍처를 설계하거나 기존 구조를 재정의할 수 없다.
+AI가 수행하는 모든 작업은 “기존 구조 재사용 + 최소 변경” 원칙을 따른다.
 
-[Scope & Flexibility]
-- 신규 파일/메서드는 “필요성 → 설계 요약 → 사용자 합의 → 생성” 순으로 진행.
-- 신규 파일은 PR 별 1개 이하 권장, 설계 문서(PR 마스터 플랜/리팩토링 노트)와 연결.
-- 기존 모듈 우선 재사용. 단일 책임/파리티 보장 목적일 때만 신규 생성.
-- 전략 로직/데이터 소스/브로커 교체는 별도 승인 후 진행.
+# ------------------------------------------------------
+# 1. Architecture Contract (아키텍처 계약)
+# ------------------------------------------------------
 
-[Ownership Policy]
-- PnL/Equity 단일 소스는 PortfolioManager.
-- RiskManager는 가드(DD/슬리피지/극단손실/일일손실한도)만 담당.
-- Engine은 PortfolioManager의 인터페이스만 사용해 자본/손익 반영.
-- Telegram 일일 손익은 PortfolioManager.get_daily_pnl() 기준.
-- Paper/Live 로직 100% 동일, 실행 계층(Broker)만 분리.
+- 프로젝트는 이미 완성된 모듈 구조를 갖고 있으며,
+  AI는 이 구조를 해석하거나 변경하려고 시도하면 안 된다.
 
-[Architecture Layering Policy]
-- core/: 계약/게이트 전담. interfaces.py, flow_guardian.py만. 비즈니스 구현/메트릭 로직 금지.
-- tuning/: 튜닝 전담. config_overlay.py, ensemble_tuner.py, rollout_manager.py, guardrail_engine.py, tuning_api.py 등.
-- metrics/: 메트릭 전담. metrics/compute.py::MetricsEngine 유지(계약은 core, 구현은 metrics).
-- common/: 공통 유틸. config_loader, calculations, messaging, logger, redis_client, database, symbol_manager, utils 등만.
+- 새로운 Manager / Service / Engine / Runner / Handler /
+  Processor / Gateway / Wrapper 등의 신규 엔티티 생성은 금지한다.
 
-[Module Relocation Policy (PR13)]
-- common/tuning_*.py는 deprecated. 단일 진실 소스는 tuning/ 하위 구현.
-- metrics/compute.py는 core로 이동 금지(단일 책임·의존 방향 유지). import 경로 from metrics.compute ... 고정.
+- 동일한 책임을 가진 새로운 파일, 클래스, 함수를 만들지 않는다.
+  (예: 기존 RiskManager 있는데 RiskEngine 만들기 → 금지)
 
-[Runtime & Roles]
-- trading_bot_paper_tuner: 페이퍼 환경 베이시안 튜닝 자동 루프(오버레이 파일/Redis 발행).
-- trading_bot_paper: 섀도우/카나리 검증 엔진(실시간 파라미터 수신).
-- trading_bot_live: 운영 엔진(챔피언 파라미터만, 실시간은 안전 항목 제한).
-- postgres: 단일 DB, env/run_id로 데이터 분리.
-- redis: 실시간 파라미터/상태 채널, 네임스페이스로 충돌 방지.
+- 기존 public 함수의 시그니처(함수 이름, 인자 목록, 리턴 타입)는 변경할 수 없다.
+  내부 로직만 수정 가능하다.
 
-[Files You May Edit]  ; 예시, PR 본문에 “허용 파일 목록” 명시 후 확장 가능
-- core/interfaces.py                 ; 게이트/계약 정의
-- core/flow_guardian.py              ; READY 판정
-- execution/engine.py                ; 게이트 호출 + 포트폴리오 연계
-- execution/portfolio_manager.py     ; 자산·PnL 단일 소스
-- execution/risk_manager.py          ; 가드 전담 (PnL/Equity 비소유)
-- execution/position_sizer.py        ; Equity 참조만
-- execution/adapters/*.py            ; Paper/Live 파리티
-- common/messaging.py                ; PnL 표기 데이터 소스 교정 범위
-- metrics/compute.py                 ; 계약 범위 내
-- tuning/**                          ; PR13 튜닝 전담(신규/이관)
-- analytics/**                       ; A/B 비교 등 분석(필요 시)
-- tests/**                           ; 관련 테스트 추가 허용
-- docs/PHASE6/**                     ; PR별 마스터 플랜/리포트
+- 기존 모듈과 인터페이스를 반드시 우선 재사용해야 한다.
+  “비슷한 역할을 하는데 새로 만드는 행위”는 절대 금지한다.
 
-[Non-Goals]
-- 과도한 파워셸/복잡 명령 사용 금지.
-- 전략 신호 로직 변경 금지.
-- 외부 데이터 소스/브로커 교체 금지.
-- 사용하지 않는 모듈/메서드 잔존 금지(참조 없으면 제거).
-- 하드코딩 금지, config.yml 단일 소스 준수.
-- 모듈 단일 책임 준수.
-- main.py는 흐름 제어만.
-- 문서는 기존 파일 우선(새 문서는 필요/합의 시에만 추가).
+- 레이어 간의 의존성 규칙을 위반하지 않는다.
+  (예: strategy → data는 OK, data → strategy는 금지)
 
-[Data Separation Policy]
-- Postgres 모든 신규/핵심 테이블에 env VARCHAR(10), run_id UUID, created_at TIMESTAMPTZ 필수.
-- 모든 INSERT 경로는 env, run_id를 누락 없이 채움. 인덱스/뷰에 (env, created_at) 포함 권장.
-- 로그/리포트/DB 간 score_total 등 핵심 지표는 단일 정의에 따라 동기화.
+# ------------------------------------------------------
+# 2. Allowed Operations (허용되는 작업)
+# ------------------------------------------------------
 
-[Redis Namespace Policy]
-- 모든 키/채널은 {ns}:{env}:{run_id}:<domain> 접두사를 사용해 충돌 방지.
-- 권장 채널: tuning.params.set, ensemble.weights.update, risk.cap.update, throttle.update, equity.set.
-- 캔들 dedup 등 상태키도 동일 네임스페이스 적용.
+AI가 할 수 있는 작업은 아래 6가지로 제한된다:
 
-[Constraints]
-- tests/flow/test_flow_guardian.py 통과.
-- pre-commit(ruff/black/mypy/vulture) 통과, coverage>85%.
-- logs/trial_0000.json 생성 보장.
-- DB.score_total == JSON.score_total 동기화 검증.
-- FlowGuardian READY 미호출 시 PAPER/LIVE 실행 금지.
-- DB 분리/네임스페이스: Postgres env/run_id/created_at 필드 존재 및 채움률 검증, Redis 키/채널에 env/run_id 포함.
+1) 지정된 파일의 기존 함수 내부 로직 수정
+2) 지정된 파일 내부에서 private helper 메서드 추가
+3) 기존 클래스 내부 코드 개선 (동일 책임 유지)
+4) 코드 리팩토링 (동일 기능, 동일 시그니처 유지)
+5) 버그 수정 (기능 및 구조 변경 없이)
+6) 문서화 주석 추가 또는 개선
 
-[Refactor Workflow]
-- 모듈 단위로 PR 분리(게이트/DB/튜닝/포트폴리오 등).
-- 각 PR 설명에 허용 파일 목록과 변경 목적 명시.
-- 설계 변경은 관련 문서(PR 마스터 플랜/리팩토링 문서) 동기화 후 진행.
+이 외의 작업은 모두 금지이다.
 
-[Documentation Sync]
-- Docs/PHASE6 문서 필수 업데이트.
-- FlowGuardian 변경 시 REFACTORING_flow_guardian_gate.md 갱신.
-- 포트폴리오/리스크/튜닝 변경 시 해당 PR 문서에 영향/테스트 결과 기록.
-- 아키텍처 계층/소유권/폴더 재배치 정책 반영(PR13 관련).
+# ------------------------------------------------------
+# 3. Forbidden Operations (금지 사항)
+# ------------------------------------------------------
 
-[Testing & Acceptance]
-- unit/contract/flow/gate/tuning 매트릭스 적용.
-- 게이트 수용 기준:
-  1) tests/flow/test_flow_guardian.py 통과
-  2) logs/trial_0000.json 생성
-  3) DB.score_total == JSON.score_total 일치
-  4) pre-commit(ruff/black/mypy/vulture, coverage>85%) 통과
-- 포트폴리오 리팩토링 수용 기준:
-  - PortfolioManager가 daily_pnl/total_pnl/realized/unrealized 일원화
-  - 자정 자동 리셋(check_and_reset_daily) 로깅
-  - Engine에서 portfolio.update_equity(pnl=…) 단일 호출
-  - Telegram 일일 손익 = PortfolioManager.get_daily_pnl()
-  - Paper: 로컬 equity, Live: Binance API 동기화 파리티
-- 튜닝/롤아웃 수용 기준(PR13):
-  - shadow(8h) 위반 0건
-  - canary 10%→30%→50%→100%, 각 단계 6h 위반 0건
-  - 페이퍼 24h baseline 대비 score_total ≥ +15%, Sharpe-like ≥ +12%, MDD 증가 ≤ 0.5%p
-  - 최소 거래수 ≥ 80, 승률 하락 ≤ 0.5%p, 거래 수 변화 |Δ| ≤ 15%
+AI는 아래 작업을 절대 수행할 수 없다:
 
-[Paper/Live Parity]
-- 로직 100% 동일: TP/SL 계산, 반올림, 펀딩, 포트폴리오 가드.
-- Broker 계층만 분리: Paper(가상), Live(실API).
-- exchangeInfo/fundingRate API: Paper/Live 모두 조회(읽기 전용).
-- config.yml 단일 소스 원칙 철저 준수.
+- 프롬프트에 명시되지 않은 파일 수정
+- 신규 파일/모듈/패키지 생성
+- 신규 클래스 생성 (책임이 기존과 겹치면 무조건 금지)
+- 기존 public 함수의 인자/이름/리턴 변경
+- 아키텍처, 레이어 구성, 디렉토리 구조 변경
+- 전체 구조 재설계 또는 새로운 구조 제안
+- 기존 모듈의 책임을 재정의하거나 해체하는 작업
+- 기존 기능을 대체하는 새로운 기능을 마음대로 생성
 
-[Docker Policy]
-- WS/DB/Redis 경로 변경 시 PAPER 프로파일 기준 10분 스모크 테스트 권장.
-- 순수 파이썬 내부 로직 변경은 로컬 테스트로 대체 가능.
+**위 금지 항목을 위반하는 경우, 작업을 멈추고 규칙 위반을 선언해야 한다.**
 
-[Config Policy]
-- 설정 단일 소스는 config.yml.
-- 모드 우선순위: config.mode > ENV.TRADING_MODE > 기본값 paper.
+# ------------------------------------------------------
+# 4. Workflow (작업 절차 – 3단계)
+# ------------------------------------------------------
 
-[FlowGuardian Spec]
-- FlowGuardian.ready() → READY 상태 bool 반환.
-- FlowGuardian.assert_ready(mode: Literal["paper","live"]) → READY 미준수 시 예외.
-- execution/engine.py 진입부에서 assert_ready 1회 호출(중복 금지).
-- READY 판정 근거:
-  · config.yml 필수 키/타입 검증
-  · DB/Redis 헬스체크(옵션)
-  · 전략/튜닝 계약 조건 일치 여부
-  · 최근 테스트 타임스탬프 신선도(옵션)
+모든 개발 작업은 반드시 아래 3단계를 따라야 하며,
+1–2단계 없이 바로 코드 작성하면 규칙 위반이다.
 
-[CI Enforcement]
-- 허용 범위 밖 파일 변경 시 CI 실패.
-- 하드코딩 탐지(\b\d+(\.\d+)?\b) → config 바인딩 없으면 실패.
-- READY 미호출 → PAPER/LIVE 실행 테스트 실패.
-- logs/trial_0000.json 누락 → 실패.
-- DB.score_total != JSON.score_total → 실패.
-- Postgres env/run_id/created_at 누락 또는 Redis 비네임스페이스 키 사용 → 실패.
-- pre-commit 실패 시 커밋 차단.
-- CODEOWNERS: core/interfaces.py, execution/engine.py, execution/portfolio_manager.py, execution/risk_manager.py 등 핵심 파일 승인 절차 유지.
+### 단계 1) 구조 이해 요약 (No Code)
+- 내가 요청한 작업을 수행하기 위해
+  어떤 파일 / 어떤 클래스 / 어떤 함수가 관련되는지 서술한다.
+- 기존 구조를 어떻게 이해했는지 bullet로 설명한다.
+- 변경이 필요한 부분을 목록화한다.
+- 아직 코드를 작성하면 안 된다.
 
-[Git Workflow]
-- 로컬 커밋 후 반드시 git push origin main으로 GitHub에 동기화
-- 로컬과 원격 저장소의 커밋 이력이 일치하는지 확인 (git status 확인)
-- PR이나 Phase가 끝나면 GitHub 저장소에서 최신 커밋 확인
+### 단계 2) 변경 계획 (No Code)
+- 단계 1의 이해를 기반으로,
+  구체적인 변경 계획을 bullet로 제시한다.
+- 어떤 파일의 어떤 함수만 수정할지 명확하게 표시한다.
+- 계획 승인 전에는 절대로 코드 작성 금지.
 
-[Checklist Before Commit]
-1) 현 구조/데이터 흐름 요약(아키텍처 계층/소유권/폴더 정책 포함).
-2) 기존 모듈 재사용 여부 + 신규 생성 근거 명시.
-3) config.yml 키 변경/추가 여부 + 하드코딩 제거 확인.
-4) 공개 시그니처 변경 시 계약 영향 분석.
-5) READY 기준 영향 및 호출 위치 명시.
-6) 테스트 4종 + 추가 테스트 증빙 첨부(logs/tests).
-7) 문서 업데이트 위치 명시(Docs/PHASE6).
-8) 실패 시 롤백 절차/대안 명시.
-9) DB env/run_id/created_at 채움률, Redis 네임스페이스 적용 로그 증적 포함.
-10) PR이나 PHASE 등 큰 작업 후 git push origin main 실행.
+### 단계 3) 코드 구현
+- 승인된 계획만 구현한다.
+- AI가 임의로 새로운 작업을 추가하면 안 된다.
+- 수정한 파일의 변경 요약(diff 포인트)을 작성한다.
 
-[로그 검증 절차]
-1. 시스템 상태 로그:
-   docker logs trading_bot_paper_ensemble | Select-String "✅|❌|⚠️"
-2. 텔레그램 메시지 로그:
-   docker logs trading_bot_paper_ensemble | Select-String "\[TELEGRAM\]"
-3. 거래 활동 로그:
-   docker logs trading_bot_paper_ensemble | Select-String "포지션|Position|order|PORTFOLIO"
-4. 특정 기능 검증 로그:
-   - 동적 반올림: docker logs trading_bot_paper_ensemble | Select-String "round_tick|exchangeInfo"
-   - 펀딩 수수료: docker logs trading_bot_paper_ensemble | Select-String "funding|fundingRate"
-   - 포트폴리오 가드: docker logs trading_bot_paper_ensemble | Select-String "예산|budget|전략 예산|correlation"
-5. 네임스페이스/모드 검증:
-   - Redis 키/채널 로그에 ":paper:" 또는 ":live:" 포함 확인
-   - run_id(UUID) 포함 키 샘플 로그 확보
+# ------------------------------------------------------
+# 5. Editing Scope Rule (수정 범위 제한)
+# ------------------------------------------------------
 
-[메서드 명명 규칙]
-- 기능별 접두사 사용: calculate_*, get_*, check_*
-- 중복 방지: 유사 기능에 다른 동사 사용 (calculate_X vs compute_X)
-- 메서드 검증 테스트 필수
+- 한 요청에서 수정할 수 있는 파일은 최대 3개.
+- 프롬프트에 나열된 파일만 수정 가능.
+- 나열되지 않은 파일은 읽기만 가능하며,
+  수정/추가/삭제 모두 금지.
+
+
+이 목록 외 파일 수정 → 규칙 위반.
+
+# ------------------------------------------------------
+# 6. Output Format
+# ------------------------------------------------------
+
+AI는 아래 형식으로만 답변해야 한다:
+
+1. 구조 이해 요약
+2. 변경 계획(Plan)
+3. 코드 (승인 후)
+4. 파일별 변경 요약(diff list)
+5. 규칙 위반 여부 자가 점검
+
+# ------------------------------------------------------
+# 7. Violation Handling (위반 처리)
+# ------------------------------------------------------
+
+AI가 이 규칙을 위반할 때는 즉시 아래 문구로 종료해야 한다:
+
+"규칙 위반이 감지되었습니다.  
+지시된 편집 범위 및 아키텍처 계약을 벗어나는 작업은 수행할 수 없습니다."
+
+[PHASE7 Document-Driven Development]
+- PHASE7 문서는 개발 계약서. 구현 전 반드시 해당 PHASE 마스터 플랜 전체 정독.
+- 문서 구조: PHASE7_ALGORITHM_BEST.md (MASTER) → PHASE7-N_MASTER_PLAN.md (단계별).
+- 개발 착수 전 필수 확인:
+  1) Executive Summary: 해당 PHASE 역할/목표 이해
+  2) 목표 (AS-IS → TO-BE): 현행 문제와 개선 목표 명확화
+  3) 범위 (Scope): 구현할 항목 정확히 파악
+  4) 수용 기준 (게이트): 다음 PHASE 진입 조건 숙지
+  5) 체크리스트: 구현 전/중/검증 단계별 항목 확인
+  6) 참조 문서: 관련 분석/설계 문서 사전 검토
+
+[PHASE7 Implementation Workflow]
+1. **문서 정독** (착수 전):
+   - 해당 PHASE 마스터 플랜 전체 읽기
+   - 참조 문서 (MASTER, 분석 문서) 검토
+   - 구현 범위와 수용 기준 명확히 이해
+   - 불명확한 부분은 사용자에게 질문
+
+2. **체크리스트 업데이트** (구현 중):
+   - 구현 시작 시: 해당 항목 [ ] → [진행중]으로 표시
+   - 문서 경로: docs/PHASE7/PHASE7-N_MASTER_PLAN.md
+   - 커밋 메시지: "docs(phase7-N): 체크리스트 업데이트 - [항목명] 진행중"
+
+3. **코드 구현**:
+   - 문서의 "범위" 섹션 기준으로 구현
+   - config.yml 변경 시 문서에 명시된 스키마 준수
+   - 영향 파일은 문서의 "파일" 항목 참조
+   - .windsurfrules [Files You May Edit] 범위 내에서만 수정
+
+4. **Paper 테스트** (검증):
+   - 최소 1시간 Paper 테스트 (문서의 수용 기준 참조)
+   - 핵심 지표 확인: 승률, 거래 빈도, >8% 손실, 무결성
+   - 로그 검증: ERROR 0건, 중복 진입 0건
+   - 테스트 결과를 문서 "업데이트 로그"에 기록
+
+5. **문서 재정독 및 완료 처리**:
+   - 수용 기준 모두 충족 확인
+   - 체크리스트 [진행중] → [x] 완료 표시
+   - 업데이트 로그에 완료 일시/결과 기록
+   - 커밋 메시지: "docs(phase7-N): 체크리스트 완료 - [항목명] 구현 및 검증 완료"
+
+6. **버그 발생 시**:
+   - 문서 "업데이트 로그"에 버그 기록:
+     ```
+     - 2025-11-XX: [BUG] [항목명] 버그 발견 - [증상]
+     - 2025-11-XX: [FIX] [항목명] 버그 수정 - [원인] → [해결]
+     ```
+   - 체크리스트에 회귀 테스트 항목 추가
+   - 수정 후 재검증 필수
+
+[PHASE7 Document Integrity]
+- 문서 양식 유지 필수:
+  · Executive Summary, Quick Nav, Standard Snapshot 섹션 보존
+  · 표 형식 (목표, 범위) 유지
+  · 체크리스트 구조 (구현 전/중/검증) 준수
+- 체크리스트 산재 금지:
+  · 단일 "📋 체크리스트" 섹션에만 작성
+  · Phase 0/1/2/3 등 중복 섹션 생성 금지
+- 문서 길이 제한:
+  · PHASE7-N_MASTER_PLAN.md: 최대 400라인
+  · 상세 분석은 별도 문서 (예: SYSTEM_OPERATIONS_ANALYSIS.md)
+- 업데이트 로그 필수:
+  · 모든 변경 사항 날짜와 함께 기록
+  · 형식: "- 2025-11-XX: [변경 내용]"
+
+[PHASE7 Cross-Reference]
+- MASTER 문서: PHASE7_ALGORITHM_BEST.md
+  · 전체 TO-BE 모델, 상용 프로그램 벤치마킹
+  · 모든 PHASE 구현은 MASTER 설계 기준
+- 분석 문서:
+  · SYSTEM_OPERATIONS_ANALYSIS.md: 운영 안정성 표준
+  · GUARD_EXECUTION_ORDER_ANALYSIS.md: 가드 실행 순서
+  · SLIPPAGE_PERFORMANCE_COMPARISON.md: 슬리피지 실패 분석
+  · CRITICAL_SYSTEM_ANALYSIS_2025-11-10.md: 역사적 기록
+- 모니터링 문서:
+  · SMOKE_TEST_MONITOR.md: 실시간 지표/SQL 쿼리
+
+[PHASE7 Acceptance Gate]
+- 각 PHASE 완료 조건은 해당 문서 "수용 기준" 섹션 참조
+- 다음 PHASE 진입 전 이전 PHASE 수용 기준 100% 충족 필수
+- 수용 기준 미달 시:
+  · 다음 PHASE 착수 금지
+  · 현재 PHASE 재검증 또는 롤백
+  · 문서에 미달 원인 및 대응 기록
+
+  # ============================
+# END OF WindsurfRule v2
+# ============================

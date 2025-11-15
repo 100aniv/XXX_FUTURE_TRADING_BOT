@@ -519,18 +519,19 @@ strategies:
       allow_short: true
       session_whitelist: []
     
-    # ⭐ PHASE9-6: 신호 조건 파라미터
-    rsi_oversold: 30      # RSI 과매도 임계값
-    rsi_overbought: 70    # RSI 과매수 임계값
+    # ⭐ PHASE11: 신호 조건 파라미터 (완화된 기본값)
+    # 목표: 7일 20~60 trades, 90일 200~600 trades
+    rsi_oversold: 28      # ⭐ PHASE11: 30→28 (범위 확대)
+    rsi_overbought: 72    # ⭐ PHASE11: 70→72 (범위 확대)
     rsi_neutral_min: 40   # RSI 중립 구간 하한
     rsi_neutral_max: 60   # RSI 중립 구간 상한
     
     momentum_lookback: 5  # 모멘텀 패턴 확인 캔들 수
-    volume_mult: 1.3      # 거래량 급증 배수
+    volume_mult: 1.1      # ⭐ PHASE11: 1.3→1.1 (거래량 임계값 낮춤)
     
-    # 🔥 PHASE10.5: Optional 조건 (거래 빈도 증가)
-    momentum_enabled: false    # false → 모멘텀 필터 해제 (진입 기회 증가)
-    volume_required: false     # false → 거래량 필터 해제 (진입 기회 증가)
+    # 🔥 PHASE11: Optional 조건 (Pattern C 추가로 이미 고빈도화)
+    momentum_enabled: false    # false → Pattern C로 대체 진입 제공
+    volume_required: false     # false → Pattern A/C로 진입 가능
     
     # ⭐ 위험 관리
     risk_per_trade: 0.003  # 0.3%

@@ -184,48 +184,58 @@ def signal_logic(df: pd.DataFrame, config: dict) -> Dict[str, Any]:
     vol_spike = volume > vol_ma * volume_mult
     
     # ========================================
-    # 5. 신호 조건 결합 (PHASE10.5: OR 로직)
+    # 5. 신호 조건 결합 (PHASE11: 3-Pattern OR 로직)
     # ========================================
     
-    # 🔥 CRITICAL FIX: AND 조건을 OR 조건으로 완화
-    # 기존: (EMA AND RSI AND Momentum AND Volume) → 너무 엄격, 0~2 trades/week
-    # 개선: (EMA AND RSI) OR (EMA AND Volume) + Optional Momentum
+    # ⭐ PHASE11 개선: 고빈도 스캘핑을 위한 다중 진입 패턴
+    # 기존 (PHASE10): (EMA AND RSI) OR (EMA AND Volume) → 7 trades/7days (너무 적음)
+    # 개선 (PHASE11): 
+    #   - Pattern A: EMA + RSI (극단값 기반)
+    #   - Pattern B: EMA + Volume (거래량 급증)
+    #   - Pattern C: RSI + Momentum (대체 진입)
+    # 결과: A OR B OR C → 고빈도 진입 기회 증가
     
     # LONG 조건:
     # - Pattern A: EMA bullish AND RSI oversold
     # - Pattern B: EMA bullish AND Volume spike
-    # - Optional: Momentum (higher_low)
-    ema_long = golden_cross or ema_bullish
+    # - Pattern C: RSI oversold AND higher_low (EMA 없어도 OK)
+    ema_long = ema_bullish  # ⭐ PHASE11: Golden cross 제거, fast>slow만 필요
     pattern_a_long = ema_long and rsi_oversold_signal
     pattern_b_long = ema_long and vol_spike
+    pattern_c_long = rsi_oversold_signal and higher_low  # ⭐ PHASE11: 대체 진입
     
-    # Momentum 필터 (optional)
+    # 최종 신호: A OR B OR C
+    signal_long = pattern_a_long or pattern_b_long or pattern_c_long
+    
+    # Momentum 필터 (optional) - Pattern A/B에만 적용
     if momentum_enabled:
         signal_long = (pattern_a_long or pattern_b_long) and higher_low
-    else:
-        signal_long = pattern_a_long or pattern_b_long
+        # Pattern C는 이미 momentum 포함
     
-    # Volume 필수 여부
+    # Volume 필수 여부 - Pattern A/B에만 적용
     if volume_required and not vol_spike:
-        signal_long = False
+        signal_long = pattern_a_long or pattern_c_long  # A/B 제외, C만 가능
     
     # SHORT 조건:
     # - Pattern A: EMA bearish AND RSI overbought
     # - Pattern B: EMA bearish AND Volume spike
-    # - Optional: Momentum (lower_high)
-    ema_short = dead_cross or ema_bearish
+    # - Pattern C: RSI overbought AND lower_high (EMA 없어도 OK)
+    ema_short = ema_bearish  # ⭐ PHASE11: Dead cross 제거, fast<slow만 필요
     pattern_a_short = ema_short and rsi_overbought_signal
     pattern_b_short = ema_short and vol_spike
+    pattern_c_short = rsi_overbought_signal and lower_high  # ⭐ PHASE11: 대체 진입
     
-    # Momentum 필터 (optional)
+    # 최종 신호: A OR B OR C
+    signal_short = pattern_a_short or pattern_b_short or pattern_c_short
+    
+    # Momentum 필터 (optional) - Pattern A/B에만 적용
     if momentum_enabled:
         signal_short = (pattern_a_short or pattern_b_short) and lower_high
-    else:
-        signal_short = pattern_a_short or pattern_b_short
+        # Pattern C는 이미 momentum 포함
     
-    # Volume 필수 여부
+    # Volume 필수 여부 - Pattern A/B에만 적용
     if volume_required and not vol_spike:
-        signal_short = False
+        signal_short = pattern_a_short or pattern_c_short  # A/B 제외, C만 가능
     
     # ========================================
     # 디버그 로그 (500캔들마다) - PHASE10 성능 최적화
@@ -240,8 +250,10 @@ def signal_logic(df: pd.DataFrame, config: dict) -> Dict[str, Any]:
         logger.info(f"  📦 Volume: {volume:.0f} vs ma={vol_ma:.0f} | spike={vol_spike} (required={volume_required})")
         logger.info(f"  🎯 Pattern A LONG: {pattern_a_long} (EMA+RSI)")
         logger.info(f"  🎯 Pattern B LONG: {pattern_b_long} (EMA+Volume)")
+        logger.info(f"  🎯 Pattern C LONG: {pattern_c_long} (RSI+Momentum) [PHASE11]")
         logger.info(f"  🎯 Pattern A SHORT: {pattern_a_short} (EMA+RSI)")
         logger.info(f"  🎯 Pattern B SHORT: {pattern_b_short} (EMA+Volume)")
+        logger.info(f"  🎯 Pattern C SHORT: {pattern_c_short} (RSI+Momentum) [PHASE11]")
         logger.info(f"  ✅ FINAL: LONG={signal_long}, SHORT={signal_short}")
     
     # ========================================
@@ -260,6 +272,8 @@ def signal_logic(df: pd.DataFrame, config: dict) -> Dict[str, Any]:
             reason.append("Pattern A (EMA+RSI)")
         if pattern_b_long:
             reason.append("Pattern B (EMA+Volume)")
+        if pattern_c_long:
+            reason.append("Pattern C (RSI+Momentum) [PHASE11]")
         
         if golden_cross:
             reason.append("EMA 골든크로스")
@@ -268,7 +282,7 @@ def signal_logic(df: pd.DataFrame, config: dict) -> Dict[str, Any]:
         
         if rsi_oversold_signal:
             reason.append(f"RSI 과매도 반등 ({rsi:.1f})")
-        if higher_low and momentum_enabled:
+        if higher_low:
             reason.append("Higher low 패턴")
         if vol_spike:
             reason.append("거래량 급증")
@@ -287,6 +301,8 @@ def signal_logic(df: pd.DataFrame, config: dict) -> Dict[str, Any]:
             reason.append("Pattern A (EMA+RSI)")
         if pattern_b_short:
             reason.append("Pattern B (EMA+Volume)")
+        if pattern_c_short:
+            reason.append("Pattern C (RSI+Momentum) [PHASE11]")
         
         if dead_cross:
             reason.append("EMA 데드크로스")
@@ -295,7 +311,7 @@ def signal_logic(df: pd.DataFrame, config: dict) -> Dict[str, Any]:
         
         if rsi_overbought_signal:
             reason.append(f"RSI 과매수 하락 ({rsi:.1f})")
-        if lower_high and momentum_enabled:
+        if lower_high:
             reason.append("Lower high 패턴")
         if vol_spike:
             reason.append("거래량 급증")
