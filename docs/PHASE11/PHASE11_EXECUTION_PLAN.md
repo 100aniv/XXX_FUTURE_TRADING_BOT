@@ -137,6 +137,34 @@
 
 ---
 
+## 📊 PHASE11-C 결과 요약 (2025-11-15 23:20 UTC+09:00)
+
+### 작업 내용
+1. **Pattern 토글 구현**: Core (A/B) vs Aggressive (C/D/E) 분리
+2. **전용 쿨다운**: entry_cooldown_seconds=15 (스캘핑 전용)
+3. **SL/TP 완화**: atr_mult_sl=1.2, rr=1.5
+4. **파라미터 강화**: RSI 28/72, Volume 1.3x
+
+### 백테스트 결과 (7일, 1m)
+- **Trades**: 21-22건 ✅ (목표 20-80 범위 내)
+- **Winrate**: 4.76% ❌ (목표 35%)
+- **PF**: 0.01 ❌ (목표 1.1+)
+- **Max DD**: -6.3% ✅ (목표 -15% 이내)
+- **TP Hit Rate**: 0.0% ❌ (모든 거래가 SL 손절)
+
+### 핵심 발견
+**EMA 조건이 너무 단순:**
+- `ema_fast > ema_slow`만으로는 트렌드 방향 판단 불충분
+- Golden/Dead cross 이후 오랜 시간 경과해도 조건 유지 → 역트렌드 진입
+- 추가 필터 필요: cross 직후 제한, price vs EMA, EMA 기울기 등
+
+### 다음 단계 옵션
+1. **Option 1**: EMA 조건 강화 (cross 타이밍, price position, 기울기)
+2. **Option 2**: Pattern E 활성화 + 엄격한 조건 (RSI+Volume+EMA 다중 확인)
+3. **Option 3**: 현재 구조로 Optuna 튜닝 진행 (파라미터 최적화 시도)
+
+---
+
 ## 🚀 Next Step
 
-**Immediate Action**: 11A-1 시작 (Scalping 분석)
+**Recommendation**: Option 1 (EMA 조건 강화) 또는 Option 3 (Optuna 튜닝 진행)
