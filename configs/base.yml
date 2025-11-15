@@ -506,9 +506,9 @@ strategies:
   # 기존 BB 기반 로직은 swing_bb로 이동 완료
   # 목표: 10~50건/일 (90일 기준 100건 이상)
   scalping:
-    # ⭐ PHASE11-C: SL/TP 균형 잡기 (1m 스캘핑 현실화)
-    atr_mult_sl: 1.2  # ⭐ 0.8→1.2 (SL 여유 확대, 유지)
-    rr: 1.5           # ⭐ 1.8→1.5 (TP 목표 하향, 1m 변동성 대응)
+    # ⭐ PHASE11-D: SL/TP 최종 조정 (1m 스캘핑 현실화)
+    atr_mult_sl: 1.2  # ⭐ SL 여유 유지
+    rr: 1.2           # ⭐ 1.5→1.2 (TP 더 가깝게, 1m 변동성 대응)
     
     cooldown_candles: 1  # ⭐ 쿨다운 최소화 (고빈도)
     min_bars_for_signal: 60
@@ -527,9 +527,9 @@ strategies:
       session_whitelist: []
     
     # ⭐ PHASE11-D: Fresh Cross + Trend-Aware Entry (Late Entry 방지)
-    # 목표: 7일 10~40 trades, Winrate 20~40%, PF ≥0.8, DD -15% 이내
-    max_cross_age_candles: 80    # ⭐ NEW: Fresh Cross 유효 기간 (1m=80분)
-    use_price_alignment: true    # ⭐ NEW: Price vs EMA_fast 정렬 체크
+    # 목표: 7일 10~30 trades, Winrate 15~30%, PF ≥0.6, DD -10% 이내
+    max_cross_age_candles: 25    # ⭐ 80→25: 더 Fresh한 크로스만 허용 (1m=25분)
+    use_price_alignment: true    # ⭐ Price vs EMA_fast 정렬 체크
     
     rsi_oversold: 28      # ⭐ 과매도 임계값
     rsi_overbought: 72    # ⭐ 과매수 임계값
@@ -539,12 +539,12 @@ strategies:
     momentum_lookback: 5  # 모멘텀 패턴 확인 캔들 수 (사용 안 함)
     volume_mult: 1.3      # ⭐ 거래량 임계값 (평균 대비)
     
-    # ⭐ PHASE11-D: Pattern 토글 (Fresh Trend 기반)
+    # ⭐ PHASE11-D: Pattern 토글 (Fresh Trend 기반, 엄격 모드)
     enable_pattern_a: true   # Core: Fresh Trend + RSI (기본 활성)
-    enable_pattern_b: true   # Core: Fresh Trend + Volume (기본 활성)
+    enable_pattern_b: false  # 비활성: Volume만으로는 약함
     enable_pattern_c: false  # Aggressive: RSI alone (기본 비활성)
     enable_pattern_d: false  # Aggressive: Volume alone (기본 비활성)
-    enable_pattern_e: true   # Core: Fresh Trend + RSI + Volume (활성화)
+    enable_pattern_e: true   # Core: Fresh Trend + RSI + Volume (엄격 모드)
     
     # 🔥 PHASE11-C: Optional 조건 제거 (Pattern 토글로 대체)
     momentum_enabled: false    # Momentum 패턴 사용 안 함
