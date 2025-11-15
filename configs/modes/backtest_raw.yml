@@ -102,22 +102,22 @@ filters:
 # 전략별 설정 - scalping/swing_bb 가드 제거
 # ========================================
 strategies:
+  # ⭐ PHASE9-6: 신규 고빈도 스캘핑 전략 (1분봉 기반)
   scalping:
-    timeframe: 5m         # ⭐ CLI 인자와 일치 (base.yml: 3m)
-    cooldown_candles: 0   # ⭐ 쿨다운 제거 (base.yml: 3개)
+    timeframe: 1m         # ⭐ 1분봉 (고빈도 스캘핑)
+    cooldown_candles: 0   # ⭐ 쿨다운 제거 (최대 빈도)
     filters:
-      mtf_confirm: false           # ⭐ MTF 확인 OFF
-      regime: false                # ⭐ 레짐 필터 OFF
-      volume_spike: false          # ⭐ 거래량 급증 필터 OFF
-      volume_spike_guard: false    # ⭐ 거래량 급증 가드 OFF
-      session_whitelist: []        # ⭐ 세션 제한 없음
+      mtf_confirm: false
+      regime: false
+      volume_spike: false
+      volume_spike_guard: false
+      session_whitelist: []
     
-    # ⭐ PHASE9-3.1: 조건 완화 (연구용 - 거래 빈도 증가)
-    condition_relax:
-      bb_bounce_tolerance: 0.005   # ⭐ BB Bounce 범위 확대 (0.2% → 0.5%)
-      ema_alignment_required: 2    # ⭐ EMA 정렬 완화 (3선 → 2선만 요구)
-      macd_tolerance: 0.0          # MACD 완화 없음 (기본값 유지)
-      rsi_tolerance: 5.0           # ⭐ RSI 범위 확대 (±5)
+    # ⭐ PHASE9-6: 신호 조건 파라미터 (연구용 - 조건 완화)
+    rsi_oversold: 35      # ⭐ 과매도 임계값 완화 (30 → 35)
+    rsi_overbought: 65    # ⭐ 과매수 임계값 완화 (70 → 65)
+    momentum_lookback: 3  # ⭐ 모멘텀 lookback 축소 (5 → 3, 더 빠른 반응)
+    volume_mult: 1.2      # ⭐ 거래량 배수 완화 (1.3 → 1.2)
   
   # ⭐ PHASE9-5: swing_bb 전략 설정 (scalping과 동일)
   swing_bb:

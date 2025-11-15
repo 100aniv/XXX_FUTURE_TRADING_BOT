@@ -9,19 +9,3 @@ ensemble:
   max_weight_per_strategy: 0.4939819704323989
   theta_long: 0.22486639612006326
   theta_short: 0.13185086660174142
-strategies:
-  ensemble:
-    alpha_winrate: 0.4
-    beta_rr: 0.2
-    delta_confidence: 0.15
-    epsilon_regime: 0.05
-    gamma_sharpe: 0.2
-    weights:
-      breakout: 2.0
-      daytrade: 1.5
-      reversion: 2.0
-      scalping: 1.5
-      swing: 1.5
-      trend: 2.0
-symbol: BTCUSDT
-timeframe: 5m
