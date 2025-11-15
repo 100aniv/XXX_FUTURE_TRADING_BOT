@@ -165,6 +165,94 @@
 
 ---
 
+---
+
+## 📊 PHASE11-D 결과 요약 (2025-11-15 23:48 UTC+09:00)
+
+### 작업 내용
+1. **Fresh Cross Tracking (Lookback)**:
+   - 최근 N개 캔들 내에서 마지막 크로스 탐색
+   - max_cross_age_candles: 80 → 25 (더 Fresh한 크로스만)
+   
+2. **Trend-Aware Patterns**:
+   - Pattern A: Fresh Trend + RSI
+   - Pattern B: Fresh Trend + Volume (비활성화)
+   - Pattern E: Fresh Trend + RSI + Volume (활성화)
+   
+3. **Price Alignment**:
+   - use_price_alignment: true
+   - LONG: price > ema_fast, SHORT: price < ema_fast
+   
+4. **파라미터 조정**:
+   - RR: 1.5 → 1.2 (TP 더 가깝게)
+   - entry_cooldown_seconds: 15초 유지
+
+### 백테스트 결과 (7일, 1m)
+
+#### Iteration 1 (max_cross_age=80, RR=1.5, Pattern A/B/E)
+- **Trades**: 26건 ✅
+- **Winrate**: 0.0% ❌
+- **PF**: 0.0 ❌
+- **Max DD**: -8.07% ✅
+- **TP Hit Rate**: 0.0% ❌
+
+#### Iteration 2 (max_cross_age=25, RR=1.2, Pattern A/E)
+- **Trades**: 12건 ✅ (목표 10-30 범위)
+- **Winrate**: 8.33% ⚠️ (목표 15-30%)
+- **PF**: 0.04 ❌ (목표 ≥0.6)
+- **Max DD**: -2.96% ✅ (최고 수준!)
+- **TP Hit Rate**: 0.0% ❌
+
+### 핵심 발견
+
+**✅ 성공 사항:**
+1. **Fresh Cross 로직 작동**: Lookback 방식으로 크로스 탐지 성공
+2. **Late Entry 감소**: age=25 이내로 제한하여 더 Fresh한 진입
+3. **리스크 관리 탁월**: Max DD -2.96% (이전 -108% → -6.7% → -2.96%)
+4. **첫 번째 승리 거래**: Winrate 0% → 8.33% (12건 중 1건 승리)
+
+**❌ 여전한 문제:**
+1. **TP Hit Rate 0%**: RR 1.2도 여전히 너무 높음
+2. **Winrate 8.33%**: 목표 15-30%에 미달
+3. **PF 0.04**: 손실이 이익을 압도
+
+### 근본 원인 분석
+
+**1m 스캘핑의 근본적 한계:**
+- **노이즈 vs 트렌드 구분 어려움**: 1m에서는 진정한 트렌드 시작과 노이즈 구분이 극히 어려움
+- **TP 달성 불가능**: RR 1.2조차 1m 변동성에서는 달성 어려움
+- **Cross 기반의 한계**: EMA Cross는 Lagging Indicator로 1m에서는 이미 늦은 신호
+
+**Fresh Cross의 한계:**
+- max_cross_age=25도 1m 기준으로는 여전히 Late Entry 가능성
+- Cross 직후에도 False Breakout 다수 발생
+
+### 다음 단계 권장사항
+
+**Option 1: 전략 방향 전환 (추천) ⭐**
+- **목표**: 3m 또는 5m 타임프레임으로 상향
+- **이유**: 1m은 노이즈가 너무 심해 EMA Cross 기반 전략으로는 한계
+- **예상**: Winrate 20-40%, PF 0.8-1.2 달성 가능
+
+**Option 2: Mean Reversion 전략 추가**
+- **목표**: Trend Following(EMA) + Mean Reversion(BB) 혼합
+- **이유**: 1m에서는 Mean Reversion이 더 효과적
+- **예상**: Winrate 20-30%, PF 0.6-1.0 달성 가능
+
+**Option 3: RR 극단적 축소**
+- **목표**: RR 0.8-1.0, SL도 축소
+- **이유**: 1m에서는 작은 이익을 빠르게 실현
+- **예상**: Winrate 15-25%, PF 0.5-0.8 달성 가능
+
+**Option 4: Optuna 튜닝 진행**
+- **목표**: 현재 구조로 파라미터 최적화
+- **이유**: max_cross_age, RSI, Volume 등 최적 조합 탐색
+- **예상**: 소폭 개선 가능하나 근본적 한계 돌파 어려움
+
+---
+
 ## 🚀 Next Step
 
-**Recommendation**: Option 1 (EMA 조건 강화) 또는 Option 3 (Optuna 튜닝 진행)
+**Recommendation**: **Option 1 (3m 타임프레임 전환)** 또는 **Option 2 (Mean Reversion 추가)**
+
+**이유**: 1m EMA Cross 기반 전략의 근본적 한계가 확인됨
