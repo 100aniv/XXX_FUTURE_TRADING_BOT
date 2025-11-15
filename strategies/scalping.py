@@ -204,17 +204,19 @@ def signal_logic(df: pd.DataFrame, config: dict) -> Dict[str, Any]:
     pattern_b_long = ema_long and vol_spike
     pattern_c_long = rsi_oversold_signal and higher_low  # ⭐ PHASE11: 대체 진입
     
-    # 최종 신호: A OR B OR C
+    # 최종 신호: A OR B OR C (기본: 모든 패턴 허용)
     signal_long = pattern_a_long or pattern_b_long or pattern_c_long
     
-    # Momentum 필터 (optional) - Pattern A/B에만 적용
+    # ⭐ PHASE11: 필터 적용 로직 정정
+    # momentum_enabled=true: Pattern A/B는 higher_low 필요, Pattern C는 이미 포함
     if momentum_enabled:
-        signal_long = (pattern_a_long or pattern_b_long) and higher_low
-        # Pattern C는 이미 momentum 포함
+        pattern_ab_long = (pattern_a_long or pattern_b_long) and higher_low
+        signal_long = pattern_ab_long or pattern_c_long
     
-    # Volume 필수 여부 - Pattern A/B에만 적용
-    if volume_required and not vol_spike:
-        signal_long = pattern_a_long or pattern_c_long  # A/B 제외, C만 가능
+    # volume_required=true: Pattern A/B는 vol_spike 필요, Pattern C는 vol_spike 불필요
+    if volume_required:
+        pattern_ab_long = (pattern_a_long or pattern_b_long) and vol_spike
+        signal_long = pattern_ab_long or pattern_c_long
     
     # SHORT 조건:
     # - Pattern A: EMA bearish AND RSI overbought
@@ -225,17 +227,19 @@ def signal_logic(df: pd.DataFrame, config: dict) -> Dict[str, Any]:
     pattern_b_short = ema_short and vol_spike
     pattern_c_short = rsi_overbought_signal and lower_high  # ⭐ PHASE11: 대체 진입
     
-    # 최종 신호: A OR B OR C
+    # 최종 신호: A OR B OR C (기본: 모든 패턴 허용)
     signal_short = pattern_a_short or pattern_b_short or pattern_c_short
     
-    # Momentum 필터 (optional) - Pattern A/B에만 적용
+    # ⭐ PHASE11: 필터 적용 로직 정정
+    # momentum_enabled=true: Pattern A/B는 lower_high 필요, Pattern C는 이미 포함
     if momentum_enabled:
-        signal_short = (pattern_a_short or pattern_b_short) and lower_high
-        # Pattern C는 이미 momentum 포함
+        pattern_ab_short = (pattern_a_short or pattern_b_short) and lower_high
+        signal_short = pattern_ab_short or pattern_c_short
     
-    # Volume 필수 여부 - Pattern A/B에만 적용
-    if volume_required and not vol_spike:
-        signal_short = pattern_a_short or pattern_c_short  # A/B 제외, C만 가능
+    # volume_required=true: Pattern A/B는 vol_spike 필요, Pattern C는 vol_spike 불필요
+    if volume_required:
+        pattern_ab_short = (pattern_a_short or pattern_b_short) and vol_spike
+        signal_short = pattern_ab_short or pattern_c_short
     
     # ========================================
     # 디버그 로그 (500캔들마다) - PHASE10 성능 최적화
