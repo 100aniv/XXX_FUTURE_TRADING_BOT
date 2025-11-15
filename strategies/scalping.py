@@ -306,8 +306,7 @@ def signal_logic(df: pd.DataFrame, config: dict) -> Dict[str, Any]:
         
         if rsi_oversold_signal:
             reason.append(f"RSI 과매도 반등 ({rsi:.1f})")
-        if higher_low:
-            reason.append("Higher low 패턴")
+        # ⭐ PHASE11 Iter2: Momentum 패턴 제거됨
         if vol_spike:
             reason.append("거래량 급증")
         
@@ -339,8 +338,7 @@ def signal_logic(df: pd.DataFrame, config: dict) -> Dict[str, Any]:
         
         if rsi_overbought_signal:
             reason.append(f"RSI 과매수 하락 ({rsi:.1f})")
-        if lower_high:
-            reason.append("Lower high 패턴")
+        # ⭐ PHASE11 Iter2: Momentum 패턴 제거됨
         if vol_spike:
             reason.append("거래량 급증")
         
