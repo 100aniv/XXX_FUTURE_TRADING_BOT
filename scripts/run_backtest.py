@@ -333,7 +333,7 @@ def main():
         logger.error(traceback.format_exc())
         sys.exit(1)
     
-    # 10. 거래 내역 조회 (DB) - Optional
+    # 10. 거래 내역 조회 (DB 또는 Broker) - PHASE10
     logger.info("📊 거래 내역 조회...")
     
     trades = []
@@ -377,11 +377,16 @@ def main():
             logger.info(f"  ✅ {len(trades)}개 거래 조회 완료 (DB)")
         except Exception as e:
             logger.warning(f"⚠️ DB 조회 실패: {e}")
-            logger.warning("엔진 내부 메트릭으로 scorecard 생성")
+            logger.warning("Broker closed_trades로 대체")
             trades = []
     else:
-        logger.info("  ℹ️  DB 미사용 모드: 엔진 내부 메트릭으로 scorecard 생성")
-        trades = []
+        # ⭐ PHASE10: Broker의 closed_trades 사용 (파일 기반 백테스트)
+        if hasattr(broker, 'closed_trades'):
+            trades = broker.closed_trades
+            logger.info(f"  ✅ {len(trades)}개 거래 조회 완료 (Broker)")
+        else:
+            logger.warning("  ⚠️ Broker에 closed_trades 없음")
+            trades = []
     
     # 11. Scorecard 생성
     logger.info("📈 Scorecard 생성...")
@@ -405,6 +410,20 @@ def main():
     )
     
     scorecard = generator.generate(trades, output_dir)
+    
+    # ⭐ PHASE10: Trades 불일치 검증 훅
+    engine_closed_count = len(trades)  # Broker에서 가져온 trades 수
+    scorecard_trades = scorecard['trades_closed']
+    
+    if engine_closed_count != scorecard_trades:
+        logger.warning("=" * 60)
+        logger.warning(f"⚠️ TRADES MISMATCH DETECTED!")
+        logger.warning(f"  - Engine (Broker): {engine_closed_count} trades")
+        logger.warning(f"  - Scorecard: {scorecard_trades} trades")
+        logger.warning(f"  - Difference: {abs(engine_closed_count - scorecard_trades)}")
+        logger.warning("=" * 60)
+    else:
+        logger.info(f"✅ Trades 일치 검증: Engine={engine_closed_count}, Scorecard={scorecard_trades}")
     
     # 12. 결과 요약
     logger.info("=" * 60)

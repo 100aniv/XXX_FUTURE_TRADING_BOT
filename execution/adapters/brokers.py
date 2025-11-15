@@ -35,6 +35,8 @@ class SimBroker:
         self.fill_policy = fill_policy
         self.config = config or {}
         self.clock = clock
+        # ⭐ PHASE10: Closed trades 저장 (Scorecard 연동용)
+        self.closed_trades = []
         logger.info(f"✅ SimBroker 초기화: fee={fee_rate:.6f}, slippage={slippage_pct:.6f}, fill_policy={fill_policy}")
     
     def execute(self, decision: dict, qty: float, candle_ts: int = None) -> dict:
@@ -82,6 +84,83 @@ class SimBroker:
             'fee': fee,
             'timestamp': timestamp,
             'order_id': f"SIM_{timestamp}"
+        }
+    
+    def close_position(self, position: dict, exit_price: float, exit_reason: str, candle_ts: int = None) -> dict:
+        """
+        포지션 청산 및 거래 기록 저장 (PHASE10)
+        
+        Args:
+            position: 포지션 정보 {'side', 'entry', 'qty', 'symbol', 'strategy_id', 'ts_open', ...}
+            exit_price: 청산 가격
+            exit_reason: 청산 이유 ('tp', 'sl', 'timeout', etc.)
+            candle_ts: 캔들 timestamp (재현성용)
+        
+        Returns:
+            청산 결과 {'success': bool, 'pnl': float, 'pnl_pct': float, ...}
+        """
+        side = position['side']
+        entry_price = position['entry']
+        qty = position['qty']
+        
+        # Slippage 적용
+        if side == 'LONG':
+            filled_exit = exit_price * (1 - self.slippage_pct)
+        else:  # SHORT
+            filled_exit = exit_price * (1 + self.slippage_pct)
+        
+        # PnL 계산
+        if side == 'LONG':
+            gross_pnl = (filled_exit - entry_price) * qty
+        else:
+            gross_pnl = (entry_price - filled_exit) * qty
+        
+        entry_value = entry_price * qty
+        exit_value = filled_exit * qty
+        total_fee = (entry_value + exit_value) * self.fee_rate
+        net_pnl = gross_pnl - total_fee
+        pnl_pct = (net_pnl / entry_value) * 100
+        
+        # Timestamp
+        if candle_ts:
+            ts_close = candle_ts
+        elif self.clock:
+            ts_close = self.clock.now()
+        else:
+            ts_close = int(datetime.now().timestamp() * 1000)
+        
+        # ⭐ Trade 기록 저장
+        trade_record = {
+            'symbol': position.get('symbol', 'UNKNOWN'),
+            'strategy_id': position.get('strategy_id', 'unknown'),
+            'side': side,
+            'entry_price': entry_price,
+            'exit_price': filled_exit,
+            'qty': qty,
+            'entry_value': entry_value,
+            'exit_value': exit_value,
+            'pnl': net_pnl,
+            'pnl_pct': pnl_pct,
+            'fee': total_fee,
+            'ts_open': position.get('ts_open', ts_close - 60000),
+            'ts_close': ts_close,
+            'exit_reason': exit_reason,
+            'status': 'CLOSED',
+            # Scorecard 호환 필드
+            'sl_price': position.get('sl', 0),
+            'tp_price': position.get('tp', 0),
+            'leverage': position.get('leverage', 1)
+        }
+        
+        self.closed_trades.append(trade_record)
+        
+        return {
+            'success': True,
+            'filled_price': filled_exit,
+            'pnl': net_pnl,
+            'pnl_pct': pnl_pct,
+            'fee': total_fee,
+            'timestamp': ts_close
         }
 
 

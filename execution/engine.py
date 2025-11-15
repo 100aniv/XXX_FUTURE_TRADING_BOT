@@ -672,6 +672,16 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict):
         fee_rate = config.get('fees', {}).get('taker', 0.0004)
         for pos_id, position, reason in positions_to_close:
             pnl = calculate_pnl(position, current_price, fee_rate)
+            
+            # ⭐ PHASE10: Broker에 청산 기록 저장 (Scorecard 연동)
+            if hasattr(broker, 'close_position'):
+                broker.close_position(
+                    position=position,
+                    exit_price=current_price,
+                    exit_reason=reason,
+                    candle_ts=ts
+                )
+            
             close_trade_in_db(
                 pos_id,
                 current_price,
