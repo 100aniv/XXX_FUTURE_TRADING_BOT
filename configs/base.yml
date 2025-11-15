@@ -506,11 +506,18 @@ strategies:
   # 기존 BB 기반 로직은 swing_bb로 이동 완료
   # 목표: 10~50건/일 (90일 기준 100건 이상)
   scalping:
-    atr_mult_sl: 0.8  # ⭐ 스캘핑 V2: 매우 좁은 SL (고빈도, 빠른 청산)
+    # ⭐ PHASE11-C: SL/TP 완화 (노이즈 내성 강화)
+    atr_mult_sl: 1.2  # ⭐ 0.8→1.2 (SL 여유 확대)
+    rr: 1.8           # ⭐ 1.3→1.8 (TP 목표 상향)
+    
     cooldown_candles: 1  # ⭐ 쿨다운 최소화 (고빈도)
     min_bars_for_signal: 60
     timeframe: 1m  # ⭐ 1분봉 (고빈도)
     enabled: true
+    
+    # ⭐ PHASE11-C: 스캘핑 전용 쿨다운 (초 단위)
+    entry_cooldown_seconds: 15  # ⭐ 15초 = 1m 기준 15캔들 간격
+    
     filters:
       mtf_confirm: false
       regime: false
@@ -519,23 +526,29 @@ strategies:
       allow_short: true
       session_whitelist: []
     
-    # ⭐ PHASE11: 신호 조건 파라미터 (완화된 기본값)
-    # 목표: 7일 20~60 trades, 90일 200~600 trades
-    rsi_oversold: 28      # ⭐ PHASE11: 30→28 (범위 확대)
-    rsi_overbought: 72    # ⭐ PHASE11: 70→72 (범위 확대)
+    # ⭐ PHASE11-C: 신호 조건 파라미터 (보수적 강화)
+    # 목표: 7일 20~80 trades, 품질 우선 (Winrate≥35%, PF≥1.1)
+    rsi_oversold: 25      # ⭐ 28→25 (더 극단적 과매도)
+    rsi_overbought: 75    # ⭐ 72→75 (더 극단적 과매수)
     rsi_neutral_min: 40   # RSI 중립 구간 하한
     rsi_neutral_max: 60   # RSI 중립 구간 상한
     
-    momentum_lookback: 5  # 모멘텀 패턴 확인 캔들 수
-    volume_mult: 1.1      # ⭐ PHASE11: 1.3→1.1 (거래량 임계값 낮춤)
+    momentum_lookback: 5  # 모멘텀 패턴 확인 캔들 수 (사용 안 함)
+    volume_mult: 1.5      # ⭐ 1.1→1.5 (거래량 임계값 상향)
     
-    # 🔥 PHASE11: Optional 조건 (Pattern C 추가로 이미 고빈도화)
-    momentum_enabled: false    # false → Pattern C로 대체 진입 제공
-    volume_required: false     # false → Pattern A/C로 진입 가능
+    # ⭐ PHASE11-C: Pattern 토글 (Core vs Aggressive 분리)
+    enable_pattern_a: true   # Core: EMA + RSI (기본 활성)
+    enable_pattern_b: true   # Core: EMA + Volume (기본 활성)
+    enable_pattern_c: false  # Aggressive: RSI alone (기본 비활성)
+    enable_pattern_d: false  # Aggressive: Volume alone (기본 비활성)
+    enable_pattern_e: false  # Aggressive: RSI + Volume (기본 비활성, EMA 필터 필요)
+    
+    # 🔥 PHASE11-C: Optional 조건 제거 (Pattern 토글로 대체)
+    momentum_enabled: false    # Momentum 패턴 사용 안 함
+    volume_required: false     # Pattern별로 개별 제어
     
     # ⭐ 위험 관리
     risk_per_trade: 0.003  # 0.3%
-    rr: 1.3               # ⭐ 작은 RR (빠른 청산)
     max_hold_minutes: 30  # ⭐ 최대 보유 시간 (30분)
   
   # ⭐ PHASE9-5: swing_bb 전략 추가 (기존 scalping 로직 분리)

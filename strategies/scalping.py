@@ -195,63 +195,43 @@ def signal_logic(df: pd.DataFrame, config: dict) -> Dict[str, Any]:
     #   - Pattern C: RSI + Momentum (대체 진입)
     # 결과: A OR B OR C → 고빈도 진입 기회 증가
     
-    # ⭐ PHASE11 Iteration 2: Momentum 패턴 제거, 단순 RSI/Volume 조건으로 변경
-    # 1m timeframe에서 higher_low/lower_high 패턴이 극히 드물어서 제거
-    # LONG 조건:
-    # - Pattern A: EMA bullish AND RSI oversold (EMA 기반)
-    # - Pattern B: EMA bullish AND Volume spike (EMA 기반)
-    # - Pattern C: RSI oversold alone (EMA 불필요) [PHASE11 Iter2 NEW]
-    # - Pattern D: Volume spike alone (EMA/RSI 불필요) [PHASE11 Iter2 NEW]
-    # - Pattern E: RSI oversold AND Volume spike (EMA 불필요) [PHASE11 Iter2 NEW]
+    # ⭐ PHASE11-C: Pattern 토글 기반 신호 생성 (Core vs Aggressive 분리)
+    # Core Patterns (EMA 필터 O, 기본 활성):
+    # - Pattern A: EMA bullish AND RSI oversold
+    # - Pattern B: EMA bullish AND Volume spike
+    # Aggressive Patterns (기본 비활성, 역트렌드 위험):
+    # - Pattern C: RSI alone (EMA 필터 X)
+    # - Pattern D: Volume alone (EMA/RSI 필터 X)
+    # - Pattern E: RSI + Volume (EMA 필터 X)
     
-    ema_long = ema_bullish  # fast > slow (Golden cross 제거)
-    pattern_a_long = ema_long and rsi_oversold_signal
-    pattern_b_long = ema_long and vol_spike
-    pattern_c_long = rsi_oversold_signal  # ⭐ RSI alone (Momentum 제거)
-    pattern_d_long = vol_spike  # ⭐ Volume alone (Momentum 제거)
-    pattern_e_long = rsi_oversold_signal and vol_spike  # ⭐ RSI + Volume (Momentum 제거)
+    # ⭐ PHASE11-C: Config에서 Pattern 토글 가져오기
+    enable_a = config.get('strategies', {}).get('scalping', {}).get('enable_pattern_a', True)
+    enable_b = config.get('strategies', {}).get('scalping', {}).get('enable_pattern_b', True)
+    enable_c = config.get('strategies', {}).get('scalping', {}).get('enable_pattern_c', False)
+    enable_d = config.get('strategies', {}).get('scalping', {}).get('enable_pattern_d', False)
+    enable_e = config.get('strategies', {}).get('scalping', {}).get('enable_pattern_e', False)
     
-    # 최종 신호: A OR B OR C OR D OR E (기본: 모든 패턴 허용)
+    # LONG 조건 (토글 적용)
+    ema_long = ema_bullish  # fast > slow
+    pattern_a_long = enable_a and (ema_long and rsi_oversold_signal)
+    pattern_b_long = enable_b and (ema_long and vol_spike)
+    pattern_c_long = enable_c and rsi_oversold_signal  # ⭐ RSI alone
+    pattern_d_long = enable_d and vol_spike  # ⭐ Volume alone
+    pattern_e_long = enable_e and (rsi_oversold_signal and vol_spike)  # ⭐ RSI + Volume
+    
+    # 최종 LONG 신호: 활성화된 패턴들의 OR
     signal_long = pattern_a_long or pattern_b_long or pattern_c_long or pattern_d_long or pattern_e_long
     
-    # ⭐ PHASE11: 필터 적용 로직 (선택적)
-    # momentum_enabled=true: 이제 사용 안 함 (Momentum 패턴 제거됨)
-    if momentum_enabled:
-        # 이전 로직 무시, 모든 패턴 허용
-        pass
+    # SHORT 조건 (토글 적용)
+    ema_short = ema_bearish  # fast < slow
+    pattern_a_short = enable_a and (ema_short and rsi_overbought_signal)
+    pattern_b_short = enable_b and (ema_short and vol_spike)
+    pattern_c_short = enable_c and rsi_overbought_signal  # ⭐ RSI alone
+    pattern_d_short = enable_d and vol_spike  # ⭐ Volume alone
+    pattern_e_short = enable_e and (rsi_overbought_signal and vol_spike)  # ⭐ RSI + Volume
     
-    # volume_required=true: Pattern A/C는 vol_spike 불필요, Pattern B/D/E는 이미 포함
-    if volume_required:
-        pattern_ac_long = (pattern_a_long or pattern_c_long) and vol_spike
-        signal_long = pattern_ac_long or pattern_b_long or pattern_d_long or pattern_e_long
-    
-    # SHORT 조건:
-    # - Pattern A: EMA bearish AND RSI overbought (EMA 기반)
-    # - Pattern B: EMA bearish AND Volume spike (EMA 기반)
-    # - Pattern C: RSI overbought alone (EMA 불필요) [PHASE11 Iter2 NEW]
-    # - Pattern D: Volume spike alone (EMA/RSI 불필요) [PHASE11 Iter2 NEW]
-    # - Pattern E: RSI overbought AND Volume spike (EMA 불필요) [PHASE11 Iter2 NEW]
-    
-    ema_short = ema_bearish  # fast < slow (Dead cross 제거)
-    pattern_a_short = ema_short and rsi_overbought_signal
-    pattern_b_short = ema_short and vol_spike
-    pattern_c_short = rsi_overbought_signal  # ⭐ RSI alone (Momentum 제거)
-    pattern_d_short = vol_spike  # ⭐ Volume alone (Momentum 제거)
-    pattern_e_short = rsi_overbought_signal and vol_spike  # ⭐ RSI + Volume (Momentum 제거)
-    
-    # 최종 신호: A OR B OR C OR D OR E (기본: 모든 패턴 허용)
+    # 최종 SHORT 신호: 활성화된 패턴들의 OR
     signal_short = pattern_a_short or pattern_b_short or pattern_c_short or pattern_d_short or pattern_e_short
-    
-    # ⭐ PHASE11: 필터 적용 로직 (선택적)
-    # momentum_enabled=true: 이제 사용 안 함 (Momentum 패턴 제거됨)
-    if momentum_enabled:
-        # 이전 로직 무시, 모든 패턴 허용
-        pass
-    
-    # volume_required=true: Pattern A/C는 vol_spike 불필요, Pattern B/D/E는 이미 포함
-    if volume_required:
-        pattern_ac_short = (pattern_a_short or pattern_c_short) and vol_spike
-        signal_short = pattern_ac_short or pattern_b_short or pattern_d_short or pattern_e_short
     
     # ========================================
     # 디버그 로그 (500캔들마다) - PHASE10 성능 최적화
@@ -264,16 +244,16 @@ def signal_logic(df: pd.DataFrame, config: dict) -> Dict[str, Any]:
         logger.info(f"  📉 RSI: {rsi:.1f} | oversold_signal={rsi_oversold_signal}, overbought_signal={rsi_overbought_signal}")
         logger.info(f"  🔄 Momentum: higher_low={higher_low}, lower_high={lower_high} (enabled={momentum_enabled})")
         logger.info(f"  📦 Volume: {volume:.0f} vs ma={vol_ma:.0f} | spike={vol_spike} (required={volume_required})")
-        logger.info(f"  🎯 Pattern A LONG: {pattern_a_long} (EMA+RSI)")
-        logger.info(f"  🎯 Pattern B LONG: {pattern_b_long} (EMA+Volume)")
-        logger.info(f"  🎯 Pattern C LONG: {pattern_c_long} (RSI alone) [PHASE11 Iter2]")
-        logger.info(f"  🎯 Pattern D LONG: {pattern_d_long} (Volume alone) [PHASE11 Iter2]")
-        logger.info(f"  🎯 Pattern E LONG: {pattern_e_long} (RSI+Volume) [PHASE11 Iter2 NEW]")
-        logger.info(f"  🎯 Pattern A SHORT: {pattern_a_short} (EMA+RSI)")
-        logger.info(f"  🎯 Pattern B SHORT: {pattern_b_short} (EMA+Volume)")
-        logger.info(f"  🎯 Pattern C SHORT: {pattern_c_short} (RSI alone) [PHASE11 Iter2]")
-        logger.info(f"  🎯 Pattern D SHORT: {pattern_d_short} (Volume alone) [PHASE11 Iter2]")
-        logger.info(f"  🎯 Pattern E SHORT: {pattern_e_short} (RSI+Volume) [PHASE11 Iter2 NEW]")
+        logger.info(f"  🎯 Pattern A LONG: {pattern_a_long} (EMA+RSI) [{'ON' if enable_a else 'OFF'}]")
+        logger.info(f"  🎯 Pattern B LONG: {pattern_b_long} (EMA+Volume) [{'ON' if enable_b else 'OFF'}]")
+        logger.info(f"  🎯 Pattern C LONG: {pattern_c_long} (RSI alone) [{'ON' if enable_c else 'OFF'}]")
+        logger.info(f"  🎯 Pattern D LONG: {pattern_d_long} (Volume alone) [{'ON' if enable_d else 'OFF'}]")
+        logger.info(f"  🎯 Pattern E LONG: {pattern_e_long} (RSI+Volume) [{'ON' if enable_e else 'OFF'}]")
+        logger.info(f"  🎯 Pattern A SHORT: {pattern_a_short} (EMA+RSI) [{'ON' if enable_a else 'OFF'}]")
+        logger.info(f"  🎯 Pattern B SHORT: {pattern_b_short} (EMA+Volume) [{'ON' if enable_b else 'OFF'}]")
+        logger.info(f"  🎯 Pattern C SHORT: {pattern_c_short} (RSI alone) [{'ON' if enable_c else 'OFF'}]")
+        logger.info(f"  🎯 Pattern D SHORT: {pattern_d_short} (Volume alone) [{'ON' if enable_d else 'OFF'}]")
+        logger.info(f"  🎯 Pattern E SHORT: {pattern_e_short} (RSI+Volume) [{'ON' if enable_e else 'OFF'}]")
         logger.info(f"  ✅ FINAL: LONG={signal_long}, SHORT={signal_short}")
     
     # ========================================

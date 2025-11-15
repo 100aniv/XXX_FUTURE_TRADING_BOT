@@ -1142,6 +1142,13 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict):
         # ⭐ PR8/PR9: 전략별 심볼 거부 쿨다운 체크 (ensemble 모드 대응)
         cooldown_key = f"{candle_symbol}_{strategy_id}"
 
+        # ⭐ PHASE11-C: 전략별 전용 쿨다운 (scalping 전략 우선)
+        strategy_cfg = config.get("strategies", {}).get(strategy_id, {})
+        strategy_cooldown = strategy_cfg.get(
+            "entry_cooldown_seconds",
+            config.get("execution", {}).get("reject_cooldown_seconds", 60),
+        )
+        
         # ⭐⭐⭐ PR9 Phase 2: Redis 쿨다운 TTL (재시작 후에도 유지)
         if redis_client:
             redis_cooldown_key = f"cooldown:{cooldown_key}"
@@ -1150,7 +1157,7 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict):
                 if ttl > 0:
                     logger.warning(
                         f"❌ [ENTRY BLOCK] symbol={candle_symbol} side={decision.get('side')} strategy={strategy_id} "
-                        f"reason=cooldown_active remaining_seconds={ttl}"
+                        f"reason={strategy_id}_cooldown_active remaining_seconds={ttl}"
                     )
                     continue
             except Exception as e:
@@ -1159,11 +1166,11 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict):
             # Fallback: 로컬 메모리 쿨다운
             if cooldown_key in reject_cooldown:
                 elapsed = time.time() - reject_cooldown[cooldown_key]
-                if elapsed < cooldown_seconds:
-                    remaining = int(cooldown_seconds - elapsed)
+                if elapsed < strategy_cooldown:
+                    remaining = int(strategy_cooldown - elapsed)
                     logger.warning(
                         f"❌ [ENTRY BLOCK] symbol={candle_symbol} side={decision.get('side')} strategy={strategy_id} "
-                        f"reason=cooldown_active remaining_seconds={remaining}"
+                        f"reason={strategy_id}_cooldown_active remaining_seconds={remaining}"
                     )
                     continue
                 else:
