@@ -27,6 +27,7 @@ execution:
     type: fixed
     bps: 5                # 0.05% 고정 슬리피지 (동일)
   cooldown_minutes: 0     # ⭐ 전역 쿨다운 제거
+  reject_cooldown_seconds: 0  # ⭐ PHASE11: reject 쿨다운 제거 (고빈도 스캘핑용)
 
 # ========================================
 # 리스크 (Risk) 설정 - 대폭 완화
