@@ -1123,13 +1123,23 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict):
         )
 
         if qty <= 0:
+            logger.warning(f"❌ [ENTRY BLOCK] symbol={candle_symbol} side={decision.get('side')} reason=position_size_zero qty={qty}")
             continue
 
         # ⭐ position_sizer가 계산한 position_value 사용 (재계산 금지!)
         position_value = meta.get("position_value", qty * decision.get("entry"))
 
-        # ⭐ PR8/PR9: 전략별 심볼 거부 쿨다운 체크 (ensemble 모드 대응)
+        # ⭐ PHASE11-B: 엔트리 체크 시작 로그
         strategy_id = decision.get("strategy_id", "ensemble")
+        current_equity = portfolio.equity if hasattr(portfolio, 'equity') else 0
+        open_positions = len(active_positions)
+        logger.info(
+            f"🔍 [ENTRY CHECK] symbol={candle_symbol} side={decision.get('side')} strategy={strategy_id} "
+            f"price={current_price:.2f} qty={qty:.4f} position_value=${position_value:.2f} "
+            f"equity=${current_equity:.2f} open_positions={open_positions}"
+        )
+
+        # ⭐ PR8/PR9: 전략별 심볼 거부 쿨다운 체크 (ensemble 모드 대응)
         cooldown_key = f"{candle_symbol}_{strategy_id}"
 
         # ⭐⭐⭐ PR9 Phase 2: Redis 쿨다운 TTL (재시작 후에도 유지)
@@ -1138,8 +1148,9 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict):
             try:
                 ttl = redis_client.ttl(redis_cooldown_key)
                 if ttl > 0:
-                    logger.info(
-                        f"🔒 {strategy_id} {candle_symbol} 쿨다운 중 (Redis TTL: {ttl}초)"
+                    logger.warning(
+                        f"❌ [ENTRY BLOCK] symbol={candle_symbol} side={decision.get('side')} strategy={strategy_id} "
+                        f"reason=cooldown_active remaining_seconds={ttl}"
                     )
                     continue
             except Exception as e:
@@ -1149,8 +1160,10 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict):
             if cooldown_key in reject_cooldown:
                 elapsed = time.time() - reject_cooldown[cooldown_key]
                 if elapsed < cooldown_seconds:
-                    logger.debug(
-                        f"🔒 [{strategy_id}] {candle_symbol} 쿨다운 중: {elapsed:.1f}초/{cooldown_seconds}초"
+                    remaining = int(cooldown_seconds - elapsed)
+                    logger.warning(
+                        f"❌ [ENTRY BLOCK] symbol={candle_symbol} side={decision.get('side')} strategy={strategy_id} "
+                        f"reason=cooldown_active remaining_seconds={remaining}"
                     )
                     continue
                 else:
@@ -1173,8 +1186,8 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict):
             try:
                 if redis_client.exists(redis_signal_key):
                     logger.warning(
-                        f"⚠️ 🧩 신호 멱등 차단: {strategy_id} {candle_symbol} {decision.get('side')} "
-                        f"(같은 봉 내 중복, TTL={redis_ttl}초)"
+                        f"❌ [ENTRY BLOCK] symbol={candle_symbol} side={decision.get('side')} strategy={strategy_id} "
+                        f"reason=signal_idempotency candle_ts={normalized_ts} ttl={redis_ttl}s"
                     )
                     continue
                 redis_client.setex(redis_signal_key, redis_ttl, "1")
@@ -1194,7 +1207,8 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict):
                     logger.warning(f"⚠️  Redis 쿨다운 설정 실패: {e}")
             reject_cooldown[cooldown_key] = time.time()  # Fallback
             logger.warning(
-                f"⛔ [{strategy_id}] {candle_symbol} 리스크 체크 실패 (쿨다운 {cooldown_seconds}초): {reason}"
+                f"❌ [ENTRY BLOCK] symbol={candle_symbol} side={decision.get('side')} strategy={strategy_id} "
+                f"reason=risk_check_failed detail=\"{reason}\" cooldown={cooldown_seconds}s"
             )
             if mode in ["paper", "live"]:
                 tg(
@@ -1221,7 +1235,8 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict):
                     logger.warning(f"⚠️  Redis 쿨다운 설정 실패: {e}")
             reject_cooldown[cooldown_key] = time.time()  # Fallback
             logger.warning(
-                f"⛔ [{strategy_id}] {candle_symbol} 포트폴리오 거부 (쿨다운 {cooldown_seconds}초): {portfolio_reason}"
+                f"❌ [ENTRY BLOCK] symbol={candle_symbol} side={decision.get('side')} strategy={strategy_id} "
+                f"reason=portfolio_check_failed detail=\"{portfolio_reason}\" cooldown={cooldown_seconds}s"
             )
             if mode in ["paper", "live"]:
                 tg(
@@ -1248,7 +1263,10 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict):
             current_dup_count = len(same_direction_positions)
             
             if not allow_dup or current_dup_count >= max_dup:
-                logger.warning(f"⚠️ [중복 진입 방지] {candle_symbol} {new_side} 기존 포지션 {current_dup_count}개 존재 (정책: {dup_policy}, 최대: {max_dup}) - 진입 스킵")
+                logger.warning(
+                    f"❌ [ENTRY BLOCK] symbol={candle_symbol} side={new_side} strategy={strategy_id} "
+                    f"reason=duplicate_entry_prevented current_dup={current_dup_count} max_dup={max_dup} policy={dup_policy}"
+                )
                 continue  # 중복 진입 차단
             else:
                 logger.info(f"✅ [중복 진입 허용] {candle_symbol} {new_side} 기존 포지션 {current_dup_count}개 (정책: {dup_policy}, 한도: {max_dup}개) - 진입 진행")
@@ -1288,6 +1306,14 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict):
         if not fill.get("success"):
             logger.error(f"❌ 거래 실행 실패: {candle_symbol}")
             continue
+        
+        # ⭐ PHASE11-B: 진입 성공 로그
+        logger.info(
+            f"✅ [ENTRY OPEN] symbol={candle_symbol} side={decision.get('side')} strategy={strategy_id} "
+            f"qty={qty:.4f} entry=${fill.get('filled_price', 0):.2f} "
+            f"sl=${decision.get('sl', 0):.2f} tp=${decision.get('tp', 0):.2f} "
+            f"position_value=${position_value:.2f}"
+        )
         
         # 포지션 ID 생성
         import uuid
