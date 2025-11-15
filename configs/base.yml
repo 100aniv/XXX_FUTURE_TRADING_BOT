@@ -506,9 +506,9 @@ strategies:
   # 기존 BB 기반 로직은 swing_bb로 이동 완료
   # 목표: 10~50건/일 (90일 기준 100건 이상)
   scalping:
-    # ⭐ PHASE11-C: SL/TP 완화 (노이즈 내성 강화)
-    atr_mult_sl: 1.2  # ⭐ 0.8→1.2 (SL 여유 확대)
-    rr: 1.8           # ⭐ 1.3→1.8 (TP 목표 상향)
+    # ⭐ PHASE11-C: SL/TP 균형 잡기 (1m 스캘핑 현실화)
+    atr_mult_sl: 1.2  # ⭐ 0.8→1.2 (SL 여유 확대, 유지)
+    rr: 1.5           # ⭐ 1.8→1.5 (TP 목표 하향, 1m 변동성 대응)
     
     cooldown_candles: 1  # ⭐ 쿨다운 최소화 (고빈도)
     min_bars_for_signal: 60
@@ -526,15 +526,15 @@ strategies:
       allow_short: true
       session_whitelist: []
     
-    # ⭐ PHASE11-C: 신호 조건 파라미터 (보수적 강화)
-    # 목표: 7일 20~80 trades, 품질 우선 (Winrate≥35%, PF≥1.1)
-    rsi_oversold: 25      # ⭐ 28→25 (더 극단적 과매도)
-    rsi_overbought: 75    # ⭐ 72→75 (더 극단적 과매수)
+    # ⭐ PHASE11-C: 신호 조건 균형 잡기 (품질 vs 빈도 트레이드오프)
+    # 목표: 7일 30~60 trades, Winrate 25%+, PF 0.8+, DD -10% 이내
+    rsi_oversold: 28      # ⭐ 25→28 (진입 기회 확대)
+    rsi_overbought: 72    # ⭐ 75→72 (진입 기회 확대)
     rsi_neutral_min: 40   # RSI 중립 구간 하한
     rsi_neutral_max: 60   # RSI 중립 구간 상한
     
     momentum_lookback: 5  # 모멘텀 패턴 확인 캔들 수 (사용 안 함)
-    volume_mult: 1.5      # ⭐ 1.1→1.5 (거래량 임계값 상향)
+    volume_mult: 1.3      # ⭐ 1.5→1.3 (거래량 임계값 완화, Pattern B 빈도 증가)
     
     # ⭐ PHASE11-C: Pattern 토글 (Core vs Aggressive 분리)
     enable_pattern_a: true   # Core: EMA + RSI (기본 활성)
