@@ -27,7 +27,8 @@ from common.messaging import (
 from monitoring.telemetry_profiler import start_monitoring
 from monitoring import init_monitoring
 from indicators import add_indicators
-from common.database import get_db_connection, save_signal_to_db
+# ⭐ PHASE10: DB import 제거 (engine.py에서 미사용, 불필요한 모듈 로드 방지)
+# from common.database import get_db_connection, save_signal_to_db
 from execution.position_sizer import PositionSizer
 from execution.risk_manager import RiskManager
 from signals.signal_generator import SignalGenerator
