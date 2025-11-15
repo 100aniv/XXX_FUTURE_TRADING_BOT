@@ -1,41 +1,41 @@
 ﻿#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-SCALPING Strategy V2 (PHASE9-6)
+SCALPING Strategy V3 (PHASE12)
 =================================
-진정한 고빈도 스캘핑 전략 (1분봉 기반)
+3분봉 기반 스캘핑 전략 (EMA Fresh Trend + Optional MR)
 
- PHASE9-6: 신규 고빈도 스캘핑 전략으로 완전 교체
-- 기존 BB 기반 로직은 strategies/swing_bb.py로 이동 완료
-- 이 버전은 1분봉 기반 고빈도 스캘핑 전략입니다
-- 목표: 10~50건/일 (90일 기준 100건 이상)
+ PHASE12: 3m 타임프레임 전환
+- PHASE11-D의 Fresh Cross + Trend-Aware 로직 유지
+- Pattern A/B (Trend-Following) 집중
+- Optional Mean-Reversion (BB Bounce) 추가 (기본 OFF)
+- 목표: 10~40건/7일, Winrate 20%+, PF 0.7+
 
 전략 철학:
-- 타임프레임: 1m (1분봉)
+- 타임프레임: 3m (3분봉)
 - 보유 시간: 짧은 구간 (수분 ~ 30분 이내)
-- RR: 작은 RR (1.2~1.5)
-- 빈도: 높은 거래 빈도
+- RR: 1.5 (3m 변동성 대응)
+- 빈도: 적정 거래 빈도
 
 신호 조건 (LONG):
-1. EMA 교차: fast EMA가 slow EMA 위로 골든크로스
-2. RSI 극단: RSI < 30 (과매도 구간) 또는 반등 시작
-3. 모멘텀: 최근 N개 캔들 중 higher low 패턴
-4. 거래량: 평균 대비 증가
+1. Pattern A: Fresh Bullish Trend + price > ema_fast + RSI < 30
+2. Pattern B: Fresh Bullish Trend + price > ema_fast + Volume Spike
+3. Pattern MR (Optional): price <= BB Lower + RSI < 25
 
 신호 조건 (SHORT):
-1. EMA 교차: fast EMA가 slow EMA 아래로 데드크로스
-2. RSI 극단: RSI > 70 (과매수 구간) 또는 하락 시작
-3. 모멘텀: 최근 N개 캔들 중 lower high 패턴
-4. 거래량: 평균 대비 증가
+1. Pattern A: Fresh Bearish Trend + price < ema_fast + RSI > 70
+2. Pattern B: Fresh Bearish Trend + price < ema_fast + Volume Spike
+3. Pattern MR (Optional): price >= BB Upper + RSI > 75
 
 위험 관리:
-- SL: ATR 기반 동적 손절
-- TP: RR 1.2~1.5 (config 설정)
+- SL: ATR 기반 동적 손절 (atr_mult_sl: 1.2)
+- TP: RR 1.5 (3m 기준)
 - 최대 보유: 30분 (config 설정)
+- 전략별 쿨다운: 5초 (3m 빈도 대응)
 
  주의:
-이 버전은 튜닝 전 초기 뼈대(V1)입니다.
-향후 베이시안 튜닝 / Optuna / 앙상블 통합으로 이어질 예정입니다.
+이 버전은 튜닝 전 베이스라인입니다.
+향후 Optuna 튜닝으로 파라미터 최적화 예정.
 """
 from typing import Dict, Any
 import pandas as pd
@@ -188,12 +188,12 @@ def signal_logic(df: pd.DataFrame, config: dict) -> Dict[str, Any]:
     # ========================================
     
     # ========================================
-    # 5-1. PHASE11-D: Fresh Cross Tracking (Lookback)
+    # 5-1. PHASE12: Fresh Cross Tracking (Lookback)
     # ========================================
-    # ⭐ Late Entry 방지: 최근 N개 캔들 내 크로스 탐색
+    # ⭐ Late Entry 방지: 최근 N개 캔들 내 크로스 탐색 (3m 기준)
     
-    # Config 파라미터
-    max_cross_age = config.get('strategies', {}).get('scalping', {}).get('max_cross_age_candles', 80)
+    # Config 파라미터 (PHASE12: 3m 기준으로 조정)
+    max_cross_age = config.get('strategies', {}).get('scalping', {}).get('max_cross_age_candles', 12)  # 3m × 12 = 36분
     use_price_align = config.get('strategies', {}).get('scalping', {}).get('use_price_alignment', True)
     
     # Lookback window: 최근 N개 캔들 + 여유 (cross 탐지 보장)
@@ -239,16 +239,16 @@ def signal_logic(df: pd.DataFrame, config: dict) -> Dict[str, Any]:
     price_below_fast = price < ema_fast
     
     # ========================================
-    # 5-2. PHASE11-D: Trend-Aware Patterns
+    # 5-2. PHASE12: Trend-Aware Patterns (A/B)
     # ========================================
     # Core Patterns: Fresh Trend + Price Alignment + Filter
     
     # Config에서 Pattern 토글 가져오기
     enable_a = config.get('strategies', {}).get('scalping', {}).get('enable_pattern_a', True)
     enable_b = config.get('strategies', {}).get('scalping', {}).get('enable_pattern_b', True)
-    enable_c = config.get('strategies', {}).get('scalping', {}).get('enable_pattern_c', False)
-    enable_d = config.get('strategies', {}).get('scalping', {}).get('enable_pattern_d', False)
-    enable_e = config.get('strategies', {}).get('scalping', {}).get('enable_pattern_e', False)
+    enable_c = config.get('strategies', {}).get('scalping', {}).get('enable_pattern_c', False)  # PHASE12: 미사용
+    enable_d = config.get('strategies', {}).get('scalping', {}).get('enable_pattern_d', False)  # PHASE12: 미사용
+    enable_e = config.get('strategies', {}).get('scalping', {}).get('enable_pattern_e', False)  # PHASE12: 미사용
     
     # LONG 조건 (Fresh Bullish Trend 기반)
     if use_price_align:
@@ -258,12 +258,9 @@ def signal_logic(df: pd.DataFrame, config: dict) -> Dict[str, Any]:
     
     pattern_a_long = enable_a and trend_long_ok and rsi_oversold_signal
     pattern_b_long = enable_b and trend_long_ok and vol_spike
-    pattern_c_long = enable_c and rsi_oversold_signal  # Aggressive: no trend filter
-    pattern_d_long = enable_d and vol_spike  # Aggressive: no trend filter
-    pattern_e_long = enable_e and trend_long_ok and rsi_oversold_signal and vol_spike
-    
-    # 최종 LONG 신호
-    signal_long = pattern_a_long or pattern_b_long or pattern_c_long or pattern_d_long or pattern_e_long
+    pattern_c_long = enable_c and rsi_oversold_signal  # PHASE12: 미사용
+    pattern_d_long = enable_d and vol_spike  # PHASE12: 미사용
+    pattern_e_long = enable_e and trend_long_ok and rsi_oversold_signal and vol_spike  # PHASE12: 미사용
     
     # SHORT 조건 (Fresh Bearish Trend 기반)
     if use_price_align:
@@ -273,12 +270,36 @@ def signal_logic(df: pd.DataFrame, config: dict) -> Dict[str, Any]:
     
     pattern_a_short = enable_a and trend_short_ok and rsi_overbought_signal
     pattern_b_short = enable_b and trend_short_ok and vol_spike
-    pattern_c_short = enable_c and rsi_overbought_signal  # Aggressive: no trend filter
-    pattern_d_short = enable_d and vol_spike  # Aggressive: no trend filter
-    pattern_e_short = enable_e and trend_short_ok and rsi_overbought_signal and vol_spike
+    pattern_c_short = enable_c and rsi_overbought_signal  # PHASE12: 미사용
+    pattern_d_short = enable_d and vol_spike  # PHASE12: 미사용
+    pattern_e_short = enable_e and trend_short_ok and rsi_overbought_signal and vol_spike  # PHASE12: 미사용
     
-    # 최종 SHORT 신호
-    signal_short = pattern_a_short or pattern_b_short or pattern_c_short or pattern_d_short or pattern_e_short
+    # ========================================
+    # 5-3. PHASE12: Optional Mean-Reversion (BB + RSI)
+    # ========================================
+    enable_mr = config.get('strategies', {}).get('scalping', {}).get('enable_mean_reversion', False)
+    
+    pattern_mr_long = False
+    pattern_mr_short = False
+    
+    if enable_mr:
+        # BB 밴드 (indicators에서 이미 계산됨)
+        bb_upper = float(last.get('bb_upper', price))
+        bb_lower = float(last.get('bb_lower', price))
+        
+        # MR 전용 RSI 임계값
+        rsi_oversold_mr = config.get('strategies', {}).get('scalping', {}).get('rsi_oversold_mr', 25)
+        rsi_overbought_mr = config.get('strategies', {}).get('scalping', {}).get('rsi_overbought_mr', 75)
+        
+        # MR LONG: BB Lower Bounce + RSI Oversold
+        pattern_mr_long = (price <= bb_lower * 1.002) and (rsi < rsi_oversold_mr)
+        
+        # MR SHORT: BB Upper Bounce + RSI Overbought
+        pattern_mr_short = (price >= bb_upper * 0.998) and (rsi > rsi_overbought_mr)
+    
+    # 최종 신호 (Trend-Following + Mean-Reversion)
+    signal_long = pattern_a_long or pattern_b_long or pattern_c_long or pattern_d_long or pattern_e_long or pattern_mr_long
+    signal_short = pattern_a_short or pattern_b_short or pattern_c_short or pattern_d_short or pattern_e_short or pattern_mr_short
     
     # ========================================
     # 디버그 로그 (500캔들마다) - PHASE10 성능 최적화
@@ -297,11 +318,13 @@ def signal_logic(df: pd.DataFrame, config: dict) -> Dict[str, Any]:
         logger.info(f"  🎯 Pattern C LONG: {pattern_c_long} (RSI alone) [{'ON' if enable_c else 'OFF'}]")
         logger.info(f"  🎯 Pattern D LONG: {pattern_d_long} (Volume alone) [{'ON' if enable_d else 'OFF'}]")
         logger.info(f"  🎯 Pattern E LONG: {pattern_e_long} (Fresh+RSI+Volume) [{'ON' if enable_e else 'OFF'}]")
+        logger.info(f"  🎯 Pattern MR LONG: {pattern_mr_long} (BB Lower+RSI) [{'ON' if enable_mr else 'OFF'}]")
         logger.info(f"  🎯 Pattern A SHORT: {pattern_a_short} (Fresh+RSI) [{'ON' if enable_a else 'OFF'}]")
         logger.info(f"  🎯 Pattern B SHORT: {pattern_b_short} (Fresh+Volume) [{'ON' if enable_b else 'OFF'}]")
         logger.info(f"  🎯 Pattern C SHORT: {pattern_c_short} (RSI alone) [{'ON' if enable_c else 'OFF'}]")
         logger.info(f"  🎯 Pattern D SHORT: {pattern_d_short} (Volume alone) [{'ON' if enable_d else 'OFF'}]")
         logger.info(f"  🎯 Pattern E SHORT: {pattern_e_short} (Fresh+RSI+Volume) [{'ON' if enable_e else 'OFF'}]")
+        logger.info(f"  🎯 Pattern MR SHORT: {pattern_mr_short} (BB Upper+RSI) [{'ON' if enable_mr else 'OFF'}]")
         logger.info(f"  ✅ FINAL: LONG={signal_long}, SHORT={signal_short}")
     
     # ========================================
