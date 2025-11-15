@@ -60,16 +60,17 @@ def get_database_url() -> str:
     return url
 
 
-# DB URL (자동 결정)
-DB_URL = get_database_url()
+# ⭐ PHASE10 LAZY-LOAD: DB_URL은 전역 변수로 미리 생성하지 않음
+# → get_db_connection() 호출 시점에만 get_database_url() 실행
 
 
 @contextmanager
 def get_db_connection():
     """
-    DB 연결 컨텍스트 매니저
+    DB 연결 컨텍스트 매니저 (Lazy-Load)
     
     자동으로 commit/rollback 처리
+    호출 시점에만 DB URL을 계산하고 연결 시도
     
     Examples:
         >>> with get_db_connection() as conn:
@@ -77,7 +78,9 @@ def get_db_connection():
         >>>         cur.execute("SELECT * FROM table")
         >>>         result = cur.fetchall()
     """
-    conn = psycopg2.connect(DB_URL)
+    # ⭐ LAZY: 여기서 처음으로 DB URL 계산
+    db_url = get_database_url()
+    conn = psycopg2.connect(db_url)
     try:
         yield conn
         conn.commit()

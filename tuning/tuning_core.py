@@ -101,8 +101,8 @@ def get_optuna_storage() -> str:
         
         # localhost vs docker 호스트 판단
         if "localhost" in db_url or "127.0.0.1" in db_url:
-            storage = "postgresql://trading_user:trading_pw_2024@localhost:5432/trading_db"
-            print(f"📌 [TUNING STORAGE] Postgres (로컬): localhost:5432/trading_db")
+            storage = "postgresql://trading_user:trading_pw_2024@localhost:5433/trading_db"
+            print(f"📌 [TUNING STORAGE] Postgres (로컬): localhost:5433/trading_db")
         else:
             storage = "postgresql://trading_user:trading_pw_2024@db_postgres:5432/trading_db"
             print(f"📌 [TUNING STORAGE] Postgres (Docker): db_postgres:5432/trading_db")

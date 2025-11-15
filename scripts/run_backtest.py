@@ -221,7 +221,6 @@ def main():
     # 6. 어댑터 생성 (feed, broker, clock)
     logger.info("📊 어댑터 생성...")
     from execution.adapters import create_adapters
-    from common.database import get_db_connection
     
     try:
         feed, broker, clock = create_adapters(
@@ -241,6 +240,9 @@ def main():
     
     # 7. DB 완전 초기화 (backtest 모드 격리) - Optional
     if args.use_db:
+        # ⭐ LAZY: DB 사용 시에만 import
+        from common.database import get_db_connection
+        
         logger.info("=" * 60)
         logger.info(f"🗑️  [DB CLEANUP] {args.mode} 모드 완전 격리 시작")
         logger.info("=" * 60)
@@ -336,6 +338,9 @@ def main():
     
     trades = []
     if args.use_db:
+        # ⭐ LAZY: DB 사용 시에만 import
+        from common.database import get_db_connection
+        
         try:
             with get_db_connection() as conn:
                 with conn.cursor() as cur:
