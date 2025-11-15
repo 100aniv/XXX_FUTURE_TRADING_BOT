@@ -188,42 +188,47 @@ def signal_logic(df: pd.DataFrame, config: dict) -> Dict[str, Any]:
     # ========================================
     
     # ========================================
-    # 5-1. PHASE11-D: Fresh Cross Tracking
+    # 5-1. PHASE11-D: Fresh Cross Tracking (Lookback)
     # ========================================
-    # ⭐ Late Entry 방지: 최근 크로스 기준 Fresh Trend 판단
+    # ⭐ Late Entry 방지: 최근 N개 캔들 내 크로스 탐색
     
     # Config 파라미터
     max_cross_age = config.get('strategies', {}).get('scalping', {}).get('max_cross_age_candles', 80)
     use_price_align = config.get('strategies', {}).get('scalping', {}).get('use_price_alignment', True)
     
-    # Cross 추적을 위한 DataFrame 컬럼 생성 (첫 호출 시만)
-    if 'last_cross_dir' not in df.columns:
-        # Golden cross 발생 시 bullish=1, Dead cross 시 bearish=-1, 없으면 0
-        df['cross_event'] = 0
-        df.loc[df['ema_fast'] > df['ema_slow'], 'cross_event'] = 1
-        df.loc[df['ema_fast'] < df['ema_slow'], 'cross_event'] = -1
-        
-        # 이전 값과 다른 경우만 cross 이벤트로 간주
-        df['cross_change'] = df['cross_event'].diff().fillna(0)
-        
-        # 마지막 크로스 방향: forward fill
-        df['last_cross_dir'] = 0
-        df.loc[df['cross_change'] == 2, 'last_cross_dir'] = 1   # -1→1: Golden
-        df.loc[df['cross_change'] == -2, 'last_cross_dir'] = -1  # 1→-1: Death
-        df['last_cross_dir'] = df['last_cross_dir'].replace(0, pd.NA).ffill().fillna(0)
-        
-        # 크로스 이후 경과 캔들 수 계산
-        cross_indices = df[df['cross_change'].abs() == 2].index
-        df['last_cross_age'] = 999  # 기본값: 매우 오래됨
-        for i in range(len(cross_indices)):
-            start_idx = cross_indices[i]
-            end_idx = cross_indices[i+1] if i+1 < len(cross_indices) else len(df)
-            age = range(0, end_idx - start_idx)
-            df.loc[start_idx:end_idx-1, 'last_cross_age'] = age
+    # Lookback window: 최근 N개 캔들 + 여유 (cross 탐지 보장)
+    lookback = min(max_cross_age + 10, len(df))
+    recent_df = df.iloc[-lookback:] if lookback > 0 else df
     
-    # 현재 캔들의 Trend 상태
-    cross_dir = int(last.get('last_cross_dir', 0))
-    cross_age = int(last.get('last_cross_age', 999))
+    # 최근 구간에서 크로스 탐색
+    cross_dir = 0  # 0=unknown, 1=bullish, -1=bearish
+    cross_age = 999  # 기본값: 매우 오래됨
+    
+    if len(recent_df) >= 2:
+        # 현재 방향
+        curr_dir = 1 if ema_fast > ema_slow else (-1 if ema_fast < ema_slow else 0)
+        
+        # 역순으로 탐색하며 마지막 크로스 찾기
+        for i in range(len(recent_df)-1, 0, -1):
+            fast_now = float(recent_df.iloc[i]['ema_fast'])
+            slow_now = float(recent_df.iloc[i]['ema_slow'])
+            fast_prev = float(recent_df.iloc[i-1]['ema_fast'])
+            slow_prev = float(recent_df.iloc[i-1]['ema_slow'])
+            
+            # Golden Cross: fast가 slow를 상향 돌파
+            if fast_now > slow_now and fast_prev <= slow_prev:
+                cross_dir = 1
+                cross_age = len(recent_df) - 1 - i
+                break
+            # Death Cross: fast가 slow를 하향 돌파
+            elif fast_now < slow_now and fast_prev >= slow_prev:
+                cross_dir = -1
+                cross_age = len(recent_df) - 1 - i
+                break
+        
+        # Cross를 찾지 못한 경우, 현재 방향 사용 (그러나 age는 999로 유지)
+        if cross_age == 999:
+            cross_dir = curr_dir
     
     # Fresh Trend 조건
     bullish_trend_fresh = (cross_dir == 1) and (cross_age <= max_cross_age)
