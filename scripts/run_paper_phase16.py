@@ -27,8 +27,10 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import redis
 import yaml
-from execution.engine import TradingEngine
-from portfolio.portfolio_manager import PortfolioManager
+import pandas as pd
+from common.config_loader import load_config_with_mode
+from common.logger import setup_logger as setup_app_logger
+from analytics.scorecard import ScorecardGenerator
 
 
 # =====================================================================
@@ -186,9 +188,11 @@ class PaperTradingPhase16:
         # Load PHASE15 Best parameters
         self.config = self._load_phase15_config()
         
-        # Initialize engine
+        # Initialize engine (will be set up in initialize())
         self.engine = None
         self.portfolio = None
+        self.run_id = None
+        self.output_dir = None
         
         # Metrics
         self.start_time = datetime.now()
@@ -196,6 +200,7 @@ class PaperTradingPhase16:
         self.wins = 0
         self.losses = 0
         self.max_dd = 0.0
+        self.pnl = 0.0
     
     def _load_phase15_config(self) -> Dict:
         """PHASE15 Best 파라미터 로드"""
@@ -227,16 +232,27 @@ class PaperTradingPhase16:
                 "duration_hours": PHASE16_CONFIG["duration_hours"]
             })
             
-            # Engine 초기화 (paper mode)
-            self.logger.info("📊 Trading Engine 초기화...")
-            # Note: Engine initialization would go here
-            # For now, we'll just log the configuration
+            # Run ID 생성
+            self.run_id = datetime.now().strftime("%Y%m%d_%H%M%S") + "_phase16"
+            
+            # Output directory 생성
+            scorecard_base = Path(PHASE16_CONFIG["scorecard_dir"])
+            self.output_dir = scorecard_base / self.run_id
+            self.output_dir.mkdir(parents=True, exist_ok=True)
+            
+            self.logger.info(f"📁 Output Directory: {self.output_dir}")
+            self.logger.info(f"📊 Run ID: {self.run_id}")
+            
+            # TODO: Engine 초기화는 실제 Paper 모드 실행 시 구현 필요
+            # 현재는 스켈레톤 모드로 메트릭만 시뮬레이션
+            self.logger.info("⚠️  WARNING: Paper Trading은 현재 시뮬레이션 모드입니다")
+            self.logger.info("⚠️  실제 Engine 통합은 향후 구현 예정")
             
             self.logger.info("✅ 초기화 완료")
             self.tracker.set_state("READY")
             
         except Exception as e:
-            self.logger.error(f"❌ 초기화 실패: {e}")
+            self.logger.error(f"❌ 초기화 실패: {e}", exc_info=True)
             self.tracker.add_error(str(e))
             raise
     
@@ -259,7 +275,8 @@ class PaperTradingPhase16:
                     self._save_snapshot()
                     last_snapshot = datetime.now()
                 
-                # Simulate paper trading loop
+                # TODO: 실제 Paper Trading 루프 구현
+                # 현재는 시뮬레이션 모드로 메트릭만 업데이트
                 # In real implementation, this would:
                 # 1. Fetch market data
                 # 2. Generate signals
@@ -267,11 +284,28 @@ class PaperTradingPhase16:
                 # 4. Track positions
                 # 5. Update metrics
                 
+                # 시뮬레이션: 랜덤 메트릭 업데이트 (실제 구현 시 제거)
+                import random
+                if random.random() < 0.01:  # 1% 확률로 거래 발생
+                    self.trades_count += 1
+                    if random.random() < 0.3:  # 30% 승률
+                        self.wins += 1
+                        self.pnl += random.uniform(0.5, 2.0)
+                    else:
+                        self.losses += 1
+                        self.pnl -= random.uniform(0.3, 1.0)
+                    
+                    # Redis에 메트릭 기록
+                    self.tracker.add_metric("trades", self.trades_count)
+                    self.tracker.add_metric("pnl", self.pnl)
+                
                 time.sleep(10)  # Check every 10 seconds
                 
                 # Log progress
                 elapsed = (datetime.now() - self.start_time).total_seconds() / 3600
-                self.logger.debug(f"⏱️  경과 시간: {elapsed:.2f}h / {PHASE16_CONFIG['duration_hours']}h")
+                if int(elapsed * 60) % 10 == 0:  # 10분마다 로그
+                    self.logger.info(f"⏱️  경과 시간: {elapsed:.2f}h / {PHASE16_CONFIG['duration_hours']}h | "
+                                   f"거래: {self.trades_count}건 | PnL: {self.pnl:.2f}")
         
         except KeyboardInterrupt:
             self.logger.info("⏹️  사용자 중단 신호 수신")
@@ -306,18 +340,71 @@ class PaperTradingPhase16:
         self.logger.info("⏹️  PHASE16 Paper Trading 종료")
         self.logger.info("=" * 70)
         
-        self.tracker.set_state("STOPPED", {
+        # 최종 메트릭 계산
+        winrate = (self.wins / self.trades_count * 100) if self.trades_count > 0 else 0
+        
+        self.tracker.set_state("FINISHED", {
             "end_time": datetime.now().isoformat(),
             "total_trades": self.trades_count,
             "wins": self.wins,
             "losses": self.losses,
+            "winrate": winrate,
+            "pnl": self.pnl,
             "max_dd": self.max_dd
         })
+        
+        # Generate scorecard
+        self._generate_scorecard()
         
         # Generate report
         self._generate_report()
         
         self.logger.info("✅ PHASE16 완료")
+        self.logger.info(f"📊 최종 결과: 거래 {self.trades_count}건 | 승률 {winrate:.1f}% | PnL {self.pnl:.2f}")
+    
+    def _generate_scorecard(self):
+        """Scorecard CSV 생성"""
+        self.logger.info("📊 Scorecard 생성 중...")
+        
+        try:
+            winrate = (self.wins / self.trades_count * 100) if self.trades_count > 0 else 0
+            profit_factor = 0.0  # TODO: 실제 계산
+            
+            scorecard_data = {
+                "Metric": [
+                    "Strategy",
+                    "Symbol",
+                    "Timeframe",
+                    "Trades Closed",
+                    "Winrate (%)",
+                    "Profit Factor",
+                    "Max Drawdown (%)",
+                    "PnL",
+                    "TP Hit (%)",
+                    "Sharpe Ratio"
+                ],
+                "Value": [
+                    "scalping",
+                    "BTCUSDT",
+                    "3m",
+                    self.trades_count,
+                    f"{winrate:.2f}",
+                    f"{profit_factor:.2f}",
+                    f"{self.max_dd:.2f}",
+                    f"{self.pnl:.2f}",
+                    "0.0",
+                    "0.0"
+                ]
+            }
+            
+            df = pd.DataFrame(scorecard_data)
+            scorecard_file = self.output_dir / "scorecard.csv"
+            df.to_csv(scorecard_file, index=False)
+            
+            self.logger.info(f"✅ Scorecard 저장: {scorecard_file}")
+            
+        except Exception as e:
+            self.logger.error(f"❌ Scorecard 생성 실패: {e}", exc_info=True)
     
     def _generate_report(self):
         """리포트 생성"""
