@@ -138,6 +138,7 @@ class BacktestMetrics:
     mdd_pct: float     # 최대 낙폭 % (양수)
     sharpe: float      # 샤프 비율
     roi_pct: float     # 수익률 %
+    tp_hit_rate: float = 0.0  # TP Hit Rate % (PHASE14)
 
 
 def _daily_returns_from_trades(rows: List[Tuple[datetime, float]], capital: float = 10000.0) -> List[float]:
@@ -263,31 +264,32 @@ def _sample_scalping(trial: "optuna.trial.Trial") -> Dict[str, Any]:
     - 거래량 급증 (volume_mult)
     - 위험 관리 (RR, SL 배수, 최대 보유 시간)
     
-    PHASE12 개선: 3m 타임프레임 최적화
-    - RSI: 과매도/과매수 영역으로 제한 (20~35, 65~80)
-    - volume_mult: 의미 있는 범위 (1.0~1.5)
-    - max_cross_age_candles: Fresh Cross 핵심 (8~18)
-    - rr: RR 1.3 주변 탐색 (1.2~1.5)
-    - atr_mult_sl: 적절한 SL 여유 (0.8~1.4)
+    PHASE14 개선: PHASE13 best trial 기반 정밀 탐색
+    - RSI: PHASE13 best(24/70) 기준 좁힌 범위 (24~32, 68~75)
+    - volume_mult: 너무 낮은 값 제외 (1.05~1.4)
+    - max_cross_age_candles: 중간 범위 집중 (10~17)
+    - rr: TP Hit 개선 위해 하향 (1.1~1.35)
+    - atr_mult_sl: 너무 타이트한 SL 제외 (1.0~1.4)
+    - ema: 범위 좁힘 (fast 8~15, slow 30~50)
     """
-    # RSI 임계값 (PHASE12: 과매도/과매수 영역 집중)
-    rsi_oversold = trial.suggest_int("rsi_oversold", 20, 35)
-    rsi_overbought = trial.suggest_int("rsi_overbought", 65, 80)
+    # RSI 임계값 (PHASE14: PHASE13 best 기반 정밀 탐색)
+    rsi_oversold = trial.suggest_int("rsi_oversold", 24, 32)
+    rsi_overbought = trial.suggest_int("rsi_overbought", 68, 75)
     
-    # EMA 기간 (PHASE12: fast < slow 보장)
-    ema_fast = trial.suggest_int("ema_fast", 5, 15)
-    ema_slow = trial.suggest_int("ema_slow", 20, 60)  # fast보다 항상 큼
+    # EMA 기간 (PHASE14: 범위 좁힘, fast < slow 보장)
+    ema_fast = trial.suggest_int("ema_fast", 8, 15)
+    ema_slow = trial.suggest_int("ema_slow", 30, 50)  # fast보다 항상 큼
     
-    # PHASE12: Fresh Cross Age (3m 기준 핵심 파라미터)
-    max_cross_age_candles = trial.suggest_int("max_cross_age_candles", 8, 18)
+    # PHASE14: Fresh Cross Age (중간 범위 집중)
+    max_cross_age_candles = trial.suggest_int("max_cross_age_candles", 10, 17)
     
-    # 모멘텀 & 거래량 (PHASE12: 실용 범위)
-    momentum_lookback = trial.suggest_int("momentum_lookback", 3, 8)
-    volume_mult = trial.suggest_float("volume_mult", 1.0, 1.5)
+    # 모멘텀 & 거래량 (PHASE14: 범위 정밀화)
+    momentum_lookback = trial.suggest_int("momentum_lookback", 3, 7)
+    volume_mult = trial.suggest_float("volume_mult", 1.05, 1.4)
     
-    # 위험 관리 (PHASE12: RR 1.3 주변 탐색)
-    rr = trial.suggest_float("rr", 1.2, 1.5)
-    atr_mult_sl = trial.suggest_float("atr_mult_sl", 0.8, 1.4)
+    # 위험 관리 (PHASE14: TP Hit 개선 위해 RR 하향)
+    rr = trial.suggest_float("rr", 1.1, 1.35)
+    atr_mult_sl = trial.suggest_float("atr_mult_sl", 1.0, 1.4)
     max_hold_minutes = trial.suggest_int("max_hold_minutes", 15, 45)
     
     # 숏 허용 여부
@@ -790,10 +792,11 @@ class TunerCore:
             mdd_pct = abs(safe_float(metrics_dict.get('Max Drawdown (%)', 0.0), 0.0))
             sharpe = safe_float(metrics_dict.get('Sharpe Ratio', 0.0), 0.0)
             roi_pct = safe_float(metrics_dict.get('ROI (%)', 0.0), 0.0)
+            tp_hit_rate = safe_float(metrics_dict.get('TP Hit (%)', 0.0), 0.0)  # PHASE14
             
             # 파싱 결과 로그
             print(f"📊 [TUNER BT] {phase.upper()} Metrics:")
-            print(f"   PF={pf:.3f}, WR={winrate:.1f}%, Trades={trades}, MDD={mdd_pct:.2f}%, Sharpe={sharpe:.2f}, ROI={roi_pct:.2f}%")
+            print(f"   PF={pf:.3f}, WR={winrate:.1f}%, Trades={trades}, MDD={mdd_pct:.2f}%, Sharpe={sharpe:.2f}, ROI={roi_pct:.2f}%, TP Hit={tp_hit_rate:.1f}%")
             
             # Trades가 0이면 경고
             if trades == 0:
@@ -805,41 +808,43 @@ class TunerCore:
                 trades=trades,
                 mdd_pct=mdd_pct,
                 sharpe=sharpe,
-                roi_pct=roi_pct
+                roi_pct=roi_pct,
+                tp_hit_rate=tp_hit_rate
             )
         except StopIteration:
             print(f"❌ [TUNER BT] scorecard.csv가 비어있음: {scorecard_path}")
-            return BacktestMetrics(pf=0.0, winrate=0.0, trades=0, mdd_pct=100.0, sharpe=-10.0, roi_pct=-100.0)
+            return BacktestMetrics(pf=0.0, winrate=0.0, trades=0, mdd_pct=100.0, sharpe=-10.0, roi_pct=-100.0, tp_hit_rate=0.0)
         except Exception as e:
             print(f"❌ [TUNER BT] scorecard.csv 파싱 실패: {e}")
             print(f"   Path: {scorecard_path}")
             import traceback
             traceback.print_exc()
-            return BacktestMetrics(pf=0.0, winrate=0.0, trades=0, mdd_pct=100.0, sharpe=-10.0, roi_pct=-100.0)
+            return BacktestMetrics(pf=0.0, winrate=0.0, trades=0, mdd_pct=100.0, sharpe=-10.0, roi_pct=-100.0, tp_hit_rate=0.0)
     
     def _score_backtest(self, m: BacktestMetrics, phase: str = "unknown") -> float:
         """백테스트 메트릭을 composite score로 변환
         
-        PHASE13 개선: 다중 제약 조건 강화
+        PHASE14 개선: TP Hit Incentive 추가
         - 거래 0건: -100.0 (최악의 Trial)
         - 거래 < MIN_TRADES: 강한 패널티 (한 건당 -0.5)
         - 거래 > MAX_TRADES: 과다 거래 패널티 (한 건당 -0.1)
-        - Max DD < -15%: DD 패널티 (초과 1%당 -2.0)
-        - Winrate < 15%: WR 패널티 (부족 1%당 -0.3)
-        - 정상: PF + 0.1*Winrate - penalties
+        - Max DD < -15%: DD 패널티 (초과 1%당 -1.5, PHASE14 완화)
+        - Winrate < 20%: WR 패널티 (부족 1%당 -0.3, PHASE14 기준 상향)
+        - TP Hit > 0%: TP Bonus (1%당 +0.5, PHASE14 신규)
+        - 정상: PF + 0.1*Winrate + tp_bonus - penalties
         
         거래수 기준:
-        - Full (90d): 10~100건 (적정 범위)
+        - Full (30d): 15~80건 (PHASE14 30일 기준)
         - Train (7d): 10건 이상
         - Val (3d): 5건 이상
         """
-        # 거래수 기준 (phase별 차등)
+        # 거래수 기준 (phase별 차등, PHASE14: 30일 기준 조정)
         if phase.lower() == "full":
-            MIN_TRADES = 10
-            MAX_TRADES = 100
+            MIN_TRADES = 15  # PHASE14: 30일 기준 최소값 상향
+            MAX_TRADES = 80  # PHASE14: 30일 기준 최대값 하향
         elif phase.lower() == "train":
             MIN_TRADES = 10
-            MAX_TRADES = 999  # 90일 기준 무제한
+            MAX_TRADES = 999
         else:  # val
             MIN_TRADES = 5
             MAX_TRADES = 999
@@ -860,28 +865,33 @@ class TunerCore:
         # 3. 정상: 기본 점수 계산
         base_score = m.pf + 0.1 * m.winrate
         
-        # 4. 거래 과다 패널티 (PHASE13)
+        # 4. 거래 과다 패널티
         trades_penalty = 0.0
         if m.trades > MAX_TRADES:
             excess = m.trades - MAX_TRADES
             trades_penalty = excess * 0.1
         
-        # 5. DD 패널티 (PHASE13: -15% 초과 시 강화)
+        # 5. DD 패널티 (PHASE14: 패널티 완화 2.0 → 1.5)
         dd_penalty = 0.0
-        DD_CAP = -15.0  # PHASE13: 명시적 -15% 제약
-        if m.mdd_pct < DD_CAP:  # 더 큰 손실 (음수 비교)
+        DD_CAP = -15.0
+        if m.mdd_pct < DD_CAP:
             excess_dd = abs(m.mdd_pct) - abs(DD_CAP)
-            dd_penalty = excess_dd * 2.0  # 1%당 -2.0점
+            dd_penalty = excess_dd * 1.5  # PHASE14: 1%당 -1.5점 (완화)
         
-        # 6. Winrate 패널티 (PHASE13: 15% 미만 시)
+        # 6. Winrate 패널티 (PHASE14: 기준 상향 15% → 20%)
         wr_penalty = 0.0
-        WR_MIN = 15.0
+        WR_MIN = 20.0  # PHASE14: 기준 상향
         if m.winrate < WR_MIN:
             shortage_wr = WR_MIN - m.winrate
-            wr_penalty = shortage_wr * 0.3  # 1%당 -0.3점
+            wr_penalty = shortage_wr * 0.3
         
-        # 7. 최종 점수
-        final_score = base_score - trades_penalty - dd_penalty - wr_penalty
+        # 7. TP Hit Incentive (PHASE14 신규)
+        tp_bonus = 0.0
+        if m.tp_hit_rate > 0:
+            tp_bonus = m.tp_hit_rate * 0.5  # 1%당 +0.5점
+        
+        # 8. 최종 점수
+        final_score = base_score - trades_penalty - dd_penalty - wr_penalty + tp_bonus
         
         # 점수 계산 과정 로그
         print(f"💯 [TUNER BT] {phase.upper()} Score 계산:")
@@ -889,7 +899,8 @@ class TunerCore:
         print(f"   trades: {m.trades}건 (범위: {MIN_TRADES}~{MAX_TRADES}) → penalty: {trades_penalty:.3f}")
         print(f"   MDD: {m.mdd_pct:.2f}% (cap: {DD_CAP}%) → penalty: {dd_penalty:.3f}")
         print(f"   WR: {m.winrate:.1f}% (min: {WR_MIN}%) → penalty: {wr_penalty:.3f}")
-        print(f"   final_score = {base_score:.3f} - {trades_penalty:.3f} - {dd_penalty:.3f} - {wr_penalty:.3f} = {final_score:.3f}")
+        print(f"   TP Hit: {m.tp_hit_rate:.1f}% → bonus: {tp_bonus:.3f}")
+        print(f"   final_score = {base_score:.3f} - {trades_penalty:.3f} - {dd_penalty:.3f} - {wr_penalty:.3f} + {tp_bonus:.3f} = {final_score:.3f}")
         
         return final_score
 
