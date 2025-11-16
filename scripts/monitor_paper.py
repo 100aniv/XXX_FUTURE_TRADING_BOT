@@ -32,9 +32,19 @@ def monitor_loop(interval=10):
         cfg = load_config_with_mode(mode="paper")
         redis_config = cfg.get("monitoring", {}).get("redis", {})
         
+        # 환경변수 처리 (${REDIS_HOST} → localhost)
+        redis_host = redis_config.get("host", "localhost")
+        redis_port = redis_config.get("port", 6379)
+        
+        # 환경변수 형식이면 기본값 사용
+        if isinstance(redis_host, str) and redis_host.startswith("${"):
+            redis_host = "localhost"
+        if isinstance(redis_port, str) and redis_port.startswith("${"):
+            redis_port = 6379
+        
         client = redis.Redis(
-            host=redis_config.get("host", "localhost"),
-            port=redis_config.get("port", 6379),
+            host=redis_host,
+            port=int(redis_port),
             db=redis_config.get("db", 0),
             decode_responses=True
         )
