@@ -263,28 +263,32 @@ def _sample_scalping(trial: "optuna.trial.Trial") -> Dict[str, Any]:
     - 거래량 급증 (volume_mult)
     - 위험 관리 (RR, SL 배수, 최대 보유 시간)
     
-    PHASE10.4 개선: 거래 빈도 증가를 위한 범위 완화
-    - RSI 범위 확대 (25~45, 55~75)
-    - volume_mult 하한 완화 (0.8~2.0)
-    - momentum_lookback 최소값 완화 (1~8)
-    - 기타 파라미터 최적화
+    PHASE12 개선: 3m 타임프레임 최적화
+    - RSI: 과매도/과매수 영역으로 제한 (20~35, 65~80)
+    - volume_mult: 의미 있는 범위 (1.0~1.5)
+    - max_cross_age_candles: Fresh Cross 핵심 (8~18)
+    - rr: RR 1.3 주변 탐색 (1.2~1.5)
+    - atr_mult_sl: 적절한 SL 여유 (0.8~1.4)
     """
-    # RSI 임계값 (완화: 진입 기회 증가)
-    rsi_oversold = trial.suggest_int("rsi_oversold", 25, 45)
-    rsi_overbought = trial.suggest_int("rsi_overbought", 55, 75)
+    # RSI 임계값 (PHASE12: 과매도/과매수 영역 집중)
+    rsi_oversold = trial.suggest_int("rsi_oversold", 20, 35)
+    rsi_overbought = trial.suggest_int("rsi_overbought", 65, 80)
     
-    # EMA 기간 (fast/slow 범위 확대)
-    ema_fast = trial.suggest_int("ema_fast", 5, 20)
-    ema_slow = trial.suggest_int("ema_slow", 15, 60)
+    # EMA 기간 (PHASE12: fast < slow 보장)
+    ema_fast = trial.suggest_int("ema_fast", 5, 15)
+    ema_slow = trial.suggest_int("ema_slow", 20, 60)  # fast보다 항상 큼
     
-    # 모멘텀 & 거래량 (완화: 최소값 낮춤)
-    momentum_lookback = trial.suggest_int("momentum_lookback", 1, 8)
-    volume_mult = trial.suggest_float("volume_mult", 0.8, 2.0)
+    # PHASE12: Fresh Cross Age (3m 기준 핵심 파라미터)
+    max_cross_age_candles = trial.suggest_int("max_cross_age_candles", 8, 18)
     
-    # 위험 관리 (보수적 범위)
-    rr = trial.suggest_float("rr", 1.1, 1.6)
-    atr_mult_sl = trial.suggest_float("atr_mult_sl", 0.5, 1.2)
-    max_hold_minutes = trial.suggest_int("max_hold_minutes", 10, 45)
+    # 모멘텀 & 거래량 (PHASE12: 실용 범위)
+    momentum_lookback = trial.suggest_int("momentum_lookback", 3, 8)
+    volume_mult = trial.suggest_float("volume_mult", 1.0, 1.5)
+    
+    # 위험 관리 (PHASE12: RR 1.3 주변 탐색)
+    rr = trial.suggest_float("rr", 1.2, 1.5)
+    atr_mult_sl = trial.suggest_float("atr_mult_sl", 0.8, 1.4)
+    max_hold_minutes = trial.suggest_int("max_hold_minutes", 15, 45)
     
     # 숏 허용 여부
     allow_short = trial.suggest_categorical("allow_short", [True, False])
@@ -296,6 +300,7 @@ def _sample_scalping(trial: "optuna.trial.Trial") -> Dict[str, Any]:
                 "rsi_overbought": int(rsi_overbought),
                 "ema_fast": int(ema_fast),
                 "ema_slow": int(ema_slow),
+                "max_cross_age_candles": int(max_cross_age_candles),
                 "momentum_lookback": int(momentum_lookback),
                 "volume_mult": float(volume_mult),
                 "rr": float(rr),
@@ -673,7 +678,7 @@ class TunerCore:
         # run_backtest.py 실행 명령 구성
         cmd = [
             "python", "scripts/run_backtest.py",
-            "--mode", "backtest_clean",
+            "--mode", "backtest_raw",
             "--strategy", self.strategy_id,
             "--symbol", self.symbol,
             "--timeframe", self.timeframe,
@@ -714,7 +719,7 @@ class TunerCore:
                 return BacktestMetrics(pf=0.0, winrate=0.0, trades=0, mdd_pct=100.0, sharpe=-10.0, roi_pct=-100.0)
             
             # artifacts 경로에서 최신 run_id 찾기
-            artifacts_dir = Path("artifacts/backtest_clean")
+            artifacts_dir = Path("artifacts/backtest_raw")
             if not artifacts_dir.exists():
                 print(f"❌ [TUNER BT] artifacts 디렉토리 없음: {artifacts_dir}")
                 return BacktestMetrics(pf=0.0, winrate=0.0, trades=0, mdd_pct=100.0, sharpe=-10.0, roi_pct=-100.0)
@@ -750,52 +755,58 @@ class TunerCore:
             return BacktestMetrics(pf=0.0, winrate=0.0, trades=0, mdd_pct=100.0, sharpe=-10.0, roi_pct=-100.0)
     
     def _parse_scorecard(self, scorecard_path: Path, phase: str = "unknown") -> BacktestMetrics:
-        """scorecard.csv 파싱 (에러 처리 강화)"""
+        """scorecard.csv 파싱 (Metric-Value 페어 형식)"""
         try:
             if not scorecard_path.exists():
                 raise FileNotFoundError(f"scorecard.csv가 존재하지 않음: {scorecard_path}")
             
+            # Metric-Value 페어를 딕셔너리로 변환
+            metrics_dict = {}
             with open(scorecard_path, 'r', encoding='utf-8') as f:
                 reader = csv.DictReader(f)
-                data = next(reader)
-                
-                # 각 필드 안전하게 파싱 (NaN, 빈 문자열 처리)
-                def safe_float(val, default=0.0):
-                    try:
-                        v = float(val) if val else default
-                        return default if math.isnan(v) or math.isinf(v) else v
-                    except (ValueError, TypeError):
-                        return default
-                
-                def safe_int(val, default=0):
-                    try:
-                        return int(float(val)) if val else default
-                    except (ValueError, TypeError):
-                        return default
-                
-                pf = safe_float(data.get('Profit Factor', 0.0), 0.0)
-                winrate = safe_float(data.get('Winrate (%)', 0.0), 0.0)
-                trades = safe_int(data.get('Trades', 0), 0)
-                mdd_pct = abs(safe_float(data.get('Max Drawdown (%)', 0.0), 0.0))
-                sharpe = safe_float(data.get('Sharpe Ratio', 0.0), 0.0)
-                roi_pct = safe_float(data.get('ROI (%)', 0.0), 0.0)
-                
-                # 파싱 결과 로그
-                print(f"📊 [TUNER BT] {phase.upper()} Metrics:")
-                print(f"   PF={pf:.3f}, WR={winrate:.1f}%, Trades={trades}, MDD={mdd_pct:.2f}%, Sharpe={sharpe:.2f}, ROI={roi_pct:.2f}%")
-                
-                # Trades가 0이면 경고
-                if trades == 0:
-                    print(f"⚠️  [TUNER BT] {phase} 기간 거래 없음 (전략 조건 너무 엄격)")
-                
-                return BacktestMetrics(
-                    pf=pf,
-                    winrate=winrate,
-                    trades=trades,
-                    mdd_pct=mdd_pct,
-                    sharpe=sharpe,
-                    roi_pct=roi_pct
-                )
+                for row in reader:
+                    metric = row.get('Metric', '').strip()
+                    value = row.get('Value', '').strip()
+                    if metric:
+                        metrics_dict[metric] = value
+            
+            # 각 필드 안전하게 파싱 (NaN, 빈 문자열 처리)
+            def safe_float(val, default=0.0):
+                try:
+                    v = float(val) if val else default
+                    return default if math.isnan(v) or math.isinf(v) else v
+                except (ValueError, TypeError):
+                    return default
+            
+            def safe_int(val, default=0):
+                try:
+                    return int(float(val)) if val else default
+                except (ValueError, TypeError):
+                    return default
+            
+            pf = safe_float(metrics_dict.get('Profit Factor', 0.0), 0.0)
+            winrate = safe_float(metrics_dict.get('Winrate (%)', 0.0), 0.0)
+            trades = safe_int(metrics_dict.get('Trades Closed', 0), 0)
+            mdd_pct = abs(safe_float(metrics_dict.get('Max Drawdown (%)', 0.0), 0.0))
+            sharpe = safe_float(metrics_dict.get('Sharpe Ratio', 0.0), 0.0)
+            roi_pct = safe_float(metrics_dict.get('ROI (%)', 0.0), 0.0)
+            
+            # 파싱 결과 로그
+            print(f"📊 [TUNER BT] {phase.upper()} Metrics:")
+            print(f"   PF={pf:.3f}, WR={winrate:.1f}%, Trades={trades}, MDD={mdd_pct:.2f}%, Sharpe={sharpe:.2f}, ROI={roi_pct:.2f}%")
+            
+            # Trades가 0이면 경고
+            if trades == 0:
+                print(f"⚠️  [TUNER BT] {phase} 기간 거래 없음 (전략 조건 너무 엄격)")
+            
+            return BacktestMetrics(
+                pf=pf,
+                winrate=winrate,
+                trades=trades,
+                mdd_pct=mdd_pct,
+                sharpe=sharpe,
+                roi_pct=roi_pct
+            )
         except StopIteration:
             print(f"❌ [TUNER BT] scorecard.csv가 비어있음: {scorecard_path}")
             return BacktestMetrics(pf=0.0, winrate=0.0, trades=0, mdd_pct=100.0, sharpe=-10.0, roi_pct=-100.0)

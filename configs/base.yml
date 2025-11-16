@@ -508,7 +508,7 @@ strategies:
   scalping:
     # ⭐ PHASE12: 3m 타임프레임 전환
     atr_mult_sl: 1.2  # SL 여유 유지
-    rr: 1.5           # ⭐ PHASE12: 1.2→1.5 (3m 변동성 대응)
+    rr: 1.3           # ⭐ AUTO-PATCH Final: 1.3 (Iter1 최적)
     
     cooldown_candles: 1  # 쿨다운 최소화
     min_bars_for_signal: 60
@@ -528,7 +528,7 @@ strategies:
     
     # ⭐ PHASE12: Fresh Cross + Trend-Aware Entry (3m 기준)
     # 목표: 7일 10~40 trades, Winrate 20%+, PF ≥0.7, DD -10% 이내
-    max_cross_age_candles: 12    # ⭐ PHASE12: 25→12 (3m × 12 = 36분)
+    max_cross_age_candles: 12    # ⭐ BEST: 12 (3m × 12 = 36분, Iter1 최적)
     use_price_alignment: true    # Price vs EMA_fast 정렬 체크
     
     rsi_oversold: 30      # 과매도 임계값
