@@ -1,28 +1,29 @@
 # Active Scalping Configuration
-# Last Updated: PHASE14 (2024-11-16 18:11)
-# Source: phase14_scalping_30d Best Trial #18
+# Last Updated: PHASE15 (2024-11-16 19:40)
+# Source: phase15_scalping_is_10t Best Trial #8
+# Status: OOS Validated ✅
 
 scalping:
   timeframe: 3m
   
-  # Risk Management
-  rr: 1.20
-  atr_mult_sl: 1.15
-  max_hold_minutes: 28
+  # Risk Management (PHASE15 RR retune)
+  rr: 1.254
+  atr_mult_sl: 1.272
+  max_hold_minutes: 23
   
   # Signal Parameters
-  rsi_oversold: 26
+  rsi_oversold: 27
   rsi_overbought: 71
   
   # EMA Parameters
-  ema_fast: 10
-  ema_slow: 35
+  ema_fast: 8
+  ema_slow: 32
   
   # Pattern Detection
-  max_cross_age_candles: 15
-  momentum_lookback: 5
-  volume_mult: 1.25
+  max_cross_age_candles: 10
+  momentum_lookback: 6
+  volume_mult: 1.213
   
   # Filters
   filters:
-    allow_short: true
+    allow_short: false
