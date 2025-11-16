@@ -254,6 +254,61 @@ def fetch_metrics_rolling(strategy_id: str, window_days: int = 7, capital: float
 ParamSampler = Callable[["optuna.trial.Trial"], Dict[str, Any]]
 
 
+def _sample_scalping_phase15(trial: "optuna.trial.Trial") -> Dict[str, Any]:
+    """PHASE15: RR 재탐색 + Risk-Reward 구조 최적화
+    
+    PHASE14 Best를 중심으로 국소적 탐색:
+    - rr: 1.0~1.5 (TP Hit 개선 목표)
+    - atr_mult_sl: 1.0~1.3 (SL 구조 재점검)
+    - max_cross_age_candles: 10~20 (Fresh Trend 수명 재조정)
+    - 기타: PHASE14 Best 주변 유지
+    """
+    # RSI 임계값 (PHASE14 Best 주변)
+    rsi_oversold = trial.suggest_int("rsi_oversold", 24, 30)
+    rsi_overbought = trial.suggest_int("rsi_overbought", 69, 75)
+    
+    # EMA 기간 (PHASE14 Best 주변)
+    ema_fast = trial.suggest_int("ema_fast", 8, 12)
+    ema_slow = trial.suggest_int("ema_slow", 32, 40)
+    
+    # PHASE15: Fresh Cross Age 재탐색 (10~20)
+    max_cross_age_candles = trial.suggest_int("max_cross_age_candles", 10, 20)
+    
+    # 모멘텀 & 거래량 (PHASE14 Best 주변)
+    momentum_lookback = trial.suggest_int("momentum_lookback", 4, 7)
+    volume_mult = trial.suggest_float("volume_mult", 1.15, 1.35)
+    
+    # PHASE15: RR 재탐색 (1.0~1.5, TP Hit 개선 목표)
+    rr = trial.suggest_float("rr", 1.0, 1.5)
+    
+    # PHASE15: SL 구조 재점검 (1.0~1.3)
+    atr_mult_sl = trial.suggest_float("atr_mult_sl", 1.0, 1.3)
+    
+    # max_hold_minutes (PHASE14 Best 주변)
+    max_hold_minutes = trial.suggest_int("max_hold_minutes", 20, 35)
+    
+    # 숏 허용 여부 (유지)
+    allow_short = trial.suggest_categorical("allow_short", [True, False])
+    
+    return {
+        "strategies": {
+            "scalping": {
+                "rsi_oversold": int(rsi_oversold),
+                "rsi_overbought": int(rsi_overbought),
+                "ema_fast": int(ema_fast),
+                "ema_slow": int(ema_slow),
+                "max_cross_age_candles": int(max_cross_age_candles),
+                "momentum_lookback": int(momentum_lookback),
+                "volume_mult": float(volume_mult),
+                "rr": float(rr),
+                "atr_mult_sl": float(atr_mult_sl),
+                "max_hold_minutes": int(max_hold_minutes),
+                "filters": {"allow_short": bool(allow_short)},
+            }
+        }
+    }
+
+
 def _sample_scalping(trial: "optuna.trial.Trial") -> Dict[str, Any]:
     """PHASE10: 1분봉 고빈도 스캘핑 V1 파라미터 샘플링
     
@@ -445,6 +500,8 @@ class TunerCore:
         data_path: Optional[str] = None,
         train_val_split: bool = True,  # train/validation 분할 여부
         val_penalty_weight: float = 0.3,  # validation penalty 가중치
+        # PHASE15 모드
+        phase: str = "14",  # 14|15
     ) -> None:
         if strategy_id not in PARAM_SAMPLERS:
             raise ValueError(f"Unknown strategy: {strategy_id}")
@@ -458,6 +515,7 @@ class TunerCore:
         self.mdd_cap = float(mdd_cap)
         self.publish_mode = publish_mode
         self.publish_dir = publish_dir
+        self.phase = phase  # PHASE15 모드
         
         # 백테스트 모드 파라미터
         if mode == "backtest":
@@ -567,8 +625,11 @@ class TunerCore:
         5. scorecard.csv 파싱
         6. composite score 계산
         """
-        # 1. 파라미터 샘플링
-        sampler = PARAM_SAMPLERS[self.strategy_id]
+        # 1. 파라미터 샘플링 (PHASE15 모드 지원)
+        if self.phase == "15" and self.strategy_id == "scalping":
+            sampler = _sample_scalping_phase15
+        else:
+            sampler = PARAM_SAMPLERS[self.strategy_id]
         overlay = sampler(trial)
         
         # 2. 임시 오버레이 파일 생성

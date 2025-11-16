@@ -54,6 +54,10 @@ def parse_args():
                    help="Optuna Storage (기본: Postgres trading_db, Env: TUNING_DB_URL 또는 DATABASE_URL)")
     p.add_argument("--trials", type=int, default=1,
                    help="실행할 Trial 횟수 (기본: 1)")
+    p.add_argument("--phase", 
+                   choices=["14", "15"],
+                   default="14",
+                   help="튜닝 페이즈 (14: PHASE14 기본, 15: PHASE15 RR 재탐색)")
     
     # 메트릭 윈도우 설정 (페이퍼 모드 전용)
     p.add_argument("--window-days", type=int, 
@@ -196,6 +200,8 @@ def main():
         data_path=args.data_path,
         train_val_split=args.train_val_split,
         val_penalty_weight=args.val_penalty_weight,
+        # PHASE15 모드
+        phase=args.phase,
     )
 
     # 베이지안 최적화 실행
