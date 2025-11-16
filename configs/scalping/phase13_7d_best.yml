@@ -1,0 +1,77 @@
+# PHASE13 Best Parameters (7-day tuning)
+# ========================================
+# Study: phase13_3m_7d_test
+# Best Trial: #7 (Score: 3.553)
+# Period: 2024-11-01 ~ 2024-11-07 (7 days)
+# Performance: PF=0.220, WR=33.3%, Trades=21, MDD=4.25%
+
+scalping:
+  timeframe: 3m
+  
+  # Core Risk Parameters (Optimized)
+  rr: 1.414                          # Trial #7: 1.4139734361668985
+  atr_mult_sl: 1.256                 # Trial #7: 1.2564710291701384
+  max_cross_age_candles: 17          # Fresh Cross 시간 제약 완화
+  
+  # Signal Parameters (Optimized)
+  rsi_oversold: 24                   # 과매도 기준 (더 극단)
+  rsi_overbought: 70                 # 과매수 기준
+  volume_mult: 1.060                 # Trial #7: 1.059797122969151
+  
+  # EMA Parameters
+  ema_fast: 13
+  ema_slow: 46
+  
+  # Other Parameters
+  momentum_lookback: 5
+  max_hold_minutes: 32
+  entry_cooldown_seconds: 5
+  
+  # Pattern Toggles
+  enable_pattern_a: true             # Fresh Trend + RSI
+  enable_pattern_b: true             # Fresh Trend + Volume
+  enable_pattern_c: false
+  enable_pattern_d: false
+  enable_pattern_e: false
+  enable_mean_reversion: false       # MR 비활성
+  
+  # Filters
+  filters:
+    allow_short: true                # Trial #7: Short 허용
+  
+  # BB Parameters (for MR, if enabled)
+  bb_window: 20
+  bb_std: 2.0
+
+# ========================================
+# Performance Summary (7-day)
+# ========================================
+# - Trades: 21 (적정 범위)
+# - Winrate: 33.3% (Phase12 29.41% 대비 향상)
+# - Profit Factor: 0.220 (Phase12 0.2와 유사)
+# - Max DD: -4.25% (우수)
+# - TP Hit Rate: 0% (여전히 미해결)
+
+# ========================================
+# Key Insights
+# ========================================
+# 1. **max_cross_age 확대 (12 → 17)**: 진입 기회 증가에 기여
+# 2. **RSI oversold 강화 (30 → 24)**: 더 극단적인 조건, 정확도 증가
+# 3. **RR 유지 (1.3 → 1.4)**: TP 도달은 여전히 어려움
+# 4. **Short 허용 효과**: 양방향 거래로 기회 증가
+
+# ========================================
+# Next Steps (Phase14)
+# ========================================
+# - 30일 또는 90일 전체 기간 튜닝 필요
+# - TP Hit Rate 개선을 위한 RR 추가 하향 시도 (1.2 이하)
+# - Dynamic TP/SL 로직 검토
+
+# ========================================
+# IMPORTANT
+# ========================================
+# 이 파일은 베이스라인이 아닌 "후보(candidate)" 설정입니다.
+# Production 적용 전 반드시:
+# 1. 30일/90일 백테스트 검증
+# 2. Paper trading 테스트
+# 3. Out-of-Sample 기간 성능 확인

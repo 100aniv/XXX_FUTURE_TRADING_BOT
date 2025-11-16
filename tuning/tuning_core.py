@@ -820,49 +820,76 @@ class TunerCore:
     def _score_backtest(self, m: BacktestMetrics, phase: str = "unknown") -> float:
         """백테스트 메트릭을 composite score로 변환
         
-        PHASE10.4 개선: Trades 패널티 강화
+        PHASE13 개선: 다중 제약 조건 강화
         - 거래 0건: -100.0 (최악의 Trial)
         - 거래 < MIN_TRADES: 강한 패널티 (한 건당 -0.5)
-        - 정상: PF + 0.1*Winrate - DD_penalty
+        - 거래 > MAX_TRADES: 과다 거래 패널티 (한 건당 -0.1)
+        - Max DD < -15%: DD 패널티 (초과 1%당 -2.0)
+        - Winrate < 15%: WR 패널티 (부족 1%당 -0.3)
+        - 정상: PF + 0.1*Winrate - penalties
         
-        최소 거래수 기준:
-        - Train: 10건 (7일 기준 ~1.4건/일)
-        - Val: 5건 (3일 기준 ~1.7건/일)
+        거래수 기준:
+        - Full (90d): 10~100건 (적정 범위)
+        - Train (7d): 10건 이상
+        - Val (3d): 5건 이상
         """
-        # 최소 거래수 기준 (phase별 차등)
-        MIN_TRADES_TRAIN = 10
-        MIN_TRADES_VAL = 5
-        min_trades = MIN_TRADES_TRAIN if phase.lower() == "train" else MIN_TRADES_VAL
+        # 거래수 기준 (phase별 차등)
+        if phase.lower() == "full":
+            MIN_TRADES = 10
+            MAX_TRADES = 100
+        elif phase.lower() == "train":
+            MIN_TRADES = 10
+            MAX_TRADES = 999  # 90일 기준 무제한
+        else:  # val
+            MIN_TRADES = 5
+            MAX_TRADES = 999
         
-        # 거래 0건: 즉시 실격
+        # 1. 거래 0건: 즉시 실격
         if m.trades == 0:
             print(f"   ❌ {phase.upper()} score=-100.0 (거래 없음 - Trial 실격)")
             return -100.0
         
-        # 거래 수 부족: 강한 패널티
-        if m.trades < min_trades:
-            shortage = min_trades - m.trades
-            trades_penalty = shortage * 0.5  # 한 건당 0.5점 감점
+        # 2. 거래 수 부족: 강한 패널티
+        if m.trades < MIN_TRADES:
+            shortage = MIN_TRADES - m.trades
+            trades_penalty = shortage * 0.5
             penalized_score = -trades_penalty
-            print(f"   ⚠️  {phase.upper()} score={penalized_score:.3f} (거래 부족: {m.trades}/{min_trades}건)")
+            print(f"   ⚠️  {phase.upper()} score={penalized_score:.3f} (거래 부족: {m.trades}/{MIN_TRADES}건)")
             return penalized_score
         
-        # 정상: 기본 점수 계산
+        # 3. 정상: 기본 점수 계산
         base_score = m.pf + 0.1 * m.winrate
         
-        # DD penalty
-        dd_penalty = 0.0
-        if m.mdd_pct > self.mdd_cap:
-            dd_penalty = (m.mdd_pct - self.mdd_cap) * 0.05
+        # 4. 거래 과다 패널티 (PHASE13)
+        trades_penalty = 0.0
+        if m.trades > MAX_TRADES:
+            excess = m.trades - MAX_TRADES
+            trades_penalty = excess * 0.1
         
-        final_score = base_score - dd_penalty
+        # 5. DD 패널티 (PHASE13: -15% 초과 시 강화)
+        dd_penalty = 0.0
+        DD_CAP = -15.0  # PHASE13: 명시적 -15% 제약
+        if m.mdd_pct < DD_CAP:  # 더 큰 손실 (음수 비교)
+            excess_dd = abs(m.mdd_pct) - abs(DD_CAP)
+            dd_penalty = excess_dd * 2.0  # 1%당 -2.0점
+        
+        # 6. Winrate 패널티 (PHASE13: 15% 미만 시)
+        wr_penalty = 0.0
+        WR_MIN = 15.0
+        if m.winrate < WR_MIN:
+            shortage_wr = WR_MIN - m.winrate
+            wr_penalty = shortage_wr * 0.3  # 1%당 -0.3점
+        
+        # 7. 최종 점수
+        final_score = base_score - trades_penalty - dd_penalty - wr_penalty
         
         # 점수 계산 과정 로그
         print(f"💯 [TUNER BT] {phase.upper()} Score 계산:")
-        print(f"   base_score = PF({m.pf:.3f}) + 0.1*WR({m.winrate:.1f}) = {base_score:.3f}")
-        print(f"   dd_penalty = max(0, (MDD {m.mdd_pct:.2f}% - cap {self.mdd_cap:.1f}%) * 0.05) = {dd_penalty:.3f}")
-        print(f"   trades: {m.trades}건 (✅ 기준 충족: >={min_trades})")
-        print(f"   final_score = {base_score:.3f} - {dd_penalty:.3f} = {final_score:.3f}")
+        print(f"   base_score = PF({m.pf:.3f}) + 0.1*WR({m.winrate:.1f}%) = {base_score:.3f}")
+        print(f"   trades: {m.trades}건 (범위: {MIN_TRADES}~{MAX_TRADES}) → penalty: {trades_penalty:.3f}")
+        print(f"   MDD: {m.mdd_pct:.2f}% (cap: {DD_CAP}%) → penalty: {dd_penalty:.3f}")
+        print(f"   WR: {m.winrate:.1f}% (min: {WR_MIN}%) → penalty: {wr_penalty:.3f}")
+        print(f"   final_score = {base_score:.3f} - {trades_penalty:.3f} - {dd_penalty:.3f} - {wr_penalty:.3f} = {final_score:.3f}")
         
         return final_score
 
