@@ -29,7 +29,7 @@ from monitoring import init_monitoring
 from indicators import add_indicators
 from common.database import get_db_connection  # ⭐ PHASE16+: Paper 모드에서 DB 저장 필요
 from execution.position_sizer import PositionSizer
-from execution.risk_manager import RiskManager
+from execution.risk_manager import RiskManager, ExposureDecision  # ⭐ PHASE17
 from signals.signal_generator import SignalGenerator
 from execution.portfolio_manager import PortfolioManager
 from execution.position_tracker import PositionTracker
@@ -1151,7 +1151,8 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict):
             logger.warning(f"⛔ [{candle_symbol}] Risk 거부: {decision.get('side')}")
             continue  # ⭐ PHASE9-1 FIX: 진입 거부 시 신호 스킵
 
-        # 포지션 사이즈 계산
+        # ⭐ PHASE17: 포지션 사이즈 계산 + Multi-position Scaling
+        # 1. 기본 포지션 크기 계산
         qty, meta = sizer.calculate(
             {
                 "entry_price": decision.get("entry"),
@@ -1164,8 +1165,24 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict):
             logger.warning(f"❌ [ENTRY BLOCK] symbol={candle_symbol} side={decision.get('side')} reason=position_size_zero qty={qty}")
             continue
 
+        # 2. Multi-position Scaling 적용 (PHASE17)
+        num_open_positions = len(active_positions)
+        max_positions = config.get('risk', {}).get('max_positions', 20)
+        base_risk_usdt = meta.get('risk_usdt', 0)
+        
+        if base_risk_usdt > 0:
+            scaled_risk_usdt = sizer.apply_multi_position_scaling(
+                base_risk=base_risk_usdt,
+                num_open_positions=num_open_positions,
+                max_positions=max_positions
+            )
+            # 리스크 조정 비율을 수량에 반영
+            risk_ratio = scaled_risk_usdt / base_risk_usdt
+            qty = qty * risk_ratio
+            logger.debug(f"📊 Multi-position Scaling: {num_open_positions}개 열림, qty {meta.get('qty', 0):.4f} → {qty:.4f}")
+        
         # ⭐ position_sizer가 계산한 position_value 사용 (재계산 금지!)
-        position_value = meta.get("position_value", qty * decision.get("entry"))
+        position_value = qty * decision.get("entry")
 
         # ⭐ PHASE11-B: 엔트리 체크 시작 로그
         strategy_id = decision.get("strategy_id", "ensemble")
@@ -1242,7 +1259,57 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict):
             except Exception as e:
                 logger.warning(f"⚠️  Redis 멱등성 체크 실패 (처리 계속): {e}")
 
-        # Risk Manager 체크 (⭐ position_value 전달)
+        # ⭐ PHASE17: Per-symbol Exposure Guard 3단계 의사결정 (먼저 체크)
+        # 현재 심볼 노출도 계산
+        current_symbol_exposure = sum(
+            pos.get('position_value', pos['qty'] * pos['entry'])
+            for pos in active_positions.values()
+            if pos['symbol'] == candle_symbol
+        )
+        
+        # Exposure Guard 체크
+        exposure_decision = risk.check_symbol_exposure_with_adjustment(
+            symbol=candle_symbol,
+            requested_notional=position_value,
+            current_exposure=current_symbol_exposure,
+            min_position_notional=config.get('position_sizing', {}).get('min_position_notional', 100)
+        )
+        
+        # BLOCK 처리
+        if exposure_decision.decision == "BLOCK":
+            if strategy_cooldown > 0:
+                if redis_client:
+                    try:
+                        redis_cooldown_key = f"cooldown:{cooldown_key}"
+                        redis_client.setex(redis_cooldown_key, strategy_cooldown, "1")
+                    except Exception as e:
+                        logger.warning(f"⚠️  Redis 쿨다운 설정 실패: {e}")
+                reject_cooldown[cooldown_key] = time.time()
+            logger.warning(
+                f"❌ [ENTRY BLOCK] symbol={candle_symbol} side={decision.get('side')} strategy={strategy_id} "
+                f"reason=exposure_guard_block detail=\"{exposure_decision.reason}\" cooldown={strategy_cooldown}s"
+            )
+            if mode in ["paper", "live"]:
+                tg(
+                    f"⚠️ *Exposure Guard 차단* | 전략: {strategy_id} | 심볼: {candle_symbol} | 방향: {decision.get('side')} | 사유: {exposure_decision.reason}",
+                    config,
+                )
+            continue
+        
+        # ALLOW_REDUCED 처리 (사이즈 축소)
+        if exposure_decision.decision == "ALLOW_REDUCED":
+            original_qty = qty
+            original_value = position_value
+            # 조정된 금액으로 수량 재계산
+            qty = exposure_decision.adjusted_notional / decision.get("entry")
+            position_value = exposure_decision.adjusted_notional
+            logger.warning(
+                f"⚠️  [ENTRY REDUCED] symbol={candle_symbol} side={decision.get('side')} strategy={strategy_id} "
+                f"qty {original_qty:.4f} → {qty:.4f}, value ${original_value:.2f} → ${position_value:.2f} "
+                f"reason=\"{exposure_decision.reason}\""
+            )
+        
+        # Risk Manager 체크 (기존 로직: 일일 손실, Flash Guard 등)
         allowed, reason = risk.check_order(decision, qty, position_value=position_value)
         if not allowed:
             # ⭐ PR9 Phase 2: Redis 쿨다운 TTL 설정 (⭐ PHASE16+: 0초일 때는 skip)

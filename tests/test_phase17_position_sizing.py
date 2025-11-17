@@ -8,15 +8,34 @@ PHASE17 Position Sizing + Exposure Guard 단위 테스트
 1. Multi-position Scaling (동시 포지션 수에 따른 크기 조정)
 2. Exposure Guard 3단계 의사결정 (ALLOW/ALLOW_REDUCED/BLOCK)
 3. Position Sizer와 Risk Manager 통합 테스트
+
+⭐ PHASE17: 최소 의존성으로 테스트 실행
 """
 import sys
 import os
 import pytest
 
-# 테스트 환경 설정
+# 프로젝트 루트를 Python path에 추가
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-# 필요한 모듈만 선택적으로 import
+# Mock 함수 정의 (import 오류 방지)
+def mock_setup_logger(name, log_type="trading"):
+    """로거 Mock"""
+    import logging
+    return logging.getLogger(name)
+
+# common.logger를 mock으로 대체
+import sys
+class MockLoggerModule:
+    def setup_logger(self, name, log_type="trading"):
+        import logging
+        return logging.getLogger(name)
+
+sys.modules['common.logger'] = MockLoggerModule()
+sys.modules['common.messaging'] = type(sys)('common.messaging')
+sys.modules['common.calculations'] = type(sys)('common.calculations')
+
+# 이제 execution 모듈 import
 try:
     from execution.position_sizer import PositionSizer
     from execution.risk_manager import RiskManager, ExposureDecision
