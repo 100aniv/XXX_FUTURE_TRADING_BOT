@@ -1,0 +1,40 @@
+# ========================================
+# PHASE16+ Paper Testing Config
+# ========================================
+# Paper 모드 거래 발생 테스트용 완화된 설정
+#
+# 목적:
+# - 거래가 실제로 발생하는지 검증
+# - 쿨다운/포트폴리오 제약 완화
+# - Production 설정과 명확히 구분
+#
+# 주의:
+# - 이 설정은 TESTING ONLY
+# - Live 모드에서는 절대 사용 금지
+# ========================================
+
+# ⭐ 포트폴리오 제한 완화
+portfolio:
+  symbol_cooldown_seconds: 0  # 60초 → 0초 (테스트: 쿨다운 비활성화)
+  max_positions: 0  # 20개 → 무제한 (0 = 제한 없음)
+
+# ⭐ 실행 설정 완화
+execution:
+  reject_cooldown_seconds: 0  # 60초 → 0초 (테스트: 쿨다운 비활성화)
+
+# ⭐ 전략별 쿨다운 완화
+strategies:
+  scalping:
+    entry_cooldown_seconds: 0  # 5초 → 0초 (테스트: 쿨다운 비활성화)
+    cooldown_candles: 1  # 최소 쿨다운
+
+# ⭐ 리스크 설정 (테스트용)
+risk:
+  max_positions: 0  # 무제한 (포트폴리오 테스트용)
+  per_trade: 0.01  # 1% (큰 포지션으로 명확한 거래 확인)
+  
+  profiles:
+    paper:
+      max_daily_loss_pct: 0.50  # 50% (테스트용 완화)
+      max_consecutive_losses: 50  # 50회 (테스트용 완화)
+      cooldown_after_consecutive: 5  # 5초

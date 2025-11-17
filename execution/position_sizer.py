@@ -10,6 +10,11 @@ Position Sizer - 포지션 크기 동적 계산
 3. 컨텍스트 스케일링 (regime, volatility)
 4. 포트폴리오 제약 (caps)
 5. 안전 장치 (brakes)
+
+⭐ PHASE17 추가 기능:
+6. Multi-position Scaling (동시 포지션 수에 따른 크기 조정)
+7. Exposure Guard 통합 (3단계 의사결정: ALLOW/ALLOW_REDUCED/BLOCK)
+8. 심볼별 노출도 한계 내에서 최대한 거래 가능하도록 조정
 """
 import os
 from typing import Tuple, Dict
@@ -63,7 +68,13 @@ class PositionSizer:
         self.cs_high_mult = float(cs.get('high_vol_mult', 0.7)) # 고변동: 리스크 하향
         self.cs_neutral_mult = float(cs.get('neutral_mult', 1.0))
         
+        # ⭐ PHASE17: Multi-position Scaling 설정
+        self.multi_position_scaling_enabled = ps_cfg.get('multi_position_scaling', True)
+        self.exposure_reduction_factor = ps_cfg.get('exposure_reduction_factor', 0.95)  # 95% 안전 마진
+        self.allow_partial_entry = ps_cfg.get('allow_partial_entry', True)
+        
         logger.info(f"✅ PositionSizer 초기화: Equity={self.equity}, RPT={self.risk_per_trade}, Liq Buffer={self.liq_buffer_multiple}×SL")
+        logger.info(f"   PHASE17: Multi-pos Scaling={self.multi_position_scaling_enabled}, Allow Partial={self.allow_partial_entry}")
     
     def calculate(self, signal: Dict) -> Tuple[float, Dict]:
         """
@@ -380,6 +391,183 @@ class PositionSizer:
                 break
         
         return best_lev
+    
+    # =========================================================================
+    # ⭐ PHASE17: Multi-position Scaling + Exposure Guard 통합
+    # =========================================================================
+    
+    def apply_multi_position_scaling(
+        self, 
+        base_risk: float, 
+        num_open_positions: int, 
+        max_positions: int
+    ) -> float:
+        """
+        동시 포지션 수에 따른 리스크 크기 조정
+        
+        공식: scaling_factor = 1.0 / (1 + num_open / max_positions)
+        
+        예시:
+        - max_positions=2, num_open=0 → scaling=1.0 (100%)
+        - max_positions=2, num_open=1 → scaling=0.667 (67%)
+        - max_positions=2, num_open=2 → scaling=0.5 (50%)
+        
+        Args:
+            base_risk: 기본 리스크 금액 (USDT)
+            num_open_positions: 현재 열린 포지션 수
+            max_positions: 최대 포지션 수
+        
+        Returns:
+            scaled_risk: 조정된 리스크 금액
+        """
+        if not self.multi_position_scaling_enabled:
+            return base_risk
+        
+        if max_positions <= 0:
+            # max_positions=0은 무제한 의미 → 스케일링 안 함
+            return base_risk
+        
+        # 스케일링 공식
+        scaling_factor = 1.0 / (1.0 + num_open_positions / max_positions)
+        scaled_risk = base_risk * scaling_factor
+        
+        logger.debug(
+            f"📊 Multi-position Scaling: base=${base_risk:.2f}, "
+            f"open={num_open_positions}/{max_positions}, "
+            f"factor={scaling_factor:.3f}, "
+            f"scaled=${scaled_risk:.2f}"
+        )
+        
+        return scaled_risk
+    
+    def calculate_with_exposure_check(
+        self,
+        signal: Dict,
+        current_symbol_exposure: float,
+        max_symbol_exposure: float,
+        num_open_positions: int = 0
+    ) -> Tuple[float, Dict, str]:
+        """
+        ⭐ PHASE17: 포지션 크기 계산 + Exposure Guard 통합
+        
+        프로세스:
+        1. 기본 포지션 크기 계산 (calculate 메서드 재사용)
+        2. Multi-position scaling 적용
+        3. Per-symbol Exposure 체크
+           - ALLOW: 정상 진입
+           - ALLOW_REDUCED: 사이즈 축소 후 진입
+           - BLOCK: 완전 차단
+        
+        Args:
+            signal: 신호 dict (entry_price, sl_price, symbol 등)
+            current_symbol_exposure: 현재 심볼 노출도 (USDT)
+            max_symbol_exposure: 최대 심볼 노출도 (USDT)
+            num_open_positions: 현재 열린 포지션 수
+        
+        Returns:
+            (qty, metadata, action)
+            - qty: 최종 수량 (0이면 거부)
+            - metadata: 계산 상세 정보
+            - action: "ALLOW" | "ALLOW_REDUCED" | "BLOCK"
+        """
+        symbol = signal.get('symbol', 'UNKNOWN')
+        entry_price = signal['entry_price']
+        
+        # 1. 기본 포지션 크기 계산
+        base_qty, base_metadata = self.calculate(signal)
+        
+        if base_qty <= 0:
+            return 0.0, base_metadata, "BLOCK"
+        
+        # 2. Multi-position Scaling 적용
+        max_positions = self.config['risk']['max_positions']
+        base_risk = base_metadata.get('risk_usdt', 0)
+        
+        if self.multi_position_scaling_enabled and max_positions > 0:
+            scaled_risk = self.apply_multi_position_scaling(
+                base_risk, 
+                num_open_positions, 
+                max_positions
+            )
+            # 리스크 조정 비율을 수량에 반영
+            risk_ratio = scaled_risk / base_risk if base_risk > 0 else 1.0
+            scaled_qty = base_qty * risk_ratio
+        else:
+            scaled_qty = base_qty
+            scaled_risk = base_risk
+        
+        # 3. Per-symbol Exposure 체크
+        position_value = scaled_qty * entry_price
+        total_exposure = current_symbol_exposure + position_value
+        
+        # 디버깅 로그
+        logger.debug(f"💰 Exposure 체크: {symbol}")
+        logger.debug(f"   현재 노출: ${current_symbol_exposure:.2f}")
+        logger.debug(f"   신규 포지션: ${position_value:.2f}")
+        logger.debug(f"   합계: ${total_exposure:.2f}")
+        logger.debug(f"   한도: ${max_symbol_exposure:.2f}")
+        
+        # 3-1. ALLOW: 정상 진입
+        if total_exposure <= max_symbol_exposure:
+            metadata = {
+                **base_metadata,
+                'scaled_qty': float(scaled_qty),
+                'position_value': float(position_value),
+                'multi_position_scaling': self.multi_position_scaling_enabled,
+                'num_open_positions': num_open_positions
+            }
+            return float(scaled_qty), metadata, "ALLOW"
+        
+        # 3-2. ALLOW_REDUCED: 사이즈 축소 후 진입
+        if self.allow_partial_entry and current_symbol_exposure < max_symbol_exposure:
+            available_exposure = max_symbol_exposure - current_symbol_exposure
+            # 안전 마진 적용 (기본 95%)
+            adjusted_exposure = available_exposure * self.exposure_reduction_factor
+            
+            # 최소 포지션 크기 체크
+            if adjusted_exposure >= self.min_position_value:
+                adjusted_qty = adjusted_exposure / entry_price
+                adjusted_qty = float(round(adjusted_qty, 3))
+                
+                # 거래소 최소 수량 체크
+                if adjusted_qty >= 0.001:
+                    metadata = {
+                        **base_metadata,
+                        'scaled_qty': float(scaled_qty),
+                        'adjusted_qty': adjusted_qty,
+                        'position_value': float(adjusted_exposure),
+                        'reduction_reason': 'exposure_limit',
+                        'original_exposure': float(position_value),
+                        'adjusted_exposure': float(adjusted_exposure),
+                        'multi_position_scaling': self.multi_position_scaling_enabled,
+                        'num_open_positions': num_open_positions
+                    }
+                    
+                    logger.warning(
+                        f"⚠️  {symbol} 사이즈 축소: "
+                        f"${position_value:.2f} → ${adjusted_exposure:.2f} "
+                        f"(노출 한도: ${max_symbol_exposure:.2f})"
+                    )
+                    
+                    return adjusted_qty, metadata, "ALLOW_REDUCED"
+        
+        # 3-3. BLOCK: 완전 차단
+        metadata = {
+            **base_metadata,
+            'block_reason': 'exposure_limit_exceeded',
+            'current_exposure': float(current_symbol_exposure),
+            'max_exposure': float(max_symbol_exposure),
+            'requested_exposure': float(position_value)
+        }
+        
+        logger.error(
+            f"❌ {symbol} Entry 차단: "
+            f"현재=${current_symbol_exposure:.2f}, "
+            f"요청=${position_value:.2f}, "
+            f"한도=${max_symbol_exposure:.2f}"
+        )
+        
+        return 0.0, metadata, "BLOCK"
     
     def update_equity(self, new_equity: float):
         """

@@ -1,0 +1,28 @@
+# ========================================
+# REAL PAPER 1시간 테스트 설정
+# ========================================
+# 목적: PHASE16 REAL PAPER 1시간 테스트용
+# 특징:
+#   - wall_clock 모드 (현실 시간 기준)
+#   - 완화된 쿨다운 (0초)
+#   - 무제한 포지션 (max_positions=0)
+#   - clean_start=true (기존 포지션 무시)
+
+paper:
+  duration_mode: "wall_clock"  # ⭐ 현실 시간 기준
+  duration_hours: 1            # 1시간
+  clean_start: true            # 기존 포지션 무시
+
+portfolio:
+  symbol_cooldown_seconds: 0   # ⭐ 쿨다운 비활성화
+  reject_cooldown_seconds: 0   # ⭐ 거부 쿨다운 비활성화
+
+execution:
+  reject_cooldown_seconds: 0   # ⭐ 엔진 레벨 쿨다운 비활성화
+
+risk:
+  max_positions: 0             # ⭐ 무제한 포지션
+
+strategies:
+  scalping:
+    entry_cooldown_seconds: 0  # ⭐ 전략 레벨 쿨다운 비활성화

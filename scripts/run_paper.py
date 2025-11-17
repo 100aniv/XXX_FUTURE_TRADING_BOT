@@ -69,6 +69,14 @@ def parse_args():
     )
     
     parser.add_argument(
+        '--duration-mode',
+        type=str,
+        choices=['market_time', 'wall_clock'],
+        default='market_time',
+        help='Duration 평가 기준 (기본: market_time / REAL PAPER는 wall_clock 권장)'
+    )
+    
+    parser.add_argument(
         '--config',
         type=str,
         default=None,
@@ -110,6 +118,26 @@ def main():
         else:
             redis_cfg['port'] = 6379
     
+    # ⭐ PHASE16+: Paper 테스트용 완화 설정 자동 오버레이
+    paper_test_config_path = Path("configs/scalping/paper_testing.yml")
+    if paper_test_config_path.exists():
+        logger.info("📝 Paper 테스트 설정 로드 중...")
+        import yaml
+        with open(paper_test_config_path, 'r', encoding='utf-8') as f:
+            paper_overlay = yaml.safe_load(f)
+        
+        # Deep merge (portfolio, execution, risk, strategies)
+        for section in ['portfolio', 'execution', 'risk', 'strategies']:
+            if section in paper_overlay:
+                if section not in cfg:
+                    cfg[section] = {}
+                cfg[section].update(paper_overlay[section])
+        
+        logger.info(f"  ✅ Portfolio cooldown: {cfg.get('portfolio', {}).get('symbol_cooldown_seconds', 'N/A')}s")
+        logger.info(f"  ✅ Max positions: {cfg.get('risk', {}).get('max_positions', 'N/A')}")
+    else:
+        logger.warning(f"⚠️  Paper 테스트 설정 없음: {paper_test_config_path}")
+    
     # PHASE15 best 파라미터 반영 확인
     scalping_cfg = cfg.get('strategies', {}).get('scalping', {})
     logger.info(f"✅ PHASE15 Best 파라미터:")
@@ -129,9 +157,12 @@ def main():
     cfg['paper']['start_time'] = start_time.isoformat()
     cfg['paper']['end_time'] = end_time.isoformat()
     cfg['paper']['duration_hours'] = args.duration_hours
+    cfg['paper']['duration_mode'] = args.duration_mode  # ⭐ PHASE16+: Duration 모드 설정
+    cfg['paper']['clean_start'] = True  # ⭐ PHASE16+: 깨끗한 시작 (기존 포지션 무시)
     
     logger.info(f"⏰ 시작 시간: {start_time.strftime('%Y-%m-%d %H:%M:%S')}")
     logger.info(f"⏰ 종료 예정: {end_time.strftime('%Y-%m-%d %H:%M:%S')}")
+    logger.info(f"📍 Duration 모드: {args.duration_mode} ({args.duration_hours:.2f}h)")
     
     # 3. run_id 생성
     run_id = f"{start_time.strftime('%Y%m%d_%H%M%S')}_phase16"
@@ -168,6 +199,20 @@ def main():
         import traceback
         logger.error(traceback.format_exc())
         sys.exit(1)
+    
+    # ⭐ PHASE16+: Paper 모드 포트폴리오 초기화
+    # 기존 포지션이 있으면 모두 청산 (깨끗한 시작)
+    if hasattr(broker, 'open_positions') and broker.open_positions:
+        logger.warning(f"⚠️  기존 포지션 {len(broker.open_positions)}개 감지")
+        logger.info("🔄 Paper 모드: 기존 포지션 초기화 중...")
+        try:
+            # 모든 포지션 청산
+            for symbol, position in list(broker.open_positions.items()):
+                logger.info(f"  - {symbol}: {position.get('qty', 0)} 청산")
+            broker.open_positions.clear()
+            logger.info(f"  ✅ 포트폴리오 초기화 완료 (0개)")
+        except Exception as e:
+            logger.warning(f"  ⚠️  포트폴리오 초기화 실패: {e}")
     
     # 6. 전략 로드
     logger.info(f"🎯 전략 로드: {args.strategy}")

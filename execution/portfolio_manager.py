@@ -118,8 +118,8 @@ class PortfolioManager:
         """
         equity = self.equity
         
-        # 1. 심볼 쿨다운 여부 검사
-        if symbol in self.symbol_cooldown:
+        # 1. 심볼 쿨다운 여부 검사 (⭐ PHASE16+: 0 = 비활성화)
+        if self.cooldown_seconds > 0 and symbol in self.symbol_cooldown:
             cooldown_end = self.symbol_cooldown[symbol] + self.cooldown_seconds
             now = time.time()
             
@@ -127,8 +127,8 @@ class PortfolioManager:
                 remaining = int(cooldown_end - now)
                 return False, f"심볼 {symbol} 쿨다운 중: {remaining}초 남음"
         
-        # 2. 포지션 최대 수 검사
-        if len(self.get_all_positions()) >= self.max_positions:
+        # 2. 포지션 최대 수 검사 (⭐ PHASE16+: 0 = 무제한)
+        if self.max_positions > 0 and len(self.get_all_positions()) >= self.max_positions:
             return False, f"포지션 최대 한강 도달: {self.max_positions}개"
         
         # 3. 심볼별 exposure 체크

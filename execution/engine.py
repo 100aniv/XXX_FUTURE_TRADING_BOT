@@ -27,8 +27,7 @@ from common.messaging import (
 from monitoring.telemetry_profiler import start_monitoring
 from monitoring import init_monitoring
 from indicators import add_indicators
-# ⭐ PHASE10: DB import 제거 (engine.py에서 미사용, 불필요한 모듈 로드 방지)
-# from common.database import get_db_connection, save_signal_to_db
+from common.database import get_db_connection  # ⭐ PHASE16+: Paper 모드에서 DB 저장 필요
 from execution.position_sizer import PositionSizer
 from execution.risk_manager import RiskManager
 from signals.signal_generator import SignalGenerator
@@ -167,8 +166,15 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict):
     sizer = PositionSizer(config)
     
     # ⭐ PHASE9-1 ROOT CAUSE FIX: backtest_raw 포함
+    # ⭐ PHASE16+: paper 테스트 모드도 깨끗한 시작 (load_existing=False)
     is_backtest_mode = mode in ['backtest', 'backtest_clean', 'backtest_raw']
-    portfolio = PortfolioManager(config, load_existing=not is_backtest_mode)
+    is_paper_test_mode = mode == 'paper' and config.get('paper', {}).get('clean_start', True)
+    load_existing = not (is_backtest_mode or is_paper_test_mode)
+    
+    if is_paper_test_mode:
+        logger.info("🔄 [PAPER TEST] 깨끗한 시작: 기존 포지션 로드 스킵")
+    
+    portfolio = PortfolioManager(config, load_existing=load_existing)
     
     risk = RiskManager(config, portfolio=portfolio)  # ⭐ PR12: 포트폴리오 참조 추가
     tracker = PositionTracker(config)  # ⭐ TUNING_VIBLE TP 분할 지원
@@ -476,8 +482,27 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict):
         )
         logger.info(f"📊 stream() 시작 전 큐 사이즈: {queue_size_before}")
 
+    # ⭐ PHASE16+: Wall-clock Duration 모드 초기화
+    import time
+    duration_mode = config.get('paper', {}).get('duration_mode', 'market_time')
+    duration_hours = config.get('paper', {}).get('duration_hours', 1)
+    start_wall_time = time.time()
+    duration_seconds = duration_hours * 3600
+    
+    if duration_mode == 'wall_clock':
+        logger.info(f"⏱️  [WALL-CLOCK] Duration 모드 시작: {duration_hours:.2f}시간 ({duration_seconds:.0f}초)")
+    else:
+        logger.info(f"⏱️  [MARKET-TIME] Duration 모드 시작: {duration_hours:.2f}시간")
+
     # ⭐ 메인 루프
     for candle in feed.stream():
+        # ⭐ PHASE16+: Wall-clock Duration 체크 (루프 시작 시 먼저 확인)
+        if duration_mode == 'wall_clock':
+            elapsed_wall = time.time() - start_wall_time
+            if elapsed_wall >= duration_seconds:
+                logger.info(f"✅ [WALL-CLOCK] Duration 도달: {elapsed_wall:.1f}초 >= {duration_seconds:.0f}초 ({duration_hours:.2f}시간)")
+                break
+        
         # ⭐ PR12: 일일 PnL 자동 리셋 체크 (자정 00:00)
         portfolio.check_and_reset_daily()
         
@@ -674,13 +699,26 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict):
             pnl = calculate_pnl(position, current_price, fee_rate)
             
             # ⭐ PHASE10: Broker에 청산 기록 저장 (Scorecard 연동)
+            # ⭐ PHASE16+: Broker 타입에 따라 다른 시그니처 사용
             if hasattr(broker, 'close_position'):
-                broker.close_position(
-                    position=position,
-                    exit_price=current_price,
-                    exit_reason=reason,
-                    candle_ts=ts
-                )
+                broker_type = type(broker).__name__
+                if broker_type in ['PaperBroker', 'LiveBroker']:
+                    # PaperBroker/LiveBroker: position_id, symbol, side, qty, reason
+                    broker.close_position(
+                        position_id=pos_id,
+                        symbol=position['symbol'],
+                        side=position['side'],
+                        qty=position['qty'],
+                        reason=reason
+                    )
+                else:
+                    # SimBroker: position, exit_price, exit_reason, candle_ts
+                    broker.close_position(
+                        position=position,
+                        exit_price=current_price,
+                        exit_reason=reason,
+                        candle_ts=ts
+                    )
             
             close_trade_in_db(
                 pos_id,
@@ -1150,32 +1188,34 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict):
         )
         
         # ⭐⭐⭐ PR9 Phase 2: Redis 쿨다운 TTL (재시작 후에도 유지)
-        if redis_client:
-            redis_cooldown_key = f"cooldown:{cooldown_key}"
-            try:
-                ttl = redis_client.ttl(redis_cooldown_key)
-                if ttl > 0:
-                    logger.warning(
-                        f"❌ [ENTRY BLOCK] symbol={candle_symbol} side={decision.get('side')} strategy={strategy_id} "
-                        f"reason={strategy_id}_cooldown_active remaining_seconds={ttl}"
-                    )
-                    continue
-            except Exception as e:
-                logger.warning(f"⚠️  Redis 쿨다운 체크 실패 (처리 계속): {e}")
-        else:
-            # Fallback: 로컬 메모리 쿨다운
-            if cooldown_key in reject_cooldown:
-                elapsed = time.time() - reject_cooldown[cooldown_key]
-                if elapsed < strategy_cooldown:
-                    remaining = int(strategy_cooldown - elapsed)
-                    logger.warning(
-                        f"❌ [ENTRY BLOCK] symbol={candle_symbol} side={decision.get('side')} strategy={strategy_id} "
-                        f"reason={strategy_id}_cooldown_active remaining_seconds={remaining}"
-                    )
-                    continue
-                else:
-                    del reject_cooldown[cooldown_key]
-                    logger.debug(f"✅ [{strategy_id}] {candle_symbol} 쿨다운 해제")
+        # ⭐ PHASE16+: 0초일 때는 쿨다운 체크 skip
+        if strategy_cooldown > 0:
+            if redis_client:
+                redis_cooldown_key = f"cooldown:{cooldown_key}"
+                try:
+                    ttl = redis_client.ttl(redis_cooldown_key)
+                    if ttl > 0:
+                        logger.warning(
+                            f"❌ [ENTRY BLOCK] symbol={candle_symbol} side={decision.get('side')} strategy={strategy_id} "
+                            f"reason={strategy_id}_cooldown_active remaining_seconds={ttl}"
+                        )
+                        continue
+                except Exception as e:
+                    logger.warning(f"⚠️  Redis 쿨다운 체크 실패 (처리 계속): {e}")
+            else:
+                # Fallback: 로컬 메모리 쿨다운
+                if cooldown_key in reject_cooldown:
+                    elapsed = time.time() - reject_cooldown[cooldown_key]
+                    if elapsed < strategy_cooldown:
+                        remaining = int(strategy_cooldown - elapsed)
+                        logger.warning(
+                            f"❌ [ENTRY BLOCK] symbol={candle_symbol} side={decision.get('side')} strategy={strategy_id} "
+                            f"reason={strategy_id}_cooldown_active remaining_seconds={remaining}"
+                        )
+                        continue
+                    else:
+                        del reject_cooldown[cooldown_key]
+                        logger.debug(f"✅ [{strategy_id}] {candle_symbol} 쿨다운 해제")
 
         # ⭐⭐⭐ PR9 Phase 3: 신호 멱등성 (타임프레임 기반 개선)
         # - 봉 단위 멱등: symbol + side + candle_close_time 기준
@@ -1205,17 +1245,18 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict):
         # Risk Manager 체크 (⭐ position_value 전달)
         allowed, reason = risk.check_order(decision, qty, position_value=position_value)
         if not allowed:
-            # ⭐ PR9 Phase 2: Redis 쿨다운 TTL 설정
-            if redis_client:
-                try:
-                    redis_cooldown_key = f"cooldown:{cooldown_key}"
-                    redis_client.setex(redis_cooldown_key, cooldown_seconds, "1")
-                except Exception as e:
-                    logger.warning(f"⚠️  Redis 쿨다운 설정 실패: {e}")
-            reject_cooldown[cooldown_key] = time.time()  # Fallback
+            # ⭐ PR9 Phase 2: Redis 쿨다운 TTL 설정 (⭐ PHASE16+: 0초일 때는 skip)
+            if strategy_cooldown > 0:
+                if redis_client:
+                    try:
+                        redis_cooldown_key = f"cooldown:{cooldown_key}"
+                        redis_client.setex(redis_cooldown_key, strategy_cooldown, "1")
+                    except Exception as e:
+                        logger.warning(f"⚠️  Redis 쿨다운 설정 실패: {e}")
+                reject_cooldown[cooldown_key] = time.time()  # Fallback
             logger.warning(
                 f"❌ [ENTRY BLOCK] symbol={candle_symbol} side={decision.get('side')} strategy={strategy_id} "
-                f"reason=risk_check_failed detail=\"{reason}\" cooldown={cooldown_seconds}s"
+                f"reason=risk_check_failed detail=\"{reason}\" cooldown={strategy_cooldown}s"
             )
             if mode in ["paper", "live"]:
                 tg(
@@ -1233,17 +1274,18 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict):
         )
 
         if not can_open:
-            # ⭐ PR9 Phase 2: Redis 쿨다운 TTL 설정
-            if redis_client:
-                try:
-                    redis_cooldown_key = f"cooldown:{cooldown_key}"
-                    redis_client.setex(redis_cooldown_key, cooldown_seconds, "1")
-                except Exception as e:
-                    logger.warning(f"⚠️  Redis 쿨다운 설정 실패: {e}")
-            reject_cooldown[cooldown_key] = time.time()  # Fallback
+            # ⭐ PR9 Phase 2: Redis 쿨다운 TTL 설정 (⭐ PHASE16+: 0초일 때는 skip)
+            if strategy_cooldown > 0:
+                if redis_client:
+                    try:
+                        redis_cooldown_key = f"cooldown:{cooldown_key}"
+                        redis_client.setex(redis_cooldown_key, strategy_cooldown, "1")
+                    except Exception as e:
+                        logger.warning(f"⚠️  Redis 쿨다운 설정 실패: {e}")
+                reject_cooldown[cooldown_key] = time.time()  # Fallback
             logger.warning(
                 f"❌ [ENTRY BLOCK] symbol={candle_symbol} side={decision.get('side')} strategy={strategy_id} "
-                f"reason=portfolio_check_failed detail=\"{portfolio_reason}\" cooldown={cooldown_seconds}s"
+                f"reason=portfolio_check_failed detail=\"{portfolio_reason}\" cooldown={strategy_cooldown}s"
             )
             if mode in ["paper", "live"]:
                 tg(

@@ -1,0 +1,29 @@
+# ========================================
+# REAL PAPER 12시간 테스트 설정
+# ========================================
+# 목적: PHASE16 REAL PAPER 12시간 장기 테스트용
+# 특징:
+#   - wall_clock 모드 (현실 시간 기준)
+#   - 완화된 Drawdown Guard (30%)
+#   - 제한된 포지션 (max_positions=5)
+#   - 쿨다운 추가 (60초)
+
+paper:
+  duration_mode: "wall_clock"  # ⭐ 현실 시간 기준
+  duration_hours: 12           # 12시간
+  clean_start: true            # 기존 포지션 무시
+
+portfolio:
+  symbol_cooldown_seconds: 60  # ⭐ 쿨다운 1분 (3m 캔들 기준)
+  reject_cooldown_seconds: 0   # 거부 쿨다운 비활성화
+
+execution:
+  reject_cooldown_seconds: 0   # 엔진 레벨 쿨다운 비활성화
+
+risk:
+  max_drawdown_pct: 30.0       # ⭐ 12h 장기 테스트용 완화 (10% → 30%)
+  max_positions: 5             # ⭐ 최대 동시 포지션 5개 (무제한 X)
+
+strategies:
+  scalping:
+    entry_cooldown_seconds: 0  # 전략 레벨 쿨다운 비활성화

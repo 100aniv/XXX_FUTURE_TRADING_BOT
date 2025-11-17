@@ -1,0 +1,22 @@
+# PHASE16 REAL PAPER 12h v3 설정
+# 1차: Drawdown Guard (17.55% > 10%) 교훈
+# 2차: Exposure Guard (Per-symbol 초과) 교훈
+
+paper:
+  duration_hours: 12
+  duration_mode: wall_clock
+  clean_start: true
+
+risk:
+  max_drawdown_pct: 25.0      # 1차 실행 기준 완화 (10% → 25%)
+  max_positions: 2            # 2차 실행의 과도한 노출도 → 동시 포지션 수 축소
+
+portfolio:
+  symbol_cooldown_seconds: 120  # 동일 심볼 연속 진입 쿨다운 강화 (60 → 120)
+
+strategies:
+  scalping:
+    entry_cooldown_seconds: 0
+
+logging:
+  level: INFO

@@ -15,16 +15,43 @@ Pre-Trade Risk Check 및 포지션 관리
 - 순노출 한도
 - Flash Guard (급등락 감지 - Circuit Breaker)
 
+⭐ PHASE17 추가 기능:
+- Per-symbol Exposure Guard 3단계 의사결정 (ALLOW/ALLOW_REDUCED/BLOCK)
+- 사이즈 축소 후 진입 허용 (가드레일 철학)
+
 참고: docs/implementation/EXECUTION_MODULE_REFACTORING.md
 """
 import os
 import time
-from typing import Dict, Tuple
+from typing import Dict, Tuple, NamedTuple
+from dataclasses import dataclass
 
 from common.logger import setup_logger
 from common.messaging import tg
 
 logger = setup_logger(__name__, log_type="trading")
+
+
+# ⭐ PHASE17: Exposure Guard 3단계 의사결정 결과
+@dataclass
+class ExposureDecision:
+    """
+    Per-symbol Exposure Guard 의사결정 결과
+    
+    Attributes:
+        decision: "ALLOW" | "ALLOW_REDUCED" | "BLOCK"
+        adjusted_notional: 조정된 포지션 금액 (USDT)
+        reason: 결정 사유
+        original_notional: 원래 요청 금액
+        current_exposure: 현재 심볼 노출도
+        max_exposure: 최대 허용 노출도
+    """
+    decision: str  # "ALLOW" | "ALLOW_REDUCED" | "BLOCK"
+    adjusted_notional: float
+    reason: str
+    original_notional: float = 0.0
+    current_exposure: float = 0.0
+    max_exposure: float = 0.0
 
 
 class RiskManager:
@@ -320,8 +347,8 @@ class RiskManager:
                 self._notify_guard(f"Equity stop hit: DD={dd:.2f} ≥ {self.equity_stop_limit:.2f}")
                 return False, f"전체 자산 중지 한도 초과: {dd:.2f}"
         
-        # 2) 동시 포지션 수 체크
-        if self.active_positions_count >= self.max_positions:
+        # 2) 동시 포지션 수 체크 (⭐ PHASE16+: 0 = 무제한)
+        if self.max_positions > 0 and self.active_positions_count >= self.max_positions:
             self._notify_guard(f"Max positions reached: {self.active_positions_count}/{self.max_positions}")
             return False, f"동시 포지션 한도 도달: {self.active_positions_count}/{self.max_positions}"
         
@@ -346,6 +373,122 @@ class RiskManager:
         
         # 모든 체크 통과
         return True, "OK"
+    
+    # =========================================================================
+    # ⭐ PHASE17: Per-symbol Exposure Guard 3단계 의사결정
+    # =========================================================================
+    
+    def check_symbol_exposure_with_adjustment(
+        self,
+        symbol: str,
+        requested_notional: float,
+        current_exposure: float = None,
+        min_position_notional: float = None
+    ) -> ExposureDecision:
+        """
+        ⭐ PHASE17: Per-symbol Exposure 체크 + 사이즈 조정
+        
+        3단계 의사결정:
+        1. ALLOW: 정상 진입 (노출도 범위 내)
+        2. ALLOW_REDUCED: 사이즈 축소 후 진입 (노출도 초과 시)
+        3. BLOCK: 완전 차단 (현재 노출도가 이미 한계)
+        
+        Args:
+            symbol: 심볼 (BTCUSDT 등)
+            requested_notional: 요청한 포지션 금액 (USDT)
+            current_exposure: 현재 심볼 노출도 (None이면 symbol_exposures에서 읽기)
+            min_position_notional: 최소 포지션 금액 (None이면 config에서 읽기)
+        
+        Returns:
+            ExposureDecision: 의사결정 결과
+        """
+        # 1. 현재 노출도 파악
+        if current_exposure is None:
+            current_exposure = self.symbol_exposures.get(symbol, 0.0)
+        
+        # 2. 최대 노출도 한도 계산
+        max_symbol_exposure = self.equity * self.max_exposure_per_symbol_pct
+        
+        # 3. 최소 포지션 금액
+        if min_position_notional is None:
+            min_position_notional = self.config.get('position_sizing', {}).get('min_position_notional', 100)
+        
+        # 4. 총 노출도 계산
+        total_exposure = current_exposure + requested_notional
+        
+        # 5. 3단계 의사결정
+        
+        # 5-1. ALLOW: 정상 진입
+        if total_exposure <= max_symbol_exposure:
+            logger.debug(
+                f"✅ {symbol} Exposure ALLOW: "
+                f"현재=${current_exposure:.2f}, "
+                f"요청=${requested_notional:.2f}, "
+                f"합계=${total_exposure:.2f}, "
+                f"한도=${max_symbol_exposure:.2f}"
+            )
+            return ExposureDecision(
+                decision="ALLOW",
+                adjusted_notional=requested_notional,
+                reason="Within exposure limit",
+                original_notional=requested_notional,
+                current_exposure=current_exposure,
+                max_exposure=max_symbol_exposure
+            )
+        
+        # 5-2. ALLOW_REDUCED: 사이즈 축소 후 진입
+        if current_exposure < max_symbol_exposure:
+            available_exposure = max_symbol_exposure - current_exposure
+            
+            # 안전 마진 적용 (95%)
+            exposure_reduction_factor = self.config.get('position_sizing', {}).get('exposure_reduction_factor', 0.95)
+            adjusted_notional = available_exposure * exposure_reduction_factor
+            
+            # 최소 포지션 크기 체크
+            if adjusted_notional >= min_position_notional:
+                logger.warning(
+                    f"⚠️  {symbol} Exposure ALLOW_REDUCED: "
+                    f"현재=${current_exposure:.2f}, "
+                    f"요청=${requested_notional:.2f}, "
+                    f"조정=${adjusted_notional:.2f}, "
+                    f"한도=${max_symbol_exposure:.2f}"
+                )
+                return ExposureDecision(
+                    decision="ALLOW_REDUCED",
+                    adjusted_notional=adjusted_notional,
+                    reason=f"Reduced from ${requested_notional:.2f} to stay within limit",
+                    original_notional=requested_notional,
+                    current_exposure=current_exposure,
+                    max_exposure=max_symbol_exposure
+                )
+            else:
+                # 조정한 금액이 최소 크기보다 작음 → BLOCK
+                logger.error(
+                    f"❌ {symbol} Exposure BLOCK: "
+                    f"조정 금액=${adjusted_notional:.2f} < 최소=${min_position_notional:.2f}"
+                )
+                return ExposureDecision(
+                    decision="BLOCK",
+                    adjusted_notional=0.0,
+                    reason=f"Adjusted size (${adjusted_notional:.2f}) below minimum (${min_position_notional:.2f})",
+                    original_notional=requested_notional,
+                    current_exposure=current_exposure,
+                    max_exposure=max_symbol_exposure
+                )
+        
+        # 5-3. BLOCK: 완전 차단
+        logger.error(
+            f"❌ {symbol} Exposure BLOCK: "
+            f"현재=${current_exposure:.2f} ≥ 한도=${max_symbol_exposure:.2f}"
+        )
+        return ExposureDecision(
+            decision="BLOCK",
+            adjusted_notional=0.0,
+            reason=f"Per-symbol exposure already at limit (${current_exposure:.2f} ≥ ${max_symbol_exposure:.2f})",
+            original_notional=requested_notional,
+            current_exposure=current_exposure,
+            max_exposure=max_symbol_exposure
+        )
     
     def update_consecutive_losses(self, pnl: float):
         """PnL에 따른 연속 손실 추적 (쿨다운 관리)"""

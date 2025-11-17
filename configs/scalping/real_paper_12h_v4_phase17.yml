@@ -1,0 +1,46 @@
+# PHASE17 REAL PAPER 12h 테스트 설정
+# PHASE16 3차 실행 교훈 + PHASE17 Position Sizing 적용
+
+paper:
+  duration_hours: 12
+  duration_mode: wall_clock
+  clean_start: true  # 포지션 초기화
+
+# ⭐ PHASE17: Position Sizing 강화
+position_sizing:
+  min_position_notional: 100
+  max_position_notional: 15000  # 1차/2차 실패 교훈 (20k → 15k)
+  multi_position_scaling: true  # 동시 포지션 수에 따른 크기 자동 조정
+  exposure_reduction_factor: 0.95
+  allow_partial_entry: true  # 사이즈 축소 후 진입 허용 (핵심!)
+  
+  context_scaling:
+    enabled: true
+    atr_low_pct: 0.004
+    atr_high_pct: 0.02
+    low_vol_mult: 1.2
+    high_vol_mult: 0.7
+
+risk:
+  max_drawdown_pct: 25.0  # 1차 실행 교훈 (10% → 25%)
+  max_positions: 3        # 2차/3차 실행 교훈 (5/2 → 3)
+  per_trade: 0.003        # 0.3% 리스크
+  max_exposure_per_symbol: 0.35  # 35% (2차/3차 30% → 35%, 여유 확보)
+  max_exposure_pct: 0.95
+
+portfolio:
+  symbol_cooldown_seconds: 90  # 2차/3차 120초 → 90초 (완화)
+  max_total_exposure: 0.95
+  max_strategy_positions: 5
+
+strategies:
+  scalping:
+    entry_cooldown_seconds: 0
+
+logging:
+  level: INFO
+
+# ⭐ PHASE17 설계 목표:
+# 1. Multi-position Scaling으로 동시 포지션 증가 시 자동 크기 축소
+# 2. Exposure Guard가 사이즈 축소 후 진입 허용 (ALLOW_REDUCED)
+# 3. 12h 동안 Entry ≥ 1, Closed ≥ 1 유지 (거래 정지 방지)
