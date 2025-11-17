@@ -1,0 +1,59 @@
+# PHASE17 REAL PAPER 12h V6.1 테스트 설정
+# V6 → V6.1: Critical Bug Fix - Position 키 불일치 해결 (value → position_value)
+
+paper:
+  duration_hours: 12
+  duration_mode: wall_clock
+  clean_start: true  # 포지션 초기화
+
+# ⭐ PHASE17: Position Sizing 강화 (V5와 동일)
+position_sizing:
+  min_position_notional: 100
+  max_position_notional: 15000
+  multi_position_scaling: true  # 동시 포지션 수에 따른 크기 자동 조정
+  exposure_reduction_factor: 0.95
+  allow_partial_entry: true  # 사이즈 축소 후 진입 허용 (핵심!)
+  
+  context_scaling:
+    enabled: true
+    atr_low_pct: 0.004
+    atr_high_pct: 0.02
+    low_vol_mult: 1.2
+    high_vol_mult: 0.7
+
+risk:
+  max_drawdown_pct: 25.0
+  max_positions: 3
+  per_trade: 0.003
+  max_exposure_per_symbol: 0.35
+  max_exposure_pct: 0.95
+
+portfolio:
+  symbol_cooldown_seconds: 90
+  max_total_exposure: 0.95
+  max_strategy_positions: 5  # V5b에서 10으로 올렸으나 Budget과 무관함 확인, 다시 5로 복원
+  
+  # ⭐ PHASE17 V6 핵심 변경: Budget 설정 (SSOT)
+  budget:
+    default_allocation: 0.25  # V6: 20% → 25% (scalping 전략과 동일)
+    strategy_allocation:
+      scalping: 0.25  # 25% (기존 유지)
+
+# ⭐ PHASE17 V5/V6 공통: Volume Guard 비활성화
+enable_vol_spike_filter: false  # V4 문제 해결 (Volume Guard 완전 비활성화)
+vol_spike_mult: 4.0  # 백업용 (비활성화 시 사용 안 됨)
+
+strategies:
+  scalping:
+    # ⭐ PHASE17 V5/V6 공통: Entry Cooldown
+    entry_cooldown_seconds: 20  # V4: 0 → V5/V6: 20 (과도 Entry 방지)
+
+logging:
+  level: INFO
+
+# ⭐ PHASE17 V6 설계 목표:
+# 1. Position Sizer에 available_budget 전달 (Budget 내에서만 크기 결정)
+# 2. Portfolio Manager는 Budget의 유일한 진실 소스 (SSOT)
+# 3. Portfolio Budget 초과 BLOCK 발생률 90% 감소
+# 4. 12시간 실행 안정성 확보: Entry 지속, 조기 종료 방지
+# 5. 실행 목표: 12H 완주, Entry ≥150개, ALLOW_REDUCED 70%+, Budget BLOCK <10%

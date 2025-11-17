@@ -76,7 +76,7 @@ class PositionSizer:
         logger.info(f"✅ PositionSizer 초기화: Equity={self.equity}, RPT={self.risk_per_trade}, Liq Buffer={self.liq_buffer_multiple}×SL")
         logger.info(f"   PHASE17: Multi-pos Scaling={self.multi_position_scaling_enabled}, Allow Partial={self.allow_partial_entry}")
     
-    def calculate(self, signal: Dict) -> Tuple[float, Dict]:
+    def calculate(self, signal: Dict, available_budget: float = None) -> Tuple[float, Dict]:
         """
         포지션 크기 계산 (⭐ common.calculations 활용)
         
@@ -88,6 +88,7 @@ class PositionSizer:
                 'atr': float (선택),
                 'symbol': str
             }
+            available_budget: ⭐ PHASE17: 사용 가능한 예산 (USDT). None이면 무제한.
         
         Returns:
             (qty, metadata)
@@ -142,6 +143,25 @@ class PositionSizer:
             adjusted_qty = self.max_position_value / entry
             position_value = adjusted_qty * entry  # 재계산
         
+        # ⭐ PHASE17: available_budget 한도 적용 (Budget Cap)
+        budget_capped = False
+        
+        # DEBUG: Budget Cap 조건 상세 로그
+        logger.info(
+            f"🔍 [Budget Check] available_budget={available_budget}, "
+            f"position_value=${position_value:.2f}, "
+            f"will_cap={available_budget is not None and position_value > available_budget}"
+        )
+        
+        if available_budget is not None and position_value > available_budget:
+            logger.info(
+                f"📉 [Budget Cap] Position capped by available budget: "
+                f"${position_value:.2f} → ${available_budget:.2f}"
+            )
+            adjusted_qty = available_budget / entry
+            position_value = available_budget
+            budget_capped = True
+        
         # min_position_value 체크
         if position_value < self.min_position_value:
             return 0.0, {"reason": "below_min_value"}
@@ -169,7 +189,9 @@ class PositionSizer:
             "quality_weight": float(quality_weight),
             "base_qty": float(base_qty),
             "final_qty": final_qty,
-            "position_value": float(final_position_value)
+            "position_value": float(final_position_value),
+            "available_budget": float(available_budget) if available_budget is not None else None,
+            "budget_capped": budget_capped
         }
         
         logger.debug(f"📊 Position Size: qty={final_qty}, value=${final_position_value:.2f}, max=${self.max_position_value:.2f}")

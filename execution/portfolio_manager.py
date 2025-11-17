@@ -193,8 +193,10 @@ class PortfolioManager:
             'id': position_id,
             'symbol': symbol,
             'strategy': strategy,
-            'value': position_value,
-            'side': side
+            'position_value': position_value,  # ⭐ V6.1: 'value' → 'position_value' (키 통일)
+            'value': position_value,  # 하위 호환성 유지
+            'side': side,
+            'status': 'OPEN'  # ⭐ V6.1: _get_used_budget() 조건 충족
         }
         
         self.positions[symbol].append(position)
@@ -387,6 +389,70 @@ class PortfolioManager:
         
         logger.info(f"💰 전략 예산: {strategy_id} = ${budget:,.2f} ({budget_pct*100:.1f}%)")
         return budget
+    
+    def _get_used_budget(self, strategy_id: str) -> float:
+        """
+        ⭐ PHASE17 V6.1: 전략별 현재 사용 중인 예산 계산 (디버그 강화)
+        
+        Args:
+            strategy_id: 전략 ID
+            
+        Returns:
+            float: 사용 중인 예산 (USDT)
+        """
+        used = 0.0
+        position_count = 0
+        
+        # 상세 로그용
+        position_details = []
+        
+        for symbol, pos_list in self.positions.items():
+            for pos in pos_list:
+                if pos.get('strategy') == strategy_id and pos.get('status') == 'OPEN':
+                    pos_value = pos.get('position_value', 0.0)
+                    
+                    # ⭐ V6.1 SAFETY: position_value가 0이면 qty * entry_price로 재계산
+                    if pos_value == 0.0:
+                        qty = pos.get('qty', 0.0)
+                        entry_price = pos.get('entry_price', 0.0)
+                        pos_value = qty * entry_price
+                        logger.warning(
+                            f"⚠️ [Budget Hotfix] position_value=0 detected, recalculated: "
+                            f"{symbol} qty={qty} * entry={entry_price} = ${pos_value:.2f}"
+                        )
+                    
+                    used += pos_value
+                    position_count += 1
+                    position_details.append(f"{symbol}=${pos_value:.0f}")
+        
+        # ⭐ V6.1 DEBUG: 상세 포지션 목록 로그
+        if position_count > 0:
+            logger.debug(
+                f"🔍 [Budget Detail] {strategy_id}: {position_count}개 포지션 "
+                f"[{', '.join(position_details)}] = ${used:,.0f}"
+            )
+        
+        return used
+    
+    def get_available_budget(self, strategy_id: str) -> float:
+        """
+        ⭐ PHASE17: 전략별 남은 예산 계산 (Position Sizer에 전달용)
+        
+        Args:
+            strategy_id: 전략 ID
+            
+        Returns:
+            float: 사용 가능한 예산 (USDT)
+        """
+        total_budget = self.calculate_strategy_budget(strategy_id)
+        used_budget = self._get_used_budget(strategy_id)
+        available = max(0.0, total_budget - used_budget)
+        
+        logger.info(
+            f"💰 [Budget] {strategy_id}: total=${total_budget:,.0f} "
+            f"used=${used_budget:,.0f} available=${available:,.0f}"
+        )
+        return available
         
     def check_correlation_guard(self, new_symbol: str) -> tuple[bool, str]:
         """

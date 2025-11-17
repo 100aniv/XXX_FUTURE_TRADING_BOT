@@ -1152,14 +1152,27 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict):
             continue  # ⭐ PHASE9-1 FIX: 진입 거부 시 신호 스킵
 
         # ⭐ PHASE17: 포지션 사이즈 계산 + Multi-position Scaling
-        # 1. 기본 포지션 크기 계산
+        # 1. 전략별 남은 예산 조회 (PHASE17 Budget SSOT)
+        strategy_id = decision.get("strategy_id", "ensemble")
+        available_budget = portfolio.get_available_budget(strategy_id)
+        
+        # 2. 기본 포지션 크기 계산 (Budget 전달)
         qty, meta = sizer.calculate(
             {
                 "entry_price": decision.get("entry"),
                 "sl_price": decision.get("sl"),
                 "confidence": decision.get("confidence", 0.8),
-            }
+            },
+            available_budget=available_budget
         )
+        
+        # 3. Budget Cap 적용 로그
+        if meta.get('budget_capped'):
+            logger.info(
+                f"💰 [Budget Cap Applied] {candle_symbol} {decision.get('side')} "
+                f"strategy={strategy_id} position_value=${meta['position_value']:.2f} "
+                f"available_budget=${available_budget:.2f}"
+            )
 
         if qty <= 0:
             logger.warning(f"❌ [ENTRY BLOCK] symbol={candle_symbol} side={decision.get('side')} reason=position_size_zero qty={qty}")
@@ -1169,6 +1182,9 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict):
         num_open_positions = len(active_positions)
         max_positions = config.get('risk', {}).get('max_positions', 20)
         base_risk_usdt = meta.get('risk_usdt', 0)
+        
+        # ⭐ PHASE17 V6 FIX: Budget Cap을 보존하기 위해 position_value 먼저 저장
+        base_position_value = meta.get('position_value', qty * decision.get("entry"))
         
         if base_risk_usdt > 0:
             scaled_risk_usdt = sizer.apply_multi_position_scaling(
@@ -1181,11 +1197,18 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict):
             qty = qty * risk_ratio
             logger.debug(f"📊 Multi-position Scaling: {num_open_positions}개 열림, qty {meta.get('qty', 0):.4f} → {qty:.4f}")
         
-        # ⭐ position_sizer가 계산한 position_value 사용 (재계산 금지!)
+        # ⭐ PHASE17 V6 FIX: position_value 계산 (Multi-position Scaling 반영)
+        # Multi-position Scaling이 qty를 조정했으므로 항상 재계산 필요
         position_value = qty * decision.get("entry")
+        
+        # Budget Cap이 적용된 경우에도 Multi-position Scaling으로 더 줄어들 수 있음
+        if meta.get('budget_capped'):
+            logger.info(
+                f"💰 [Budget Cap Applied] Original budget=${available_budget:.2f}, "
+                f"After Multi-pos Scaling: position_value=${position_value:.2f}"
+            )
 
         # ⭐ PHASE11-B: 엔트리 체크 시작 로그
-        strategy_id = decision.get("strategy_id", "ensemble")
         current_equity = portfolio.equity if hasattr(portfolio, 'equity') else 0
         open_positions = len(active_positions)
         logger.info(
