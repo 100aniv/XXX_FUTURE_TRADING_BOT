@@ -1,0 +1,11 @@
+Metric,Value
+Strategy,scalping
+Symbol,BTCUSDT
+Timeframe,3m
+Trades Closed,82
+Winrate (%),29.27
+Profit Factor,0.32
+Max Drawdown (%),-18.83
+Loss > 8%,0
+TP Hit (%),0.0
+Sharpe Ratio,-0.53

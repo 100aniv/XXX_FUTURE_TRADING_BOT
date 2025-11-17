@@ -201,3 +201,58 @@ DOC_COMMIT_RULES:
 
   - 기존 PHASE 문서 설계와 상충되는 변경을 할 경우,
     - 먼저 문서를 수정하고, 그 다음 코드/설정을 수정한다.
+
+    
+# ============================================================
+# WIND SURF RULES FOR FUTURE ALARM BOT
+# ============================================================
+
+[core_policies]
+- You must always load and analyze the full project structure before writing code.
+- You must always maintain existing module responsibilities (SRP/SOC).
+- You must strictly follow PHASE10 + PHASE11 architectural policies.
+- You must NEVER break lazy-load DB design.
+- You must NEVER introduce hardcoded config values.
+- You must NEVER introduce new files unless given explicit instruction & justification.
+
+[project_structure_mandatory]
+Before coding, ALWAYS read:
+- strategies/scalping.py
+- strategies/*
+- execution/engine.py
+- execution/portfolio_manager.py
+- execution/risk_manager.py
+- execution/adapters/brokers.py
+- tuning/tuning_core.py
+- database/postgres.py
+- common/*
+- configs/base.yml
+- configs/modes/*
+- scripts/run_backtest.py
+
+[phase_policies]
+- PHASE10: DB-AWARE design, lazy-load, no DB at import time.
+- PHASE11: Scalping architecture with Pattern Toggle (A/B/C/D/E).
+- PHASE11-B: Entry Guard Debug Hooks.
+- PHASE11-C: Strategy-specific cooldown system.
+- PHASE11-D: Fresh Cross + Trend-Aware Entry logic.
+These policies MUST remain intact unless the user explicitly requests modification.
+
+[modification_rules]
+- Only modify the minimum required code.
+- Changes MUST be backward-compatible unless approved.
+- Show code in unified diff/patch format.
+- Never override config with constants.
+- Never weaken Risk/Portfolio guards.
+- Never relocate logic across modules.
+
+[workflow]
+1. Load full project context.
+2. Summarize architecture.
+3. Identify impacted modules.
+4. Propose minimal patch plan.
+5. Wait for user approval.
+6. Apply patch in diff format.
+7. Perform self-review for violations.
+
+[end]

@@ -95,6 +95,21 @@ def main():
     logger.info("⚙️  Config 로딩...")
     cfg = load_config_with_mode(mode="paper")
     
+    # ⭐ CRITICAL: mode를 paper로 강제 설정
+    cfg['mode'] = 'paper'
+    
+    # ⭐ CRITICAL: Redis 환경변수를 실제 값으로 대체
+    if 'monitoring' in cfg and 'redis' in cfg['monitoring']:
+        redis_cfg = cfg['monitoring']['redis']
+        if isinstance(redis_cfg.get('host'), str) and redis_cfg['host'].startswith('${'):
+            redis_cfg['host'] = 'localhost'
+        if isinstance(redis_cfg.get('port'), str) and str(redis_cfg['port']).startswith('${'):
+            redis_cfg['port'] = 6379
+        elif isinstance(redis_cfg.get('port'), int):
+            pass  # 이미 정수면 OK
+        else:
+            redis_cfg['port'] = 6379
+    
     # PHASE15 best 파라미터 반영 확인
     scalping_cfg = cfg.get('strategies', {}).get('scalping', {})
     logger.info(f"✅ PHASE15 Best 파라미터:")
