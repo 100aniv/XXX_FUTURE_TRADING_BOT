@@ -57,7 +57,16 @@ Budget Cap 정상 작동 확인
 ```
 
 ### M5 (시작 +5분) - 13:04
-대기 중...
+```
+Entry SUCCESS: 34개
+Budget Cap Applied: 93회 (273.5%)
+Portfolio BLOCK: 16회 (32.0%)
+Errors: 0건
+Equity: $49,934 (-$66, -0.13%)
+
+상태: ✅ 정상
+추세: Entry 활발, Budget Cap 정상 작동
+```
 
 ### M10 (시작 +10분) - 13:09
 대기 중...
