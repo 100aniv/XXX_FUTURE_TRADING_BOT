@@ -463,3 +463,50 @@ def signal_logic(df: pd.DataFrame, config: dict) -> Dict[str, Any]:
         "lower_high": lower_high,
         "vol_spike": vol_spike,
     }
+
+
+# ============================================================================
+# PHASE19-1: BaseStrategy 래퍼
+# ============================================================================
+from common.registry.base_strategy import BaseStrategy
+from common.registry.strategy_metadata import StrategyMetadata
+
+
+class ScalpingStrategy(BaseStrategy):
+    """
+    Scalping 전략 (PHASE12, 3m 고빈도)
+    
+    **전략 특징**:
+    - 타임프레임: 1m, 3m, 5m
+    - EMA Fresh Trend + Optional MR
+    - RR: 1.5
+    - 보유 시간: 짧음 (수분 ~ 30분)
+    
+    **PHASE19-1 래퍼**:
+    - 기존 signal_logic() 함수 호출
+    - BaseStrategy 인터페이스 구현
+    - Registry 자동 로드 지원
+    """
+    
+    @property
+    def metadata(self) -> StrategyMetadata:
+        return StrategyMetadata(
+            strategy_name='scalping',
+            strategy_type='scalping',
+            supported_symbols=['BTCUSDT', 'ETHUSDT'],  # 주요 심볼 (빈 리스트 = 모든 심볼)
+            supported_timeframes=['1m', '3m', '5m'],
+            version='v3.0',
+            description='3분봉 기반 EMA Fresh Trend + Optional Mean Reversion'
+        )
+    
+    def compute_signal(self, df: pd.DataFrame) -> Dict[str, Any]:
+        """
+        신호 계산 (기존 signal_logic 호출)
+        
+        Args:
+            df: OHLCV + 지표 DataFrame
+        
+        Returns:
+            dict: 신호 정보
+        """
+        return signal_logic(df, self.config)

@@ -258,3 +258,28 @@ def signal_logic(df: pd.DataFrame, config: dict) -> Dict[str, Any]:
         "volume": float(last["volume"]),
         "vol_ma": float(last["vol_ma"]),
     }
+
+
+# ============================================================================
+# PHASE19-1: BaseStrategy 래퍼
+# ============================================================================
+from common.registry.base_strategy import BaseStrategy
+from common.registry.strategy_metadata import StrategyMetadata
+
+
+class SwingBBStrategy(BaseStrategy):
+    """Swing BB 전략 (BB 반등 기반 스윙)"""
+    
+    @property
+    def metadata(self) -> StrategyMetadata:
+        return StrategyMetadata(
+            strategy_name='swing_bb',
+            strategy_type='swing',
+            supported_symbols=[],
+            supported_timeframes=['4h', '1d'],
+            version='v1.0',
+            description='Bollinger Band 반등 기반 스윙 트레이딩'
+        )
+    
+    def compute_signal(self, df: pd.DataFrame) -> Dict[str, Any]:
+        return signal_logic(df, self.config)

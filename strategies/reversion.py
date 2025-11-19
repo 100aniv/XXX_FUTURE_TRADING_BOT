@@ -199,3 +199,39 @@ def signal_logic(df: pd.DataFrame, config: dict) -> Dict[str, Any]:
         "volume": float(last["volume"]),
         "vol_ma": float(last["vol_ma"]),
     }
+
+
+# ============================================================================
+# PHASE19-1: BaseStrategy 래퍼
+# ============================================================================
+from common.registry.base_strategy import BaseStrategy
+from common.registry.strategy_metadata import StrategyMetadata
+
+
+class ReversionStrategy(BaseStrategy):
+    """
+    Reversion 전략 (평균회귀)
+    
+    **전략 특징**:
+    - 타임프레임: 5m, 15m
+    - RSI 극단 + BB 이탈 후 회귀
+    - v3: 2단계 필터 (과매도/과매수 + 반전 확인)
+    
+    **PHASE19-1 래퍼**:
+    - 기존 signal_logic() 함수 호출
+    """
+    
+    @property
+    def metadata(self) -> StrategyMetadata:
+        return StrategyMetadata(
+            strategy_name='reversion',
+            strategy_type='reversion',
+            supported_symbols=[],  # 모든 심볼 지원
+            supported_timeframes=['5m', '15m', '30m'],
+            version='v3.0',
+            description='RSI 극단 + BB 이탈 후 평균회귀 포착 (2단계 필터)'
+        )
+    
+    def compute_signal(self, df: pd.DataFrame) -> Dict[str, Any]:
+        """신호 계산 (기존 signal_logic 호출)"""
+        return signal_logic(df, self.config)

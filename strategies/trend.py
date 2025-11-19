@@ -132,3 +132,28 @@ def signal_logic(df: pd.DataFrame, config: dict) -> Dict[str, Any]:
         "volume": float(last["volume"]),
         "vol_ma": float(last["vol_ma"]),
     }
+
+
+# ============================================================================
+# PHASE19-1: BaseStrategy 래퍼
+# ============================================================================
+from common.registry.base_strategy import BaseStrategy
+from common.registry.strategy_metadata import StrategyMetadata
+
+
+class TrendStrategy(BaseStrategy):
+    """Trend 전략 (추세 추종)"""
+    
+    @property
+    def metadata(self) -> StrategyMetadata:
+        return StrategyMetadata(
+            strategy_name='trend',
+            strategy_type='trend',
+            supported_symbols=[],
+            supported_timeframes=['1h', '4h'],
+            version='v1.0',
+            description='EMA 정렬 + ADX 기반 추세 추종'
+        )
+    
+    def compute_signal(self, df: pd.DataFrame) -> Dict[str, Any]:
+        return signal_logic(df, self.config)

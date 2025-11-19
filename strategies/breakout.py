@@ -166,3 +166,41 @@ def signal_logic(df: pd.DataFrame, config: dict) -> Dict[str, Any]:
         "volume": float(last["volume"]),
         "vol_ma": float(last["vol_ma"]),
     }
+
+
+# ============================================================================
+# PHASE19-1: BaseStrategy 래퍼
+# ============================================================================
+from common.registry.base_strategy import BaseStrategy
+from common.registry.strategy_metadata import StrategyMetadata
+from typing import Dict, Any
+
+
+class BreakoutStrategy(BaseStrategy):
+    """
+    Breakout 전략 (돌파)
+    
+    **전략 특징**:
+    - 타임프레임: 15m
+    - Donchian Channel 돌파 + ATR 급등
+    - 추세 전환 초입 포착
+    
+    **PHASE19-1 래퍼**:
+    - 기존 signal_logic() 함수 호출
+    - BaseStrategy 인터페이스 구현
+    """
+    
+    @property
+    def metadata(self) -> StrategyMetadata:
+        return StrategyMetadata(
+            strategy_name='breakout',
+            strategy_type='breakout',
+            supported_symbols=[],  # 모든 심볼 지원
+            supported_timeframes=['15m', '30m', '1h'],
+            version='v1.0',
+            description='Donchian Channel 돌파 + ATR 급등 기반 추세 전환 포착'
+        )
+    
+    def compute_signal(self, df: pd.DataFrame) -> Dict[str, Any]:
+        """신호 계산 (기존 signal_logic 호출)"""
+        return signal_logic(df, self.config)
