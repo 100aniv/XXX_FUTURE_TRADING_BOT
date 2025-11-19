@@ -496,7 +496,17 @@ class ScalpingStrategy(BaseStrategy):
             supported_symbols=['BTCUSDT', 'ETHUSDT'],  # 주요 심볼 (빈 리스트 = 모든 심볼)
             supported_timeframes=['1m', '3m', '5m'],
             version='v3.0',
-            description='3분봉 기반 EMA Fresh Trend + Optional Mean Reversion'
+            description='3분봉 기반 EMA Fresh Trend + Optional Mean Reversion',
+            # PHASE19-2: Ensemble Score System
+            optimal_regime='trending',
+            worst_regime='ranging',
+            base_weight=1.0,
+            factor_weights={
+                'momentum': 0.4,
+                'trend_strength': 0.3,
+                'volume': 0.2,
+                'volatility': 0.1,
+            }
         )
     
     def compute_signal(self, df: pd.DataFrame) -> Dict[str, Any]:

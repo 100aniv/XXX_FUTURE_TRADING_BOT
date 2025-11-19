@@ -229,7 +229,17 @@ class ReversionStrategy(BaseStrategy):
             supported_symbols=[],  # 모든 심볼 지원
             supported_timeframes=['5m', '15m', '30m'],
             version='v3.0',
-            description='RSI 극단 + BB 이탈 후 평균회귀 포착 (2단계 필터)'
+            description='RSI 극단 + BB 이탈 후 평균회귀 포착 (2단계 필터)',
+            # PHASE19-2: Ensemble Score System
+            optimal_regime='ranging',
+            worst_regime='trending',
+            base_weight=0.6,
+            factor_weights={
+                'overbought_oversold': 0.5,
+                'trend_strength': 0.3,
+                'volatility': 0.1,
+                'volume': 0.1,
+            }
         )
     
     def compute_signal(self, df: pd.DataFrame) -> Dict[str, Any]:

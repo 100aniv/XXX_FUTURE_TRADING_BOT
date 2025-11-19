@@ -278,7 +278,16 @@ class SwingBBStrategy(BaseStrategy):
             supported_symbols=[],
             supported_timeframes=['4h', '1d'],
             version='v1.0',
-            description='Bollinger Band 반등 기반 스윙 트레이딩'
+            description='Bollinger Band 반등 기반 스윙 트레이딩',
+            # PHASE19-2: Ensemble Score System
+            optimal_regime='ranging',
+            worst_regime='trending',
+            base_weight=0.4,
+            factor_weights={
+                'overbought_oversold': 0.3,
+                'volatility': 0.1,
+                'volume': 0.1,
+            }
         )
     
     def compute_signal(self, df: pd.DataFrame) -> Dict[str, Any]:

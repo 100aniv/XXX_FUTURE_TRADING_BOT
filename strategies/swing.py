@@ -191,7 +191,17 @@ class SwingStrategy(BaseStrategy):
             supported_symbols=[],
             supported_timeframes=['4h', '1d'],
             version='v1.0',
-            description='4시간/일봉 기반 스윙 트레이딩'
+            description='4시간/일봉 기반 스윙 트레이딩',
+            # PHASE19-2: Ensemble Score System
+            optimal_regime='trending',
+            worst_regime='ranging',
+            base_weight=1.0,
+            factor_weights={
+                'trend_strength': 0.4,
+                'breakout_probability': 0.2,
+                'momentum': 0.1,
+                'volatility': 0.1,
+            }
         )
     
     def compute_signal(self, df: pd.DataFrame) -> Dict[str, Any]:

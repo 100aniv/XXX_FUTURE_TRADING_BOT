@@ -4,11 +4,12 @@
 Strategy Metadata
 =================
 PHASE19-1: 전략 메타데이터 표준
+PHASE19-2: Ensemble Score System 지원 확장
 
 모든 전략은 이 메타데이터를 제공해야 한다.
 """
 from dataclasses import dataclass, field
-from typing import List
+from typing import List, Dict, Optional
 
 
 @dataclass
@@ -42,6 +43,12 @@ class StrategyMetadata:
     supported_timeframes: List[str] = field(default_factory=list)
     version: str = 'v1.0'
     description: str = ''
+    
+    # ✨ PHASE19-2: Ensemble Score System 필드
+    optimal_regime: Optional[str] = None      # 최적 시장 레짐 (trending, breakout, ranging)
+    worst_regime: Optional[str] = None        # 최악 시장 레짐
+    base_weight: float = 1.0                  # 전략 기본 가중치
+    factor_weights: Dict[str, float] = field(default_factory=dict)  # Factor별 가중치
     
     def validate(self) -> bool:
         """

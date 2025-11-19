@@ -198,7 +198,17 @@ class BreakoutStrategy(BaseStrategy):
             supported_symbols=[],  # 모든 심볼 지원
             supported_timeframes=['15m', '30m', '1h'],
             version='v1.0',
-            description='Donchian Channel 돌파 + ATR 급등 기반 추세 전환 포착'
+            description='Donchian Channel 돌파 + ATR 급등 기반 추세 전환 포착',
+            # PHASE19-2: Ensemble Score System
+            optimal_regime='breakout',
+            worst_regime='ranging',
+            base_weight=0.8,
+            factor_weights={
+                'breakout_probability': 0.5,
+                'volatility': 0.2,
+                'volume': 0.2,
+                'trend_strength': 0.1,
+            }
         )
     
     def compute_signal(self, df: pd.DataFrame) -> Dict[str, Any]:

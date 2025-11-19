@@ -152,7 +152,16 @@ class TrendStrategy(BaseStrategy):
             supported_symbols=[],
             supported_timeframes=['1h', '4h'],
             version='v1.0',
-            description='EMA 정렬 + ADX 기반 추세 추종'
+            description='EMA 정렬 + ADX 기반 추세 추종',
+            # PHASE19-2: Ensemble Score System
+            optimal_regime='trending',
+            worst_regime='ranging',
+            base_weight=1.2,
+            factor_weights={
+                'trend_strength': 0.5,
+                'momentum': 0.1,
+                'volatility': 0.1,
+            }
         )
     
     def compute_signal(self, df: pd.DataFrame) -> Dict[str, Any]:

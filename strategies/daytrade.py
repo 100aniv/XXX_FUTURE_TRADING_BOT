@@ -180,7 +180,17 @@ class DaytradeStrategy(BaseStrategy):
             supported_symbols=[],
             supported_timeframes=['15m', '30m', '1h'],
             version='v1.0',
-            description='15분/30분/1시간 기반 데이 트레이딩'
+            description='15분/30분/1시간 기반 데이 트레이딩',
+            # PHASE19-2: Ensemble Score System
+            optimal_regime='trending',
+            worst_regime='ranging',
+            base_weight=0.9,
+            factor_weights={
+                'trend_strength': 0.4,
+                'breakout_probability': 0.2,
+                'momentum': 0.1,
+                'volatility': 0.1,
+            }
         )
     
     def compute_signal(self, df: pd.DataFrame) -> Dict[str, Any]:
