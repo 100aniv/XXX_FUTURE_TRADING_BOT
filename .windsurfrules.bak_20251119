@@ -1,0 +1,258 @@
+# 🍀 WINDSURF RULES – SCALPING 1M / PHASE9–10 / TUNING & BACKTEST
+# ------------------------------------------------------------------
+# 목적:
+# - 기존 프로젝트 구조/DB/엔진을 절대 망가뜨리지 않고,
+#   1) scalping 1m 전략 로직 개선,
+#   2) backtest_clean / backtest_raw 파이프라인 유지,
+#   3) PHASE10 튜닝(tuning_core / tuning_cli)만 점진적으로 강화한다.
+
+# ==================================================================
+# 1. 전역 규칙 (GLOBAL RULES)
+# ==================================================================
+RULES:
+  - 모든 작업 전에 반드시 프로젝트 문서와 설계를 우선 확인한다:
+    - docs/PHASE8/PHASE8_MASTER_PLAN.md
+    - docs/PHASE9/PHASE9-5_STRATEGY_SEPARATION.md
+    - docs/PHASE9/PHASE9-6_SCALPING_V1_DESIGN.md
+    - docs/PHASE9/PHASE9-7_DATA_PIPELINE.md
+    - docs/PHASE10/PHASE10_SCALPING_TUNING_PLAN.md
+    - docs/PHASE10/PHASE10_SCALPING_TUNING_RUNBOOK.md
+
+  - 엔진/브로커/전략은 "config 기반"으로만 동작해야 한다.
+    - execution/, strategies/, exchanges/ 쪽에 하드코딩된 값 추가 금지.
+    - 모드/환경 차이는 configs/*.yml, CLI 인자, overlay-config 로만 표현한다.
+
+  - reports/ 폴더는 사용/수정 금지.
+    - 리포트/지표 생성은 analytics/ 만 사용한다.
+
+  - core 리팩토링 금지:
+    - execution/engine.py
+    - execution/position_tracker.py
+    - portfolio/ 관련 핵심 로직
+    - indicators/core_indicators.py
+    는 "버그 수정 / 로그 추가" 외 구조 변경 금지.
+
+  - Phase9–10 동안 "앙상블/멀티전략" 로직은 만지지 않는다.
+    - strategies/ensemble.py, ensemble 설정은 PHASE11 전까지 read-only 취급.
+    - 튜닝/실험 대상은 오직 strategies/scalping.py (1m) 이다.
+
+  - 단일 작업 범위 원칙:
+    - 하나의 Windsurf 세션에서는 최대 1~2개 모듈군만 수정한다.
+      (예: "tuning_core + tuning_cli" 또는 "scalping + base.yml")
+    - 데이터 파이프라인, 엔진, 튜닝, 전략 로직을 한 번에 건드리지 않는다.
+
+# ==================================================================
+# 2. DB & STORAGE 규칙 (POSTGRES ONLY, NO SQLITE)
+# ==================================================================
+DB_RULES:
+  - 이미 Docker로 실행 중인 PostgreSQL/Redis를 "유일한" 스토리지로 사용한다.
+    - trading_db (Postgres): 트레이드/포지션/튜닝 결과 등 모든 영구 데이터.
+    - Redis: dedup, 캐시, 러닝타임 상태.
+
+  - Optuna Storage:
+    - 반드시 tuning.tuning_core.get_optuna_storage() 를 사용해 결정한다.
+    - 기본값은 PostgreSQL 이어야 한다:
+      - docker 환경:  postgresql://trading_user:trading_pw_2024@db_postgres:5432/trading_db
+      - 로컬 환경:    postgresql://trading_user:trading_pw_2024@localhost:5432/trading_db
+    - 새로운 SQLite 파일, json, csv 기반의 "튜닝 결과 스토리지" 생성 금지.
+      - artifacts/tuning/optuna.db 는 과거 기록 호환용 read-only 취급.
+      - SQLite를 새로 만들거나 경로를 바꾸는 작업 금지.
+
+  - 새로운 DB 스키마, DB 접속 정보, Docker 서비스 추가 금지:
+    - 기존 trading_db / Redis 외에 mongo, mysql, 새로운 postgres DB 등 추가 생성하지 않는다.
+    - alembic/migration 등 스키마 변경 작업은 이 Phase에서 수행하지 않는다.
+
+# ==================================================================
+# 3. CONFIG & MODES 규칙 (BACKTEST / PAPER / LIVE 일관성)
+# ==================================================================
+CONFIG_RULES:
+  - 모든 모드의 진실 소스(truth source)는 configs/ 이다:
+    - configs/base.yml
+    - configs/modes/backtest_clean.yml
+    - configs/modes/backtest_raw.yml
+    - configs/active/current.yml
+
+  - run_backtest.py, execution/engine.py 안에
+    "모드별 하드코딩" 또는 "전략 ID별 if 분기"를 새로 추가하지 않는다.
+    - 모드/전략별 차이는 YAML과 CLI 인자, overlay-config 로만 구현한다.
+
+  - overlay-config 사용 원칙:
+    - 튜닝/실험 시, 항상 임시 overlay 파일(예: /tmp/scalping_overlay.yml)을 생성해 사용한다.
+    - configs/base.yml / modes/*.yml / active/current.yml 자체를 튜닝 루프 안에서 직접 수정 금지.
+    - overlay는 run_backtest.py 에서 병합(deep merge)하는 구조를 유지하되,
+      병합 로직 자체를 크게 변경하지 않는다.
+
+  - PHASE10 튜닝에서 configs/ 수정 허용 범위:
+    - docs/에서 합의된 후에만 다음 파일을 변경할 수 있다:
+      - configs/base.yml 의 scalping 섹션 기본값
+      - configs/modes/backtest_raw.yml 의 연구용 파라미터
+    - configs/active/current.yml 은 "운영용 스냅샷"으로 간주하고,
+      필수 버그 수정(중복 키 제거 등) 외에는 변경을 최소화한다.
+
+# ==================================================================
+# 4. SCALPING 전략 규칙 (1m EMA/RSI/MOMENTUM 전략)
+# ==================================================================
+SCALPING_RULES:
+  - 대상 파일:
+    - strategies/scalping.py
+    - docs/PHASE9/PHASE9-6_SCALPING_V1_DESIGN.md
+    - docs/PHASE9/PHASE9-7_DATA_PIPELINE.md
+    - docs/PHASE10/PHASE10_SCALPING_TUNING_PLAN.md
+    - docs/PHASE10/PHASE10_SCALPING_TUNING_RUNBOOK.md
+
+  - 전략 철학 유지:
+    - EMA 교차 + RSI 극단 + 모멘텀 패턴 + 거래량 필터 구조는 유지하되,
+      "조건의 조합(AND/OR, relax 옵션)"을 조정하는 방식으로만 개선한다.
+    - RR, SL, max_hold_minutes 등 리스크 파라미터는 config로 제어하고,
+      코드 안에 숫자를 하드코딩해서 덮어쓰지 않는다.
+
+  - 신호 조건 완화/강화 작업 시 규칙:
+    - 반드시 INIT/DEBUG/SIGNAL 로그에 영향을 주는 지점을 함께 수정하여,
+      파라미터/조건 변화가 로그에서 명확히 보이게 한다.
+    - "조건 완화"는 tuning 범위 설정과 config 변경으로 우선 시도하고,
+      scalping.py 내부 로직 변경은 두 번째 선택지로 사용한다.
+
+  - 연속 손실 쿨다운, max_trades_per_hour 등
+    "전략 보호용 guard"는 execution/engine.py / RiskManager 레벨에서 처리하며,
+    scalping.py 안에 새로운 쿨다운/guard 로직을 추가하지 않는다.
+
+# ==================================================================
+# 5. TUNING & BACKTEST 규칙 (PHASE10)
+# ==================================================================
+TUNING_RULES:
+  - 허용된 코드 변경 범위:
+    - tuning/tuning_core.py
+    - tuning/tuning_cli.py
+    - scripts/run_backtest.py   (필요한 경우에 한해, 공용 인터페이스 수준 수정만)
+    - analytics/scorecard/*     (지표/로깅 보강)
+
+  - 금지 사항:
+    - tuning을 위해 새로운 backtest 스크립트, 새로운 엔진, 새로운 데이터 로더를 만들지 않는다.
+      - 기존 파이프라인을 반드시 사용:
+        scripts/download_data.py
+          → collectors/historical_collector.HistoricalFeed
+          → execution/backtest_engine.BacktestEngine
+          → analytics/scorecard/*
+    - 튜닝용으로 strategy 로직을 "임시 복사"한 파일을 새로 만들지 않는다.
+      (예: scalping_tuned.py, scalping_v2.py 같은 파일 생성 금지)
+
+  - Optuna objective 규칙:
+    - objective 함수는 항상 "backtest_clean 모드 90일"을 기준으로 설계한다.
+      - Train: 2024-10–11
+      - Val:   2024-12
+      (기간은 PHASE10 문서에 정의된 방식으로만 조정)
+    - score 계산 시:
+      - Profit Factor, Winrate를 기반으로 base_score 구성.
+      - Max Drawdown, Trades 수 부족에 대해 강한 페널티 적용.
+      - Trades=0 인 경우 score = -100.0 으로 즉시 실격 처리한다.
+    - 새로운 score 규칙을 도입할 때는,
+      docs/PHASE10/PHASE10_SCALPING_TUNING_PLAN.md 를 먼저 수정한 후 코드에 반영한다.
+
+  - Storage / Study 규칙:
+    - Study 이름, storage URL, trials 수 등의 실행 파라미터는
+      "tuning_cli.py 의 CLI 인자 + 문서에 정의된 예시"를 따른다.
+    - 코드 안에 특정 Study 이름, 날짜 범위, 심볼을 하드코딩하지 않는다.
+
+# ==================================================================
+# 6. TEST & 검증 규칙
+# ==================================================================
+TEST_RULES:
+  - 튜닝/전략 관련 변경을 한 후 반드시 다음을 수행한다:
+
+    1) 7일 스모크 backtest (backtest_raw or backtest_clean)
+       - BTCUSDT / 1m
+       - start: 2024-10-01
+       - end:   2024-10-07
+       - 확인:
+         - [SCALPING V2 INIT] 로그
+         - [SCALPING V2 DEBUG] 로그 (100캔들마다)
+         - [SCALPING V2 SIGNAL] LONG/SHORT 로그
+         - scorecard.(csv|md) 생성 여부
+
+    2) 90일 기준선 backtest (backtest_clean)
+       - BTCUSDT / 1m
+       - start: 2024-10-01
+       - end:   2024-12-30
+       - 변경 전후 scorecard 를 비교하고, Trades/Winrate/PF/DD 변화 기록.
+
+    3) 튜닝 단일 trial 테스트
+       - python -m tuning.tuning_cli ... --trials 1
+       - Train/Val metrics, final score 출력 로그 확인.
+
+  - 테스트 실패 시:
+    - scorecard 미생성, Trades=0 반복, 타임아웃 등 이슈는
+      우선 docs/PHASE10/PHASE10_SCALPING_TUNING_RUNBOOK.md 트러블슈팅을 따른다.
+    - 코드 수정 전에, overlay-config, config 병합, 파라미터 전달이 올바른지 먼저 확인한다.
+
+# ==================================================================
+# 7. 문서 & 커밋 규칙
+# ==================================================================
+DOC_COMMIT_RULES:
+  - 의미 있는 변경(전략 로직, 튜닝 스코어링, 파라미터 범위 수정 등)을 할 때마다:
+    - 반드시 해당 PHASE 문서에 "변경 이유 / 기대 효과 / 리스크"를 요약 추가한다.
+      - 예: docs/PHASE10/PHASE10_SCALPING_TUNING_PLAN.md
+           docs/PHASE10/PHASE10_SCALPING_TUNING_RUNBOOK.md
+
+  - Git 커밋 메시지 규칙:
+    - feat(phase10-*)  : 새로운 튜닝/도구/문서 기능
+    - fix(phase10-*)   : 튜닝 관련 버그/로직 수정
+    - docs(phase10-*)  : 문서/런북만 수정
+    - refactor(phase10-*): 구조 변경(허용 범위 내)
+
+  - 기존 PHASE 문서 설계와 상충되는 변경을 할 경우,
+    - 먼저 문서를 수정하고, 그 다음 코드/설정을 수정한다.
+
+    
+# ============================================================
+# WIND SURF RULES FOR FUTURE ALARM BOT
+# ============================================================
+
+[core_policies]
+- You must always load and analyze the full project structure before writing code.
+- You must always maintain existing module responsibilities (SRP/SOC).
+- You must strictly follow PHASE10 + PHASE11 architectural policies.
+- You must NEVER break lazy-load DB design.
+- You must NEVER introduce hardcoded config values.
+- You must NEVER introduce new files unless given explicit instruction & justification.
+
+[project_structure_mandatory]
+Before coding, ALWAYS read:
+- strategies/scalping.py
+- strategies/*
+- execution/engine.py
+- execution/portfolio_manager.py
+- execution/risk_manager.py
+- execution/adapters/brokers.py
+- tuning/tuning_core.py
+- database/postgres.py
+- common/*
+- configs/base.yml
+- configs/modes/*
+- scripts/run_backtest.py
+
+[phase_policies]
+- PHASE10: DB-AWARE design, lazy-load, no DB at import time.
+- PHASE11: Scalping architecture with Pattern Toggle (A/B/C/D/E).
+- PHASE11-B: Entry Guard Debug Hooks.
+- PHASE11-C: Strategy-specific cooldown system.
+- PHASE11-D: Fresh Cross + Trend-Aware Entry logic.
+These policies MUST remain intact unless the user explicitly requests modification.
+
+[modification_rules]
+- Only modify the minimum required code.
+- Changes MUST be backward-compatible unless approved.
+- Show code in unified diff/patch format.
+- Never override config with constants.
+- Never weaken Risk/Portfolio guards.
+- Never relocate logic across modules.
+
+[workflow]
+1. Load full project context.
+2. Summarize architecture.
+3. Identify impacted modules.
+4. Propose minimal patch plan.
+5. Wait for user approval.
+6. Apply patch in diff format.
+7. Perform self-review for violations.
+
+[end]

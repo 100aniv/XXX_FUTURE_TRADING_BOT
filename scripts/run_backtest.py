@@ -22,6 +22,7 @@ Output:
 """
 import sys
 import argparse
+import signal  # PHASE18-3: Signal handling
 from pathlib import Path
 
 # 프로젝트 루트 추가
@@ -31,6 +32,7 @@ sys.path.insert(0, str(project_root))
 from common.config_loader import load_config_with_mode, generate_run_id, save_effective_config
 from common.config_validation import validate_config
 from common.logger import setup_logger
+from common.runtime_context import RuntimeContext  # PHASE18-3: Graceful Shutdown
 from analytics.scorecard import ScorecardGenerator
 
 logger = setup_logger(__name__, log_type="application")
@@ -121,6 +123,13 @@ def parse_args():
         help='오버레이 설정 파일 경로 (튜닝용, YAML)'
     )
     
+    parser.add_argument(
+        '--clean-state',
+        action='store_true',
+        default=False,
+        help='실행 전 Redis/로그 초기화 (PHASE18-1)'
+    )
+    
     return parser.parse_args()
 
 
@@ -130,8 +139,26 @@ def main():
     print("PHASE8-2 Backtest Runner (Engine Integrated)")
     print("=" * 60)
     
-    # 1. CLI 인자 파싱
+    # 0. Clean-State 초기화 (PHASE18-1)
     args = parse_args()
+    if args.clean_state:
+        logger.info("🔧 Clean-State 초기화 중...")
+        import subprocess
+        project_root = Path(__file__).parent.parent
+        init_script = project_root / "scripts" / "ops" / "init_clean_state.py"
+        result = subprocess.run(
+            [sys.executable, str(init_script)],
+            capture_output=True,
+            text=True
+        )
+        if result.returncode == 0:
+            logger.info("✅ Clean-State 초기화 완료")
+        else:
+            logger.warning(f"⚠️ Clean-State 초기화 실패 (계속 진행)")
+            if result.stderr:
+                logger.warning(f"   Error: {result.stderr[:200]}")
+    
+    # 1. CLI 인자 파싱
     
     logger.info(f"📋 설정: mode={args.mode}, strategy={args.strategy}, symbol={args.symbol}, tf={args.timeframe}")
     if args.days:
@@ -174,6 +201,9 @@ def main():
     cfg['timeframe'] = args.timeframe
     cfg['strategy'] = {'use_ensemble': False, 'selector': args.strategy}
     
+    # ⭐ PHASE18-2: env 명시적 설정 (네임스페이스용)
+    cfg['env'] = 'backtest'
+    
     # ⭐ PHASE9 CRITICAL FIX: 전략 타임프레임을 CLI 타임프레임으로 강제 override
     if 'strategies' not in cfg:
         cfg['strategies'] = {}
@@ -212,6 +242,38 @@ def main():
     run_id = generate_run_id()
     logger.info(f"🆔 Run ID: {run_id}")
     cfg['run_id'] = run_id  # config에 추가
+    
+    # ⭐ PHASE18-3: Runtime Context 생성 및 Signal Handler 등록
+    runtime_ctx = RuntimeContext()
+    runtime_ctx.run_id = run_id
+    runtime_ctx.env = cfg.get('env', 'backtest')
+    cfg['runtime_context'] = runtime_ctx
+    
+    shutdown_requested = [False]  # mutable state for signal handler
+    
+    def signal_handler(signum, frame):
+        sig_name = 'SIGINT' if signum == signal.SIGINT else f'Signal {signum}'
+        if shutdown_requested[0]:
+            logger.warning(f"🚨 강제 종료 (두 번째 시그널: {sig_name})")
+            sys.exit(1)
+        
+        logger.info(f"🛑 Shutdown signal received: {sig_name}")
+        shutdown_requested[0] = True
+        reason = runtime_ctx.request_shutdown(reason=sig_name)
+        logger.info(f"✅ Graceful shutdown requested: {reason}")
+    
+    signal.signal(signal.SIGINT, signal_handler)
+    if hasattr(signal, 'SIGTERM'):
+        signal.signal(signal.SIGTERM, signal_handler)
+    logger.info("✅ Signal handlers registered (SIGINT, SIGTERM)")
+    
+    # ⭐ PHASE18-4: 모니터링 시스템 초기화
+    from common.monitoring import setup_monitoring
+    try:
+        setup_monitoring(runtime_ctx, cfg)
+        logger.info("✅ 모니터링 시스템 초기화 완료")
+    except Exception as e:
+        logger.warning(f"⚠️ 모니터링 시스템 초기화 실패: {e}")
     
     # 5. effective_config.yml 스냅샷 저장
     logger.info("💾 Effective Config 저장...")
@@ -327,11 +389,33 @@ def main():
             config=cfg
         )
         logger.info("✅ 백테스트 완료")
+    except KeyboardInterrupt:
+        logger.info("⏹️  사용자 중단 (KeyboardInterrupt)")
+        runtime_ctx.request_shutdown(reason="KeyboardInterrupt")
     except Exception as e:
         logger.error(f"❌ 백테스트 실행 실패: {e}")
         import traceback
         logger.error(traceback.format_exc())
         sys.exit(1)
+    finally:
+        # ⭐ PHASE18-3: 리소스 정리 (Graceful Shutdown)
+        logger.info("🧹 리소스 정리 시작...")
+        
+        # ⭐ PHASE18-4: 모니터링 시스템 중지
+        if runtime_ctx and runtime_ctx.monitor_registry:
+            try:
+                runtime_ctx.monitor_registry.stop_all()
+                logger.info("  ✅ 모니터링 중지 완료")
+            except Exception as e:
+                logger.warning(f"  ⚠️ 모니터링 중지 실패: {e}")
+        
+        if hasattr(feed, 'stop'):
+            try:
+                feed.stop()
+                logger.info("  ✅ Feed 중지 완료")
+            except Exception as e:
+                logger.warning(f"  ⚠️ Feed 중지 실패: {e}")
+        logger.info("✅ Shutdown complete")
     
     # 10. 거래 내역 조회 (DB 또는 Broker) - PHASE10
     logger.info("📊 거래 내역 조회...")

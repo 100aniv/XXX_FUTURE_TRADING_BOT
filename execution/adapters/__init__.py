@@ -394,7 +394,12 @@ def create_adapters(mode: str, symbols: List[str], config: dict, logger: Any) ->
             'queue_size': queue_size  # ⭐ PR7-4: Multi-TF 큐 크기
         }
         from collectors.websocket_collector import WebSocketCollector
-        ws = WebSocketCollector(combined_symbols, base_timeframe, redis_cfg=redis_cfg, ws_cfg=ws_cfg)
+        # ⭐ PHASE18-2: env와 run_id 전달
+        env = config.get('env', 'paper')
+        run_id = config.get('run_id', 'unknown')
+        # ⭐ PHASE18-4: runtime_ctx 전달 (모니터링)
+        runtime_ctx = config.get('runtime_context', None)
+        ws = WebSocketCollector(combined_symbols, base_timeframe, redis_cfg=redis_cfg, ws_cfg=ws_cfg, env=env, run_id=run_id, runtime_ctx=runtime_ctx)
         feed = ws
         
         # 프리로드 정보도 업데이트
@@ -469,7 +474,12 @@ def create_adapters(mode: str, symbols: List[str], config: dict, logger: Any) ->
             'queue_size': queue_size  # ⭐ PR7-4: Multi-TF 큐 크기
         }
         from collectors.websocket_collector import WebSocketCollector
-        ws = WebSocketCollector(combined_symbols, base_timeframe, redis_cfg=redis_cfg, ws_cfg=ws_cfg)
+        # ⭐ PHASE18-2: env와 run_id 전달
+        env = config.get('env', 'paper')
+        run_id = config.get('run_id', 'unknown')
+        # ⭐ PHASE18-4: runtime_ctx 전달 (모니터링)
+        runtime_ctx = config.get('runtime_context', None)
+        ws = WebSocketCollector(combined_symbols, base_timeframe, redis_cfg=redis_cfg, ws_cfg=ws_cfg, env=env, run_id=run_id, runtime_ctx=runtime_ctx)
         feed = ws
         
         # 프리로드 정보도 업데이트

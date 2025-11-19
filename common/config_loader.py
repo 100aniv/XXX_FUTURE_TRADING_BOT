@@ -660,10 +660,13 @@ def save_effective_config(cfg: Dict[str, Any], env: str, run_id: str) -> Path:
     artifacts_dir = Path(f"artifacts/{env}/{run_id}")
     artifacts_dir.mkdir(parents=True, exist_ok=True)
     
+    # ⭐ PHASE18-3: runtime_context는 직렬화 불가 (threading.Event 포함)
+    cfg_snapshot = {k: v for k, v in cfg.items() if k != 'runtime_context'}
+    
     # effective_config.yml 저장
     config_path = artifacts_dir / "effective_config.yml"
     with open(config_path, 'w', encoding='utf-8') as f:
-        yaml.dump(cfg, f, default_flow_style=False, allow_unicode=True, sort_keys=False)
+        yaml.dump(cfg_snapshot, f, default_flow_style=False, allow_unicode=True, sort_keys=False)
     
     logger.info(f"✅ [SNAPSHOT] effective_config.yml 저장: {config_path}")
     

@@ -54,7 +54,7 @@ class WebSocketCollector:
     ```
     """
     
-    def __init__(self, symbols: List[str], timeframe, enable_dedup: bool = True, enable_backfill: bool = True, redis_cfg: Optional[Dict] = None, ws_cfg: Optional[Dict] = None):
+    def __init__(self, symbols: List[str], timeframe, enable_dedup: bool = True, enable_backfill: bool = True, redis_cfg: Optional[Dict] = None, ws_cfg: Optional[Dict] = None, env: str = 'paper', run_id: str = 'unknown', runtime_ctx=None):
         """
         WebSocketCollector 초기화 (PR7-4: Multi-TF 지원)
         
@@ -71,6 +71,8 @@ class WebSocketCollector:
                 - False: 누락 감지만 (복구 안 함)
             redis_cfg: Redis 설정 (host, port, ttl_seconds)
             ws_cfg: WebSocket 설정 (heartbeat_interval_sec, reconnect 등)
+            env: 실행 모드 (backtest, paper, live) - PHASE18-2
+            run_id: 실행 인스턴스 ID - PHASE18-2
         
         **주의:**
         - 프로덕션에서는 enable_dedup=True, enable_backfill=True 권장
@@ -99,7 +101,11 @@ class WebSocketCollector:
             _rttl = int(_rcfg.get('ttl_seconds') or 3600)
         except Exception:
             _rttl = 3600
-        self.redis_client = RedisClient.get_instance(host=_rhost, port=_rport, ttl_seconds=_rttl)
+        # ⭐ PHASE18-2: env와 run_id 전달
+        self.redis_client = RedisClient.get_instance(host=_rhost, port=_rport, ttl_seconds=_rttl, env=env, run_id=run_id)
+        
+        # ⭐ PHASE18-4: RuntimeContext 참조 (모니터링)
+        self.runtime_ctx = runtime_ctx
         
         # WebSocket 연결 모니터링 설정
         _wscfg = ws_cfg or {}
@@ -165,6 +171,12 @@ class WebSocketCollector:
         try:
             # ⭐ 연결 통계: 하트비트 기록 (메시지 수신 = 연결 활성)
             connection_stats.record_heartbeat()
+            
+            # ⭐ PHASE18-4: 모니터링 Heartbeat 업데이트
+            if self.runtime_ctx and self.runtime_ctx.monitor_registry:
+                heartbeat = self.runtime_ctx.monitor_registry.get('heartbeat')
+                if heartbeat:
+                    heartbeat.update('websocket')
             
             data = json.loads(message)
             
@@ -427,19 +439,47 @@ class WebSocketCollector:
         """데이터 수집 시작 (비동기)"""
         self.running = True
         # ⭐ 별도 스레드에서 WebSocket 실행 (메인 스레드 블로킹 방지)
-        ws_thread = threading.Thread(target=self.connect, daemon=True)
-        ws_thread.start()
+        self._ws_thread = threading.Thread(target=self.connect, daemon=True)
+        self._ws_thread.start()
         logger.info("✅ WebSocket 스레드 시작 (비동기)")
     
-    def stop(self):
-        """데이터 수집 중지"""
+    def stop(self, timeout=5.0):
+        """
+        데이터 수집 중지 (PHASE18-3: Graceful Shutdown)
+        
+        Args:
+            timeout: Thread join 타임아웃 (기본 5초)
+        """
+        logger.info("🛑 WebSocketCollector 중지 시작...")
+        
+        # 1. running 플래그 False (새 수신 중단)
         self.running = False
+        
+        # 2. WebSocket 종료
         if self.ws:
-            self.ws.close()
-        # Redis 연결 종료
+            try:
+                self.ws.close()
+                logger.info("  ✅ WebSocket 연결 종료")
+            except Exception as e:
+                logger.warning(f"  ⚠️ WebSocket 종료 실패: {e}")
+        
+        # 3. Thread join (타임아웃)
+        if hasattr(self, '_ws_thread') and self._ws_thread.is_alive():
+            self._ws_thread.join(timeout=timeout)
+            if self._ws_thread.is_alive():
+                logger.warning(f"  ⚠️ WebSocket thread 타임아웃 ({timeout}s)")
+            else:
+                logger.info("  ✅ WebSocket thread 종료")
+        
+        # 4. Redis 연결 종료
         if hasattr(self, 'redis_client'):
-            self.redis_client.close()
-        logger.info("⏹️  Collector 중지")
+            try:
+                self.redis_client.close()
+                logger.info("  ✅ Redis 연결 종료")
+            except Exception as e:
+                logger.warning(f"  ⚠️ Redis 종료 실패: {e}")
+        
+        logger.info("✅ WebSocketCollector 중지 완료")
     
     def _cleanup_old_candles(self):
         """

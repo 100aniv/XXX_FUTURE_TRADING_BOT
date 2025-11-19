@@ -17,6 +17,7 @@ import hashlib
 import json
 
 from common.logger import setup_logger
+from common.namespace import build_redis_key  # PHASE18-2: run_id 네임스페이스
 from common.messaging import (
     tg,
     log_status,
@@ -102,6 +103,11 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict):
     equity = config["equity"]
     risk_per_trade = config["risk"]["per_trade"]
     trial_id = config.get("trial_id")  # 백테스트 trial 식별자 (선택)
+    
+    # ⭐ PHASE18-2: run_id & env 추출 (네임스페이스 격리)
+    run_id = config.get("run_id", "unknown")
+    env = config.get("env", "paper")  # backtest, paper, live
+    logger.info(f"🆔 [PHASE18-2] Run ID: {run_id}, Env: {env}")
 
     # ⭐ PR7-4: Multi-TF 버퍼: (심볼, 타임프레임) 독립 버퍼 관리
     # - 단일 TF: buffers = {('BTCUSDT', '5m'): deque([...], maxlen=400)}
@@ -494,8 +500,23 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict):
     else:
         logger.info(f"⏱️  [MARKET-TIME] Duration 모드 시작: {duration_hours:.2f}시간")
 
+    # ⭐ PHASE18-3: Runtime Context 추출 (Graceful Shutdown)
+    runtime_ctx = config.get('runtime_context', None)
+    
     # ⭐ 메인 루프
     for candle in feed.stream():
+        # ⭐ PHASE18-3: Shutdown 체크 (최우선)
+        if runtime_ctx and runtime_ctx.is_shutdown_requested():
+            reason = runtime_ctx.get_shutdown_reason()
+            logger.info(f"🛑 Shutdown requested ({reason}) - 메인 루프 종료")
+            break
+        
+        # ⭐ PHASE18-4: Heartbeat 업데이트
+        if runtime_ctx and runtime_ctx.monitor_registry:
+            heartbeat = runtime_ctx.monitor_registry.get('heartbeat')
+            if heartbeat:
+                heartbeat.update('engine')
+        
         # ⭐ PHASE16+: Wall-clock Duration 체크 (루프 시작 시 먼저 확인)
         if duration_mode == 'wall_clock':
             elapsed_wall = time.time() - start_wall_time
@@ -1231,7 +1252,8 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict):
         # ⭐ PHASE16+: 0초일 때는 쿨다운 체크 skip
         if strategy_cooldown > 0:
             if redis_client:
-                redis_cooldown_key = f"cooldown:{cooldown_key}"
+                # ⭐ PHASE18-2: run_id 네임스페이스 적용
+                redis_cooldown_key = build_redis_key("cooldown", env, run_id, candle_symbol, strategy_id)
                 try:
                     ttl = redis_client.ttl(redis_cooldown_key)
                     if ttl > 0:
@@ -1303,7 +1325,8 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict):
             if strategy_cooldown > 0:
                 if redis_client:
                     try:
-                        redis_cooldown_key = f"cooldown:{cooldown_key}"
+                        # ⭐ PHASE18-2: run_id 네임스페이스 적용
+                        redis_cooldown_key = build_redis_key("cooldown", env, run_id, candle_symbol, strategy_id)
                         redis_client.setex(redis_cooldown_key, strategy_cooldown, "1")
                     except Exception as e:
                         logger.warning(f"⚠️  Redis 쿨다운 설정 실패: {e}")
@@ -1339,7 +1362,8 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict):
             if strategy_cooldown > 0:
                 if redis_client:
                     try:
-                        redis_cooldown_key = f"cooldown:{cooldown_key}"
+                        # ⭐ PHASE18-2: run_id 네임스페이스 적용
+                        redis_cooldown_key = build_redis_key("cooldown", env, run_id, candle_symbol, strategy_id)
                         redis_client.setex(redis_cooldown_key, strategy_cooldown, "1")
                     except Exception as e:
                         logger.warning(f"⚠️  Redis 쿨다운 설정 실패: {e}")
@@ -1368,7 +1392,8 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict):
             if strategy_cooldown > 0:
                 if redis_client:
                     try:
-                        redis_cooldown_key = f"cooldown:{cooldown_key}"
+                        # ⭐ PHASE18-2: run_id 네임스페이스 적용
+                        redis_cooldown_key = build_redis_key("cooldown", env, run_id, candle_symbol, strategy_id)
                         redis_client.setex(redis_cooldown_key, strategy_cooldown, "1")
                     except Exception as e:
                         logger.warning(f"⚠️  Redis 쿨다운 설정 실패: {e}")

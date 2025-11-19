@@ -10,11 +10,16 @@ Redis 기반 캐싱 및 중복 제거
 - RedisClient: Redis 연결 및 기본 작업
 - 폴백: Redis 실패 시 메모리 모드 자동 전환
 - TTL 자동 적용
+
+⚠️ PHASE18-2: run_id 네임스페이스 적용 (2025-11-19)
+- 실행 간 Redis 키 격리
+- env + run_id 기반 네임스페이스
 """
 from typing import Optional
 import time
 
 from common.logger import setup_logger
+from common.namespace import build_candle_seen_key
 
 logger = setup_logger('redis', log_type='application')
 
@@ -45,8 +50,9 @@ class RedisClient:
     _lock = None
     
     @classmethod
-    def get_instance(cls, host: str = 'localhost', port: int = 6379, ttl_seconds: int = 3600):
-        """싱글톤 인스턴스 반환"""
+    def get_instance(cls, host: str = 'localhost', port: int = 6379, ttl_seconds: int = 3600,
+                     env: str = 'paper', run_id: str = 'unknown'):
+        """싱글톤 인스턴스 반환 (PHASE18-2: env/run_id 추가)"""
         if cls._instance is None:
             if cls._lock is None:
                 import threading
@@ -54,11 +60,16 @@ class RedisClient:
             
             with cls._lock:
                 if cls._instance is None:
-                    cls._instance = cls(host, port, ttl_seconds)
+                    cls._instance = cls(host, port, ttl_seconds, env, run_id)
+        else:
+            # 싱글톤이지만 env/run_id는 업데이트 가능
+            cls._instance.env = env
+            cls._instance.run_id = run_id
         
         return cls._instance
     
-    def __init__(self, host: str = 'localhost', port: int = 6379, ttl_seconds: int = 3600):
+    def __init__(self, host: str = 'localhost', port: int = 6379, ttl_seconds: int = 3600,
+                 env: str = 'paper', run_id: str = 'unknown'):
         """
         Redis 연결 초기화
         
@@ -66,10 +77,14 @@ class RedisClient:
             host: Redis 호스트
             port: Redis 포트
             ttl_seconds: TTL (초, 기본 1시간)
+            env: 실행 모드 (backtest, paper, live) - PHASE18-2
+            run_id: 실행 인스턴스 ID - PHASE18-2
         """
         self.host = host
         self.port = port
         self.ttl_seconds = ttl_seconds
+        self.env = env  # PHASE18-2
+        self.run_id = run_id  # PHASE18-2
         self.enabled = False
         self.redis_client = None
         self._memory_cache = {}
@@ -117,7 +132,8 @@ class RedisClient:
         Returns:
             bool: True이면 이미 처리됨
         """
-        key = f"candle:seen:{symbol}:{timeframe}:{closed_at}"
+        # PHASE18-2: run_id 네임스페이스 적용
+        key = build_candle_seen_key(self.env, self.run_id, symbol, timeframe, closed_at)
         
         if self.enabled and self.redis_client:
             try:
@@ -155,7 +171,8 @@ class RedisClient:
         Returns:
             bool: 성공 여부
         """
-        key = f"candle:seen:{symbol}:{timeframe}:{closed_at}"
+        # PHASE18-2: run_id 네임스페이스 적용
+        key = build_candle_seen_key(self.env, self.run_id, symbol, timeframe, closed_at)
         
         if self.enabled and self.redis_client:
             try:

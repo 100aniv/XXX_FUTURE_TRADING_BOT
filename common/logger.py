@@ -30,9 +30,17 @@ def cleanup_old_logs(log_dir: str, days: int = 30):
             mtime = datetime.fromtimestamp(os.path.getmtime(log_file))
             if mtime < cutoff:
                 os.remove(log_file)
-                print(f"🗑️  오래된 로그 삭제: {log_file}")
+                # Unicode 인코딩 오류 방지
+                try:
+                    print(f"오래된 로그 삭제: {log_file}")
+                except:
+                    pass
         except Exception as e:
-            print(f"⚠️  로그 삭제 실패: {log_file} - {e}")
+            # Unicode 인코딩 오류 방지
+            try:
+                print(f"로그 삭제 실패: {log_file} - {e}")
+            except:
+                pass
 
 
 def setup_logger(name: str, log_type: str = "application", level=logging.INFO):

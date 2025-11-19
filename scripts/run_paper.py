@@ -19,6 +19,7 @@ Output:
 import sys
 import argparse
 import time
+import signal  # PHASE18-3: Signal handling
 from pathlib import Path
 from datetime import datetime, timedelta
 
@@ -28,6 +29,7 @@ sys.path.insert(0, str(project_root))
 
 from common.config_loader import load_config_with_mode, generate_run_id, save_effective_config
 from common.logger import setup_logger
+from common.runtime_context import RuntimeContext  # PHASE18-3: Graceful Shutdown
 from analytics.scorecard import ScorecardGenerator
 
 logger = setup_logger(__name__, log_type="application")
@@ -83,6 +85,13 @@ def parse_args():
         help='추가 config 파일 (선택, overlay 방식)'
     )
     
+    parser.add_argument(
+        '--clean-state',
+        action='store_true',
+        default=False,
+        help='실행 전 Redis/로그 초기화 (PHASE18-1)'
+    )
+    
     return parser.parse_args()
 
 
@@ -98,6 +107,23 @@ def main():
     logger.info(f"⏱️  Timeframe: {args.timeframe}")
     logger.info(f"⏳ Duration: {args.duration_hours:.2f} hours")
     logger.info("=" * 80)
+    
+    # 0. Clean-State 초기화 (PHASE18-1)
+    if args.clean_state:
+        logger.info("🔧 Clean-State 초기화 중...")
+        import subprocess
+        init_script = project_root / "scripts" / "ops" / "init_clean_state.py"
+        result = subprocess.run(
+            [sys.executable, str(init_script)],
+            capture_output=True,
+            text=True
+        )
+        if result.returncode == 0:
+            logger.info("✅ Clean-State 초기화 완료")
+        else:
+            logger.warning(f"⚠️ Clean-State 초기화 실패 (계속 진행)")
+            if result.stderr:
+                logger.warning(f"   Error: {result.stderr[:200]}")
     
     # 1. Config 로딩 (paper 모드)
     logger.info("⚙️  Config 로딩...")
@@ -150,6 +176,9 @@ def main():
     cfg['symbol'] = args.symbol
     cfg['timeframe'] = args.timeframe
     
+    # ⭐ PHASE18-2: env 명시적 설정 (네임스페이스용)
+    cfg['env'] = 'paper'
+    
     # Duration 설정 (종료 시간 계산)
     start_time = datetime.now()
     end_time = start_time + timedelta(hours=args.duration_hours)
@@ -164,10 +193,42 @@ def main():
     logger.info(f"⏰ 종료 예정: {end_time.strftime('%Y-%m-%d %H:%M:%S')}")
     logger.info(f"📍 Duration 모드: {args.duration_mode} ({args.duration_hours:.2f}h)")
     
-    # 3. run_id 생성
-    run_id = f"{start_time.strftime('%Y%m%d_%H%M%S')}_phase16"
+    # 3. run_id 생성 (⭐ PHASE18-2: generate_run_id 사용)
+    run_id = generate_run_id()
     logger.info(f"🆔 Run ID: {run_id}")
     cfg['run_id'] = run_id
+    
+    # ⭐ PHASE18-3: Runtime Context 생성 및 Signal Handler 등록
+    runtime_ctx = RuntimeContext()
+    runtime_ctx.run_id = run_id
+    runtime_ctx.env = 'paper'
+    cfg['runtime_context'] = runtime_ctx
+    
+    shutdown_requested = [False]  # mutable state for signal handler
+    
+    def signal_handler(signum, frame):
+        sig_name = 'SIGINT' if signum == signal.SIGINT else f'Signal {signum}'
+        if shutdown_requested[0]:
+            logger.warning(f"🚨 강제 종료 (두 번째 시그널: {sig_name})")
+            sys.exit(1)
+        
+        logger.info(f"🛑 Shutdown signal received: {sig_name}")
+        shutdown_requested[0] = True
+        reason = runtime_ctx.request_shutdown(reason=sig_name)
+        logger.info(f"✅ Graceful shutdown requested: {reason}")
+    
+    signal.signal(signal.SIGINT, signal_handler)
+    if hasattr(signal, 'SIGTERM'):
+        signal.signal(signal.SIGTERM, signal_handler)
+    logger.info("✅ Signal handlers registered (SIGINT, SIGTERM)")
+    
+    # ⭐ PHASE18-4: 모니터링 시스템 초기화
+    from common.monitoring import setup_monitoring
+    try:
+        setup_monitoring(runtime_ctx, cfg)
+        logger.info("✅ 모니터링 시스템 초기화 완료")
+    except Exception as e:
+        logger.warning(f"⚠️ 모니터링 시스템 초기화 실패: {e}")
     
     # 4. effective_config 저장
     logger.info("💾 Effective Config 저장...")
@@ -176,8 +237,10 @@ def main():
     
     snapshot_path = output_dir / "effective_config.yml"
     import yaml
+    # ⭐ PHASE18-3: runtime_context는 직렬화 불가 (threading.Event 포함)
+    cfg_snapshot = {k: v for k, v in cfg.items() if k != 'runtime_context'}
     with open(snapshot_path, 'w', encoding='utf-8') as f:
-        yaml.dump(cfg, f, default_flow_style=False, allow_unicode=True)
+        yaml.dump(cfg_snapshot, f, default_flow_style=False, allow_unicode=True)
     logger.info(f"  ✅ {snapshot_path}")
     
     # 5. 어댑터 생성 (REAL Paper Mode)
@@ -249,12 +312,32 @@ def main():
         )
         logger.info("✅ Paper Trading 완료")
     except KeyboardInterrupt:
-        logger.info("⏹️  사용자 중단")
+        logger.info("⏹️  사용자 중단 (KeyboardInterrupt)")
+        runtime_ctx.request_shutdown(reason="KeyboardInterrupt")
     except Exception as e:
         logger.error(f"❌ Paper Trading 실행 실패: {e}")
         import traceback
         logger.error(traceback.format_exc())
         sys.exit(1)
+    finally:
+        # ⭐ PHASE18-3: 리소스 정리 (Graceful Shutdown)
+        logger.info("🧹 리소스 정리 시작...")
+        
+        # ⭐ PHASE18-4: 모니터링 시스템 중지
+        if runtime_ctx and runtime_ctx.monitor_registry:
+            try:
+                runtime_ctx.monitor_registry.stop_all()
+                logger.info("  ✅ 모니터링 중지 완료")
+            except Exception as e:
+                logger.warning(f"  ⚠️ 모니터링 중지 실패: {e}")
+        
+        if hasattr(feed, 'stop'):
+            try:
+                feed.stop()
+                logger.info("  ✅ Feed 중지 완료")
+            except Exception as e:
+                logger.warning(f"  ⚠️ Feed 중지 실패: {e}")
+        logger.info("✅ Shutdown complete")
     
     # 8. 거래 내역 조회 (Broker)
     logger.info("📊 거래 내역 조회...")
