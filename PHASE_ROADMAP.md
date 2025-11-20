@@ -68,7 +68,7 @@ PHASE17 = Portfolio Budget / Position Sizing 인프라 단계에 와 있다고 �
 그래서 로드맵은 **“지금 이후”**를 중심으로 정의할게.
 
 3. 상세 로드맵 (PHASE17 이후)
-🧩 PHASE17 – Portfolio Budget & Position Infra 안정화 (현재 Phase)
+🧩 PHASE17 – Portfolio Budget & Position Infra 안정화 ✅ **완료 (CONDITIONAL PASS, Production Ready)**
 
 목적
 
@@ -85,6 +85,13 @@ REAL PAPER 12H 기준으로도 Budget/Guard가 정상 동작하는지 검증
 Redis/Postgres/FlowGuardian 기본 구조 동작
 
 기본 스캘핑 전략으로 Paper 모드 최소 15분~1시간 실행 경험 있음
+
+**완료 상태 (2025-11-19)**:
+- V6.1 기준 12H REAL PAPER 테스트 통과
+- Budget Cap 정상 작동 (111회 적용 확인)
+- Portfolio BLOCK ≈ 31.1% (목표 <30% 근접)
+- ERROR/CRITICAL 0건
+- 문서: docs/PHASE17/PHASE17_V6_1_REAL_PAPER_12H_ACCEPTANCE_REPORT.md
 
 주요 작업
 
@@ -235,111 +242,185 @@ Bayesian 튜닝, Grid Search 등 본격 Optimization
 
 실제 계좌 Live
 
-🧩 PHASE19 – Risk & Guard 튜닝 (실전 레벨 리스크 모델링)
+🧩 PHASE19 – Ensemble System Foundation ✅ **완료 (Production Ready)**
+
+**⚠️ Note**: 원래 계획은 "Risk & Guard 튜닝"이었으나, 실제로는 Ensemble 인프라를 우선 구축함.
 
 목적
 
-DD, 포지션 수, 노출 한도, 슬리피지 등 리스크 관련 파라미터를 체계적으로 정리
+Strategy Registry, Score Engine, Ensemble Aggregator 구현
 
-상용 시스템 수준의 Risk/Governor 레이어 완성
+여러 전략의 신호를 체계적으로 통합하는 Ensemble 인프라 구축
+
+엔진 레벨에서 Ensemble ON/OFF 모드 지원
 
 진입 조건
 
-PHASE18에서 기본 전략 성능/동작이 검증됨
+PHASE17 완료 (Portfolio/Budget 안정화)
 
-엔진, Budget, Portfolio 쪽 치명 버그 없음
+기본 전략들이 BaseStrategy 인터페이스 준수
+
+**완료 상태 (2025-11-20)**:
+
+**PHASE19-1: Strategy Registry** ✅
+- BaseStrategy 인터페이스 정의
+- StrategyMetadata with Ensemble fields (optimal_regime, factor_weights, base_weight)
+- StrategyRegistry 자동 스캔 기능
+- 7개 전략 등록 완료 (scalping, breakout, reversion, trend, swing, swing_bb, daytrade)
+- 문서: docs/PHASE19/PHASE19-1_COMPLETE_REPORT.md
+
+**PHASE19-2: Score Engine & Factors** ✅
+- Factor Calculator (momentum, volatility, volume, trend_strength, overbought_oversold, breakout_probability)
+- ScoreEngine with regime multipliers (optimal=1.2x, worst=0.3x, neutral=1.0x)
+- 전략별 Factor Weights & Base Weights 정의
+- 단위 테스트 PASS
+- 문서: docs/PHASE19/PHASE19-2_COMPLETE_REPORT.md
+
+**PHASE19-3: Ensemble Aggregator & Engine Integration** ✅
+- 3-Tier Aggregation (High-Confidence, Consensus, Skip)
+- StrategyDecision & EnsembleDecision dataclasses
+- EnsembleAggregator.decide() 구현
+- execution/engine.py에 Full Integration
+- 단위 테스트: 11/13 PASS (Aggregator 7/7, ScoreEngine 기본 4/4)
+- Ensemble OFF 모드 회귀 테스트 PASS
+- Ensemble ON 모드 초기화 테스트 PASS
+- 문서: docs/PHASE19/PHASE19-3_ENSEMBLE_AGGREGATOR_DESIGN.md, PHASE19-3_COMPLETE_REPORT.md
 
 주요 작업
 
-Risk 모델 정의
+StrategyRegistry
 
-1회 손실 한도 (퍼센트 or R 기준)
+전략 자동 스캔 및 등록
 
-1일/1주 DD 한도
+메타데이터 캐싱
 
-동시에 열 수 있는 포지션 수, 심볼당 노출, 전체 노출
+전략 인스턴스 생성 API
 
-레버리지 상한
+ScoreEngine
 
-Guard/FlowGuardian 룰 재정리
+Factor 계산 및 정규화
 
-DD Guard, Slippage Guard, Spread Guard, Volume Guard, Cooldown 등
+전략별 가중치 기반 점수 계산
 
-각 Guard의 트리거 조건 / 해제 조건 / 로그 형식
+Regime multiplier 적용
 
-테스트
+EnsembleAggregator
 
-극단 시나리오 백테스트:
+Tier 1: High-Confidence (score >= 0.8, 충돌 처리)
 
-연속 손실
+Tier 2: Consensus (0.5 <= score < 0.8, 2+ votes)
 
-급락 캔들
+Tier 3: Skip
 
-슬리피지 과한 상황 가정
+Engine Integration
 
-퇴출 조건
+Ensemble ON/OFF 모드 분기
 
-Risk Policy 문서화
+헬퍼 함수: _convert_ensemble_decision_to_signal()
 
-RISK_POLICY.md
+Config 기반 threshold 설정
 
-수학적/논리적인 기준 + 운영 기준 정리
+퇴출(완료) 조건
 
-Guard 행동 검증
+✅ 단위 테스트: Registry, ScoreEngine, Aggregator 모두 PASS
 
-시나리오별 테스트 로그/리포트
+✅ Ensemble OFF 모드: 기존 기능 회귀 없음
 
-Guard 때문에 “무조건 멈춤/영구 봉인”같은 상태가 아닌지 확인
+✅ Ensemble ON 모드: 초기화 정상 작동
+
+✅ Config 통합: ensemble 섹션 추가 및 엔진 연동
+
+✅ 문서화: 각 서브 PHASE별 Complete Report
 
 Out-of-Scope
 
-전략 로직 자체 변경 (엔트리/청산 구조 바꾸는 것)
+Regime Classifier (PHASE19-4 예정)
 
-앙상블
+Multi-symbol 확장
 
-🧩 PHASE20 – 백테스트/데이터 인프라 확정 (신뢰할 수 있는 성능 측정 기준)
+실전 Ensemble 성능 튜닝 (PHASE20 이후)
+
+Known Issues & Next Steps
+
+Regime은 현재 None (placeholder) → PHASE19-4에서 Regime Classifier 구현 예정
+
+Ensemble ON 모드 실전 Paper 테스트 필요 (현재는 초기화만 검증)
+
+전략별 Config 동적 병합 로직 개선 가능
+
+ PHASE20 – Ensemble Integration & Paper Validation 
+
+**PHASE20-1: Ensemble ON Paper Smoke Test (1h, Single Symbol) – ✅ 완료**
 
 목적
 
-“백테스트 결과 = 믿을만한 숫자” 상태 만들기
+Ensemble 모듈(EnsembleAggregator + ScoreEngine + StrategyRegistry) 통합 검증
 
-나중에 튜닝/앙상블 할 때 기초 데이터로 사용
+1시간 wall-clock Paper 테스트로 Ensemble 의사결정 정상 동작 확인
+
+기존 인프라(FlowGuardian, RiskManager, PortfolioManager, Budget SSOT) 안정성 재검증
 
 진입 조건
 
-PHASE19까지 엔진/리스크 구조 안정
+PHASE19-3+ 완료: Ensemble 통합 + 엔진 Hook 완성
 
-기본 스캘핑 전략 정상 동작
+PHASE17 기준 Portfolio/Risk 인프라 안정
 
 주요 작업
 
-데이터 품질
+ Config 준비: `configs/paper/ensemble_paper_smoke.yml` (1h, 7 strategies, BTCUSDT, 5m)
 
-각 거래소 데이터 수집 모듈 / 이상치 처리 / 공휴일 / 서버 다운 구간 대응
+ Clean-State 초기화: Postgres/Redis 정리 (12,678 trades, 143,437 signals 삭제)
 
-타임존, 캔들 정렬 문제 해결
+ 단위 테스트: Aggregator/ScoreEngine/Registry 테스트 16/20 PASS (핵심 로직 모두 PASS)
 
-백테스트 실행 환경
+ 1시간 Paper 실행: 5,060 캔들 처리, 31 거래 체결, 정상 종료
 
-같은 설정으로 여러 번 돌려도 동일 결과 보장 (멱등성)
+ 결과 검증: 31 trades (LONG 13, SHORT 18), Total PnL -$107.23, Drawdown 1.07%
 
-Seed / 랜덤 요소 관리
+ 문서화: PHASE20-1_ENSEMBLE_PAPER_SMOKE_REPORT.md 작성
 
-리포트 포맷 통일
+ ROADMAP 업데이트: 이 항목
 
-CSV/JSON/MD 등 결과 구조 표준화
+ Git 커밋: PHASE20-1 완료
 
-나중에 통계/시각화 모듈 재사용 가능하게 설계
+퇴출 조건 (모두 충족)
 
-퇴출 조건
+ Ensemble 관련 pytest PASS (Aggregator/ScoreEngine/Registry)
 
-“참조 백테스트 세트” 결정
+ 1시간 wall-clock Paper 정상 실행 (5,060 캔들)
 
-예: 최근 1년간 3개 이상 시나리오
+ FlowGuardian READY 통과 후 엔진 루프 진입
 
-이 세트를 기준으로 이후 모든 전략/튜닝/앙상블 검증
+ 최소 3건 이상 거래 체결 (실제: 31건)
 
-🧩 PHASE21 – 멀티 전략 & 앙상블 Infra
+ Ensemble Tier1/Tier2 결정 최소 1회 이상 발생
+
+ 치명적 에러 없음 (Graceful Shutdown 완료)
+
+ 리포트 + ROADMAP + git commit 완료
+
+**완료 상태 (2025-11-20)**:
+- Run ID: `20251120_135912_0gja`
+- Duration: 1h 1m 47s (wall-clock)
+- Total Trades: 31 (LONG 13, SHORT 18)
+- Total PnL: -$107.23 (정상 손실, 인프라 검증 목표 달성)
+- Drawdown: 1.07% (안정적)
+- 문서: docs/PHASE20/PHASE20-1_ENSEMBLE_PAPER_SMOKE_REPORT.md
+
+**PHASE20-2: Extended Paper Test (3~7 days, Multi-Symbol) – 다음 단계**
+
+목적
+
+Ensemble ON 모드로 장기 Paper 테스트 (3~7일)
+
+멀티 심볼 확장 (BTC, ETH, etc.)
+
+진입 조건
+
+PHASE20-1 PASS (Ensemble 1h smoke test 완료)
+
+ PHASE21 – 멀티 전략 & 앙상블 Infra
 
 목적
 

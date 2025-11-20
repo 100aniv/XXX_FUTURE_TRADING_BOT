@@ -38,6 +38,34 @@ from execution.position_tracker import PositionTracker
 logger = setup_logger(__name__, log_type="application")
 
 
+def _convert_ensemble_decision_to_signal(ensemble_decision) -> dict:
+    """
+    PHASE19-3+: EnsembleDecision을 기존 엔진이 사용하는 signal dict로 변환
+    """
+    if ensemble_decision.tier == 'tier1' and ensemble_decision.chosen_strategy:
+        chosen = next((d for d in ensemble_decision.decisions if d.name == ensemble_decision.chosen_strategy), None)
+        if chosen and chosen.raw_signal:
+            signal = chosen.raw_signal.copy() if isinstance(chosen.raw_signal, dict) else {}
+            signal['ensemble_tier'] = 'tier1'
+            signal['ensemble_confidence'] = ensemble_decision.confidence
+            signal['ensemble_reason'] = ensemble_decision.reason
+            signal['strategy_id'] = ensemble_decision.chosen_strategy
+            return signal
+    elif ensemble_decision.tier == 'tier2':
+        if ensemble_decision.contributing_strategies:
+            first_contrib = ensemble_decision.contributing_strategies[0]
+            chosen = next((d for d in ensemble_decision.decisions if d.name == first_contrib), None)
+            if chosen and chosen.raw_signal:
+                signal = chosen.raw_signal.copy() if isinstance(chosen.raw_signal, dict) else {}
+                signal['ensemble_tier'] = 'tier2'
+                signal['ensemble_confidence'] = ensemble_decision.confidence
+                signal['ensemble_reason'] = ensemble_decision.reason
+                signal['ensemble_contributors'] = ', '.join(ensemble_decision.contributing_strategies)
+                signal['strategy_id'] = first_contrib
+                return signal
+    return {'side': None}
+
+
 def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict):
     """
     공통 트레이딩 루프
@@ -188,7 +216,11 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict):
     # ⭐⭐⭐ SignalGenerator 초기화: config.merge_strategy_config 사용 ⭐⭐⭐
     from common.config_loader import merge_strategy_config
 
-    use_ensemble = config.get("strategy", {}).get("use_ensemble", False)
+    # PHASE19-3+: Ensemble 옵션 확인 및 초기화
+    use_ensemble = config.get("ensemble", {}).get("enabled", False) or config.get("strategy", {}).get("use_ensemble", False)
+    ensemble_registry = None
+    ensemble_score_engine = None
+    ensemble_aggregator = None
 
     if not use_ensemble:
         # 단일 전략: config.merge_strategy_config로 병합 (lookback 포함)
@@ -200,9 +232,36 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict):
         )
         min_bars_required = signal_gen_config.get("min_bars_for_signal", 50)
     else:
-        # 앙상블 모드: 전체 config 사용
+        # 앙상블 모드: Ensemble 컴포넌트 초기화 (PHASE19-3+)
         signal_gen_config = config
-        logger.info("✅ [CONFIG] Ensemble mode")
+        ensemble_strategies = config.get("ensemble", {}).get("strategies", ["scalping"])
+        
+        try:
+            from common.registry import StrategyRegistry
+            from common.ensemble import ScoreEngine, EnsembleAggregator
+            
+            ensemble_registry = StrategyRegistry()
+            ensemble_registry.scan()
+            
+            ensemble_score_engine = ScoreEngine()
+            
+            # Config에서 Ensemble 파라미터 읽기
+            ensemble_cfg = config.get("ensemble", {})
+            ensemble_aggregator = EnsembleAggregator(
+                registry=ensemble_registry,
+                score_engine=ensemble_score_engine,
+                min_tier1_score=ensemble_cfg.get("min_tier1_score", 0.8),
+                min_tier2_score=ensemble_cfg.get("min_tier2_score", 0.5),
+                tier1_conflict_diff=ensemble_cfg.get("tier1_conflict_diff", 0.15),
+                min_tier2_votes=ensemble_cfg.get("min_tier2_votes", 2),
+            )
+            
+            logger.info(f"✅ [ENSEMBLE] Aggregator 초기화 완료 | strategies={ensemble_strategies}")
+            logger.info(f"✅ [ENSEMBLE] Registry: {len(ensemble_registry._registry)}개 전략 스캔 완료")
+        except Exception as e:
+            logger.error(f"❌ [ENSEMBLE] 초기화 실패: {e}")
+            raise RuntimeError(f"Ensemble 초기화 실패: {e}")
+        
         min_bars_required = config.get("min_bars_for_signal", 50)
 
     signal_gen = SignalGenerator(config=signal_gen_config, strategy_modules=strategies)
@@ -890,228 +949,280 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict):
             logger.error(f"🔴 Drawdown Guard 트리거됨 - 메인 루프 종료")
             break  # 메인 루프 종료
 
-        # ⭐ [새 코드] SignalGenerator 활용 (MTF, 쿨다운, 거래량 필터 포함)
+        # ⭐⭐⭐ PHASE19-3+: Ensemble vs 단일 전략 모드 분기 ⭐⭐⭐
         signals = []
 
-        # ⭐⭐⭐ 단일 전략 모드: selector 전략만 실행
-        if not use_ensemble:
+        # ========== ENSEMBLE 모드 (PHASE19-3+) ==========
+        if use_ensemble and ensemble_aggregator is not None:
+            try:
+                ensemble_strategies = config.get("ensemble", {}).get("strategies", ["scalping"])
+                
+                # 지표 계산된 DataFrame 준비
+                df_with_indicators = df.copy()
+                if "ema_fast" not in df_with_indicators.columns:
+                    df_with_indicators = add_indicators(
+                        df_with_indicators,
+                        ema_cfg.get("fast", 20),
+                        ema_cfg.get("mid", 50),
+                        ema_cfg.get("slow", 200),
+                        rsi_cfg.get("length", 14),
+                        macd_cfg.get("fast", 12),
+                        macd_cfg.get("slow", 26),
+                        macd_cfg.get("signal", 9),
+                        bb_cfg.get("length", 20),
+                        bb_cfg.get("std", 2.0),
+                        atr_cfg.get("length", 14),
+                        vol_cfg.get("ma_length", 30),
+                    )
+                
+                # Aggregator 호출 (여러 전략의 신호 + 점수 통합)
+                logger.debug(f"🔔 [ENSEMBLE] 전략 평가 시작: {ensemble_strategies}")
+                ensemble_decision = ensemble_aggregator.decide(
+                    strategy_names=ensemble_strategies,
+                    df=df_with_indicators,
+                    regime=None  # PHASE19-4에서 Regime Classifier 추가 예정
+                )
+                
+                # EnsembleDecision → signal dict 변환
+                if ensemble_decision.side:
+                    signal = _convert_ensemble_decision_to_signal(ensemble_decision)
+                    signal["ts"] = ts
+                    signal["symbol"] = candle_symbol
+                    signal["timeframe"] = timeframe
+                    
+                    # 신호 검증 (MTF, 쿨다운, 거래량 필터)
+                    if signal_gen.validate_signal(candle_symbol, signal, df_with_indicators):
+                        signals.append(signal)
+                        logger.info(
+                            f"✅ [ENSEMBLE] {ensemble_decision.tier.upper()} | "
+                            f"{ensemble_decision.side} (conf={ensemble_decision.confidence:.2f}) | "
+                            f"{ensemble_decision.reason}"
+                        )
+                    else:
+                        logger.debug(f"⏸ [ENSEMBLE] 신호 검증 실패")
+                else:
+                    logger.debug(f"⏸ [ENSEMBLE] NO TRADE: {ensemble_decision.reason}")
+                    
+            except Exception as e:
+                logger.error(f"❌ [ENSEMBLE] Aggregator 오류: {e}", exc_info=True)
+        
+        # ========== 단일 전략 모드 (기존 로직) ==========
+        else:
             strategy_selector = config.get("strategy", {}).get("selector", "scalping")
             selected_strategies = {strategy_selector: strategies.get(strategy_selector)}
-        else:
-            selected_strategies = strategies
 
-        for strategy_id, strategy_module in selected_strategies.items():
-            if strategy_module is None:  # 전략이 없으면 스킵
-                continue
-            try:
-                # ⭐ 전략별 설정 + 전체 config 병합
-                strategy_cfg = config.get("strategies", {}).get(strategy_id, {})
-                cfg = {
-                    **config,  # 전체 config (leverage, tp_sl 등)
-                    **strategy_cfg,  # 전략별 설정 (rr, risk_per_trade, cooldown_candles)
-                }
-
-                # ⭐ 전략별 필터 설정 병합 (MTF, regime, volume)
-                strategy_filters = strategy_cfg.get("filters", {})
-                if strategy_filters:
-                    # MTF 필터
-                    if "mtf_confirm" in strategy_filters:
-                        cfg["enable_mtf_confirm"] = strategy_filters["mtf_confirm"]
-                    # Regime 필터
-                    if "regime" in strategy_filters:
-                        cfg["enable_regime_filter"] = strategy_filters["regime"]
-                    # Volume 필터
-                    if "volume_spike" in strategy_filters:
-                        cfg["enable_vol_spike_filter"] = strategy_filters[
-                            "volume_spike"
-                        ]
-
-                # ⭐ PR7-4: Multi-TF 버퍼 직접 사용 (primary)
-                strategy_tf = str(strategy_cfg.get("timeframe", timeframe))
-                strategy_buffer_key = (candle_symbol, strategy_tf)
-
-                # 전략 TF 버퍼가 있고 충분한 데이터가 있으면 직접 사용
-                strategy_min_bars = strategy_cfg.get("min_bars_for_signal", 60)
-                if (
-                    strategy_buffer_key in buffers
-                    and len(buffers[strategy_buffer_key]) >= strategy_min_bars
-                ):
-                    # Multi-TF 버퍼 직접 사용 (PR7-4 primary path)
-                    df_tf_raw = pd.DataFrame(list(buffers[strategy_buffer_key]))
-                    df_tf = df_tf_raw.copy()
-                    # 지표 계산
-                    df_tf = add_indicators(
-                        df_tf,
-                        ema_cfg.get("fast", 20),
-                        ema_cfg.get("mid", 50),
-                        ema_cfg.get("slow", 200),
-                        rsi_cfg.get("length", 14),
-                        macd_cfg.get("fast", 12),
-                        macd_cfg.get("slow", 26),
-                        macd_cfg.get("signal", 9),
-                        bb_cfg.get("length", 20),
-                        bb_cfg.get("std", 2.0),
-                        atr_cfg.get("length", 14),
-                        vol_cfg.get("ma_length", 30),
-                    )
-                    logger.debug(
-                        f"✅ [{strategy_id}] Multi-TF 버퍼 사용: {strategy_tf} ({len(buffers[strategy_buffer_key])}개)"
-                    )
-                else:
-                    # Fallback: resample 사용 (Option A)
-                    df_tf = df_raw.copy()
-                    try:
-                        ts_col = (
-                            "closed_at"
-                            if "closed_at" in df_tf.columns
-                            else ("time" if "time" in df_tf.columns else None)
-                        )
-                        if ts_col is not None:
-                            if not isinstance(df_tf[ts_col].iloc[-1], pd.Timestamp):
-                                df_tf[ts_col] = pd.to_datetime(
-                                    df_tf[ts_col], unit="ms", utc=True
-                                )
-                            df_idx = df_tf.set_index(ts_col)
-                            tf = strategy_tf.lower()
-                            # base interval minutes
-                            try:
-                                _diffs = df_idx.index.to_series().diff().dropna()
-                                _base_min = (
-                                    int(_diffs.dt.total_seconds().mode().iloc[0] // 60)
-                                    if not _diffs.empty
-                                    else 0
-                                )
-                            except Exception:
-                                _base_min = 0
-                            if tf.endswith("m"):
-                                _req_min = int(tf[:-1])
-                                rule = f"{_req_min}min"
-                            elif tf.endswith("h"):
-                                _req_min = int(tf[:-1]) * 60
-                                rule = f"{int(tf[:-1])}h"
-                            elif tf.endswith("d"):
-                                _req_min = int(tf[:-1]) * 60 * 24
-                                rule = f"{int(tf[:-1])}D"
-                            else:
-                                rule = None
-                                _req_min = 0
-                            # only resample if req is multiple of base
-                            if (
-                                rule
-                                and _base_min > 0
-                                and _req_min >= _base_min
-                                and (_req_min % _base_min == 0)
-                            ):
-                                df_tf = (
-                                    df_idx.resample(rule, label="right", closed="right")
-                                    .agg(
-                                        {
-                                            "open": "first",
-                                            "high": "max",
-                                            "low": "min",
-                                            "close": "last",
-                                            "volume": "sum",
-                                        }
-                                    )
-                                    .dropna(subset=["open", "high", "low", "close"])
-                                    .reset_index()
-                                    .rename(columns={ts_col: "time"})
-                                )
-                            else:
-                                # unsupported tf → use base
-                                df_tf = df.copy()
-                        else:
-                            df_tf = df.copy()
-                    except Exception:
-                        df_tf = df.copy()
-                    logger.debug(
-                        f"⚠️ [{strategy_id}] Fallback resample 사용: {strategy_tf}"
-                    )
-
-                # 전략별 최소 바 수 확인 (부족 시 스킵)
-                min_required = int(
-                    strategy_cfg.get("min_bars_for_signal", min_bars_required)
-                )
-                if len(df_tf) < min_required:
+            for strategy_id, strategy_module in selected_strategies.items():
+                if strategy_module is None:  # 전략이 없으면 스킵
                     continue
+                try:
+                    # ⭐ 전략별 설정 + 전체 config 병합
+                    strategy_cfg = config.get("strategies", {}).get(strategy_id, {})
+                    cfg = {
+                        **config,  # 전체 config (leverage, tp_sl 등)
+                        **strategy_cfg,  # 전략별 설정 (rr, risk_per_trade, cooldown_candles)
+                    }
 
-                # Fallback 경로에서만 지표 계산 필요 (Multi-TF 경로는 이미 계산함)
-                if "ema_fast" not in df_tf.columns:
-                    df_tf = add_indicators(
-                        df_tf,
-                        ema_cfg.get("fast", 20),
-                        ema_cfg.get("mid", 50),
-                        ema_cfg.get("slow", 200),
-                        rsi_cfg.get("length", 14),
-                        macd_cfg.get("fast", 12),
-                        macd_cfg.get("slow", 26),
-                        macd_cfg.get("signal", 9),
-                        bb_cfg.get("length", 20),
-                        bb_cfg.get("std", 2.0),
-                        atr_cfg.get("length", 14),
-                        vol_cfg.get("ma_length", 30),
-                    )
+                    # ⭐ 전략별 필터 설정 병합 (MTF, regime, volume)
+                    strategy_filters = strategy_cfg.get("filters", {})
+                    if strategy_filters:
+                        # MTF 필터
+                        if "mtf_confirm" in strategy_filters:
+                            cfg["enable_mtf_confirm"] = strategy_filters["mtf_confirm"]
+                        # Regime 필터
+                        if "regime" in strategy_filters:
+                            cfg["enable_regime_filter"] = strategy_filters["regime"]
+                        # Volume 필터
+                        if "volume_spike" in strategy_filters:
+                            cfg["enable_vol_spike_filter"] = strategy_filters[
+                                "volume_spike"
+                            ]
 
-                # 전략 실행 (리샘플 DF)
-                signal = strategy_module.signal_logic(df_tf, cfg)
+                    # ⭐ PR7-4: Multi-TF 버퍼 직접 사용 (primary)
+                    strategy_tf = str(strategy_cfg.get("timeframe", timeframe))
+                    strategy_buffer_key = (candle_symbol, strategy_tf)
 
-                if signal and signal.get("side"):
-                    signal["strategy_id"] = strategy_id
-                    # 캔들 닫힘 시간: 전략 TF 기준
-                    try:
-                        _last_time = df_tf["time"].iloc[-1]
-                        if hasattr(_last_time, "value"):
-                            strategy_ts = int(_last_time.value // 10**6)
-                        else:
-                            strategy_ts = int(_last_time)
-                    except Exception:
-                        strategy_ts = ts
-                    signal["ts"] = strategy_ts
-                    signal["symbol"] = (
-                        candle_symbol  # ⭐ 멀티 심볼: 현재 캔들의 심볼 사용
-                    )
-                    signal["timeframe"] = strategy_tf  # 전략 실제 TF 저장
-
-                    # ⭐ 신호 검증 (MTF 캐싱 적용 - 빠른 검증!)
-                    # validate_signal 내부에서 _mtf_confirm(symbol, side, current_ts) 호출
-                    # current_ts 전달로 캐시 히트 시 즉시 반환 (API 호출 X)
-                    if signal_gen.validate_signal(
-                        candle_symbol, signal, df_tf
-                    ):  # ⭐ 멀티 심볼 수정
-                        # ⭐⭐⭐ 신호 DB 저장 (monitoring.signals 테이블) - 수정됨 2025-10-23
-                        # 백테스트 모드에서는 기본적으로 외부 DB 신호 저장을 비활성화하여 속도와 안정성 향상
-                        # config.backtest.persist_signals=true 일 때만 저장 수행
-                        if mode != "backtest" or config.get("backtest", {}).get(
-                            "persist_signals", False
-                        ):
-                            try:
-                                save_signal_to_db(
-                                    signal_id=str(uuid4()),
-                                    strategy_id=strategy_id,
-                                    symbol=candle_symbol,  # ⭐ 멀티 심볼 수정
-                                    timeframe=strategy_tf,  # ✅ 전략 TF로 저장
-                                    candle_closed_at=datetime.fromtimestamp(
-                                        strategy_ts / 1000
-                                    ),  # ✅ int → datetime
-                                    direction=signal.get("side"),  # ✅ side → direction
-                                    confidence=signal.get(
-                                        "confidence", 0.75
-                                    ),  # ✅ 추가
-                                    entry_price=signal.get("entry"),
-                                    sl_price=signal.get("sl"),
-                                    tp_price=signal.get("tp"),
-                                    atr=signal.get("atr"),  # ✅ 추가
-                                    leverage=signal.get("lev"),  # ✅ 추가
-                                )
-                            except Exception as e:
-                                logger.debug(f"신호 저장 실패: {e}")
-                        signals.append(signal)
-                    else:
-                        logger.debug(
-                            f"⏸ [{strategy_id}] 신호 검증 실패 (MTF/쿨다운/거래량)"
+                    # 전략 TF 버퍼가 있고 충분한 데이터가 있으면 직접 사용
+                    strategy_min_bars = strategy_cfg.get("min_bars_for_signal", 60)
+                    if (
+                        strategy_buffer_key in buffers
+                        and len(buffers[strategy_buffer_key]) >= strategy_min_bars
+                    ):
+                        # Multi-TF 버퍼 직접 사용 (PR7-4 primary path)
+                        df_tf_raw = pd.DataFrame(list(buffers[strategy_buffer_key]))
+                        df_tf = df_tf_raw.copy()
+                        # 지표 계산
+                        df_tf = add_indicators(
+                            df_tf,
+                            ema_cfg.get("fast", 20),
+                            ema_cfg.get("mid", 50),
+                            ema_cfg.get("slow", 200),
+                            rsi_cfg.get("length", 14),
+                            macd_cfg.get("fast", 12),
+                            macd_cfg.get("slow", 26),
+                            macd_cfg.get("signal", 9),
+                            bb_cfg.get("length", 20),
+                            bb_cfg.get("std", 2.0),
+                            atr_cfg.get("length", 14),
+                            vol_cfg.get("ma_length", 30),
                         )
-            except Exception as e:
-                logger.error(f"❌ [{strategy_id}] 전략 오류: {e}")
+                        logger.debug(
+                            f"✅ [{strategy_id}] Multi-TF 버퍼 사용: {strategy_tf} ({len(buffers[strategy_buffer_key])}개)"
+                        )
+                    else:
+                        # Fallback: resample 사용 (Option A)
+                        df_tf = df_raw.copy()
+                        try:
+                            ts_col = (
+                                "closed_at"
+                                if "closed_at" in df_tf.columns
+                                else ("time" if "time" in df_tf.columns else None)
+                            )
+                            if ts_col is not None:
+                                if not isinstance(df_tf[ts_col].iloc[-1], pd.Timestamp):
+                                    df_tf[ts_col] = pd.to_datetime(
+                                        df_tf[ts_col], unit="ms", utc=True
+                                    )
+                                df_idx = df_tf.set_index(ts_col)
+                                tf = strategy_tf.lower()
+                                # base interval minutes
+                                try:
+                                    _diffs = df_idx.index.to_series().diff().dropna()
+                                    _base_min = (
+                                        int(_diffs.dt.total_seconds().mode().iloc[0] // 60)
+                                        if not _diffs.empty
+                                        else 0
+                                    )
+                                except Exception:
+                                    _base_min = 0
+                                if tf.endswith("m"):
+                                    _req_min = int(tf[:-1])
+                                    rule = f"{_req_min}min"
+                                elif tf.endswith("h"):
+                                    _req_min = int(tf[:-1]) * 60
+                                    rule = f"{int(tf[:-1])}h"
+                                elif tf.endswith("d"):
+                                    _req_min = int(tf[:-1]) * 60 * 24
+                                    rule = f"{int(tf[:-1])}D"
+                                else:
+                                    rule = None
+                                    _req_min = 0
+                                # only resample if req is multiple of base
+                                if (
+                                    rule
+                                    and _base_min > 0
+                                    and _req_min >= _base_min
+                                    and (_req_min % _base_min == 0)
+                                ):
+                                    df_tf = (
+                                        df_idx.resample(rule, label="right", closed="right")
+                                        .agg(
+                                            {
+                                                "open": "first",
+                                                "high": "max",
+                                                "low": "min",
+                                                "close": "last",
+                                                "volume": "sum",
+                                            }
+                                        )
+                                        .dropna(subset=["open", "high", "low", "close"])
+                                        .reset_index()
+                                        .rename(columns={ts_col: "time"})
+                                    )
+                                else:
+                                    # unsupported tf → use base
+                                    df_tf = df.copy()
+                            else:
+                                df_tf = df.copy()
+                        except Exception:
+                            df_tf = df.copy()
+                        logger.debug(
+                            f"⚠️ [{strategy_id}] Fallback resample 사용: {strategy_tf}"
+                        )
+
+                    # 전략별 최소 바 수 확인 (부족 시 스킵)
+                    min_required = int(
+                        strategy_cfg.get("min_bars_for_signal", min_bars_required)
+                    )
+                    if len(df_tf) < min_required:
+                        continue
+
+                    # Fallback 경로에서만 지표 계산 필요 (Multi-TF 경로는 이미 계산함)
+                    if "ema_fast" not in df_tf.columns:
+                        df_tf = add_indicators(
+                            df_tf,
+                            ema_cfg.get("fast", 20),
+                            ema_cfg.get("mid", 50),
+                            ema_cfg.get("slow", 200),
+                            rsi_cfg.get("length", 14),
+                            macd_cfg.get("fast", 12),
+                            macd_cfg.get("slow", 26),
+                            macd_cfg.get("signal", 9),
+                            bb_cfg.get("length", 20),
+                            bb_cfg.get("std", 2.0),
+                            atr_cfg.get("length", 14),
+                            vol_cfg.get("ma_length", 30),
+                        )
+
+                    # 전략 실행 (리샘플 DF)
+                    signal = strategy_module.signal_logic(df_tf, cfg)
+
+                    if signal and signal.get("side"):
+                        signal["strategy_id"] = strategy_id
+                        # 캔들 닫힘 시간: 전략 TF 기준
+                        try:
+                            _last_time = df_tf["time"].iloc[-1]
+                            if hasattr(_last_time, "value"):
+                                strategy_ts = int(_last_time.value // 10**6)
+                            else:
+                                strategy_ts = int(_last_time)
+                        except Exception:
+                            strategy_ts = ts
+                        signal["ts"] = strategy_ts
+                        signal["symbol"] = (
+                            candle_symbol  # ⭐ 멀티 심볼: 현재 캔들의 심볼 사용
+                        )
+                        signal["timeframe"] = strategy_tf  # 전략 실제 TF 저장
+
+                        # ⭐ 신호 검증 (MTF 캐싱 적용 - 빠른 검증!)
+                        # validate_signal 내부에서 _mtf_confirm(symbol, side, current_ts) 호출
+                        # current_ts 전달로 캐시 히트 시 즉시 반환 (API 호출 X)
+                        if signal_gen.validate_signal(
+                            candle_symbol, signal, df_tf
+                        ):  # ⭐ 멀티 심볼 수정
+                            # ⭐⭐⭐ 신호 DB 저장 (monitoring.signals 테이블) - 수정됨 2025-10-23
+                            # 백테스트 모드에서는 기본적으로 외부 DB 신호 저장을 비활성화하여 속도와 안정성 향상
+                            # config.backtest.persist_signals=true 일 때만 저장 수행
+                            if mode != "backtest" or config.get("backtest", {}).get(
+                                "persist_signals", False
+                            ):
+                                try:
+                                    save_signal_to_db(
+                                        signal_id=str(uuid4()),
+                                        strategy_id=strategy_id,
+                                        symbol=candle_symbol,  # ⭐ 멀티 심볼 수정
+                                        timeframe=strategy_tf,  # ✅ 전략 TF로 저장
+                                        candle_closed_at=datetime.fromtimestamp(
+                                            strategy_ts / 1000
+                                        ),  # ✅ int → datetime
+                                        direction=signal.get("side"),  # ✅ side → direction
+                                        confidence=signal.get(
+                                            "confidence", 0.75
+                                        ),  # ✅ 추가
+                                        entry_price=signal.get("entry"),
+                                        sl_price=signal.get("sl"),
+                                        tp_price=signal.get("tp"),
+                                        atr=signal.get("atr"),  # ✅ 추가
+                                        leverage=signal.get("lev"),  # ✅ 추가
+                                    )
+                                except Exception as e:
+                                    logger.debug(f"신호 저장 실패: {e}")
+                            signals.append(signal)
+                        else:
+                            logger.debug(
+                                f"⏸ [{strategy_id}] 신호 검증 실패 (MTF/쿨다운/거래량)"
+                            )
+                except Exception as e:
+                    logger.error(f"❌ [{strategy_id}] 전략 오류: {e}")
         # ⭐⭐⭐ 실밥 리팩토링 종료 ⭐⭐⭐
 
         # ⭐ Flash Guard 체크 추가 (신호가 있을 때만)

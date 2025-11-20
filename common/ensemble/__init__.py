@@ -4,8 +4,9 @@
 Ensemble System
 ===============
 PHASE19-2: Factor Calculator & Score Engine
+PHASE19-3: Ensemble Signal Aggregator
 
-앙상블 트레이딩을 위한 팩터 계산 및 전략 점수화 모듈
+앙상블 트레이딩을 위한 팩터 계산, 전략 점수화 및 신호 통합 모듈
 """
 from .factors import (
     FactorDict,
@@ -18,6 +19,11 @@ from .factors import (
     compute_all_factors,
 )
 from .score_engine import ScoreEngine
+from .aggregator import (
+    StrategyDecision,
+    EnsembleDecision,
+    EnsembleAggregator,
+)
 
 __all__ = [
     "FactorDict",
@@ -29,4 +35,7 @@ __all__ = [
     "compute_breakout_probability_factor",
     "compute_all_factors",
     "ScoreEngine",
+    "StrategyDecision",
+    "EnsembleDecision",
+    "EnsembleAggregator",
 ]

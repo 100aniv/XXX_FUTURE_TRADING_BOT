@@ -740,3 +740,21 @@ analytics:
   kpis:
     enable_slippage: true
     enable_sharpe_like: true
+
+
+
+
+
+# ========================================
+# Ensemble System (PHASE19-3)
+# ========================================
+ensemble:
+  enabled: false  # Ensemble 모드 활성화 (기본값: false, 단일 전략 모드 유지)
+  strategies:     # Ensemble에서 사용할 전략 목록
+    - scalping
+    - trend
+    - breakout
+  min_tier1_score: 0.8        # Tier 1 최소 점수 (High-Confidence)
+  min_tier2_score: 0.5        # Tier 2 최소 점수 (Consensus)
+  tier1_conflict_diff: 0.15   # Tier 1 충돌 시 최소 점수 차이
+  min_tier2_votes: 2          # Tier 2 최소 투표 수
