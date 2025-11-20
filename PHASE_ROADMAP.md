@@ -408,25 +408,37 @@ PHASE17 기준 Portfolio/Risk 인프라 안정
 - Drawdown: 1.07% (안정적)
 - 문서: docs/PHASE20/PHASE20-1_ENSEMBLE_PAPER_SMOKE_REPORT.md
 
-**PHASE20-2: Extended Paper Test (3~7 days, Multi-Symbol) – 다음 단계**
+**PHASE20-2: Extended Infrastructure Validation (4h+ runtime) – **
 
 목적
 
-Ensemble ON 모드로 장기 Paper 테스트 (3~7일)
+Ensemble ON 모드로 4시간 이상 연속 Paper 테스트 (인프라 안정성 검증)
 
-멀티 심볼 확장 (BTC, ETH, etc.)
+단일 심볼 (BTCUSDT) 기준
 
-진입 조건
+주요 결과
 
-PHASE20-1 PASS (Ensemble 1h smoke test 완료)
+- Runtime: 4+ hours continuous operation
+- Total Trades: 44 (LONG 19, SHORT 25)
+- Total PnL: -$311.18
+- Infrastructure:  All systems stable
+- Strategy Distribution: Scalping-dominated (~95% signals)
 
- PHASE21 – 멀티 전략 & 앙상블 Infra
+완료 상태 (2025-11-20)
+
+- Infrastructure Validation:  PASS
+- 문서: docs/PHASE20/PHASE20-1_INFRASTRUCTURE_VALIDATION_FINAL.md
+
+ PHASE21 – 전략 선별 & 개별 검증 (Strategy Selection & Tuning)
 
 목적
 
-여러 전략(스캘핑, 스윙, 트렌드 등)을 동시에 운용 가능한 구조 만들기
+각 전략(scalping, breakout, reversion, trend, swing, swing_bb, daytrade)을 **단독으로** 테스트하여
+실제 시장에서의 성능/행태를 파악하고, 유지할 전략을 선별
 
-아직 “전략 다양화”가 아니라 “틀” 준비 단계
+PHASE20-2에서 발견: 현재 Ensemble 설정은 scalping에만 유난히 유리 → 공정한 비교 불가능
+
+따라서 각 전략을 격리된 환경에서 테스트 필요
 
 진입 조건
 
