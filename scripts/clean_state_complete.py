@@ -41,10 +41,20 @@ def clean_postgres():
         )
         cursor = conn.cursor()
         
+        # Check before delete
+        cursor.execute("SELECT COUNT(*) FROM trading.trades WHERE mode = 'paper';")
+        before_count = cursor.fetchone()[0]
+        safe_print(f"  [DEBUG] Before DELETE: {before_count} paper trades")
+        
         # Paper mode trades deletion
         cursor.execute("DELETE FROM trading.trades WHERE mode = 'paper';")
         deleted_trades = cursor.rowcount
         safe_print(f"  [OK] trading.trades (paper): {deleted_trades} deleted")
+        
+        # Check after delete (before commit)
+        cursor.execute("SELECT COUNT(*) FROM trading.trades WHERE mode = 'paper';")
+        after_count = cursor.fetchone()[0]
+        safe_print(f"  [DEBUG] After DELETE (before commit): {after_count} paper trades")
         
         # Monitoring signals deletion (if exists)
         try:
@@ -67,6 +77,22 @@ def clean_postgres():
         conn.commit()
         cursor.close()
         conn.close()
+        
+        # Check after commit with NEW connection
+        verify_conn = psycopg2.connect(
+            host=os.getenv('DB_HOST'),
+            port=int(os.getenv('DB_PORT')),
+            database=os.getenv('DB_NAME'),
+            user=os.getenv('DB_USER'),
+            password=os.getenv('DB_PASSWORD')
+        )
+        verify_cur = verify_conn.cursor()
+        verify_cur.execute("SELECT COUNT(*) FROM trading.trades WHERE mode = 'paper';")
+        final_count = verify_cur.fetchone()[0]
+        safe_print(f"  [DEBUG] After COMMIT (new connection): {final_count} paper trades")
+        verify_cur.close()
+        verify_conn.close()
+        
         safe_print("  [OK] Postgres cleanup complete\n")
         return True
         

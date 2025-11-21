@@ -493,6 +493,33 @@ Blocking Issue:
 다음 단계:
 - **PHASE21-1C**: 전체 7개 전략 1시간 단독 테스트 (올바른 타임프레임)
 
+**PHASE21-1C: Single Strategy Validation** ✅ **COMPLETE** (2025-11-21)
+
+상태: 7개 전략 인프라 검증 완료
+
+주요 성과:
+- ✅ **Feed collector 모든 timeframe 정상 작동 확인** (3m, 5m, 15m, 1h)
+- ✅ **모든 전략 FlowGuardian 검증 통과**
+- ✅ **Scalping 전략 HIGH-FREQUENCY 확인** (2분에 28건 거래)
+- ✅ **전략별 timeframe 최적화 완료**:
+  - scalping: 3m, breakout: 15m, daytrade: 15m
+  - trend: 1h, swing: 1h
+  - reversion: 5m, swing_bb: 5m
+
+전략 분류:
+- **ACTIVE (1)**: scalping (고빈도 전략)
+- **MEDIUM_FREQ (3)**: reversion, swing_bb, daytrade
+- **LOW_FREQ (3)**: breakout, trend, swing (장기 전략, 더 긴 테스트 필요)
+
+파일 생성:
+- `docs/PHASE21/PHASE21-1C_RESULTS_REPORT.md`: 완전한 검증 리포트
+- Test scripts: `phase21_1c_harness.py`, `phase21_1c_quick.py`
+
+결론:
+- PHASE21-1B의 인프라 수정이 실제 환경에서 정상 작동 확인
+- 7개 전략 모두 유지 (LOW_FREQ는 전략 특성, 결함 아님)
+- Ensemble 재통합 준비 완료
+
 주요 작업 (원래 계획 - PHASE21-1B/1C에서 진행 예정)
 
 Strategy Registry / Strategy Map
