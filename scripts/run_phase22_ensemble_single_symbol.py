@@ -226,57 +226,161 @@ def main():
         signal.signal(signal.SIGTERM, signal_handler)
     logger.info("✅ Signal handlers registered (SIGINT, SIGTERM)")
     
+    # Output directory 생성
+    output_dir = Path("scorecards") / "paper_phase22_1" / run_id
+    output_dir.mkdir(parents=True, exist_ok=True)
+    logger.info(f"📁 Output 디렉토리: {output_dir}")
+    
     # Effective config 저장
+    snapshot_path = output_dir / "effective_config.yml"
+    import yaml
+    cfg_snapshot = {k: v for k, v in cfg.items() if k != 'runtime_context'}
+    with open(snapshot_path, 'w', encoding='utf-8') as f:
+        yaml.dump(cfg_snapshot, f, default_flow_style=False, allow_unicode=True)
+    logger.info(f"💾 Effective config 저장: {snapshot_path}")
+    
+    # 2. 어댑터 생성
+    logger.info("📊 어댑터 생성...")
+    from execution.adapters import create_adapters
+    
+    symbol = cfg.get('symbol', 'BTCUSDT')
+    
     try:
-        config_path = save_effective_config(cfg, env='paper', run_id=run_id)
-        logger.info(f"💾 Effective config 저장: {config_path}")
+        feed, broker, clock = create_adapters(
+            mode='paper',
+            symbols=[symbol],
+            config=cfg,
+            logger=logger
+        )
+        logger.info(f"  ✅ Feed: {type(feed).__name__}")
+        logger.info(f"  ✅ Broker: {type(broker).__name__}")
+        logger.info(f"  ✅ Clock: {type(clock).__name__}")
     except Exception as e:
-        logger.warning(f"⚠️ Effective config 저장 실패: {e}")
+        logger.error(f"❌ 어댑터 생성 실패: {e}")
+        import traceback
+        logger.error(traceback.format_exc())
+        sys.exit(1)
     
-    # 2. 엔진 실행
+    # 3. 전략 로드
+    logger.info("🎯 전략 로드...")
+    from strategies import load_strategies
+    
+    strategies = load_strategies(config=cfg)
+    logger.info(f"  ✅ 전략 로드 완료: {list(strategies.keys())}")
+    
+    # 4. Ensemble Module 생성 (Ensemble 모드인 경우)
+    ensemble_module = None
+    if ensemble_cfg.get('enabled'):
+        logger.info("🎯 Ensemble Aggregator 생성...")
+        try:
+            from common.ensemble import EnsembleAggregator, ScoreEngine
+            from common.registry.strategy_registry import StrategyRegistry
+            
+            # Registry와 ScoreEngine 생성
+            registry = StrategyRegistry()
+            score_engine = ScoreEngine()
+            
+            # Ensemble Aggregator 생성
+            ensemble_module = EnsembleAggregator(
+                registry=registry,
+                score_engine=score_engine
+            )
+            logger.info("  ✅ Ensemble Aggregator 생성 완료")
+        except Exception as e:
+            logger.warning(f"⚠️ Ensemble Aggregator 생성 실패: {e}")
+            logger.warning("  ℹ️  Ensemble 없이 개별 전략으로 실행합니다")
+            ensemble_module = None
+    
+    # 5. 엔진 실행
     logger.info("=" * 80)
-    logger.info("🏁 엔진 실행 시작")
+    logger.info("🟢 Paper Trading 시작 (REAL Engine)")
     logger.info("=" * 80)
+    
+    from execution import engine
     
     try:
-        # Main 엔진 import
-        from main import main as engine_main
+        # Duration 제한 설정
+        cfg['execution'] = cfg.get('execution', {})
+        cfg['execution']['max_runtime_hours'] = duration_hours
         
         # 엔진 실행
-        engine_main(config=cfg)
-        
-        logger.info("=" * 80)
-        logger.info("✅ 엔진 실행 완료")
-        logger.info("=" * 80)
+        engine.run(
+            feed=feed,
+            broker=broker,
+            clock=clock,
+            strategies=strategies,
+            ensemble_module=ensemble_module,
+            config=cfg
+        )
+        logger.info("✅ Paper Trading 완료")
         
     except KeyboardInterrupt:
-        logger.info("🛑 사용자 인터럽트 (Ctrl+C)")
+        logger.info("⏹️  사용자 중단 (KeyboardInterrupt)")
+        runtime_ctx.request_shutdown(reason="KeyboardInterrupt")
     except Exception as e:
-        logger.error(f"❌ 엔진 실행 중 오류 발생: {e}", exc_info=True)
-        raise
+        logger.error(f"❌ Paper Trading 실행 실패: {e}")
+        import traceback
+        logger.error(traceback.format_exc())
+        sys.exit(1)
+    finally:
+        # 리소스 정리
+        logger.info("🧹 리소스 정리 시작...")
+        
+        if runtime_ctx and hasattr(runtime_ctx, 'monitor_registry') and runtime_ctx.monitor_registry:
+            try:
+                runtime_ctx.monitor_registry.stop_all()
+                logger.info("  ✅ 모니터링 중지 완료")
+            except Exception as e:
+                logger.warning(f"  ⚠️ 모니터링 중지 실패: {e}")
+        
+        if hasattr(feed, 'stop'):
+            try:
+                feed.stop()
+                logger.info("  ✅ Feed 중지 완료")
+            except Exception as e:
+                logger.warning(f"  ⚠️ Feed 중지 실패: {e}")
+        logger.info("✅ Shutdown complete")
     
-    # 3. Scorecard 생성
-    logger.info("=" * 80)
-    logger.info("📊 Scorecard 생성 중...")
-    logger.info("=" * 80)
+    # 6. 거래 내역 조회
+    logger.info("📊 거래 내역 조회...")
+    
+    trades = []
+    if hasattr(broker, 'closed_trades'):
+        trades = broker.closed_trades
+        logger.info(f"  ✅ {len(trades)}개 거래 조회 완료")
+    else:
+        logger.warning("  ⚠️ Broker에 closed_trades 없음")
+    
+    # 7. Scorecard 생성
+    logger.info("📈 Scorecard 생성...")
+    
+    period_info = {
+        'start_date': start_time.strftime('%Y-%m-%d'),
+        'end_date': datetime.now().strftime('%Y-%m-%d'),
+        'actual_hours': (datetime.now() - start_time).total_seconds() / 3600,
+        'mode': 'PHASE22-1_ENSEMBLE_V1'
+    }
     
     try:
-        scorecard_gen = ScorecardGenerator(
-            run_id=run_id,
-            output_dir=output_dir
+        generator = ScorecardGenerator(
+            strategy_name='ensemble_v1',
+            symbol=symbol,
+            timeframe=cfg.get('timeframe', '5m'),
+            period_info=period_info
         )
-        scorecard_gen.generate()
+        scorecard = generator.generate(trades, output_dir)
         logger.info(f"✅ Scorecard 저장: {output_dir}")
     except Exception as e:
         logger.error(f"⚠️ Scorecard 생성 실패: {e}")
     
-    # 4. 결과 요약
+    # 8. 결과 요약
     logger.info("=" * 80)
     logger.info("📋 PHASE22-1 실행 완료")
     logger.info("=" * 80)
     logger.info(f"🆔 Run ID: {run_id}")
     logger.info(f"📁 Output: {output_dir}")
-    logger.info(f"⏱️  실행 시간: {duration_hours * 60:.0f}분")
+    logger.info(f"📊 거래 수: {len(trades)}")
+    logger.info(f"⏱️  실행 시간: {(datetime.now() - start_time).total_seconds() / 60:.1f}분")
     logger.info("=" * 80)
     
     return 0
