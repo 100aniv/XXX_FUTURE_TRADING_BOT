@@ -429,7 +429,7 @@ Ensemble ON 모드로 4시간 이상 연속 Paper 테스트 (인프라 안정성
 - Infrastructure Validation:  PASS
 - 문서: docs/PHASE20/PHASE20-1_INFRASTRUCTURE_VALIDATION_FINAL.md
 
- PHASE21 – 전략 선별 & 개별 검증 (Strategy Selection & Tuning)
+ PHASE21 – 전략 선별 & 개별 검증 (Strategy Selection & Tuning) ⚠️ **IN PROGRESS**
 
 목적
 
@@ -444,7 +444,34 @@ PHASE20-2에서 발견: 현재 Ensemble 설정은 scalping에만 유난히 유�
 
 단일 전략 스캘핑이 안정 + 리스크/데이터 인프라 정리됨
 
-주요 작업
+**PHASE21-1A: Timeframe Optimization** ✅ **PARTIAL** (2025-11-21)
+
+상태: 타임프레임 최적화 완료, 인프라 이슈 발견
+
+주요 발견:
+- **Critical Issue**: 모든 전략 config가 5m으로 설정되어 있었으나, 각 전략은 다른 타임프레임으로 설계됨
+- **Scalping**: 5m → **3m 수정** → ✅ 2분 만에 28건 거래 생성 확인 (정상 작동)
+- **Breakout, Daytrade**: 5m → **15m 수정**
+- **Trend, Swing**: 5m → **1h 수정**
+- **Reversion, Swing_BB**: 5m 유지 (설계 의도 일치)
+
+인프라 개선:
+- `run_paper.py`에 `--config` 인자 지원 추가
+- `clean_state_complete.py` - 완전한 Redis+Postgres 정리
+- `trade_counter_v2.py` - 정확한 paper 모드 거래 카운팅
+
+Blocking Issue:
+- **Feed collector가 config timeframe 변경을 무시하고 1m 고정으로 실행됨**
+- root cause: WebSocket collector 초기화 로직이 config 변경을 반영하지 않음
+- 결과: Scalping 외 6개 전략은 유효한 테스트 불가
+
+문서: docs/PHASE21/PHASE21-1A_REPORT.md
+
+다음 단계:
+- **PHASE21-1B**: Feed collector config 적용 문제 해결
+- **PHASE21-1C**: 전체 7개 전략 1시간 단독 테스트 (올바른 타임프레임)
+
+주요 작업 (원래 계획 - PHASE21-1B/1C에서 진행 예정)
 
 Strategy Registry / Strategy Map
 
@@ -459,20 +486,6 @@ Portfolio/Budget Multi-Strategy
 전략 간 DD / 노출 제어
 
 백테스트 & Paper 멀티 전략 실행 테스트
-
-퇴출 조건
-
-2개 이상의 전략을 동시에 백테스트 + Paper로 돌려보고,
-
-Crash 없음
-
-Budget/Guard/Portfolio가 정상 동작
-
-ENSEMBLE_INFRA_REPORT.md 작성
-
-🧩 PHASE22 – 멀티 전략 Paper 장기 실행 (3~7일)
-
-목적
 
 앙상블 구조가 실제로 “몇 시간”이 아니라 “며칠” 동안 돌아가도 안 망가지는지 확인
 

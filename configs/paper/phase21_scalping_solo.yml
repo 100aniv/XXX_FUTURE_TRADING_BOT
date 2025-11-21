@@ -11,7 +11,7 @@ duration_hours: 1
 symbols:
   - BTCUSDT
 
-timeframe: 5m
+timeframe: 3m
 
 # === ENSEMBLE OFF (Single Strategy Mode) ===
 ensemble:
@@ -53,7 +53,7 @@ feed:
   symbols:
     - BTCUSDT
   timeframes:
-    - 5m
+    - 3m
 
 broker:
   type: paper

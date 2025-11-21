@@ -127,7 +127,15 @@ def main():
     
     # 1. Config 로딩 (paper 모드)
     logger.info("⚙️  Config 로딩...")
-    cfg = load_config_with_mode(mode="paper")
+    
+    # ⭐ PHASE21: --config 인자 지원
+    if args.config:
+        import yaml
+        logger.info(f"📝 Custom config 로딩: {args.config}")
+        with open(args.config, 'r', encoding='utf-8') as f:
+            cfg = yaml.safe_load(f)
+    else:
+        cfg = load_config_with_mode(mode="paper")
     
     # ⭐ CRITICAL: mode를 paper로 강제 설정
     cfg['mode'] = 'paper'
@@ -171,22 +179,37 @@ def main():
     logger.info(f"   ATR SL Mult: {scalping_cfg.get('atr_mult_sl', 'N/A')}")
     logger.info(f"   Max Hold: {scalping_cfg.get('max_hold_minutes', 'N/A')}m")
     
-    # 2. CLI 오버라이드
-    cfg['strategy'] = {'selector': args.strategy}
-    cfg['symbol'] = args.symbol
-    cfg['timeframe'] = args.timeframe
+    # 2. CLI 오버라이드 (config 파일이 없거나 CLI 인자가 명시된 경우)
+    if not args.config:
+        # Default behavior: Use CLI args
+        cfg['strategy'] = {'selector': args.strategy}
+        cfg['symbol'] = args.symbol
+        cfg['timeframe'] = args.timeframe
+    else:
+        # Config file provided: Use config values unless CLI explicitly overrides
+        if 'strategy' not in cfg:
+            cfg['strategy'] = {}
+        if 'symbols' in cfg and isinstance(cfg['symbols'], list):
+            # Config has symbols list, use first one for backward compat
+            cfg['symbol'] = cfg['symbols'][0]
+        elif 'symbol' not in cfg:
+            cfg['symbol'] = args.symbol
     
     # ⭐ PHASE18-2: env 명시적 설정 (네임스페이스용)
     cfg['env'] = 'paper'
     
     # Duration 설정 (종료 시간 계산)
+    # ⭐ PHASE21: config 파일의 duration_hours 우선 사용
+    duration_hours = cfg.get('duration_hours', args.duration_hours)
+    duration_mode = cfg.get('duration_mode', args.duration_mode)
+    
     start_time = datetime.now()
-    end_time = start_time + timedelta(hours=args.duration_hours)
+    end_time = start_time + timedelta(hours=duration_hours)
     cfg['paper'] = cfg.get('paper', {})
     cfg['paper']['start_time'] = start_time.isoformat()
     cfg['paper']['end_time'] = end_time.isoformat()
-    cfg['paper']['duration_hours'] = args.duration_hours
-    cfg['paper']['duration_mode'] = args.duration_mode  # ⭐ PHASE16+: Duration 모드 설정
+    cfg['paper']['duration_hours'] = duration_hours
+    cfg['paper']['duration_mode'] = duration_mode  # ⭐ PHASE16+: Duration 모드 설정
     cfg['paper']['clean_start'] = True  # ⭐ PHASE16+: 깨끗한 시작 (기존 포지션 무시)
     
     logger.info(f"⏰ 시작 시간: {start_time.strftime('%Y-%m-%d %H:%M:%S')}")
