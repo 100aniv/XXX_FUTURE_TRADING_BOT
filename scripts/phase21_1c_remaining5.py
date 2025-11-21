@@ -1,0 +1,193 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+PHASE21-1C Remaining 5 Strategies Test
+========================================
+"""
+import os
+import sys
+import subprocess
+import time
+import json
+from pathlib import Path
+from datetime import datetime
+
+project_root = Path(__file__).parent.parent
+sys.path.insert(0, str(project_root))
+
+from scripts.trade_counter_v2 import count_paper_trades, get_paper_trade_stats
+from scripts.force_clean_paper_trades import get_conn
+
+# Already tested: scalping (ACTIVE), reversion (LOW_FREQ)
+STRATEGIES = [
+    {"name": "swing_bb", "timeframe": "5m"},
+    {"name": "breakout", "timeframe": "15m"},
+    {"name": "daytrade", "timeframe": "15m"},
+    {"name": "trend", "timeframe": "1h"},
+    {"name": "swing", "timeframe": "1h"},
+]
+
+TEST_DURATION_MIN = 5
+
+
+def safe_print(msg):
+    try:
+        print(msg)
+    except:
+        print(msg.encode('ascii', 'replace').decode('ascii'))
+
+
+def clean_paper_trades():
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute("DELETE FROM trading.trades WHERE mode='paper'")
+    deleted = cur.rowcount
+    conn.commit()
+    cur.close()
+    conn.close()
+    return deleted
+
+
+def test_strategy(strategy_name, timeframe):
+    safe_print(f"\n{'='*70}")
+    safe_print(f"[{datetime.now().strftime('%H:%M:%S')}] Testing: {strategy_name.upper()} ({timeframe})")
+    safe_print(f"{'='*70}")
+    
+    deleted = clean_paper_trades()
+    safe_print(f"[CLEAN] Deleted {deleted} paper trades")
+    
+    config_path = project_root / "configs" / "paper" / f"phase21_{strategy_name}_solo.yml"
+    if not config_path.exists():
+        return {
+            "strategy": strategy_name,
+            "timeframe": timeframe,
+            "status": "CONFIG_NOT_FOUND",
+            "trades": 0,
+            "stats": {},
+            "error": f"Config not found"
+        }
+    
+    test_start = datetime.now()
+    
+    cmd = [sys.executable, "scripts/run_paper.py", "--config", str(config_path)]
+    
+    safe_print(f"[RUN] Starting {strategy_name}...")
+    
+    env = {**os.environ, 'PYTHONIOENCODING': 'utf-8'}
+    
+    process = subprocess.Popen(
+        cmd,
+        cwd=project_root,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+        encoding='utf-8',
+        errors='replace',
+        env=env
+    )
+    
+    start_time = time.time()
+    max_runtime = TEST_DURATION_MIN * 60 + 30
+    
+    last_check = 0
+    while (time.time() - start_time) < max_runtime:
+        if process.poll() is not None:
+            safe_print(f"[INFO] Process ended early")
+            break
+        
+        elapsed = int(time.time() - start_time)
+        
+        if elapsed - last_check >= 30:
+            current_count = count_paper_trades(strategy_id=strategy_name)
+            safe_print(f"[{elapsed}s] Trades: {current_count}")
+            last_check = elapsed
+        
+        time.sleep(5)
+    
+    try:
+        process.terminate()
+        process.wait(timeout=10)
+    except:
+        try:
+            process.kill()
+        except:
+            pass
+    
+    final_count = count_paper_trades(strategy_id=strategy_name)
+    stats = get_paper_trade_stats(strategy_id=strategy_name)
+    
+    if final_count >= 5:
+        status = "ACTIVE"
+    elif final_count >= 1:
+        status = "LOW_FREQ"
+    else:
+        status = "NO_TRADES"
+    
+    safe_print(f"\n[RESULT] {strategy_name.upper()}: {status}")
+    safe_print(f"  Trades: {final_count}")
+    safe_print(f"  LONG: {stats['long']}, SHORT: {stats['short']}")
+    safe_print(f"  PnL: ${stats['pnl_total']:.2f}")
+    safe_print(f"{'='*70}")
+    
+    return {
+        "strategy": strategy_name,
+        "timeframe": timeframe,
+        "status": status,
+        "trades": final_count,
+        "stats": stats,
+        "test_duration_min": TEST_DURATION_MIN,
+        "test_start": test_start.isoformat(),
+        "test_end": datetime.now().isoformat()
+    }
+
+
+def main():
+    safe_print("\n" + "="*70)
+    safe_print("PHASE21-1C: Remaining 5 Strategies (5min Each)")
+    safe_print("="*70)
+    safe_print(f"Start: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    safe_print("="*70)
+    
+    results = []
+    
+    for idx, strat in enumerate(STRATEGIES, 1):
+        safe_print(f"\n[{idx}/{len(STRATEGIES)}] {strat['name'].upper()}")
+        result = test_strategy(strat['name'], strat['timeframe'])
+        results.append(result)
+        
+        if idx < len(STRATEGIES):
+            safe_print("\n[WAIT] 10s before next...")
+            time.sleep(10)
+    
+    safe_print("\n" + "="*70)
+    safe_print("COMPLETE")
+    safe_print("="*70)
+    
+    for result in results:
+        safe_print(f"  [{result['status']}] {result['strategy'].upper()}: {result['trades']} trades")
+    
+    # Save
+    docs_dir = project_root / "docs" / "PHASE21"
+    docs_dir.mkdir(parents=True, exist_ok=True)
+    
+    results_file = docs_dir / "phase21_1c_remaining5_results.json"
+    with open(results_file, 'w', encoding='utf-8') as f:
+        json.dump(results, f, indent=2, ensure_ascii=False)
+    
+    safe_print(f"\nResults saved: {results_file}")
+    
+    return results
+
+
+if __name__ == "__main__":
+    try:
+        results = main()
+        sys.exit(0)
+    except KeyboardInterrupt:
+        safe_print("\n\nInterrupted")
+        sys.exit(1)
+    except Exception as e:
+        safe_print(f"\n\nError: {e}")
+        import traceback
+        traceback.print_exc()
+        sys.exit(1)

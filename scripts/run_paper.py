@@ -226,9 +226,11 @@ def main():
             cfg['strategy'] = {}
         
         # ⭐ PHASE21-1B: strategy.selected → strategy.selector 변환
-        if 'selected' in cfg.get('strategy', {}) and 'selector' not in cfg['strategy']:
-            cfg['strategy']['selector'] = cfg['strategy']['selected']
-            logger.info(f"✅ strategy.selected → strategy.selector: {cfg['strategy']['selector']}")
+        # base.yml의 selector: null 케이스도 처리
+        if 'selected' in cfg.get('strategy', {}):
+            if cfg['strategy'].get('selector') is None:
+                cfg['strategy']['selector'] = cfg['strategy']['selected']
+                logger.info(f"✅ strategy.selected → strategy.selector: {cfg['strategy']['selector']}")
         
         if 'symbols' in cfg and isinstance(cfg['symbols'], list):
             # Config has symbols list, use first one for backward compat
@@ -342,12 +344,14 @@ def main():
             logger.warning(f"  ⚠️  포트폴리오 초기화 실패: {e}")
     
     # 6. 전략 로드
-    logger.info(f"🎯 전략 로드: {args.strategy}")
+    # ⭐ PHASE21-1C: config 파일 사용 시 cfg['strategy']['selector'] 우선
+    actual_strategy = cfg.get('strategy', {}).get('selector') or args.strategy
+    logger.info(f"🎯 전략 로드: {actual_strategy}")
     from strategies import load_strategies
     
     strategies = load_strategies(config=cfg)
-    if args.strategy not in strategies:
-        logger.error(f"❌ 전략 '{args.strategy}' 없음. 사용 가능: {list(strategies.keys())}")
+    if actual_strategy not in strategies:
+        logger.error(f"❌ 전략 '{actual_strategy}' 없음. 사용 가능: {list(strategies.keys())}")
         sys.exit(1)
     
     logger.info(f"  ✅ 전략 로드 완료: {list(strategies.keys())}")
