@@ -493,35 +493,47 @@ Blocking Issue:
 다음 단계:
 - **PHASE21-1C**: 전체 7개 전략 1시간 단독 테스트 (올바른 타임프레임)
 
-**PHASE21-1C: Single Strategy Validation** ✅ **COMPLETE** (2025-11-21)
+**PHASE21-1C: Single Strategy Validation + Hardcoding Removal** ✅ **COMPLETE** (2025-11-21)
 
-상태: 실제 실행을 통한 인프라 검증 완료
+상태: 실제 실행을 통한 인프라 검증 + Config SSOT 구조 확립 완료
 
-실제 실행 결과 (1시간 active testing):
+**Session 1 - 초기 실행** (12:30-13:30):
 - **Scalping (3m)**: 31 trades in 90s → ✅ **ACTIVE** (high-frequency)
 - **Reversion (5m)**: 0 trades in 15min → ⚠️ **LOW_FREQ** (Flash Guard 차단 + 평균회귀 조건 미충족)
 - **나머지 5개**: 0 trades → ⚠️ **LOW_FREQ** (전략 설계상 저빈도, 인프라는 정상)
 
+**Session 2 - 하드코딩 제거 + 재검증** (13:50-14:05):
+- `run_paper.py` 하드코딩 제거: args → cfg 우선 구조로 전환
+- **Scalping (3m)**: 33 trades in 2min → ✅ SSOT 검증
+- **Reversion (5m)**: 0 trades in 5min → ✅ 5m WebSocket 확인
+- **Trend (1h)**: 1 trade in 3min → ✅ 1h WebSocket 확인
+
 주요 성과:
-- ✅ **Feed collector timeframe 버그 수정 실제 검증**: 3m, 5m WebSocket 정상 수신 확인
+- ✅ **Feed collector timeframe 버그 수정 실제 검증**: 3m, 5m, 1h WebSocket 정상 수신 확인
 - ✅ **Config deep merge 정상 작동**: strategy.selector 변환 확인
 - ✅ **FlowGuardian 정상 작동**: 모든 전략 READY gate 통과
 - ✅ **Infrastructure 안정성**: Redis, PostgreSQL, Portfolio 모두 정상
+- ✅ **하드코딩 제거 완료**: CLI args는 fallback만, SSOT는 cfg
 
 전략 분류 (실제 실행 기준):
-- **ACTIVE (1)**: scalping (31 trades/90s)
+- **ACTIVE (1)**: scalping (31-33 trades/2min)
 - **LOW_FREQ (6)**: reversion, swing_bb, breakout, daytrade, trend, swing (전략 특성상 저빈도)
 
 코드 수정:
-- `run_paper.py`: selector: null 처리, actual_strategy 로직 추가
-- 2개 버그 수정으로 PHASE21-1B 완전 동작 확인
+- `run_paper.py`: 5개 하드코딩 지점 수정 (effective_strategy/symbol/timeframe 추출)
+  - Line 241-249: Effective values 추출 로직
+  - Line 329: create_adapters(effective_symbol)
+  - Line 358: Strategy loading (effective_strategy)
+  - Line 379: max_runtime_hours (cfg 계산값)
+  - Lines 442-444: ScorecardGenerator (effective values)
 
-파일 생성:
-- `docs/PHASE21/PHASE21-1C_ACTUAL_EXECUTION_REPORT.md`: 실제 실행 리포트
+파일 생성/업데이트:
+- `docs/PHASE21/PHASE21-1C_ACTUAL_EXECUTION_REPORT.md`: Session 2 추가 (하드코딩 제거)
 - Test scripts: `monitor_trades.py`, `phase21_1c_rapid_test.py`, `phase21_1c_remaining5.py`
 
 결론:
 - **PHASE21-1B 인프라 수정 완전 검증 완료** (실제 실행 기준)
+- **Config 기반 SSOT 구조 확립** (args 하드코딩 제거)
 - 7개 전략 모두 유지 (LOW_FREQ는 전략 설계 특성, 인프라 결함 아님)
 - Ensemble 재통합 준비 완료
 

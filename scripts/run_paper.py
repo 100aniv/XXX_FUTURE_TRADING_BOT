@@ -238,6 +238,16 @@ def main():
         elif 'symbol' not in cfg:
             cfg['symbol'] = args.symbol
     
+    # ⭐ PHASE21-1C: Effective values for execution (SSOT: cfg 우선)
+    # Scorecard와 adapters가 실제 사용할 값을 미리 추출
+    effective_strategy = cfg.get('strategy', {}).get('selector') or args.strategy
+    effective_symbol = cfg.get('symbol', args.symbol)
+    effective_timeframe = cfg.get('timeframe', args.timeframe)
+    
+    logger.info(f"🎯 Effective Strategy: {effective_strategy}")
+    logger.info(f"💱 Effective Symbol: {effective_symbol}")
+    logger.info(f"⏱️  Effective Timeframe: {effective_timeframe}")
+    
     # ⭐ PHASE18-2: env 명시적 설정 (네임스페이스용)
     cfg['env'] = 'paper'
     
@@ -316,7 +326,7 @@ def main():
     try:
         feed, broker, clock = create_adapters(
             mode='paper',  # REAL Paper Mode
-            symbols=[args.symbol],
+            symbols=[effective_symbol],
             config=cfg,
             logger=logger
         )
@@ -344,14 +354,13 @@ def main():
             logger.warning(f"  ⚠️  포트폴리오 초기화 실패: {e}")
     
     # 6. 전략 로드
-    # ⭐ PHASE21-1C: config 파일 사용 시 cfg['strategy']['selector'] 우선
-    actual_strategy = cfg.get('strategy', {}).get('selector') or args.strategy
-    logger.info(f"🎯 전략 로드: {actual_strategy}")
+    # ⭐ PHASE21-1C: effective_strategy는 이미 Line 243에서 계산됨
+    logger.info(f"🎯 전략 로드: {effective_strategy}")
     from strategies import load_strategies
     
     strategies = load_strategies(config=cfg)
-    if actual_strategy not in strategies:
-        logger.error(f"❌ 전략 '{actual_strategy}' 없음. 사용 가능: {list(strategies.keys())}")
+    if effective_strategy not in strategies:
+        logger.error(f"❌ 전략 '{effective_strategy}' 없음. 사용 가능: {list(strategies.keys())}")
         sys.exit(1)
     
     logger.info(f"  ✅ 전략 로드 완료: {list(strategies.keys())}")
@@ -367,7 +376,7 @@ def main():
         # Duration 제한을 위해 config에 종료 조건 추가
         # 엔진이 이를 체크하도록 설정
         cfg['execution'] = cfg.get('execution', {})
-        cfg['execution']['max_runtime_hours'] = args.duration_hours
+        cfg['execution']['max_runtime_hours'] = duration_hours  # cfg 우선 (Line 246에서 계산)
         
         # ensemble은 사용하지 않음 (단일 전략)
         engine.run(
@@ -430,9 +439,9 @@ def main():
     }
     
     generator = ScorecardGenerator(
-        strategy_name=args.strategy,
-        symbol=args.symbol,
-        timeframe=args.timeframe,
+        strategy_name=effective_strategy,
+        symbol=effective_symbol,
+        timeframe=effective_timeframe,
         period_info=period_info
     )
     
