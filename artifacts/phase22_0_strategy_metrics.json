@@ -1,0 +1,145 @@
+{
+  "daytrade": {
+    "timeframe": "15m",
+    "classification": "LOW_FREQ",
+    "phase21_tests": [
+      {
+        "duration": "5-15min",
+        "trades": 0,
+        "pnl": 0.0
+      }
+    ],
+    "note": "Intraday trend requires longer test",
+    "db_metrics": {
+      "trade_count": 0,
+      "total_pnl": 0.0,
+      "win_rate": 0.0,
+      "data_source": "manual_only"
+    },
+    "status": "RESERVE"
+  },
+  "breakout": {
+    "timeframe": "15m",
+    "classification": "LOW_FREQ",
+    "phase21_tests": [
+      {
+        "duration": "5-15min",
+        "trades": 0,
+        "pnl": 0.0
+      }
+    ],
+    "note": "Requires clear breakout patterns",
+    "db_metrics": {
+      "trade_count": 0,
+      "total_pnl": 0.0,
+      "win_rate": 0.0,
+      "data_source": "manual_only"
+    },
+    "status": "RESERVE"
+  },
+  "scalping": {
+    "timeframe": "3m",
+    "classification": "ACTIVE",
+    "phase21_tests": [
+      {
+        "duration": "90s",
+        "trades": 31,
+        "pnl": -707.65
+      },
+      {
+        "duration": "2min",
+        "trades": 33,
+        "pnl": -746.34
+      },
+      {
+        "duration": "2min",
+        "trades": 28,
+        "pnl": 24.09
+      }
+    ],
+    "note": "High-frequency confirmed",
+    "db_metrics": {
+      "trade_count": 0,
+      "total_pnl": 0.0,
+      "win_rate": 0.0,
+      "data_source": "manual_only"
+    },
+    "status": "KEEP"
+  },
+  "swing_bb": {
+    "timeframe": "5m",
+    "classification": "LOW_FREQ",
+    "phase21_tests": [
+      {
+        "duration": "5-15min",
+        "trades": 0,
+        "pnl": 0.0
+      }
+    ],
+    "note": "Bollinger Band conditions strict",
+    "db_metrics": {
+      "trade_count": 0,
+      "total_pnl": 0.0,
+      "win_rate": 0.0,
+      "data_source": "manual_only"
+    },
+    "status": "RESERVE"
+  },
+  "reversion": {
+    "timeframe": "5m",
+    "classification": "LOW_FREQ",
+    "phase21_tests": [
+      {
+        "duration": "15min",
+        "trades": 0,
+        "pnl": 0.0
+      }
+    ],
+    "note": "Mean reversion conditions rarely met in short tests",
+    "db_metrics": {
+      "trade_count": 0,
+      "total_pnl": 0.0,
+      "win_rate": 0.0,
+      "data_source": "manual_only"
+    },
+    "status": "RESERVE"
+  },
+  "swing": {
+    "timeframe": "1h",
+    "classification": "LOW_FREQ",
+    "phase21_tests": [
+      {
+        "duration": "5-15min",
+        "trades": 0,
+        "pnl": 0.0
+      }
+    ],
+    "note": "Long-term strategy, needs days for meaningful signals",
+    "db_metrics": {
+      "trade_count": 0,
+      "total_pnl": 0.0,
+      "win_rate": 0.0,
+      "data_source": "manual_only"
+    },
+    "status": "RESERVE"
+  },
+  "trend": {
+    "timeframe": "1h",
+    "classification": "LOW_FREQ",
+    "phase21_tests": [
+      {
+        "duration": "5min",
+        "trades": 0,
+        "pnl": 0.0
+      }
+    ],
+    "note": "Long-term strategy, needs days for meaningful signals",
+    "db_metrics": {
+      "trade_count": 0,
+      "total_pnl": 0.0,
+      "win_rate": 0.0,
+      "data_source": "manual_only"
+    },
+    "status": "RESERVE"
+  }
+}

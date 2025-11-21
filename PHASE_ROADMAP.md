@@ -447,19 +447,27 @@ Ensemble ON 모드로 4시간 이상 연속 Paper 테스트 (인프라 안정성
 
 | ID         | Name        | Type           | Timeframe Class | Status        | Ensemble v1 |
 |-----------|-------------|----------------|-----------------|--------------|-------------|
-| scalping  | Scalping    | Momentum/Scalp | ACTIVE (3m)     | IMPLEMENTED  | T.B.D.      |
-| breakout  | Breakout    | Volatility     | LOW_FREQ (15m)  | IMPLEMENTED  | T.B.D.      |
-| reversion | Reversion   | Mean Reversion | LOW_FREQ (5m)   | IMPLEMENTED  | T.B.D.      |
-| swing_bb  | Swing BB    | Mean Reversion | LOW_FREQ (5m)   | IMPLEMENTED  | T.B.D.      |
-| daytrade  | Daytrade    | Intraday Trend | LOW_FREQ (15m)  | IMPLEMENTED  | T.B.D.      |
-| trend     | Trend       | Trend Follow   | LOW_FREQ (1h)   | IMPLEMENTED  | T.B.D.      |
-| swing     | Swing       | Swing Trend    | LOW_FREQ (1h)   | IMPLEMENTED  | T.B.D.      |
-| R&D_1     | (T.B.D.)    | (T.B.D.)       | (T.B.D.)        | CANDIDATE    | LATER       |
-| R&D_2     | (T.B.D.)    | (T.B.D.)       | (T.B.D.)        | CANDIDATE    | LATER       |
-| R&D_3     | (T.B.D.)    | (T.B.D.)       | (T.B.D.)        | CANDIDATE    | LATER       |
+| scalping  | Scalping    | Momentum/Scalp | ACTIVE (3m)     | IMPLEMENTED  | **IN**      |
+| reversion | Reversion   | Mean Reversion | LOW_FREQ (5m)   | IMPLEMENTED  | RESERVE     |
+| swing_bb  | Swing BB    | Mean Reversion | LOW_FREQ (5m)   | IMPLEMENTED  | RESERVE     |
+| breakout  | Breakout    | Volatility     | LOW_FREQ (15m)  | IMPLEMENTED  | RESERVE     |
+| daytrade  | Daytrade    | Intraday Trend | LOW_FREQ (15m)  | IMPLEMENTED  | RESERVE     |
+| trend     | Trend       | Trend Follow   | LOW_FREQ (1h)   | IMPLEMENTED  | RESERVE     |
+| swing     | Swing       | Swing Trend    | LOW_FREQ (1h)   | IMPLEMENTED  | RESERVE     |
+| R&D_1     | Orderbook Micro-Reversion | Orderbook Imbalance | (T.B.D.) | CANDIDATE | LATER       |
+| R&D_2     | Volatility Breakout v2 | ATR + Session | (T.B.D.)        | CANDIDATE    | LATER       |
+| R&D_3     | Regime Adaptive Meta | Regime-based Meta | (T.B.D.)   | CANDIDATE    | LATER       |
+
+ **Ensemble v1 분류 기준** (PHASE22-0 완료, 2025-11-21):
+- **IN**: 충분한 trade 데이터 보유, PHASE22-1부터 Core 전략으로 확정
+- **RESERVE**: 인프라 검증 PASS, PHASE22-2 (12~24h) Extended Validation 후 IN/OUT 결정
+- **LATER**: 향후 연구/구현 예정 전략
 
  ⚠️ R&D_* 전략들은 개념적 자리만 잡아둔 것이고,  
-    실제 이름/로직/구현 여부는 이후 PHASE에서 별도 설계 후 확정한다.
+    실제 구현/검증은 PHASE23 이후 별도 설계 후 진행한다.
+    - **R&D_1 (Orderbook Micro-Reversion)**: 호가창 불균형 기반 초단타 평균 회귀
+    - **R&D_2 (Volatility Breakout v2)**: ATR + Session 기반 변동성 브레이크아웃
+    - **R&D_3 (Regime Adaptive Meta)**: 시장 레짐에 따라 전략 on/off 및 weight 조정
 
 **참조 문서**
 
