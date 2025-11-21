@@ -19,7 +19,7 @@ load_dotenv()
 
 def clean_postgres():
     """Postgres 테스트 데이터 초기화"""
-    print("\n[1/2] Postgres Clean-State 초기화...")
+    print("\n[1/2] Postgres Clean-State initialization...")
     
     try:
         conn = psycopg2.connect(
@@ -31,33 +31,33 @@ def clean_postgres():
         )
         cursor = conn.cursor()
         
-        # Paper 모드 거래 기록 삭제
+        # Paper mode trades deletion
         cursor.execute("DELETE FROM trading.trades WHERE mode = 'paper';")
         deleted_trades = cursor.rowcount
-        print(f"  ✅ trading.trades (paper): {deleted_trades}건 삭제")
+        print(f"  [OK] trading.trades (paper): {deleted_trades} deleted")
         
-        # Monitoring signals 삭제 (테이블이 있다면)
+        # Monitoring signals deletion (if table exists)
         try:
             cursor.execute("DELETE FROM monitoring.signals WHERE mode = 'paper';")
             deleted_signals = cursor.rowcount
-            print(f"  ✅ monitoring.signals (paper): {deleted_signals}건 삭제")
+            print(f"  [OK] monitoring.signals (paper): {deleted_signals} deleted")
         except Exception as e:
             if "does not exist" not in str(e):
-                print(f"  ⚠️  monitoring.signals: {e}")
+                print(f"  [WARN] monitoring.signals: {e}")
         
         conn.commit()
         cursor.close()
         conn.close()
-        print("  ✅ Postgres 초기화 완료\n")
+        print("  [OK] Postgres initialization complete\n")
         
     except Exception as e:
-        print(f"  ❌ Postgres 초기화 실패: {e}\n")
+        print(f"  [ERROR] Postgres initialization failed: {e}\n")
         raise
 
 
 def clean_redis():
-    """Redis 테스트 키 초기화"""
-    print("[2/2] Redis Clean-State 초기화...")
+    """Redis test key initialization"""
+    print("[2/2] Redis Clean-State initialization...")
     
     try:
         # 환경변수 또는 기본값
@@ -83,12 +83,12 @@ def clean_redis():
             if keys:
                 deleted = r.delete(*keys)
                 total_deleted += deleted
-                print(f"  ✅ {pattern}: {deleted}개 키 삭제")
+                print(f"  [OK] {pattern}: {deleted} keys deleted")
         
-        print(f"  ✅ Redis 초기화 완료 (총 {total_deleted}개 키 삭제)\n")
+        print(f"  [OK] Redis initialization complete (total {total_deleted} keys deleted)\n")
         
     except Exception as e:
-        print(f"  ❌ Redis 초기화 실패: {e}\n")
+        print(f"  [ERROR] Redis initialization failed: {e}\n")
         raise
 
 
@@ -103,7 +103,7 @@ def main():
     clean_redis()
     
     print("=" * 60)
-    print("✅ Clean-State 초기화 완료!")
+    print("[OK] Clean-State initialization complete!")
     print("=" * 60)
 
 

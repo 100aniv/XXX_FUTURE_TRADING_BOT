@@ -1,0 +1,62 @@
+# PHASE21-1: Single Strategy Paper Test - REVERSION
+# Purpose: Isolate reversion strategy performance (Ensemble OFF)
+# Runtime: 12 hours wall-clock
+# Symbol: BTCUSDT
+# Timeframe: 5m
+
+mode: paper
+duration_mode: wall_clock
+duration_hours: 1
+
+symbols:
+  - BTCUSDT
+
+timeframe: 5m
+
+# === ENSEMBLE OFF (Single Strategy Mode) ===
+ensemble:
+  enabled: false
+
+# === Single Strategy: Reversion ===
+strategy:
+  use_ensemble: false
+  selected: reversion
+  reversion:
+    enabled: true
+    params:
+      rsi_period: 14
+      rsi_overbought: 70
+      rsi_oversold: 30
+      max_position_size: 0.1
+      stop_loss_pct: 2.0
+      take_profit_pct: 1.0
+
+# === Risk & Portfolio ===
+portfolio:
+  initial_balance: 50000
+  max_position_value: 5000
+  max_open_positions: 5
+
+risk:
+  max_drawdown_pct: 30.0
+  extreme_loss_threshold: -1000
+  position_size_mode: kelly_fraction
+
+# === Monitoring ===
+monitoring:
+  log_level: INFO
+  log_to_file: true
+  metrics_interval_seconds: 60
+
+# === Feed & Broker ===
+feed:
+  type: binance_websocket
+  symbols:
+    - BTCUSDT
+  timeframes:
+    - 5m
+
+broker:
+  type: paper
+  slippage_pct: 0.05
+  commission_pct: 0.1

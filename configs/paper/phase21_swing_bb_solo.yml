@@ -1,0 +1,62 @@
+# PHASE21-1: Single Strategy Paper Test - SWING_BB
+# Purpose: Isolate swing_bb strategy performance (Ensemble OFF)
+# Runtime: 12 hours wall-clock
+# Symbol: BTCUSDT
+# Timeframe: 5m
+
+mode: paper
+duration_mode: wall_clock
+duration_hours: 1
+
+symbols:
+  - BTCUSDT
+
+timeframe: 5m
+
+# === ENSEMBLE OFF (Single Strategy Mode) ===
+ensemble:
+  enabled: false
+
+# === Single Strategy: Swing_BB ===
+strategy:
+  use_ensemble: false
+  selected: swing_bb
+  swing_bb:
+    enabled: true
+    params:
+      bb_period: 20
+      bb_std_dev: 2.0
+      min_band_width: 0.2
+      max_position_size: 0.1
+      stop_loss_pct: 3.0
+      take_profit_pct: 2.5
+
+# === Risk & Portfolio ===
+portfolio:
+  initial_balance: 50000
+  max_position_value: 5000
+  max_open_positions: 5
+
+risk:
+  max_drawdown_pct: 30.0
+  extreme_loss_threshold: -1000
+  position_size_mode: kelly_fraction
+
+# === Monitoring ===
+monitoring:
+  log_level: INFO
+  log_to_file: true
+  metrics_interval_seconds: 60
+
+# === Feed & Broker ===
+feed:
+  type: binance_websocket
+  symbols:
+    - BTCUSDT
+  timeframes:
+    - 5m
+
+broker:
+  type: paper
+  slippage_pct: 0.05
+  commission_pct: 0.1
