@@ -429,26 +429,70 @@ Ensemble ON 모드로 4시간 이상 연속 Paper 테스트 (인프라 안정성
 - Infrastructure Validation:  PASS
 - 문서: docs/PHASE20/PHASE20-1_INFRASTRUCTURE_VALIDATION_FINAL.md
 
-🧩 PHASE21 – Single Strategy Infrastructure & Validation ✅ **COMPLETE**
+---
 
-**상태**: ✅ COMPLETE (PHASE21-1A/1B/1C 모두 완료, 2025-11-21)
+## 전역 전략 후보군 (SSOT)
+
+**목적**
+
+- 이 프로젝트에서 사용하는 **전략들의 전체 후보 풀(Strategy Pool)** 을 한 곳에 정리한다.
+- "현재 구현되어 있는 전략"과 "향후 연구/추가 예정 전략"을 구분하고,
+- PHASE22-0에서 이 Pool을 기준으로 **Ensemble v1에 들어갈 7~8개 전략**을 선정한다.
+
+**구조**
+
+- **Implemented Strategies** (이미 엔진에 통합된 전략)
+- **Candidate / R&D Strategies** (향후 구현/검증 예정 전략)
+- **Ensemble v1 Inclusion Flag** (IN / OUT / RESERVE)
+
+| ID         | Name        | Type           | Timeframe Class | Status        | Ensemble v1 |
+|-----------|-------------|----------------|-----------------|--------------|-------------|
+| scalping  | Scalping    | Momentum/Scalp | ACTIVE (3m)     | IMPLEMENTED  | T.B.D.      |
+| breakout  | Breakout    | Volatility     | LOW_FREQ (15m)  | IMPLEMENTED  | T.B.D.      |
+| reversion | Reversion   | Mean Reversion | LOW_FREQ (5m)   | IMPLEMENTED  | T.B.D.      |
+| swing_bb  | Swing BB    | Mean Reversion | LOW_FREQ (5m)   | IMPLEMENTED  | T.B.D.      |
+| daytrade  | Daytrade    | Intraday Trend | LOW_FREQ (15m)  | IMPLEMENTED  | T.B.D.      |
+| trend     | Trend       | Trend Follow   | LOW_FREQ (1h)   | IMPLEMENTED  | T.B.D.      |
+| swing     | Swing       | Swing Trend    | LOW_FREQ (1h)   | IMPLEMENTED  | T.B.D.      |
+| R&D_1     | (T.B.D.)    | (T.B.D.)       | (T.B.D.)        | CANDIDATE    | LATER       |
+| R&D_2     | (T.B.D.)    | (T.B.D.)       | (T.B.D.)        | CANDIDATE    | LATER       |
+| R&D_3     | (T.B.D.)    | (T.B.D.)       | (T.B.D.)        | CANDIDATE    | LATER       |
+
+ ⚠️ R&D_* 전략들은 개념적 자리만 잡아둔 것이고,  
+    실제 이름/로직/구현 여부는 이후 PHASE에서 별도 설계 후 확정한다.
+
+**참조 문서**
+
+- PHASE21 검증 결과: `docs/PHASE21/PHASE21-1C_ACTUAL_EXECUTION_REPORT.md`
+- PHASE22-0 Strategy Pool 분석: `docs/PHASE22/PHASE22-0_STRATEGY_POOL.md`
+
+---
+
+ PHASE21 – Single Strategy Infrastructure & Validation 
+
+**상태**:  COMPLETE (PHASE21-1A/1B/1C 모두 완료, 2025-11-21)
 
 **목적**
 
 7개 전략 각각에 대해 **단일 전략 인프라/타임프레임/FlowGuardian/Config-SSOT**가 정상 동작하는지 검증하고, ACTIVE/LOW_FREQ 특성을 구분하여 이후 Ensemble/Extended Validation의 기반을 마련
 
+ ⚠️ **이 PHASE의 초점**:
+- **전략 성능 튜닝/선별이 아니라**, 단일 전략이 엔진/피드/가드/포트폴리오 구조 안에서 **안정적으로 동작하는지 검증**하는 것
+- 전략별 성능 비교 및 Ensemble 후보 선정은 **PHASE22-0**에서 수행
+
 **범위 (최종 확정)**
 
-- ✅ 타임프레임/Feed collector 버그 식별 및 수정 (3m/5m/1h WebSocket 정상 수신 확인)
-- ✅ `run_paper.py`의 전략/심볼/타임프레임/Duration 하드코딩 제거 및 **Config 기반 SSOT 구조 확립**
-- ✅ Scalping/Reversion/Trend 단일 전략 PAPER 실행을 통한 **인프라 레벨 검증**
-- ✅ ACTIVE vs LOW_FREQ 전략 분류 (인프라 기준, 성능/수익률 튜닝은 범위 밖)
+-  타임프레임/Feed collector 버그 식별 및 수정 (3m/5m/1h WebSocket 정상 수신 확인)
+-  `run_paper.py`의 전략/심볼/타임프레임/Duration 하드코딩 제거 및 **Config 기반 SSOT 구조 확립**
+-  Scalping/Reversion/Trend 단일 전략 PAPER 실행을 통한 **인프라 레벨 검증**
+-  ACTIVE vs LOW_FREQ 전략 분류 (인프라 기준, 성능/수익률 튜닝은 범위 밖)
 
 **Out-of-scope (다음 PHASE로 이관)**
 
+- 전략별 PnL/Win-rate/Max DD를 기준으로 한 **Ensemble v1 전략군 선정** → **PHASE22-0**
+- Multi-strategy/Ensemble 실행 및 튜닝 → **PHASE22-1**
 - 12~24시간 장기 PAPER 실행을 통한 성능/생존성 검증 → **PHASE22-2**
 - Flash Guard/쿨다운/슬리피지 파라미터 튜닝 (전략 성능 기준) → **PHASE22-3**
-- Multi-strategy/Ensemble 실행 및 튜닝 → **PHASE22-1**
 
 **진입 조건**
 
@@ -458,19 +502,27 @@ Ensemble ON 모드로 4시간 이상 연속 Paper 테스트 (인프라 안정성
 
 ---
 
-🧩 PHASE22 – Ensemble Re-integration & Extended Validation (단일 심볼) 🟦 **PLANNED**
+ PHASE22 – Ensemble Re-integration & Extended Validation (단일 심볼) 
 
-**상태**: 🟦 PLANNED
+**상태**:  PLANNED
 
 **목적**
 
-PHASE21에서 검증된 7개 전략을 다시 Ensemble 구조로 통합하고, 12~24h 장기 PAPER 실행을 통해 각 전략/Ensemble의 생존성과 Flash Guard/쿨다운 파라미터를 검증/튜닝
+PHASE21에서 검증된 단일 전략 인프라와 Global Strategy Pool을 기반으로,
+Ensemble v1 전략군을 정의하고, 단일 심볼 기준으로 장기 PAPER 실행(12~24h)을 통해
+각 전략/Ensemble의 생존성과 Flash Guard/쿨다운 파라미터를 검증/튜닝한다.
 
-**Core Scope**
+**Sub-phases**
 
-- **22-1**: Ensemble 재구성 (단일 심볼, 전략/타임프레임 조합 고정)
-- **22-2**: Extended Validation – 12~24h REAL PAPER 실행 (LOW_FREQ/장기 전략 중심)
-- **22-3**: Flash Guard / 쿨다운 / 슬리피지 파라미터 튜닝 (PAPER 기준 상향 조정)
+- **22-0: Strategy Pool 정리 & Ensemble v1 후보 선정 (NEW)**
+  - Global Strategy Pool(전역 전략 후보군)을 기준으로:
+    - PHASE21 테스트 결과 요약 (PnL / Win-rate / Trade Count / Max DD 등)
+    - 유지/보류/탈락 전략 구분
+    - Ensemble v1에 포함할 7~8개 전략 후보 리스트 확정
+  - 산출물: `docs/PHASE22/PHASE22-0_STRATEGY_POOL.md`
+- **22-1: Ensemble 재구성 (단일 심볼, 전략/타임프레임 조합 고정)**
+- **22-2: Extended Validation – 12~24h REAL PAPER 실행 (LOW_FREQ/장기 전략 중심)**
+- **22-3: Flash Guard / 쿨다운 / 슬리피지 파라미터 튜닝 (PAPER 기준 상향 조정)**
 
 **Out-of-scope**
 
