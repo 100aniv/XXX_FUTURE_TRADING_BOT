@@ -445,29 +445,50 @@ Ensemble ON 모드로 4시간 이상 연속 Paper 테스트 (인프라 안정성
 - **Candidate / R&D Strategies** (향후 구현/검증 예정 전략)
 - **Ensemble v1 Inclusion Flag** (IN / OUT / RESERVE)
 
-| ID         | Name        | Type           | Timeframe Class | Status        | Ensemble v1 |
-|-----------|-------------|----------------|-----------------|--------------|-------------|
-| scalping  | Scalping    | Momentum/Scalp | ACTIVE (3m)     | IMPLEMENTED  | **IN**      |
-| reversion | Reversion   | Mean Reversion | LOW_FREQ (5m)   | IMPLEMENTED  | RESERVE     |
-| swing_bb  | Swing BB    | Mean Reversion | LOW_FREQ (5m)   | IMPLEMENTED  | RESERVE     |
-| breakout  | Breakout    | Volatility     | LOW_FREQ (15m)  | IMPLEMENTED  | RESERVE     |
-| daytrade  | Daytrade    | Intraday Trend | LOW_FREQ (15m)  | IMPLEMENTED  | RESERVE     |
-| trend     | Trend       | Trend Follow   | LOW_FREQ (1h)   | IMPLEMENTED  | RESERVE     |
-| swing     | Swing       | Swing Trend    | LOW_FREQ (1h)   | IMPLEMENTED  | RESERVE     |
-| R&D_1     | Orderbook Micro-Reversion | Orderbook Imbalance | (T.B.D.) | CANDIDATE | LATER       |
-| R&D_2     | Volatility Breakout v2 | ATR + Session | (T.B.D.)        | CANDIDATE    | LATER       |
-| R&D_3     | Regime Adaptive Meta | Regime-based Meta | (T.B.D.)   | CANDIDATE    | LATER       |
+| ID                | Name                     | Type                    | Timeframe Class | Status      | Ensemble v1 |
+|-------------------|--------------------------|-------------------------|-----------------|-------------|-------------|
+| scalping          | Scalping                 | Momentum/Scalp          | ACTIVE (3m)     | IMPLEMENTED | **IN**      |
+| breakout          | Breakout                 | Volatility              | LOW_FREQ (15m)  | IMPLEMENTED | **IN**      |
+| reversion         | Reversion                | Mean Reversion          | LOW_FREQ (5m)   | IMPLEMENTED | **IN**      |
+| trend             | Trend                    | Trend Follow            | LOW_FREQ (1h)   | IMPLEMENTED | **IN**      |
+| swing_bb          | Swing BB                 | Mean Reversion          | LOW_FREQ (5m)   | IMPLEMENTED | RESERVE     |
+| swing             | Swing                    | Swing Trend             | LOW_FREQ (1h)   | IMPLEMENTED | RESERVE     |
+| daytrade          | Daytrade                 | Intraday Trend          | LOW_FREQ (15m)  | IMPLEMENTED | RESERVE     |
+| obi_momentum      | OBI Momentum             | Orderbook Imbalance     | ACTIVE (1m)     | CANDIDATE   | **IN**      |
+| cvd_reversal      | CVD Reversal             | Volume Delta            | LOW_FREQ (5m)   | CANDIDATE   | **IN**      |
+| multi_tf_momentum | Multi-TF Momentum        | Cross-Timeframe         | ACTIVE (1m/5m)  | CANDIDATE   | **IN**      |
+| relative_strength | Relative Strength        | Cross-Asset RS          | LOW_FREQ (15m)  | CANDIDATE   | **IN**      |
+| R&D_1             | Orderbook Micro-Reversion| Orderbook Imbalance     | (T.B.D.)        | CANDIDATE   | LATER       |
+| R&D_2             | Volatility Breakout v2   | ATR + Session           | (T.B.D.)        | CANDIDATE   | LATER       |
+| R&D_3             | Regime Adaptive Meta     | Regime-based Meta       | (T.B.D.)        | CANDIDATE   | LATER       |
+| R&D_4             | Funding Rate Reversion   | Funding Rate Arbitrage  | (T.B.D.)        | CANDIDATE   | LATER       |
+| R&D_5             | Volatility Skew Arb      | Vol Smile/Skew          | (T.B.D.)        | CANDIDATE   | LATER       |
+| R&D_6             | Session Bias Intraday    | Time-of-Day Bias        | (T.B.D.)        | CANDIDATE   | LATER       |
+| R&D_7             | Market-Neutral Pair      | Pair/Spread Trading     | (T.B.D.)        | CANDIDATE   | LATER       |
 
- **Ensemble v1 분류 기준** (PHASE22-0 완료, 2025-11-21):
-- **IN**: 충분한 trade 데이터 보유, PHASE22-1부터 Core 전략으로 확정
-- **RESERVE**: 인프라 검증 PASS, PHASE22-2 (12~24h) Extended Validation 후 IN/OUT 결정
-- **LATER**: 향후 연구/구현 예정 전략
+**Ensemble v1 분류 기준** (PHASE22-0 완료, 2025-11-21):
+- **IN (8개)**: Ensemble v1 Core 전략 (4 IMPLEMENTED + 4 CANDIDATE)
+  - **IMPLEMENTED (4개)**: Scalping, Breakout, Reversion, Trend
+  - **CANDIDATE (4개)**: OBI-Momentum, CVD Reversal, Multi-TF Momentum, Relative Strength (설계만, 구현은 PHASE23+)
+- **RESERVE (3개)**: 인프라 PASS, PHASE22-2 Extended Validation 후 추가 고려
+- **LATER (7개)**: 향후 연구/구현 예정 전략
 
- ⚠️ R&D_* 전략들은 개념적 자리만 잡아둔 것이고,  
-    실제 구현/검증은 PHASE23 이후 별도 설계 후 진행한다.
-    - **R&D_1 (Orderbook Micro-Reversion)**: 호가창 불균형 기반 초단타 평균 회귀
-    - **R&D_2 (Volatility Breakout v2)**: ATR + Session 기반 변동성 브레이크아웃
-    - **R&D_3 (Regime Adaptive Meta)**: 시장 레짐에 따라 전략 on/off 및 weight 조정
+**신규 Ensemble v1 전략 (4개) 개념**:
+- **OBI-Momentum**: Orderbook Imbalance 기반 1m 초단타 모멘텀
+- **CVD Reversal**: Cumulative Volume Delta 기반 5m 반전 감지
+- **Multi-TF Momentum**: 1m/5m Cross-Timeframe 모멘텀 확인
+- **Relative Strength**: Cross-Asset Relative Strength Index (15m)
+
+**R&D 전략 (7개) 개념**:
+- **R&D_1 (Orderbook Micro-Reversion)**: 호가창 불균형 기반 초단타 평균 회귀
+- **R&D_2 (Volatility Breakout v2)**: ATR + Session 기반 변동성 브레이크아웃
+- **R&D_3 (Regime Adaptive Meta)**: 시장 레짐에 따라 전략 on/off 및 weight 조정
+- **R&D_4 (Funding Rate Reversion)**: 펀딩비 과잉/역전 활용 차익거래
+- **R&D_5 (Volatility Skew Arbitrage)**: 변동성 스마일/스큐 기반 전략
+- **R&D_6 (Session Bias Intraday)**: Asia/EU/US 세션별 편향 활용
+- **R&D_7 (Market-Neutral Pair)**: 페어/스프레드 트레이딩
+
+ CANDIDATE 전략은 설계/아이디어 수준이며, 실제 구현/검증은 PHASE23 이후 진행
 
 **참조 문서**
 

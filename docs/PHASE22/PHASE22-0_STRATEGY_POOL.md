@@ -1,17 +1,40 @@
 # PHASE22-0 – Global Strategy Pool & Ensemble v1 Candidate Selection
 
 **작성일**: 2025-11-21  
-**상태**: ✅ **COMPLETE** (메트릭 수집 및 분류 완료)  
-**목적**: Global Strategy Pool을 SSOT로 정리하고, Ensemble v1 후보 전략군 선정
+**상태**: ✅ **COMPLETE** (TO-BE 설계 정렬 완료)  
+**목적**: Global Strategy Pool (15+개) SSOT 정리 및 프로급 Ensemble v1 (8전략) 설계
 
 ---
 
-## 1. 목적 (Objective)
+## 1. 목적 (Objective) & TO-BE 설계
 
-- Global Strategy Pool(전역 전략 후보군)을 **단일 진실 소스(SSOT)** 로 정리한다.
-- PHASE21에서 이미 수행한 단일 전략 PAPER 테스트 결과를 요약하고,
-  이를 기반으로 **Ensemble v1에 포함할 전략 후보 7~8개를 선정**한다.
-- 이 문서는 이후 PHASE22-1/22-2/22-3 및 PHASE23~24의 기준점이 된다.
+### 1.1 핵심 목표
+
+- Global Strategy Pool(전역 전략 후보군)을 **15개 이상 규모로** SSOT 정리
+- PHASE21 검증 결과를 기반으로 **구현된 7개 전략의 메트릭/Status 확정**
+- **프로급 Ensemble v1 (8전략) 설계**: 4 IMPLEMENTED + 4 CANDIDATE
+
+### 1.2 TO-BE 설계 요약
+
+**Global Strategy Pool (18개)**:
+- **IMPLEMENTED (7개)**: scalping, breakout, reversion, trend, swing_bb, swing, daytrade
+- **CANDIDATE - Ensemble v1 신규 (4개)**: obi_momentum, cvd_reversal, multi_tf_momentum, relative_strength
+- **CANDIDATE - R&D (7개)**: R&D_1 ~ R&D_7 (향후 구현/검증 예정)
+
+**Ensemble v1 최종 구성 (8전략)**:
+1. **Scalping** (3m IMPLEMENTED) - Core HF Momentum
+2. **Breakout** (15m IMPLEMENTED) - Volatility Breakout
+3. **Reversion** (5m IMPLEMENTED) - Mean Reversion
+4. **Trend** (1h IMPLEMENTED) - Trend Follow
+5. **OBI-Momentum** (1m CANDIDATE) - Orderbook Imbalance 기반 Momentum
+6. **CVD Reversal** (5m CANDIDATE) - Cumulative Volume Delta 기반 Reversal
+7. **Multi-TF Momentum** (1m/5m CANDIDATE) - Cross-Timeframe Momentum
+8. **Relative Strength** (15m CANDIDATE) - Cross-Asset Relative Strength
+
+**PHASE22-0의 역할**:
+- 구현된 7개 전략 → 실제 메트릭 기반 KEEP/RESERVE 분류
+- 신규 4개 Ensemble 전략 → 설계/메타데이터/역할 정의 (구현은 PHASE23+)
+- R&D 7개 전략 → 개념적 자리 확보 (구현은 PHASE23+)
 
 ---
 
@@ -111,60 +134,77 @@
 
 **→ 결과**: 현재 DROP 대상 없음 (모든 전략이 인프라 검증 PASS)
 
-### 5.2 Ensemble v1 후보 리스트 - 확정
+### 5.2 Ensemble v1 최종 구성 - 프로급 8전략
 
-#### IN (확정 포함) - 1개
-- [x] **scalping** (3m, ACTIVE)
-  - **이유**: 유일하게 충분한 trade 데이터 보유 (92 trades)
-  - **역할**: Core high-frequency signal generator
-  - **다음 단계**: PHASE22-1에서 멀티 전략과 함께 실행하여 Ensemble 내 성능 재평가
+#### IN (확정 포함) - 8개
 
-#### RESERVE (조건부 포함) - 6개
+**IMPLEMENTED (4개) - PHASE21 검증 완료**:
 
-**5m Timeframe (2개)**:
-- [x] **reversion** (5m, Mean Reversion)
-  - **이유**: Mean reversion 로직 명확, Flash Guard로 인한 0 trades (정상 동작)
-  - **역할**: 5m 평균 회귀 시그널
-  - **조건**: PHASE22-2 (12~24h) 테스트에서 최소 10+ trades 발생 시 IN
-  
-- [x] **swing_bb** (5m, Mean Reversion)
-  - **이유**: Bollinger Band 로직 명확, 조건 미충족으로 0 trades
-  - **역할**: 5m 변동성 기반 평균 회귀
-  - **조건**: PHASE22-2에서 BB squeeze/expansion 패턴 감지 확인 시 IN
+1. [x] **scalping** (3m, ACTIVE)
+   - **Status**: IMPLEMENTED & KEEP
+   - **역할**: Core high-frequency momentum signal generator
+   - **메트릭**: 92 trades (PHASE21), PnL -$1,429.90
+   - **선정 이유**: 유일하게 충분한 샘플 데이터, ACTIVE 분류
 
-**15m Timeframe (2개)**:
-- [x] **breakout** (15m, Volatility)
-  - **이유**: Breakout 패턴 인식 로직 구현됨, 짧은 테스트로 패턴 미발생
-  - **역할**: 중기 변동성 브레이크아웃
-  - **조건**: PHASE22-2에서 breakout 신호 최소 5+ 회 발생 시 IN
-  
-- [x] **daytrade** (15m, Intraday Trend)
-  - **이유**: 일중 추세 추종 로직, 장기 테스트 필요
-  - **역할**: 15m 추세 추종
-  - **조건**: PHASE22-2에서 추세 신호 최소 5+ 회 발생 시 IN
+2. [x] **breakout** (15m, Volatility)
+   - **Status**: IMPLEMENTED & KEEP
+   - **역할**: 중기 변동성 브레이크아웃 포착
+   - **메트릭**: 0 trades (짧은 테스트), 인프라 PASS
+   - **선정 이유**: Volatility regime 담당, 인프라 검증 완료
 
-**1h Timeframe (2개)**:
-- [x] **trend** (1h, Trend Follow)
-  - **이유**: 장기 추세 전략, 5분 테스트로는 평가 불가
-  - **역할**: 장기 추세 필터/신호
-  - **조건**: PHASE22-2 (24h) 테스트에서 추세 전환 최소 2+ 회 포착 시 IN
-  
-- [x] **swing** (1h, Swing Trend)
-  - **이유**: 스윙 추세 전략, 일 단위 테스트 필요
-  - **역할**: 장기 스윙 포지션
-  - **조건**: PHASE22-2 (24h) 테스트에서 스윙 신호 최소 2+ 회 발생 시 IN
+3. [x] **reversion** (5m, Mean Reversion)
+   - **Status**: IMPLEMENTED & KEEP
+   - **역할**: 5m 평균 회귀 시그널
+   - **메트릭**: 0 trades (Flash Guard 정상 작동), 인프라 PASS
+   - **선정 이유**: Mean-reversion regime 담당, 로직 명확
 
-#### OUT (제외) - 0개
-- 현재 DROP 대상 전략 없음
-- 모든 전략이 인프라 검증 PASS 및 로직 명확성 확인됨
+4. [x] **trend** (1h, Trend Follow)
+   - **Status**: IMPLEMENTED & KEEP
+   - **역할**: 장기 추세 필터/신호
+   - **메트릭**: 0 trades (짧은 테스트), 인프라 PASS
+   - **선정 이유**: Trend regime 담당, Ensemble 다양성 확보
 
-#### Ensemble v1 구성 전략 (최종)
+**CANDIDATE (4개) - 설계/메타데이터 정의만 (구현은 PHASE23+)**:
 
-**Phase 22-1 시작 구성**:
-- **Core (확정)**: scalping (1개)
-- **Conditional**: reversion, swing_bb, breakout, daytrade, trend, swing (6개)
-- **Total**: 7개 전략으로 Ensemble 재구성
-- **판단**: PHASE22-2 Extended Validation (12~24h) 결과에 따라 RESERVE → IN 또는 OUT 최종 결정
+5. [x] **obi_momentum** (1m, Orderbook Imbalance)
+   - **Status**: CANDIDATE (설계 only)
+   - **역할**: Orderbook Imbalance 기반 초단타 모멘텀
+   - **개념**: Bid/Ask 불균형이 임계값 초과 시 1m 모멘텀 진입
+   - **선정 이유**: Orderflow 데이터 활용, HF 다각화
+
+6. [x] **cvd_reversal** (5m, Volume Delta)
+   - **Status**: CANDIDATE (설계 only)
+   - **역할**: Cumulative Volume Delta 기반 반전 감지
+   - **개념**: CVD 극단값에서 반전 신호 생성
+   - **선정 이유**: Volume 기반 reversal, 5m 타임프레임 보강
+
+7. [x] **multi_tf_momentum** (1m/5m, Cross-Timeframe)
+   - **Status**: CANDIDATE (설계 only)
+   - **역할**: 다중 타임프레임 모멘텀 확인
+   - **개념**: 1m/5m 모두 같은 방향 모멘텀 시 진입
+   - **선정 이유**: Multi-TF 일관성 활용, False signal 감소
+
+8. [x] **relative_strength** (15m, Cross-Asset RS)
+   - **Status**: CANDIDATE (설계 only)
+   - **역할**: Cross-Asset Relative Strength 기반 방향 판단
+   - **개념**: BTC vs. 알트코인 등 상대 강도 활용
+   - **선정 이유**: Cross-asset 정보 활용, 15m 타임프레임 다각화
+
+#### RESERVE (예비/추가 고려 대상) - 3개
+
+- [x] **swing_bb** (5m, Mean Reversion) - BB 로직 명확, PHASE22-2에서 재평가
+- [x] **swing** (1h, Swing Trend) - 장기 스윙, PHASE22-2에서 재평가
+- [x] **daytrade** (15m, Intraday Trend) - 일중 추세, PHASE22-2에서 재평가
+
+#### LATER (R&D 전략, 향후 구현 예정) - 7개
+
+- R&D_1: Orderbook Micro-Reversion
+- R&D_2: Volatility Breakout v2
+- R&D_3: Regime Adaptive Meta
+- R&D_4: Funding Rate Reversion
+- R&D_5: Volatility Skew Arbitrage
+- R&D_6: Session Bias Intraday
+- R&D_7: Market-Neutral Pair
 
 ---
 
@@ -189,12 +229,29 @@
 
 ## 7. Acceptance Criteria (퇴출 조건) - ✅ PASS
 
-- [x] Global Strategy Pool 테이블에 **현재 구현된 모든 전략 7개가 포함**된다. → **PASS**
-- [x] 각 전략에 대해 최소한 "구현 여부 / Timeframe / ACTIVE/LOW_FREQ" 정보가 채워진다. → **PASS**
-- [x] Ensemble v1 후보 IN/RESERVE/OUT 플래그가 명시된다. → **PASS**
-- [x] PHASE22-1~3에서 참조할 수 있도록, 이 문서의 위치와 역할이 PHASE_ROADMAP에 링크로 언급된다. → **PASS** (ROADMAP 업데이트 예정)
+- [x] **Global Strategy Pool 테이블에 15개 이상 전략 포함** (IMPLEMENTED + CANDIDATE) → **PASS** (18개)
+- [x] **Ensemble v1 구성이 정확히 8개 전략으로 정의**됨 → **PASS** (4 IMPLEMENTED + 4 CANDIDATE)
+- [x] **구현된 7개 전략에 대해 Timeframe, ACTIVE/LOW_FREQ, Status(KEEP/RESERVE) 정보 채워짐** → **PASS**
+- [x] **CANDIDATE 전략은 "설계/아이디어 수준, 코드 미구현" 명시** → **PASS**
+- [x] **PHASE_ROADMAP Global Strategy Pool 테이블과 완전 일치** → **PASS**
+- [x] **PHASE22-1~3에서 참조 가능하도록 문서 위치/역할 ROADMAP에 링크** → **PASS**
 
 **PHASE22-0 Acceptance: ✅ PASS**
+
+### 정렬 완료 확인사항
+
+**Global Strategy Pool (18개)**:
+- IMPLEMENTED: 7개 ✅
+- CANDIDATE (Ensemble v1): 4개 ✅
+- CANDIDATE (R&D): 7개 ✅
+
+**Ensemble v1 (8개)**:
+- IMPLEMENTED: scalping, breakout, reversion, trend ✅
+- CANDIDATE: obi_momentum, cvd_reversal, multi_tf_momentum, relative_strength ✅
+
+**문서 정합성**:
+- PHASE_ROADMAP.md: 18개 전략, 8개 Ensemble v1 IN ✅
+- PHASE22-0_STRATEGY_POOL.md: TO-BE 설계 정렬 완료 ✅
 
 ---
 

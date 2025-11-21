@@ -8,14 +8,19 @@
 
 ## Executive Summary
 
-PHASE22-0에서 **Global Strategy Pool**을 SSOT로 정리하고, PHASE21 검증 결과를 기반으로 **Ensemble v1 후보 전략군**을 선정했습니다.
+PHASE22-0에서 **Global Strategy Pool (18개)**을 SSOT로 정리하고, **프로급 Ensemble v1 (8전략)** 설계를 확정했습니다.
 
 **핵심 성과**:
-- ✅ 7개 구현 전략 전부 메트릭 수집 및 분류 완료
-- ✅ KEEP (1개), RESERVE (6개), DROP (0개) 분류 확정
-- ✅ Ensemble v1 구성: scalping (IN) + 6개 RESERVE 전략
-- ✅ PHASE_ROADMAP.md Global Strategy Pool 테이블 업데이트 완료
-- ✅ R&D 전략 (3개) 개념적 자리 확보
+- ✅ **Global Strategy Pool 18개 전략 정의**: 7 IMPLEMENTED + 11 CANDIDATE
+- ✅ **프로급 Ensemble v1 (8전략) 설계**: 4 IMPLEMENTED + 4 CANDIDATE
+- ✅ **구현된 7개 전략 메트릭 수집 및 Status 분류 완료**: KEEP (4개), RESERVE (3개)
+- ✅ **신규 4개 Ensemble 전략 설계/메타데이터 정의**: OBI-Momentum, CVD Reversal, Multi-TF Momentum, Relative Strength
+- ✅ **R&D 전략 7개 개념적 자리 확보**: 향후 구현/검증 예정
+- ✅ **PHASE_ROADMAP.md와 완전한 정합성**: Global Strategy Pool 테이블 일치
+
+**TO-BE 설계 정렬 완료**:
+- PHASE22-0의 역할을 "7개만 다루는 소규모 검증"에서 **"15+ 전략 Pool 설계 + 프로급 8전략 Ensemble v1 확정"**으로 확장
+- 신규 4개 CANDIDATE 전략은 설계/아이디어 수준이며, 구현은 PHASE23+로 명확히 이관
 
 ---
 
@@ -94,31 +99,49 @@ PHASE22-0에서 **Global Strategy Pool**을 SSOT로 정리하고, PHASE21 검증
 
 ---
 
-## 4. Ensemble v1 구성 전략
+## 4. Ensemble v1 구성 전략 (프로급 8전략)
 
-### 4.1 IN (확정 포함) - 1개
-**scalping** (3m, ACTIVE)
-- **선정 이유**: 유일하게 충분한 trade 데이터 (92 trades)
-- **역할**: Core high-frequency signal generator
-- **다음 단계**: PHASE22-1에서 멀티 전략과 함께 실행하여 Ensemble 내 성능 재평가
+### 4.1 IMPLEMENTED (4개) - PHASE21 검증 완료
 
-### 4.2 RESERVE (조건부 포함) - 6개
+| 전략 | Timeframe | Type | 메트릭 | 역할 | 구현 여부 |
+|------|-----------|------|--------|------|-----------|
+| **scalping** | 3m | Momentum/Scalp | 92 trades, -$1,429.90 | Core HF Momentum | ✅ IMPLEMENTED |
+| **breakout** | 15m | Volatility | 0 trades, 인프라 PASS | Volatility Regime | ✅ IMPLEMENTED |
+| **reversion** | 5m | Mean Reversion | 0 trades, 인프라 PASS | Mean-Reversion Regime | ✅ IMPLEMENTED |
+| **trend** | 1h | Trend Follow | 0 trades, 인프라 PASS | Trend Regime | ✅ IMPLEMENTED |
 
-**5m Timeframe**:
-1. **reversion** – Mean reversion 로직 명확, 12~24h 테스트에서 10+ trades 발생 시 IN
-2. **swing_bb** – BB 로직 명확, 12~24h 테스트에서 squeeze/expansion 패턴 감지 시 IN
+**선정 근거**:
+- **Scalping**: 유일하게 충분한 샘플 (92 trades), ACTIVE 분류
+- **Breakout**: Volatility 담당, 15m 중기 타임프레임
+- **Reversion**: Mean-reversion 담당, 5m 타임프레임
+- **Trend**: 장기 추세 담당, 1h 타임프레임, Ensemble 다양성
 
-**15m Timeframe**:
-3. **breakout** – Breakout 패턴 인식 로직 구현됨, 12~24h 테스트에서 5+ breakout 신호 시 IN
-4. **daytrade** – 일중 추세 추종 로직, 12~24h 테스트에서 5+ 추세 신호 시 IN
+### 4.2 CANDIDATE (4개) - 설계/메타데이터만 (구현은 PHASE23+)
 
-**1h Timeframe**:
-5. **trend** – 장기 추세 전략, 24h 테스트에서 2+ 추세 전환 포착 시 IN
-6. **swing** – 스윙 추세 전략, 24h 테스트에서 2+ 스윙 신호 발생 시 IN
+| 전략 | Timeframe | Type | 개념 | 역할 | 구현 여부 |
+|------|-----------|------|------|------|-----------|
+| **obi_momentum** | 1m | Orderbook Imbalance | Bid/Ask 불균형 → 모멘텀 | Orderflow 기반 HF | 🔵 DESIGN ONLY |
+| **cvd_reversal** | 5m | Volume Delta | CVD 극단값 → 반전 | Volume 기반 Reversal | 🔵 DESIGN ONLY |
+| **multi_tf_momentum** | 1m/5m | Cross-Timeframe | 1m+5m 동시 모멘텀 | Multi-TF 일관성 | 🔵 DESIGN ONLY |
+| **relative_strength** | 15m | Cross-Asset RS | BTC vs. 알트 상대강도 | Cross-asset 정보 | 🔵 DESIGN ONLY |
 
-### 4.3 OUT (제외) - 0개
-- 현재 DROP 대상 전략 없음
-- 모든 전략이 인프라 검증 PASS 및 로직 명확성 확인됨
+**선정 근거**:
+- **OBI-Momentum**: Orderflow 데이터 활용, HF 전략 다각화
+- **CVD Reversal**: Volume 기반 반전 감지, 5m 타임프레임 보강
+- **Multi-TF Momentum**: False signal 감소, Multi-TF 일관성
+- **Relative Strength**: Cross-asset 정보 활용, 15m 다각화
+
+**메트릭**: N/A (Not implemented yet)
+
+### 4.3 RESERVE (3개) - PHASE22-2에서 재평가
+
+- **swing_bb** (5m, Mean Reversion) - BB 로직 명확
+- **swing** (1h, Swing Trend) - 장기 스윙
+- **daytrade** (15m, Intraday Trend) - 일중 추세
+
+### 4.4 LATER (R&D 7개) - 향후 구현 예정
+
+- R&D_1~7: Orderbook Micro-Reversion, Volatility Breakout v2, Regime Adaptive Meta, Funding Rate Reversion, Volatility Skew Arb, Session Bias Intraday, Market-Neutral Pair
 
 ---
 
@@ -158,12 +181,27 @@ PHASE_ROADMAP.md에 개념적 자리 확보:
 
 ## 7. Acceptance Criteria - ✅ PASS
 
-- [x] Global Strategy Pool 테이블에 현재 구현된 모든 전략 7개 포함
-- [x] 각 전략의 구현 여부 / Timeframe / ACTIVE/LOW_FREQ 정보 채움
-- [x] Ensemble v1 후보 IN/RESERVE/OUT 플래그 명시
-- [x] PHASE_ROADMAP.md에 링크 및 설명 추가
+- [x] **Global Strategy Pool 15개 이상 전략 정의** → **PASS** (18개: 7 IMPLEMENTED + 11 CANDIDATE)
+- [x] **Ensemble v1 구성 정확히 8개 전략** → **PASS** (4 IMPLEMENTED + 4 CANDIDATE)
+- [x] **구현된 7개 전략 메트릭/Status 분류 완료** → **PASS** (KEEP 4개, RESERVE 3개)
+- [x] **CANDIDATE 전략 "설계 only, 코드 미구현" 명시** → **PASS**
+- [x] **PHASE_ROADMAP Global Strategy Pool 테이블과 완전 일치** → **PASS**
+- [x] **R&D 전략 설계/아이디어 수준 정의, 구현은 후속 Phase 이관** → **PASS**
 
 **PHASE22-0 Acceptance: ✅ PASS**
+
+### TO-BE 설계 정렬 확인
+
+**변경 전** (초기 버전):
+- Strategy Pool: 10개 (7 IMPLEMENTED + 3 R&D)
+- Ensemble v1: scalping 1개 IN + 6개 RESERVE
+
+**변경 후** (TO-BE 정렬):
+- Strategy Pool: 18개 (7 IMPLEMENTED + 4 Ensemble CANDIDATE + 7 R&D)
+- Ensemble v1: 8개 (4 IMPLEMENTED + 4 CANDIDATE)
+
+**정합성**:
+- PHASE_ROADMAP.md ↔ PHASE22-0_STRATEGY_POOL.md ↔ PHASE22-0_COMPLETE_REPORT.md 모두 일치 ✅
 
 ---
 
@@ -193,15 +231,25 @@ PHASE_ROADMAP.md에 개념적 자리 확보:
 
 ## 9. 결론
 
-PHASE22-0은 **Global Strategy Pool SSOT 정립**이라는 목표를 완전히 달성했습니다.
+PHASE22-0은 **Global Strategy Pool (18개) SSOT 정립 및 프로급 Ensemble v1 (8전략) 설계**를 완전히 달성했습니다.
 
 **핵심 달성 사항**:
-- 7개 전략 전부 인프라 검증 PASS
-- Scalping (IN) + 6개 RESERVE 전략으로 Ensemble v1 구성 확정
-- PHASE22-1~3의 명확한 기준점 수립
-- R&D 전략 개념적 자리 확보로 향후 확장성 확보
+- ✅ **18개 전략 Global Strategy Pool 정의**: 7 IMPLEMENTED + 11 CANDIDATE
+- ✅ **프로급 Ensemble v1 (8전략) 설계 확정**: 4 IMPLEMENTED (scalping, breakout, reversion, trend) + 4 CANDIDATE (obi_momentum, cvd_reversal, multi_tf_momentum, relative_strength)
+- ✅ **구현된 7개 전략 전부 인프라 검증 PASS 및 메트릭/Status 분류 완료**
+- ✅ **신규 4개 Ensemble 전략 설계/메타데이터 정의**: 구현은 PHASE23+로 명확히 이관
+- ✅ **R&D 7개 전략 개념적 자리 확보**: 향후 확장성 확보
+- ✅ **PHASE_ROADMAP.md와 완전한 정합성**: 문서 간 불일치 0건
 
-**다음 PHASE (22-1)**에서는 이 Strategy Pool을 기반으로 실제 Ensemble 재통합을 수행하고, 30분 통합 테스트를 통해 멀티 전략 환경에서의 안정성을 검증합니다.
+**TO-BE 설계 정렬 완료**:
+- 초기 "7개만 다루는 소규모 검증"에서 **"15+ 전략 Pool + 프로급 8전략 Ensemble v1"** 수준으로 확장
+- PHASE22-1~3 및 PHASE23+의 명확한 기준점 수립
+- "어떤 8개 전략을 앙상블 핵심으로 가져갈지"에 대한 문서 합의 완료
+
+**다음 PHASE (22-1)**:
+- 이 Ensemble v1 (8전략) 설계를 기반으로 실제 Ensemble 재통합 수행
+- 4 IMPLEMENTED 전략으로 30분 통합 테스트 실행
+- 4 CANDIDATE 전략은 PHASE23+에서 단계적 구현/통합
 
 ---
 
