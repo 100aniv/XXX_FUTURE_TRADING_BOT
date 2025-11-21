@@ -429,200 +429,125 @@ Ensemble ON 모드로 4시간 이상 연속 Paper 테스트 (인프라 안정성
 - Infrastructure Validation:  PASS
 - 문서: docs/PHASE20/PHASE20-1_INFRASTRUCTURE_VALIDATION_FINAL.md
 
- PHASE21 – 전략 선별 & 개별 검증 (Strategy Selection & Tuning) ⚠️ **IN PROGRESS**
+🧩 PHASE21 – Single Strategy Infrastructure & Validation ✅ **COMPLETE**
 
-목적
+**상태**: ✅ COMPLETE (PHASE21-1A/1B/1C 모두 완료, 2025-11-21)
 
-각 전략(scalping, breakout, reversion, trend, swing, swing_bb, daytrade)을 **단독으로** 테스트하여
-실제 시장에서의 성능/행태를 파악하고, 유지할 전략을 선별
+**목적**
 
-PHASE20-2에서 발견: 현재 Ensemble 설정은 scalping에만 유난히 유리 → 공정한 비교 불가능
+7개 전략 각각에 대해 **단일 전략 인프라/타임프레임/FlowGuardian/Config-SSOT**가 정상 동작하는지 검증하고, ACTIVE/LOW_FREQ 특성을 구분하여 이후 Ensemble/Extended Validation의 기반을 마련
 
-따라서 각 전략을 격리된 환경에서 테스트 필요
+**범위 (최종 확정)**
 
-진입 조건
+- ✅ 타임프레임/Feed collector 버그 식별 및 수정 (3m/5m/1h WebSocket 정상 수신 확인)
+- ✅ `run_paper.py`의 전략/심볼/타임프레임/Duration 하드코딩 제거 및 **Config 기반 SSOT 구조 확립**
+- ✅ Scalping/Reversion/Trend 단일 전략 PAPER 실행을 통한 **인프라 레벨 검증**
+- ✅ ACTIVE vs LOW_FREQ 전략 분류 (인프라 기준, 성능/수익률 튜닝은 범위 밖)
+
+**Out-of-scope (다음 PHASE로 이관)**
+
+- 12~24시간 장기 PAPER 실행을 통한 성능/생존성 검증 → **PHASE22-2**
+- Flash Guard/쿨다운/슬리피지 파라미터 튜닝 (전략 성능 기준) → **PHASE22-3**
+- Multi-strategy/Ensemble 실행 및 튜닝 → **PHASE22-1**
+
+**진입 조건**
 
 단일 전략 스캘핑이 안정 + 리스크/데이터 인프라 정리됨
 
-**PHASE21-1A: Timeframe Optimization** ✅ **PARTIAL** (2025-11-21)
+**문서**: docs/PHASE21/PHASE21-1A_REPORT.md, PHASE21-1B_FEED_FIX_REPORT.md, PHASE21-1C_ACTUAL_EXECUTION_REPORT.md
 
-상태: 타임프레임 최적화 완료, 인프라 이슈 발견
+---
 
-주요 발견:
-- **Critical Issue**: 모든 전략 config가 5m으로 설정되어 있었으나, 각 전략은 다른 타임프레임으로 설계됨
-- **Scalping**: 5m → **3m 수정** → ✅ 2분 만에 28건 거래 생성 확인 (정상 작동)
-- **Breakout, Daytrade**: 5m → **15m 수정**
-- **Trend, Swing**: 5m → **1h 수정**
-- **Reversion, Swing_BB**: 5m 유지 (설계 의도 일치)
+🧩 PHASE22 – Ensemble Re-integration & Extended Validation (단일 심볼) 🟦 **PLANNED**
 
-인프라 개선:
-- `run_paper.py`에 `--config` 인자 지원 추가
-- `clean_state_complete.py` - 완전한 Redis+Postgres 정리
-- `trade_counter_v2.py` - 정확한 paper 모드 거래 카운팅
+**상태**: 🟦 PLANNED
 
-Blocking Issue:
-- **Feed collector가 config timeframe 변경을 무시하고 1m 고정으로 실행됨**
-- root cause: WebSocket collector 초기화 로직이 config 변경을 반영하지 않음
-- 결과: Scalping 외 6개 전략은 유효한 테스트 불가
+**목적**
 
-문서: docs/PHASE21/PHASE21-1A_REPORT.md
+PHASE21에서 검증된 7개 전략을 다시 Ensemble 구조로 통합하고, 12~24h 장기 PAPER 실행을 통해 각 전략/Ensemble의 생존성과 Flash Guard/쿨다운 파라미터를 검증/튜닝
 
-**PHASE21-1B: Feed Collector Timeframe Fix** **COMPLETE** (2025-11-21)
+**Core Scope**
 
-상태: Feed collector config 버그 완전 해결
+- **22-1**: Ensemble 재구성 (단일 심볼, 전략/타임프레임 조합 고정)
+- **22-2**: Extended Validation – 12~24h REAL PAPER 실행 (LOW_FREQ/장기 전략 중심)
+- **22-3**: Flash Guard / 쿨다운 / 슬리피지 파라미터 튜닝 (PAPER 기준 상향 조정)
 
-근본 원인:
-- `base.yml`에 `feed.base_timeframe: 1m` 하드코딩
-- `run_paper.py`가 custom config를 base.yml과 merge하지 않음
-- `adapters.create_adapters()`가 항상 `base_timeframe` 사용 → 1m 고정
+**Out-of-scope**
 
-해결 방법:
-- **Deep Merge Logic**: `run_paper.py`에서 base.yml + custom config 병합
-- **feed.base_timeframe Sync**: config.timeframe → feed.base_timeframe 자동 동기화
-- **strategy.selected → strategy.selector**: 엔진 호환성 변환
+- Multi-symbol 지원 → **PHASE23**
+- 실제 Live 계정 연동 → **PHASE24**
 
-검증 결과:
-- **3m timeframe 정상 작동 확인** (로그: "BTCUSDT 3m 실시간 수신 중")
-- **WebSocket collector가 config timeframe 반영**
-- **회귀 테스트 통과** (기존 동작 유지)
+**진입 조건**
 
-파일 변경:
-- `scripts/run_paper.py`: +45 lines (deep merge, base_timeframe sync, strategy conversion)
-- `docs/PHASE21/PHASE21-1B_FEED_FIX_REPORT.md`: 완전한 분석 리포트
+PHASE21 완료 (단일 전략 인프라 검증)
 
-다음 단계:
-- **PHASE21-1C**: 전체 7개 전략 1시간 단독 테스트 (올바른 타임프레임)
+**퇴출 조건**
 
-**PHASE21-1C: Single Strategy Validation + Hardcoding Removal** ✅ **COMPLETE** (2025-11-21)
+- 12~24h PAPER 실행 정상 종료
+- LOW_FREQ 전략 최소 1회 이상 신호 발생
+- Flash Guard/쿨다운 파라미터 PAPER 환경 맞춤 조정 완료
+- Ensemble 재통합 후 인프라 안정성 확인
 
-상태: 실제 실행을 통한 인프라 검증 + Config SSOT 구조 확립 완료
+🧩 PHASE23 – Multi-Symbol Scaling & Infrastructure 🟦 **PLANNED**
 
-**Session 1 - 초기 실행** (12:30-13:30):
-- **Scalping (3m)**: 31 trades in 90s → ✅ **ACTIVE** (high-frequency)
-- **Reversion (5m)**: 0 trades in 15min → ⚠️ **LOW_FREQ** (Flash Guard 차단 + 평균회귀 조건 미충족)
-- **나머지 5개**: 0 trades → ⚠️ **LOW_FREQ** (전략 설계상 저빈도, 인프라는 정상)
+**상태**: 🟦 PLANNED
 
-**Session 2 - 하드코딩 제거 + 재검증** (13:50-14:05):
-- `run_paper.py` 하드코딩 제거: args → cfg 우선 구조로 전환
-- **Scalping (3m)**: 33 trades in 2min → ✅ SSOT 검증
-- **Reversion (5m)**: 0 trades in 5min → ✅ 5m WebSocket 확인
-- **Trend (1h)**: 1 trade in 3min → ✅ 1h WebSocket 확인
+**목적**
 
-주요 성과:
-- ✅ **Feed collector timeframe 버그 수정 실제 검증**: 3m, 5m, 1h WebSocket 정상 수신 확인
-- ✅ **Config deep merge 정상 작동**: strategy.selector 변환 확인
-- ✅ **FlowGuardian 정상 작동**: 모든 전략 READY gate 통과
-- ✅ **Infrastructure 안정성**: Redis, PostgreSQL, Portfolio 모두 정상
-- ✅ **하드코딩 제거 완료**: CLI args는 fallback만, SSOT는 cfg
+PHASE22까지 단일 심볼 기준으로 안정화된 Ensemble/인프라를, 상위 N개 심볼로 확장하고, Redis/DB/엔진 구조가 Multi-symbol 환경에서도 안정적으로 동작하도록 검증
 
-전략 분류 (실제 실행 기준):
-- **ACTIVE (1)**: scalping (31-33 trades/2min)
-- **LOW_FREQ (6)**: reversion, swing_bb, breakout, daytrade, trend, swing (전략 특성상 저빈도)
+**Core Scope**
 
-코드 수정:
-- `run_paper.py`: 5개 하드코딩 지점 수정 (effective_strategy/symbol/timeframe 추출)
-  - Line 241-249: Effective values 추출 로직
-  - Line 329: create_adapters(effective_symbol)
-  - Line 358: Strategy loading (effective_strategy)
-  - Line 379: max_runtime_hours (cfg 계산값)
-  - Lines 442-444: ScorecardGenerator (effective values)
+- **23-1**: Multi-symbol Feed/Execution/Portfolio 구조 확장
+- **23-2**: Multi-symbol PAPER 실행 및 리포트/메트릭 정비
+- **23-3**: Multi-symbol 기준 Risk/Portfolio 룰 보정
 
-파일 생성/업데이트:
-- `docs/PHASE21/PHASE21-1C_ACTUAL_EXECUTION_REPORT.md`: Session 2 추가 (하드코딩 제거)
-- Test scripts: `monitor_trades.py`, `phase21_1c_rapid_test.py`, `phase21_1c_remaining5.py`
+**Out-of-scope**
 
-결론:
-- **PHASE21-1B 인프라 수정 완전 검증 완료** (실제 실행 기준)
-- **Config 기반 SSOT 구조 확립** (args 하드코딩 제거)
-- 7개 전략 모두 유지 (LOW_FREQ는 전략 설계 특성, 인프라 결함 아님)
-- Ensemble 재통합 준비 완료
+- 실제 Live 계정 연동 → **PHASE24**
 
-주요 작업 (원래 계획 - PHASE21-1B/1C에서 진행 예정)
+**진입 조건**
 
-Strategy Registry / Strategy Map
+PHASE22 완료 (단일 심볼 Ensemble Extended Validation)
 
-strategy_id → config, params, priority, weight 구조 설계
+**퇴출 조건**
 
-엔진에서 여러 전략을 동시에 불러와도 중복/충돌 안 나게 설계
+- Multi-symbol (3개 이상) PAPER 실행 정상 종료
+- 심볼별 독립적인 Position/Budget 관리 확인
+- Redis/DB/Portfolio 구조 Multi-symbol 환경에서 안정성 확인
 
-Portfolio/Budget Multi-Strategy
+---
 
-전략별 Budget 할당 (예: scalping 50%, swing 30%, trend 20%)
+🧩 PHASE24 – Live Shadow Mode & Limited Live Trading 🟦 **PLANNED**
 
-전략 간 DD / 노출 제어
+**상태**: 🟦 PLANNED
 
-백테스트 & Paper 멀티 전략 실행 테스트
+**목적**
 
-앙상블 구조가 실제로 “몇 시간”이 아니라 “며칠” 동안 돌아가도 안 망가지는지 확인
+안정화된 PAPER 인프라를 실제 거래소 API(Binance/Upbit 등)에 연결하여, 처음에는 Shadow Mode(신호만 생성)로 검증하고, 이후 제한된 자본으로 Live 진입을 준비
 
-진입 조건
+**Core Scope**
 
-PHASE21에서 멀티 전략 인프라 PASS
+- **24-1**: Live Shadow Mode (실거래 미발주, 신호/로그만 기록)
+  - 실 계좌 연결
+  - 실제 호가/체결/슬리피지/수수료 환경 반영
+  - 주문은 실제로 안 나가고 DB에만 기록 (Shadow)
+  
+- **24-2**: 제한된 자본 Live 실행 (일일 손실 한도/리스크 가드 강하게 설정)
+  - 심볼/전략/레버리지/자본 제한 (예: BTCUSDT, 1전략, 1~3x, 자본 일부)
+  - 1~2주 정도 실제로 돌려보고 모든 체결/실현 PnL/Log를 분석
+  
+- **24-3**: Live 안정화 후 장기 운영 로드맵 수립
 
-작업
+**진입 조건**
 
-REAL PAPER 모드로 3~7일 실전 실행
+PHASE23 완료 (Multi-symbol PAPER 안정화)
 
-전체 로그/통계/Equity 추적
+**퇴출 조건**
 
-Guard/Portfolio/Budget 이상 동작 없는지 확인
-
-퇴출 조건
-
-치명적인 구조적 문제 없을 것
-
-“1일 이상 Entry 0” 같은 상태 지속 X
-
-1회 이상 “정상적인 dd → 회복” 패턴 관측
-
-🧩 PHASE23 – Live Shadow Mode (실계좌 미체결 모니터링)
-
-목적
-
-실 계좌/실 거래 환경과 완전히 같은 조건에서
-**“신호만 발생시키는 Live”**를 돌려본다 (주문은 안 넣거나, 모의로만 기록)
-
-진입 조건
-
-Paper 멀티 전략이 3~7일 안정 실행
-
-작업
-
-실 계좌 연결
-
-실제 호가/체결/슬리피지/수수료 환경 반영
-
-하지만 주문은 실제로 안 나가고 DB에만 기록 (Shadow)
-
-퇴출 조건
-
-Shadow Trade와 Exchange 데이터 간 동기화 문제 없음
-
-주문/포지션 트래킹, 슬리피지 계산, 수수료 반영 등이 논리적으로 맞음
-
-🧩 PHASE24 – 제한된 자본 Live (소액 / 하나의 전략 / 낮은 레버리지)
-
-목적
-
-진짜 돈으로 돌려보되, 리스크를 극히 제한한 Pilot 운영
-
-진입 조건
-
-Shadow Mode에서 구조 문제 없음
-
-작업
-
-심볼/전략/레버리지/자본 제한 (예: BTCUSDT, 1전략, 1~3x, 자본 일부)
-
-1~2주 정도 실제로 돌려보고
-
-모든 체결/실현 PnL/Log를 분석
-
-퇴출 조건
-
-시스템적 문제(중복주문, SL 미작동, 포지션 꼬임 등) 0건
-
-리스크 정책대로 손실 제한이 실제로 작동
+- Shadow Mode: Shadow Trade와 Exchange 데이터 간 동기화 문제 없음
+- Limited Live: 시스템적 문제(중복주문, SL 미작동, 포지션 꼬임 등) 0건
+- 리스크 정책대로 손실 제한이 실제로 작동
 
 🧩 PHASE25 – 상용 버전 정식 런칭 (Full Production)
 

@@ -403,6 +403,22 @@ logger.info(f"⏱️  Effective Timeframe: {effective_timeframe}")
 
 ---
 
+### Code Structure Verification (2025-11-21 15:00)
+
+**Verification Checklist** (run_paper.py):
+
+| Component | Status | Location |
+|-----------|--------|----------|
+| Effective values extraction | ✅ PASS | Line 243-249 (cfg priority → args fallback) |
+| create_adapters call | ✅ PASS | Line 329 (symbols=[effective_symbol]) |
+| Strategy loading | ✅ PASS | Line 358, 362 (effective_strategy) |
+| max_runtime_hours | ✅ PASS | Line 379 (duration_hours from cfg) |
+| ScorecardGenerator | ✅ PASS | Line 442-444 (effective_* values) |
+
+**Conclusion**: SSOT structure fully implemented. No code changes required.
+
+---
+
 **Report End**
 
 **Sessions**:  
