@@ -132,8 +132,43 @@ def main():
     if args.config:
         import yaml
         logger.info(f"📝 Custom config 로딩: {args.config}")
+        
+        # ⭐ PHASE21-1B: base.yml과 merge하여 누락된 필수 키 채우기
+        # 1. base.yml 로드
+        base_config_path = Path("configs/base.yml")
+        if base_config_path.exists():
+            with open(base_config_path, 'r', encoding='utf-8') as f:
+                base_cfg = yaml.safe_load(f)
+        else:
+            base_cfg = {}
+            logger.warning("⚠️ base.yml 없음, custom config만 사용")
+        
+        # 2. custom config 로드
         with open(args.config, 'r', encoding='utf-8') as f:
-            cfg = yaml.safe_load(f)
+            custom_cfg = yaml.safe_load(f)
+        
+        # 3. Deep merge: base에 custom 덮어쓰기
+        def deep_merge(base, custom):
+            """Deep merge two dicts: base에 custom 덮어쓰기"""
+            merged = base.copy()
+            for key, value in custom.items():
+                if key in merged and isinstance(merged[key], dict) and isinstance(value, dict):
+                    merged[key] = deep_merge(merged[key], value)
+                else:
+                    merged[key] = value
+            return merged
+        
+        cfg = deep_merge(base_cfg, custom_cfg)
+        logger.info("✅ base.yml + custom config merge 완료")
+        
+        # ⭐ PHASE21-1B: feed.base_timeframe 동기화 (collector timeframe 버그 수정)
+        # Custom config의 timeframe을 feed.base_timeframe에도 반영하여
+        # WebSocket collector가 올바른 timeframe을 사용하도록 함
+        if 'timeframe' in cfg:
+            if 'feed' not in cfg:
+                cfg['feed'] = {}
+            cfg['feed']['base_timeframe'] = cfg['timeframe']
+            logger.info(f"✅ feed.base_timeframe 동기화: {cfg['timeframe']}")
     else:
         cfg = load_config_with_mode(mode="paper")
     
@@ -189,6 +224,12 @@ def main():
         # Config file provided: Use config values unless CLI explicitly overrides
         if 'strategy' not in cfg:
             cfg['strategy'] = {}
+        
+        # ⭐ PHASE21-1B: strategy.selected → strategy.selector 변환
+        if 'selected' in cfg.get('strategy', {}) and 'selector' not in cfg['strategy']:
+            cfg['strategy']['selector'] = cfg['strategy']['selected']
+            logger.info(f"✅ strategy.selected → strategy.selector: {cfg['strategy']['selector']}")
+        
         if 'symbols' in cfg and isinstance(cfg['symbols'], list):
             # Config has symbols list, use first one for backward compat
             cfg['symbol'] = cfg['symbols'][0]

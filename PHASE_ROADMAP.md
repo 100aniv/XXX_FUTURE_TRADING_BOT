@@ -467,8 +467,30 @@ Blocking Issue:
 
 문서: docs/PHASE21/PHASE21-1A_REPORT.md
 
+**PHASE21-1B: Feed Collector Timeframe Fix** **COMPLETE** (2025-11-21)
+
+상태: Feed collector config 버그 완전 해결
+
+근본 원인:
+- `base.yml`에 `feed.base_timeframe: 1m` 하드코딩
+- `run_paper.py`가 custom config를 base.yml과 merge하지 않음
+- `adapters.create_adapters()`가 항상 `base_timeframe` 사용 → 1m 고정
+
+해결 방법:
+- **Deep Merge Logic**: `run_paper.py`에서 base.yml + custom config 병합
+- **feed.base_timeframe Sync**: config.timeframe → feed.base_timeframe 자동 동기화
+- **strategy.selected → strategy.selector**: 엔진 호환성 변환
+
+검증 결과:
+- **3m timeframe 정상 작동 확인** (로그: "BTCUSDT 3m 실시간 수신 중")
+- **WebSocket collector가 config timeframe 반영**
+- **회귀 테스트 통과** (기존 동작 유지)
+
+파일 변경:
+- `scripts/run_paper.py`: +45 lines (deep merge, base_timeframe sync, strategy conversion)
+- `docs/PHASE21/PHASE21-1B_FEED_FIX_REPORT.md`: 완전한 분석 리포트
+
 다음 단계:
-- **PHASE21-1B**: Feed collector config 적용 문제 해결
 - **PHASE21-1C**: 전체 7개 전략 1시간 단독 테스트 (올바른 타임프레임)
 
 주요 작업 (원래 계획 - PHASE21-1B/1C에서 진행 예정)
