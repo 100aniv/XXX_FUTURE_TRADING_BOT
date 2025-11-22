@@ -549,11 +549,13 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict):
 
     # ⭐ PHASE16+: Wall-clock Duration 모드 초기화
     # PHASE22-1-FIX: Duration 로직 명확화 및 검증 강화
+    # PHASE22-2-HOTFIX: Duration 로그 간격 추적 변수 추가
     import time
     duration_mode = config.get('paper', {}).get('duration_mode', 'market_time')
     duration_hours = config.get('paper', {}).get('duration_hours', 1)
     start_wall_time = time.time()
     duration_seconds = duration_hours * 3600
+    last_logged_interval = -1  # Duration 로그 출력 추적
     
     # Duration 설정 검증
     if duration_hours <= 0:
@@ -588,11 +590,14 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict):
         # ⭐ PHASE16+: Wall-clock Duration 체크 (루프 시작 시 먼저 확인)
         # PHASE22-1-FIX: Duration 종료 로그 명확화
         # PHASE22-2-FIX: Duration 체크 디버그 로그 추가
+        # PHASE22-2-HOTFIX: Duration 로그 과다 출력 수정 (30초 구간 변경 시에만 출력)
         if duration_mode == 'wall_clock':
             elapsed_wall = time.time() - start_wall_time
-            # DEBUG: 매 30초마다 경과 시간 출력
-            if int(elapsed_wall) % 30 == 0 and int(elapsed_wall) > 0:
+            # DEBUG: 30초 구간이 바뀔 때만 경과 시간 출력
+            elapsed_interval = int(elapsed_wall) // 30
+            if elapsed_interval > last_logged_interval and elapsed_wall > 0:
                 logger.info(f"⏱️  [WALL-CLOCK] 경과: {elapsed_wall:.0f}s / {duration_seconds:.0f}s ({elapsed_wall/duration_seconds*100:.1f}%)")
+                last_logged_interval = elapsed_interval
             if elapsed_wall >= duration_seconds:
                 logger.info(f"⏱️  [WALL-CLOCK] Duration 종료 조건 도달!")
                 logger.info(f"    - 설정: {duration_hours:.2f}시간 ({duration_seconds:.0f}초)")
