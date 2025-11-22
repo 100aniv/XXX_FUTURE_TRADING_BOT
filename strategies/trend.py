@@ -37,6 +37,11 @@ def signal_logic(df: pd.DataFrame, config: dict) -> Dict[str, Any]:
     - LONG: EMA 상승 정렬 + MACD 골든크로스 + RSI 40~70
     - SHORT: EMA 하락 정렬 + MACD 데드크로스 + RSI 30~60
     """
+    # PHASE22-1: leverage config 검증
+    lv = config.get("leverage", {})
+    if not all(k in lv for k in ("min", "max", "default")):
+        return {"signal": 0, "reason": "leverage_config_incomplete"}
+    
     # 데이터 부족 시 skip (iloc[-2] 안전성)
     if len(df) < 2:
         return {"signal": 0, "reason": "insufficient_data"}

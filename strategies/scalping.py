@@ -72,6 +72,11 @@ def signal_logic(df: pd.DataFrame, config: dict) -> Dict[str, Any]:
     """
     global _PARAMS_LOGGED
     
+    # PHASE22-1: leverage config 검증
+    lv = config.get("leverage", {})
+    if not all(k in lv for k in ("min", "max", "default")):
+        return {"direction": None, "reason": "leverage_config_incomplete"}
+    
     # 데이터 충분성 검사 (최소 60개 캔들 필요)
     min_bars = config.get('min_bars_for_signal', 60)
     if len(df) < min_bars:

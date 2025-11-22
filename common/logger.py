@@ -90,31 +90,36 @@ def setup_logger(name: str, log_type: str = "application", level=logging.INFO):
     console_handler.setFormatter(formatter)
     logger.addHandler(console_handler)
     
-    # 2. 타입별 일자 로그 (매일 자정 로테이션)
+    # 2. 날짜별 파일 핸들러 (logs/{log_type}/{today}.log)
+    # PHASE22-1: delay=True 추가 (PermissionError 방지)
     today = datetime.now().strftime('%Y-%m-%d')
-    type_log_file = os.path.join(log_dir, f"{today}.log")
-    type_handler = logging.FileHandler(type_log_file, encoding='utf-8')
-    type_handler.setFormatter(formatter)
-    logger.addHandler(type_handler)
+    os.makedirs(log_dir, exist_ok=True)
+    log_file = os.path.join(log_dir, f"{today}.log")
+    file_handler = logging.FileHandler(log_file, encoding='utf-8', delay=True)
+    file_handler.setFormatter(formatter)
+    logger.addHandler(file_handler)
     
     # 3. 에러만 별도 저장
+    # PHASE22-1: delay=True 추가 (PermissionError 방지)
     if level <= logging.ERROR:
         error_dir = os.path.join(base_dir, "errors")
         os.makedirs(error_dir, exist_ok=True)
         error_log_file = os.path.join(error_dir, f"{today}.log")
-        error_handler = logging.FileHandler(error_log_file, encoding='utf-8')
+        error_handler = logging.FileHandler(error_log_file, encoding='utf-8', delay=True)
         error_handler.setLevel(logging.ERROR)
         error_handler.setFormatter(formatter)
         logger.addHandler(error_handler)
     
     # 4. 전체 통합 로그 (application.log, 최근 7일 로테이션)
+    # PHASE22-1: delay=True 추가로 파일 열림 시점을 실제 기록 순간으로 미룸 (PermissionError 방지)
     app_log_file = os.path.join(base_dir, "application.log")
     app_handler = TimedRotatingFileHandler(
         app_log_file, 
         when='midnight', 
         interval=1, 
         backupCount=7,
-        encoding='utf-8'
+        encoding='utf-8',
+        delay=True
     )
     app_handler.setFormatter(formatter)
     logger.addHandler(app_handler)

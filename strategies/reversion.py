@@ -32,6 +32,11 @@ def signal_logic(df: pd.DataFrame, config: dict) -> Dict[str, Any]:
     - Cycle 2 v2: RSI 30, AND 조건 (엄격) → 실패 (PF 0.42, 72~90건, 승률 25%)
     - Cycle 2 v3: RSI 35, 2단계 필터 → 테스트 대기
     """
+    # PHASE22-1: leverage config 검증
+    lv = config.get("leverage", {})
+    if not all(k in lv for k in ("min", "max", "default")):
+        return {"signal": 0, "reason": "leverage_config_incomplete"}
+    
     # 데이터 부족 시 skip (iloc[-2] 안전성)
     if len(df) < 2:
         return {"signal": 0, "reason": "insufficient_data"}

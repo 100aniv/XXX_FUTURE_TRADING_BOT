@@ -330,8 +330,8 @@ class WebSocketCollector:
                     "ts": time.time(),
                     "payload": payload
                 })
-                # PR5: 큐 헬스 로깅 (정상 작동 확인용)
-                logger.info(f"📊 [PR5 Queue] 사용률: {usage_pct:.1f}% ({queue_size}/{queue_maxsize}) | Drops: {self.queue_drop_count} | Retries: {self.queue_retry_count}")
+                # PR5: 큐 헬스 로깅 (정상 작동 확인용) - debug 레벨로 강등 (PHASE22-1)
+                logger.debug(f"📊 [PR5 Queue] 사용률: {usage_pct:.1f}% ({queue_size}/{queue_maxsize}) | Drops: {self.queue_drop_count} | Retries: {self.queue_retry_count}")
             
             # 임계치 경고 (80% 이상)
             if usage_pct >= 80:
