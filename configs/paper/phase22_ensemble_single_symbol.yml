@@ -135,11 +135,16 @@ risk:
   max_portfolio_dd_pct: 0.15    # 15% 포트폴리오 DD 한도
   max_slippage_pct: 0.5
   extreme_loss_cutoff_pct: -20.0
+  # PHASE22-2-FIX: Flash-Guard 임계값 완화 (Paper 모드)
+  enable_flash_guard: true      # Flash-Guard 활성화
+  flash_window_sec: 60          # 60초 윈도우
+  flash_pct: 0.50               # 50% 변동 임계값 (기본값 0.03 → 0.50으로 완화)
   profiles:
     paper:
       max_daily_loss_pct: 0.20        # Paper 모드는 완화
       max_consecutive_losses: 15
       cooldown_after_consecutive: 30
+      flash_pct: 0.50               # Paper 모드: 50% 변동까지 허용
 
 # ========================================
 # Exits (PHASE17 Production 기준 유지)
