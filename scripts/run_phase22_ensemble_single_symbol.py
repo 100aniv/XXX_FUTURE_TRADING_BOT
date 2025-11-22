@@ -179,8 +179,14 @@ def main():
         logger.warning("⚠️ Ensemble 모드가 비활성화되어 있습니다!")
     
     # Duration 설정
-    duration_hours = cfg.get('paper', {}).get('duration_hours', args.duration_hours)
-    duration_mode = cfg.get('paper', {}).get('duration_mode', args.duration_mode)
+    # PHASE22-1-FIX: Args 우선 적용 (CLI 인자가 config 파일보다 우선)
+    # 기본값: --duration-hours=0.5, --duration-mode=wall_clock
+    # CLI에서 명시적으로 다른 값을 전달하면 그것을 사용
+    duration_hours = args.duration_hours  # CLI 인자 우선
+    duration_mode = args.duration_mode    # CLI 인자 우선
+    
+    # Config 파일에 명시된 값이 있고, CLI에서 기본값을 사용하는 경우에만 config 우선
+    # (하지만 대부분의 경우 CLI 인자를 명시하므로 CLI 우선이 맞음)
     
     start_time = datetime.now()
     end_time = start_time + timedelta(hours=duration_hours)

@@ -645,8 +645,10 @@ class WebSocketCollector:
         캔들 스트림 생성 (generator)
         engine.py 호환용
         
+        PHASE22-1-FIX: timeout 시에도 None을 yield하여 engine의 duration 체크가 동작하도록 함
+        
         Yields:
-            캔들 dict
+            캔들 dict 또는 None (timeout 시)
         """
         while self.running:
             try:
@@ -654,5 +656,6 @@ class WebSocketCollector:
                 candle = self.candle_queue.get(timeout=1.0)
                 yield candle
             except:
-                # 타임아웃 또는 에러 시 계속
-                continue
+                # 타임아웃 또는 에러 시에도 None을 yield하여 engine loop가 계속 돌도록 함
+                # 이를 통해 engine의 duration 체크가 주기적으로 실행됨
+                yield None

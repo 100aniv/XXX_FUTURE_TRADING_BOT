@@ -548,14 +548,23 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict):
         logger.info(f"📊 stream() 시작 전 큐 사이즈: {queue_size_before}")
 
     # ⭐ PHASE16+: Wall-clock Duration 모드 초기화
+    # PHASE22-1-FIX: Duration 로직 명확화 및 검증 강화
     import time
     duration_mode = config.get('paper', {}).get('duration_mode', 'market_time')
     duration_hours = config.get('paper', {}).get('duration_hours', 1)
     start_wall_time = time.time()
     duration_seconds = duration_hours * 3600
     
+    # Duration 설정 검증
+    if duration_hours <= 0:
+        logger.warning(f"⚠️ Duration 설정 이상: {duration_hours}h → 무제한 실행 모드")
+        duration_mode = 'unlimited'
+    
     if duration_mode == 'wall_clock':
         logger.info(f"⏱️  [WALL-CLOCK] Duration 모드 시작: {duration_hours:.2f}시간 ({duration_seconds:.0f}초)")
+        logger.info(f"⏱️  [WALL-CLOCK] 시작 시각: {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(start_wall_time))}")
+        estimated_end = start_wall_time + duration_seconds
+        logger.info(f"⏱️  [WALL-CLOCK] 종료 예정: {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(estimated_end))}")
     else:
         logger.info(f"⏱️  [MARKET-TIME] Duration 모드 시작: {duration_hours:.2f}시간")
 
@@ -577,11 +586,20 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict):
                 heartbeat.update('engine')
         
         # ⭐ PHASE16+: Wall-clock Duration 체크 (루프 시작 시 먼저 확인)
+        # PHASE22-1-FIX: Duration 종료 로그 명확화
         if duration_mode == 'wall_clock':
             elapsed_wall = time.time() - start_wall_time
             if elapsed_wall >= duration_seconds:
-                logger.info(f"✅ [WALL-CLOCK] Duration 도달: {elapsed_wall:.1f}초 >= {duration_seconds:.0f}초 ({duration_hours:.2f}시간)")
+                logger.info(f"⏱️  [WALL-CLOCK] Duration 종료 조건 도달!")
+                logger.info(f"    - 설정: {duration_hours:.2f}시간 ({duration_seconds:.0f}초)")
+                logger.info(f"    - 경과: {elapsed_wall:.1f}초 ({elapsed_wall/60:.1f}분)")
+                logger.info(f"    - 초과: {elapsed_wall - duration_seconds:.1f}초")
+                logger.info(f"✅ [WALL-CLOCK] 엔진 정상 종료 (Duration 만료)")
                 break
+        
+        # ⭐ PHASE22-1-FIX: Feed timeout 시 None이 올 수 있음 (duration 체크용)
+        if candle is None:
+            continue
         
         # ⭐ PR12: 일일 PnL 자동 리셋 체크 (자정 00:00)
         portfolio.check_and_reset_daily()

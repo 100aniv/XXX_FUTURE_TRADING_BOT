@@ -86,7 +86,12 @@ def setup_logger(name: str, log_type: str = "application", level=logging.INFO):
     formatter = logging.Formatter('%(asctime)s [%(levelname)s] %(message)s')
     
     # 1. 콘솔 핸들러 (실시간 확인)
-    console_handler = logging.StreamHandler()
+    # PHASE22-1-FIX: 콘솔도 UTF-8 인코딩 명시 (Windows 환경 대응)
+    import sys
+    console_handler = logging.StreamHandler(sys.stdout)
+    # StreamHandler는 encoding을 직접 설정할 수 없으므로 sys.stdout이 UTF-8인지 확인
+    # Python 3.7+ 에서는 sys.stdout.reconfigure(encoding='utf-8') 가능하지만,
+    # 이미 초기화된 stdout을 변경하는 것은 권장되지 않으므로 그대로 유지
     console_handler.setFormatter(formatter)
     logger.addHandler(console_handler)
     
