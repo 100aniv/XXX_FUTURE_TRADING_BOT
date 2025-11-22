@@ -531,188 +531,324 @@ Ensemble ON 모드로 4시간 이상 연속 Paper 테스트 (인프라 안정성
 
 ---
 
- PHASE22 – Ensemble Re-integration & Extended Validation (단일 심볼) 
+## 💡 최종 TO-BE 아키텍처 (10-Layer Structure)
 
-**상태**:  PLANNED
+### 1) Core Engine Layer
+- **단일 엔진 원칙**: Backtest / Paper / Live 모두 같은 엔진 코드
+- **Do-not-touch 코어**: engine.run(), position/state 머신, event 루프, duration 처리
+- **역할**: 캔들/틱 스트림 소비, 전략 호출, Risk/Portfolio/FlowGuardian 체크, Execution Adapter 위임
 
-**목적**
+### 2) Strategy & Ensemble Layer
+- **5개 전략 패밀리**: Trend-follow, Volatility Breakout, Mean Reversion, Pullback-in-Trend, Scalping
+- **패밀리당 대표 전략 1~2개**만 실전용 선정
+- **Ensemble Score 구조**: 공통 시그니처 (S_LONG, S_SHORT, S_RISK, S_QUALITY), 동적 가중치
 
-PHASE21에서 검증된 단일 전략 인프라와 Global Strategy Pool을 기반으로,
-Ensemble v1 전략군을 정의하고, 단일 심볼 기준으로 장기 PAPER 실행(12~24h)을 통해
-각 전략/Ensemble의 생존성과 Flash Guard/쿨다운 파라미터를 검증/튜닝한다.
+### 3) Risk / Portfolio / FlowGuardian Layer
+- **RiskManager**: per-trade risk, 레버리지 상한, Max DD, 일일 손실 제한
+- **PortfolioManager**: 심볼별/전략별 배분, PnL/Equity SSOT
+- **FlowGuardian**: READY 체크, 쿨다운, Flash Guard, API 상태 확인
 
-**Sub-phases**
+### 4) Data & Exchange Layer
+- **Data Layer**: WebSocketCollector, RestCollector, Multi-TF Preload
+- **Exchange Adapter**: PaperExchange, Binance/Upbit Adapter (Market, Limit, TP/SL, OCO)
 
-- **22-0: Strategy Pool 정리 & Ensemble v1 후보 선정 (NEW)**
-  - Global Strategy Pool(전역 전략 후보군)을 기준으로:
-    - PHASE21 테스트 결과 요약 (PnL / Win-rate / Trade Count / Max DD 등)
-    - 유지/보류/탈락 전략 구분
-    - Ensemble v1에 포함할 7~8개 전략 후보 리스트 확정
-  - 산출물: `docs/PHASE22/PHASE22-0_STRATEGY_POOL.md`
-- **22-1: ✅ Ensemble v1 통합 완료 (단일 심볼, 4 strategies, 인프라 검증 PASS)** - 2025-11-22 COMPLETE
-  - **22-1-FIX: ✅ Encoding & Duration 완전 해결** - 2025-11-22 COMPLETE (로그 UTF-8 고정, wall-clock duration 자동 종료)
-- **22-2: Extended Validation – 12~24h REAL PAPER 실행 (LOW_FREQ/장기 전략 중심)**
-- **22-3: Flash Guard / 쿨다운 / 슬리피지 파라미터 튜닝 (PAPER 기준 상향 조정)**
+### 5) Tuning & Research Cluster Layer
+- **3단계 파이프라인**: Random → Bayesian → Local Grid
+- **중앙 DB**: Postgres + TimescaleDB (runs, strategy_params, results, metrics)
+- **Worker 프로세스**: 백테스트 job 병렬 실행
 
-**Out-of-scope**
+### 6) Multi-Symbol & Execution Layer
+- **Universe Provider**: TopN/필터 기반 심볼 리스트 생성
+- **Multi-Symbol Engine**: 심볼별 coroutine, per-symbol risk/portfolio
+- **Execution Router**: 심볼/전략/방향 기반 주문 라우팅
 
-- Multi-symbol 지원 → **PHASE23**
-- 실제 Live 계정 연동 → **PHASE24**
+### 7) Infra & Performance Layer
+- **성능 목표**: Top50 심볼, 1m/5m/15m TF 동시 처리
+- **최적화**: 비동기/코루틴, 인디케이터 캐싱, 로그 튜닝, GC 최적화
+- **로드 테스트**: 단일 심볼 → Top10 → Top50 확장
 
-**진입 조건**
+### 8) Monitoring / Observability & Alerting
+- **Metrics**: PnL, Equity, Win-rate, Sharpe, Max DD, 전략별/심볼별 성능
+- **Dashboards**: Prometheus + Grafana, Core KPI 10종
+- **Alerting**: Telegram/Slack (DD, WS 에러, 주문 실패율, trade 0건 등)
 
-PHASE21 완료 (단일 전략 인프라 검증)
+### 9) UI/UX Layer 🌟
+- **Web Dashboard**: FastAPI + React/Vue
+- **핵심 화면**: 실시간 모니터링, 전략/앙상블 패널, 리스크/포트폴리오, 백테스트 뷰어, 로그/이벤트
+- **Control 기능**: Paper/Live 전환, 전략 on/off, preset 선택, safe restart
 
-**퇴출 조건**
-
-- 12~24h PAPER 실행 정상 종료
-- LOW_FREQ 전략 최소 1회 이상 신호 발생
-- Flash Guard/쿨다운 파라미터 PAPER 환경 맞춤 조정 완료
-- Ensemble 재통합 후 인프라 안정성 확인
-
-🧩 PHASE23 – Multi-Symbol Scaling & Infrastructure 🟦 **PLANNED**
-
-**상태**: 🟦 PLANNED
-
-**목적**
-
-PHASE22까지 단일 심볼 기준으로 안정화된 Ensemble/인프라를, 상위 N개 심볼로 확장하고, Redis/DB/엔진 구조가 Multi-symbol 환경에서도 안정적으로 동작하도록 검증
-
-**Core Scope**
-
-- **23-1**: Multi-symbol Feed/Execution/Portfolio 구조 확장
-- **23-2**: Multi-symbol PAPER 실행 및 리포트/메트릭 정비
-- **23-3**: Multi-symbol 기준 Risk/Portfolio 룰 보정
-
-**Out-of-scope**
-
-- 실제 Live 계정 연동 → **PHASE24**
-
-**진입 조건**
-
-PHASE22 완료 (단일 심볼 Ensemble Extended Validation)
-
-**퇴출 조건**
-
-- Multi-symbol (3개 이상) PAPER 실행 정상 종료
-- 심볼별 독립적인 Position/Budget 관리 확인
-- Redis/DB/Portfolio 구조 Multi-symbol 환경에서 안정성 확인
+### 10) Ops & Deployment Layer
+- **실행 구조**: run_backtest, run_paper, run_live
+- **운영**: systemd / Docker / K8s
+- **배포/롤백**: git tag, config 버전 관리, DB/Redis backup
 
 ---
 
-🧩 PHASE24 – Live Shadow Mode & Limited Live Trading 🟦 **PLANNED**
+🧩 **PHASE22 RESET** – Strategy Set Reconstruction & 5-Family Framework 🔄 **IN PROGRESS**
 
-**상태**: 🟦 PLANNED
+**상태**: 🔄 **IN PROGRESS** (2025-11-22)
+
+**배경**
+- PHASE22-1/2 중단 (기존 7개 전략 중 scalping 제외 correctness/튜닝/백테스트 없음)
+- 전략 품질 없이 엔진 테스트만 수행 → 의미 부족
+- PHASE22-0부터 재시작 (전략 세트 재정의)
 
 **목적**
+- 5개 전략 패밀리 기반 Ensemble v2 설계/구현
+- 단일 심볼 기준 12~24h PAPER로 생존성 검증
 
-안정화된 PAPER 인프라를 실제 거래소 API(Binance/Upbit 등)에 연결하여, 처음에는 Shadow Mode(신호만 생성)로 검증하고, 이후 제한된 자본으로 Live 진입을 준비
+**Sub-phases**
+- **22-0: ✅ Strategy Set Reconstruction (COMPLETE - 2025-11-22)**
+  - 폴더 재구조화: core/scalping_v3.py (KEEP), deprecated/ (6개 전략), research/ (신규)
+  - 5개 패밀리 정의: HF Momentum, Volatility Breakout, Mean Reversion, Trend Following, Volume-Based
+  - 산출물: `docs/PHASE22/PHASE22-0_STRATEGY_POOL.md`
+- **22-1: Strategy Implementation & Validation (PLANNED)**
+  - Family 2~5 전략 구현, 백테스트, 파라미터 튜닝, 12H Paper
+- **22-2: Extended Validation (PLANNED)**
+  - Ensemble v2 장기 안정성 검증 (12~24H)
+- **22-3: Parameter Tuning (PLANNED)**
+  - Flash Guard, 쿨다운, 슬리피지 파라미터 튜닝
 
-**Core Scope**
+**진입 조건**: PHASE21 완료
 
-- **24-1**: Live Shadow Mode (실거래 미발주, 신호/로그만 기록)
-  - 실 계좌 연결
-  - 실제 호가/체결/슬리피지/수수료 환경 반영
-  - 주문은 실제로 안 나가고 DB에만 기록 (Shadow)
-  
-- **24-2**: 제한된 자본 Live 실행 (일일 손실 한도/리스크 가드 강하게 설정)
-  - 심볼/전략/레버리지/자본 제한 (예: BTCUSDT, 1전략, 1~3x, 자본 일부)
-  - 1~2주 정도 실제로 돌려보고 모든 체결/실현 PnL/Log를 분석
-  
-- **24-3**: Live 안정화 후 장기 운영 로드맵 수립
+**퇴출 조건**: 폴더 구조 완료, 5개 패밀리 정의 완료, Ensemble v2 설계 완료, 문서 완료
 
-**진입 조건**
+---
 
-PHASE23 완료 (Multi-symbol PAPER 안정화)
+🧩 **PHASE23** – 전략·앙상블 TO-BE 재설계 블록 🟦 **PLANNED**
 
-**퇴출 조건**
+**상태**: 🟦 **PLANNED**
 
-- Shadow Mode: Shadow Trade와 Exchange 데이터 간 동기화 문제 없음
-- Limited Live: 시스템적 문제(중복주문, SL 미작동, 포지션 꼬임 등) 0건
-- 리스크 정책대로 손실 제한이 실제로 작동
+**목적**: 5개 전략 패밀리 대표 전략 설계 및 Ensemble v2 Score 구조 확립
 
-🧩 PHASE25 – 상용 버전 정식 런칭 (Full Production)
+**Sub-phases**
+- **23-0: TO-BE 아키텍처 V2 문서화**
+  - `ARCHITECTURE_TOBE_V2.md`, `ENSEMBLE_STRATEGY_TOBE.md` 작성
+- **23-1: 전략 인벤토리 정리**
+  - `STRATEGY_INVENTORY_V2.md` - 살릴/냉동/폐기 분류
+- **23-2: 전략 패밀리 대표 전략 설계 V2**
+  - 패밀리별 대표 전략 1개씩 설계, 인터페이스 통일
+- **23-3: 단일 전략 Backtest + Rough 튜닝**
+  - 각 대표 전략 "쓸 가치 검증"
 
-목적
+**진입 조건**: PHASE22 완료
 
-“한 번 만들어 놓고, 사람 손 안 타도 돌아가는” 상용 구조 완성
+**퇴출 조건**: 5개 대표 전략 설계 완료, 각 전략 백테스트 PASS, 인터페이스 통일 완료
 
-진입 조건
+---
 
-제한된 자본 Live에서 치명적 문제 없음
+🧩 **PHASE24** – 앙상블 V2 확립 🟦 **PLANNED**
 
-운영/알람/장애 대응 절차 어느 정도 정립
+**상태**: 🟦 **PLANNED**
 
-작업
+**목적**: Ensemble Score V2 구조로 5개 대표 전략 통합 및 가중치 튜닝
 
-운영 구조
+**Sub-phases**
+- **24-0: Ensemble Score V2 설계**
+  - S_LONG/S_SHORT/S_NET/S_ABS + 동적 가중치 구조
+- **24-1: 대표 전략 5개 앙상블 시뮬레이션**
+  - 1~3H PAPER, 행동 패턴 분석
+- **24-2: 앙상블 조합/가중치 초기 튜닝**
+  - 상승/하락/횡보 구간 행동 확인
 
-Docker/K8s/Systemd 등으로 서비스화
+**진입 조건**: PHASE23 완료
 
-재시작 정책, 버전 롤백, 파라미터 배포 방식 설계
+**퇴출 조건**: Ensemble v2 1~3H PAPER PASS, 가중치 초기 셋 확보
 
-모니터링 / 알람
+---
 
-Slack/Telegram 등으로 실시간 알람
+🧩 **PHASE25** – Tuning Cluster & 자동 튜닝 인프라 🟦 **PLANNED**
 
-PnL/Equity/에러/Guard 동작 상태 대시보드
+**상태**: 🟦 **PLANNED**
 
-Runbook / 운영 문서
+**목적**: 전략/조합 파라미터 자동 탐색 인프라 구축
 
-장애 났을 때 누구(=당신)가 뭘 보면 되는지
+**Sub-phases**
+- **25-0: Tuning Cluster Infra**
+  - DB 스키마 (runs, params, results), Worker 구조, job queue
+- **25-1: Random Search 파이프라인**
+  - 초기 파라미터 탐색
+- **25-2: Bayesian + Local Grid 튜닝 파이프라인**
+  - 고도화된 파라미터 튜닝
+- **25-3: 실전용 파라미터 셋 확보**
+  - 대표 전략/조합 최적 파라미터
 
-어떤 경우엔 시스템 중지 / 어떤 경우엔 재시작
+**진입 조건**: PHASE24 완료
 
-퇴출 조건
+**퇴출 조건**: 튜닝 클러스터 정상 작동, 대표 전략 파라미터 셋 확보
 
-“나 혼자 1~2주간 크게 신경 안 써도, 최소한 시스템이 자기 선에서 리스크 컨트롤하면서 도는 상태”
+---
 
-그 상태를 문서로 정의하고, 나중에 봐도 이해 가능
+🧩 **PHASE26** – Multi-Symbol Engine v1 🟦 **PLANNED**
 
-4. 앞으로의 진행 방식 (이제부터 약속)
+**상태**: 🟦 **PLANNED**
 
-항상 “지금 Phase가 어디인지”를 먼저 정리
+**목적**: TopN 심볼 확장 및 Multi-symbol 엔진 구조 확립
 
-새로 뭐 하고 싶다 / 문제 생겼다 =
-→ 이게 어느 Phase에 속하는 작업인지 먼저 매핑
-→ 해당 Phase의 Scope/Out-of-Scope 확인
-→ 벗어나면 “지금은 그 Phase가 아니다”라고 내가 먼저 말해줄 거야.
+**Sub-phases**
+- **26-0: Universe Provider 구현**
+  - TopN 심볼 선정 로직
+- **26-1: Multi-symbol 코루틴 구조**
+  - per-symbol state, queue, risk/portfolio 연동
+- **26-2: Top10 기준 Paper Load Test**
+  - engine/collector/portfolio 레벨 문제점 확인
 
-Acceptance 못 채우면 Phase++ 금지
+**진입 조건**: PHASE25 완료
 
-“일단 넘기자” 식으로 안 감.
+**퇴출 조건**: Top10 심볼 Paper 정상 종료, per-symbol risk/portfolio 관리 확인
 
-예: PHASE17에서 12H REAL PAPER Acceptance 못 통과하면
-→ PHASE18 이야기 자체를 안 꺼냄.
+---
 
-네가 중간에 의심/질문할 때의 처리
+🧩 **PHASE27** – Infra Performance Tuning (상용급 1차) 🟦 **PLANNED**
 
-“그건 사실 PHASE19에서 다루는 영역인데, 지금 PHASE17이라 여기선 이 정도까지만 본다” 식으로
-내 계획이 더 맞다면 그걸 그대로 유지
+**상태**: 🟦 **PLANNED**
 
-반대로, 네 질문이 “로드맵에 진짜 빠져 있다”면
-→ 로드맵 자체를 업데이트하고, 그걸 다시 스펙으로 삼음.
+**목적**: Top20~50 심볼 처리 가능한 성능 확보
 
-5. 지금 당장 상태 요약
+**Sub-phases**
+- **27-0: 성능 프로파일링**
+  - CPU/Memory, hot path, GC, 로그 비용
+- **27-1: 최적화 1차 패스**
+  - 인디케이터 캐싱, 불필요 연산 제거, 로그 튜닝
+- **27-2: Top20~50 Load Test**
+  - Latency/CPU/메모리/queue depth 기준선 확보
 
-현재: PHASE17 (Portfolio Budget & Position Infra) 중
+**진입 조건**: PHASE26 완료
 
-해야 하는 핵심:
+**퇴출 조건**: Top50 심볼 Paper 정상 종료, 성능 TO-BE 기준선 확보
 
-V6.1 Budget Fix 검증은 1H 수준에서 끝났고
+---
 
-이제 반드시 REAL PAPER 12H Acceptance를 통과해야 PHASE17을 닫을 수 있음
+🧩 **PHASE28** – Monitoring & Alerting 🟦 **PLANNED**
 
-그 다음부터는 위 로드맵 Phase 순서대로만 갈 거고,
-중간에 내가 “상용급”이란 말을 쓸 때도
-반드시 이 로드맵 상에서 어느 Acceptance를 통과했는지 기준을 같이 말할게.
+**상태**: 🟦 **PLANNED**
 
-이제 이걸
-docs/ROADMAP/FUTURE_ALARM_BOT_PHASE_ROADMAP.md
-같은 이름으로 프로젝트 폴더에 저장해두면 좋겠다.
+**목적**: 실시간 모니터링 및 알림 시스템 구축
 
-그 다음부터는
+**Sub-phases**
+- **28-0: Metrics 정의**
+  - Core KPI 10종 확정
+- **28-1: Prometheus/Grafana 세팅**
+  - Dashboard 구성
+- **28-2: Telegram/Slack Alert**
+  - DD, WS 에러, 주문 실패율, trade 0건 등
 
-“지금 이거 무슨 Phase냐?”
-라고 물으면, 난 항상 이 문서 기준으로 “우린 지금 PHASE17이고, Acceptance 중이다”
-이렇게 대답하고 거기에 맞춰 다음 작업/프롬프트 짜줄게.
+**진입 조건**: PHASE27 완료
+
+**퇴출 조건**: Grafana 대시보드 정상 작동, Alert 정상 발송
+
+---
+
+🧩 **PHASE29** – UI/UX v1 (Read-only Dashboard) 🟦 **PLANNED**
+
+**상태**: 🟦 **PLANNED**
+
+**목적**: Web 기반 실시간 모니터링 대시보드 구축
+
+**Sub-phases**
+- **29-0: UI/UX 요구사항 정리**
+  - 화면 목록, 레이아웃, 핵심 지표 정의
+- **29-1: API Layer (FastAPI)**
+  - read-only API 제공
+- **29-2: Web Dashboard v1**
+  - 실시간 Equity, PnL, 포지션/전략 현황, 로그 이벤트
+
+**진입 조건**: PHASE28 완료
+
+**퇴출 조건**: Web Dashboard 정상 작동, 실시간 메트릭 표시 확인
+
+---
+
+🧩 **PHASE30** – UI/UX v2 (Control + Report) 🟦 **PLANNED**
+
+**상태**: 🟦 **PLANNED**
+
+**목적**: 제어 기능 및 백테스트 결과 뷰어 추가
+
+**Sub-phases**
+- **30-0: 안전한 제어 흐름 설계**
+  - Paper/Live 전환, 전략 on/off, preset 변경 안전장치
+- **30-1: Control Panel 구현**
+  - 제한된 조작 허용 (토글, preset, safe restart)
+- **30-2: Backtest/튜닝 결과 뷰어**
+  - equity curve, heatmap 등
+
+**진입 조건**: PHASE29 완료
+
+**퇴출 조건**: Control Panel 정상 작동, 백테스트 뷰어 정상 표시
+
+---
+
+🧩 **PHASE31** – Infra Performance Tuning 2차 + 상용 준비 🟦 **PLANNED**
+
+**상태**: 🟦 **PLANNED**
+
+**목적**: Top50/100 심볼 Full Load 및 장시간 안정성 검증
+
+**Sub-phases**
+- **31-0: Multi-Symbol Top50/100 Full Load Test**
+  - 대규모 심볼 동시 처리 검증
+- **31-1: 2차 최적화**
+  - 코드, 설정, 배포 구조
+- **31-2: 운영 시나리오 테스트**
+  - 24~72H PAPER, 장애 recovery, 재기동
+
+**진입 조건**: PHASE30 완료
+
+**퇴출 조건**: Top100 심볼 24H+ Paper PASS, 운영 시나리오 검증 완료
+
+---
+
+🧩 **PHASE32** – Live 연동 & Final Hardening 🟦 **PLANNED**
+
+**상태**: 🟦 **PLANNED**
+
+**목적**: 실거래소 연결 및 Live 진입
+
+**Sub-phases**
+- **32-0: Binance/Upbit Live Adapter 연결**
+  - Native TP/SL(OCO) + 엔진 TP/SL 병행
+- **32-1: Shadow Mode (신호만 생성)**
+  - 실거래 미발주, DB 기록만
+- **32-2: Limited Live (제한 자본)**
+  - 심볼/전략/레버리지/자본 제한, 1~2주 검증
+- **32-3: Full Live 준비**
+  - 보안/접속 키 관리, 최소 권한 구조
+
+**진입 조건**: PHASE31 완료
+
+**퇴출 조건**: Shadow Mode 검증 PASS, Limited Live 시스템 문제 0건, 손실 제한 정상 작동
+
+---
+
+## 📋 Phase 관리 원칙
+
+1. **Phase 순서 엄수**
+   - 모든 작업은 현재 Phase Scope 내에서만 진행
+   - Phase 순서를 건너뛰거나 역행 금지
+
+2. **Acceptance 기준 충족 필수**
+   - 퇴출 조건 미달 시 다음 Phase 진입 금지
+   - "일단 넘어가자" 식 진행 불가
+
+3. **Scope 명확화**
+   - 새로운 작업 발생 시 Phase 매핑 먼저 수행
+   - Out-of-Scope 작업은 해당 Phase 문서에 명시
+
+4. **문서화 필수**
+   - 모든 Phase 완료 시 Complete Report 작성
+   - ROADMAP 업데이트 및 Git commit
+
+---
+
+## 🎯 현재 상태 (2025-11-22)
+
+**현재 Phase**: PHASE22-0 (Strategy Set Reconstruction)
+
+**상태**: ✅ **COMPLETE**
+
+**다음 Phase**: PHASE22-1 (Strategy Implementation & Validation)
+
+**진행 예정**: 5개 패밀리 중 4개 신규 전략 구현 및 백테스트
+
+---
