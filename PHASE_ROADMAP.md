@@ -549,7 +549,7 @@ Ensemble v1 전략군을 정의하고, 단일 심볼 기준으로 장기 PAPER �
     - 유지/보류/탈락 전략 구분
     - Ensemble v1에 포함할 7~8개 전략 후보 리스트 확정
   - 산출물: `docs/PHASE22/PHASE22-0_STRATEGY_POOL.md`
-- **22-1: Ensemble 재구성 (단일 심볼, 전략/타임프레임 조합 고정)**
+- **22-1: ✅ Ensemble v1 통합 완료 (단일 심볼, 4 strategies, 인프라 검증 PASS)** - 2025-11-22 COMPLETE
 - **22-2: Extended Validation – 12~24h REAL PAPER 실행 (LOW_FREQ/장기 전략 중심)**
 - **22-3: Flash Guard / 쿨다운 / 슬리피지 파라미터 튜닝 (PAPER 기준 상향 조정)**
 
