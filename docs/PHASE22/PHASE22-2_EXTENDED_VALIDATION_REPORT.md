@@ -2,18 +2,21 @@
 
 **Date**: 2025-11-22  
 **Phase**: PHASE22-2  
-**Objective**: Ensemble v1의 12~24시간 장기 안정성 및 Low-Freq 전략 신호 발생 검증  
-**Status**: 🔄 **IN PROGRESS**
+**Objective**: Ensemble v2 (5 전략) 12~24시간 장기 안정성 검증  
+**Status**: 📋 **TEMPLATE (실행 전)**
 
 ---
 
 ## 1. Executive Summary
 
-PHASE22-1에서 Ensemble v1 (4 전략: scalping, breakout, reversion, trend)의 인프라 안정성을 검증했습니다.  
+PHASE22-1에서 4개 신규 전략 (volatility_breakout_v2, mean_reversion_v2, trend_follow_v2, volume_based_v2)을 구현하고 Unit Test를 완료했습니다.  
 PHASE22-2에서는 **12~24시간 장기 REAL PAPER 실행**을 통해:
-1. Low-Freq 전략(breakout 15m, trend 1h)의 실제 신호 발생 확인
-2. FlowGuardian/PortfolioManager/Duration 로직의 장시간 안정성 검증
-3. Ensemble v1의 실전 배포 준비도 최종 확인
+1. 5개 전략 (scalping_v3 + 4개 v2) Ensemble v2의 인프라 안정성 검증
+2. 전략별 신호 발생 다양성 확인 (특정 전략 편중 여부)
+3. FlowGuardian/RiskManager/PortfolioManager 장시간 안정성 확인
+4. 상용급 엔진으로 12~24H 장시간 운영 가능 여부 최종 판정
+
+**실행 완료 후 이 섹션을 업데이트하세요.**
 
 ---
 
@@ -25,21 +28,21 @@ PHASE22-2에서는 **12~24시간 장기 REAL PAPER 실행**을 통해:
 | **Duration** | 12h (wall_clock) | CLI: `--duration-hours 12` |
 | **Mode** | Paper Trading | REAL WebSocket Feed |
 | **Symbol** | BTCUSDT | Single Symbol |
-| **Strategies** | scalping, breakout, reversion, trend | Ensemble v1 |
-| **Timeframes** | 3m, 5m, 15m, 1h | Multi-TF Feed |
+| **Strategies** | scalping_v3, breakout_v2, reversion_v2, trend_v2, volume_v2 | Ensemble v2 (5 strategies) |
+| **Timeframe** | 5m (unified) | Single TF for all strategies |
 | **Clean State** | Yes | `--clean-state` |
 
-### 2.2 Acceptance Criteria (10 Items)
-1. ✅/❌ 12h 이상 wall-clock 정상 종료
-2. ✅/❌ ERROR/CRITICAL 0건
-3. ✅/❌ FlowGuardian READY 100% 통과
-4. ✅/❌ Ensemble v1 전략 모두 활성화
-5. ✅/❌ 최소 3개 전략 이상 실제 진입 발생
-6. ✅/❌ Low-Freq 전략 breakout/trend 각각 최소 1회 신호 발생
-7. ✅/❌ PortfolioManager 상태 일관성 유지
-8. ✅/❌ Scorecard 정상 생성
-9. ✅/❌ DB/Redis 상태 정상
-10. ✅/❌ Duration 종료 정확도 <1% 오차
+### 2.2 Acceptance Criteria (필수 조건)
+1. ✅/❌ 12h 동안 CRITICAL 로그 0건
+2. ✅/❌ ERROR 로그 < 10건 (일시적 네트워크 리트라이 제외)
+3. ✅/❌ FlowGuardian 비정상 STOP 없음
+4. ✅/❌ 5개 전략 모두 최소 1건 이상 트레이드 발생
+5. ✅/❌ 특정 전략 편중도 < 80%
+6. ✅/❌ Max Drawdown < 50%
+7. ✅/❌ Equity > Initial Balance × 0.5
+8. ✅/❌ 미청산 포지션 < 5개
+9. ✅/❌ DB/Redis 기록 누락 없음
+10. ✅/❌ Scorecard 정상 생성
 
 ---
 
@@ -56,10 +59,11 @@ PHASE22-2에서는 **12~24시간 장기 REAL PAPER 실행**을 통해:
 - ⏳ Clean-state 초기화 (실행 시 자동)
 
 ### 3.2 Configuration
-- ✅ Config: `configs/paper/phase22_ensemble_single_symbol.yml`
+- ✅ Config: `configs/paper/phase22_2_ensemble_12h.yml`
 - ✅ Ensemble enabled: `true`
-- ✅ Strategies: `[scalping, breakout, reversion, trend]`
+- ✅ Strategies: `[scalping_v3, breakout_v2, reversion_v2, trend_v2, volume_v2]`
 - ✅ Duration mode: `wall_clock`
+- ✅ Timeframe: `5m` (unified)
 
 ---
 
@@ -68,23 +72,24 @@ PHASE22-2에서는 **12~24시간 장기 REAL PAPER 실행**을 통해:
 ### 4.1 Start Time
 **Command**:
 ```bash
-python scripts/run_phase22_ensemble_single_symbol.py \
-  --config configs/paper/phase22_ensemble_single_symbol.yml \
+python scripts/run_phase22_2_ensemble.py \
+  --config configs/paper/phase22_2_ensemble_12h.yml \
   --duration-hours 12 \
   --clean-state
 ```
 
+**Run ID**: `TBD` (실행 후 기록)  
 **Start Time**: `TBD`  
-**Expected End Time**: `TBD`  
-**Actual End Time**: `TBD`
+**Expected End Time**: `TBD` (Start + 12h)  
+**Actual End Time**: `TBD` (실행 후 기록)
 
 ### 4.2 Real-Time Monitoring Checkpoints
 
 #### Checkpoint 1: Engine Start (0h)
 - [ ] Engine 시작 로그 정상
 - [ ] Duration 설정 확인: 12h (43200초)
-- [ ] Ensemble v1 전략 로딩: 4개
-- [ ] Multi-TF Feed 로딩: 3m, 5m, 15m, 1h
+- [ ] Ensemble v2 전략 로딩: 5개
+- [ ] Feed 로딩: 5m (unified)
 
 #### Checkpoint 2: Initial Activity (0~1h)
 - [ ] Trade Count > 0
@@ -92,10 +97,13 @@ python scripts/run_phase22_ensemble_single_symbol.py \
 - [ ] PortfolioManager available_budget 변동 정상
 - [ ] Feed timeout 정상 처리 (candle is None → continue)
 
-#### Checkpoint 3: Low-Freq Strategy Signals (1~6h)
-- [ ] breakout (15m) 최소 1회 신호 발생
-- [ ] trend (1h) 최소 1회 신호 발생
-- [ ] scalping/reversion 신호 정상 발생
+#### Checkpoint 3: Strategy Diversity Check (1~6h)
+- [ ] scalping_v3 신호 발생 확인
+- [ ] breakout_v2 신호 발생 확인
+- [ ] reversion_v2 신호 발생 확인
+- [ ] trend_v2 신호 발생 확인
+- [ ] volume_v2 신호 발생 확인
+- [ ] 특정 전략 편중도 < 80% 확인
 
 #### Checkpoint 4: Mid-Point Stability (6h)
 - [ ] ERROR/CRITICAL 0건
@@ -111,122 +119,102 @@ python scripts/run_phase22_ensemble_single_symbol.py \
 
 ---
 
-## 5. Results
+## 5. Results (실행 후 기록)
 
 ### 5.1 Duration
-- **Start**: 2025-11-22 12:37:34
-- **Expected End**: 2025-11-22 14:37:34 (2h)
-- **Actual End**: 2025-11-22 13:52:00 (약 1시간 14분)
-- **Elapsed**: 1시간 14분 (4,440초)
-- **Expected**: 2시간 (7,200초)
-- **Status**: ✅ **조기 종료** (사용자 요청)
+- **Start**: `TBD`
+- **Expected End**: `TBD` (Start + 12h)
+- **Actual End**: `TBD`
+- **Elapsed**: `TBD`
+- **Status**: `TBD`
 
 ### 5.2 Strategy Activity
-| Strategy | Timeframe | Status | Notes |
-|----------|-----------|--------|-------|
-| scalping | 3m | ✅ Active | 신호 미발생 |
-| breakout | 15m | ✅ Active | 신호 미발생 |
-| reversion | 5m | ✅ Active | 신호 미발생 |
-| trend | 1h | ✅ Active | 신호 미발생 |
+| Strategy | Timeframe | Trades | Win/Loss | PnL | Notes |
+|----------|-----------|--------|----------|-----|-------|
+| scalping_v3 | 5m | `TBD` | `TBD` | `TBD` | `TBD` |
+| breakout_v2 | 5m | `TBD` | `TBD` | `TBD` | `TBD` |
+| reversion_v2 | 5m | `TBD` | `TBD` | `TBD` | `TBD` |
+| trend_v2 | 5m | `TBD` | `TBD` | `TBD` | `TBD` |
+| volume_v2 | 5m | `TBD` | `TBD` | `TBD` | `TBD` |
 
-**신호 발생**: 0건 (현재 시장 조건에서 정상)
+**총 트레이드**: `TBD`  
+**전략별 편중도**: `TBD` (최대 편중 전략 / 전체 비율)
 
 ### 5.3 FlowGuardian & Portfolio
-- **FlowGuardian READY**: ✅ PASS (게이트 통과)
-- **Budget Cap Applied**: 0회 (신호 미발생)
-- **Portfolio BLOCK**: 0%
-- **Available Budget**: $50,000 (변동 없음)
-- **Equity**: $50,000 (손실 없음)
+- **FlowGuardian READY**: `TBD`
+- **Budget Cap Applied**: `TBD`회
+- **Portfolio BLOCK**: `TBD`%
+- **Max Drawdown**: `TBD`%
+- **Final Equity**: `TBD`
+- **Total PnL**: `TBD`
 
 ### 5.4 Errors & Issues
-- **ERROR Count**: 0건
-- **CRITICAL Count**: 0건 (DEBUG 제외)
-- **Feed Disconnects**: 0건
-- **Flash-Guard Active**: 1회 (초기 변동성 높음, 이후 정상)
+- **ERROR Count**: `TBD`
+- **CRITICAL Count**: `TBD`
+- **Feed Disconnects**: `TBD`
+- **Flash-Guard Active**: `TBD`회
+- **기타 이슈**: `TBD`
 
 ---
 
-## 6. Analysis
+## 6. Analysis (실행 후 기록)
 
 ### 6.1 Strengths
-1. **완벽한 인프라 안정성**
-   - 1시간 14분 동안 ERROR/CRITICAL 0건
-   - Duration 정상 작동 (wall-clock 기반)
-   - Multi-TF Feed 안정적 수신 (6,015개 캔들)
-
-2. **Ensemble v1 정상 작동**
-   - 4개 전략 모두 활성화 (scalping, breakout, reversion, trend)
-   - FlowGuardian 게이트 통과
-   - PortfolioManager 상태 일관성 유지
-
-3. **자동 모니터링 시스템 구축**
-   - Real-time 로그 분석
-   - 자동 문제 감지 및 보고
-   - 20초 주기 헬스 체크
-
-4. **Flash-Guard 최적화**
-   - 기본값 3% → 50%로 완화
-   - 초기 변동성 높은 시장에서 신호 보류 1회만 발생
-   - 이후 정상 작동
+**실행 완료 후 다음 항목들을 분석하여 기록하세요:**
+1. 엔진 인프라 안정성 (ERROR/CRITICAL, Duration 정확도)
+2. Ensemble v2 (5 전략) 정상 작동 여부
+3. FlowGuardian/RiskManager/PortfolioManager 안정성
+4. 전략별 신호 다양성 (편중 없음)
 
 ### 6.2 Weaknesses
-1. **신호 발생 부재**
-   - 1시간 14분 동안 신호 0건
-   - 현재 시장 조건에서 신호 조건 미충족
-   - 더 긴 테스트 기간 필요 (12h 권장)
-
-2. **제한된 테스트 기간**
-   - 2시간 계획 중 1시간 14분만 실행
-   - Low-Freq 전략(breakout 15m, trend 1h) 신호 발생 기회 부족
+**발견된 문제점 기록:**
+1. 특정 전략 신호 부족
+2. 특정 전략 과도한 편중 (80% 초과)
+3. PnL 극단 편향
+4. 포지션 비정상 누적
+5. 기타 이슈
 
 ### 6.3 Observations
-1. **시장 조건**
-   - BTC 가격: 83,800 ~ 84,100 범위 (안정적)
-   - 변동성: 낮음 (신호 조건 미충족)
-
-2. **시스템 성능**
-   - CPU: 0%
-   - Memory: 133MB (정상)
-   - Feed Latency: 0.0ms (정상)
-
-3. **Duration 정확도**
-   - Wall-clock 기반 종료 정상 작동
-   - PHASE22-1-FIX 검증 완료
+**실행 중 관찰 사항:**
+1. 시장 조건 (가격 범위, 변동성)
+2. 시스템 성능 (CPU, Memory, Latency)
+3. 전략별 행동 패턴
+4. Duration 정확도
 
 ---
 
-## 7. Conclusion
+## 7. Conclusion (실행 후 기록)
 
-**Final Status**: ✅ **PASS (조건부)**
+**Final Status**: `TBD` (✅ PASS / ❌ FAIL / ⚠️ CONDITIONAL PASS)
 
-### Acceptance Criteria 검증
-1. ✅ Duration 정상 작동 (wall-clock)
-2. ✅ ERROR/CRITICAL 0건
-3. ✅ FlowGuardian READY 통과
-4. ✅ Ensemble v1 전략 모두 활성화
-5. ⏳ Trade Count = 0 (신호 미발생 - 정상)
-6. ✅ PortfolioManager 상태 일관성 유지
-7. ✅ Scorecard 정상 생성
-8. ✅ DB/Redis 상태 정상
-9. ✅ Duration 종료 정확도 <1%
-10. ✅ 로그 UTF-8 인코딩 정상 (Mojibake 0건)
+### Acceptance Criteria 검증 (Section 2.2 기준)
+1. ✅/❌ 12h 동안 CRITICAL 로그 0건
+2. ✅/❌ ERROR 로그 < 10건
+3. ✅/❌ FlowGuardian 비정상 STOP 없음
+4. ✅/❌ 5개 전략 모두 최소 1건 이상 트레이드 발생
+5. ✅/❌ 특정 전략 편중도 < 80%
+6. ✅/❌ Max Drawdown < 50%
+7. ✅/❌ Equity > Initial Balance × 0.5
+8. ✅/❌ 미청산 포지션 < 5개
+9. ✅/❌ DB/Redis 기록 누락 없음
+10. ✅/❌ Scorecard 정상 생성
 
-### 결론
-**PHASE22-2 인프라 검증 PASS**
-
-- Ensemble v1의 기본 인프라는 완벽하게 작동합니다.
-- 1시간 14분 동안 안정적으로 실행되었습니다.
-- 신호 발생 부재는 현재 시장 조건의 문제이지, 시스템 문제가 아닙니다.
-- 12시간 테스트에서 더 많은 신호 발생 기회가 있을 것입니다.
+### 최종 판정
+**실행 완료 후 다음 질문에 답하세요:**
+- PHASE22-2의 목표 (5개 전략 Ensemble v2 12~24H 안정성 검증)를 달성했는가?
+- 엔진이 상용급 인프라로서 장시간 운영 가능한가?
+- 발견된 이슈들이 PHASE22-3/23에서 해결 가능한 수준인가?
 
 ### 권장사항
-1. **12시간 Extended Validation 진행** (신호 발생 기회 증대)
-2. **Low-Freq 전략 파라미터 검토** (breakout, trend)
-3. **시장 조건 분석** (신호 발생 조건 최적화)
+**다음 단계 (PHASE22-3 / PHASE23)에서 개선할 사항:**
+1. 파라미터 튜닝 (Flash Guard, 쿨다운 등)
+2. 전략 Entry 조건 재검토
+3. Ensemble Weight 조정
+4. 기타
 
 ---
 
-**Report Generated**: 2025-11-22 10:51 KST  
-**Last Updated**: 2025-11-22 13:52 KST  
-**Test Duration**: 1시간 14분 (조기 종료)  
-**Status**: ✅ PASS
+**Report Generated**: `TBD`  
+**Last Updated**: `TBD`  
+**Test Duration**: `TBD`  
+**Status**: 📋 **TEMPLATE (실행 전)**
