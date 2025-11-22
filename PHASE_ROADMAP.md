@@ -609,14 +609,17 @@ Ensemble ON 모드로 4시간 이상 연속 Paper 테스트 (인프라 안정성
   - 산출물: `docs/PHASE22/PHASE22-1_STRATEGY_DESIGN.md`, `docs/PHASE22/PHASE22-1_COMPLETE_REPORT.md`
   - 코드: `strategies/research/*.py` (4개 전략 + __init__.py)
   - 테스트: `tests/test_phase22_1_new_strategies.py`
-- **22-2: 🔄 Extended Validation (IN PROGRESS - 2025-11-22)**
+- **22-2: 🔄 Extended Validation (Quick Smoke PASS - 2025-11-22 20:12)**
   - Ensemble v2 장기 안정성 검증 (12~24H Paper, 5개 전략 통합)
   - 전략별 신호 발생 빈도 확인
   - PnL/성능 기초 분석
   - 산출물: `docs/PHASE22/PHASE22-2_EXTENDED_VALIDATION_DESIGN.md`, `PHASE22-2_EXECUTION_GUIDE.md`, `PHASE22-2_EXTENDED_VALIDATION_REPORT.md`
   - Config: `configs/paper/phase22_2_ensemble_quick.yml`, `phase22_2_ensemble_12h.yml`
   - Script: `scripts/run_phase22_2_ensemble.py`
-  - 상태: 설계/Config/스크립트 완료, 실행 준비 완료
+  - Quick Smoke Test (30분): Duration 1800.1s (오차 0.006%), ERROR 0건, Trades 0건
+  - Duration Fix: engine.py에 진행 로그 추가 (30초마다)
+  - Run ID: 20251122_194150_ouhr
+  - 상태: Quick Test PASS, Main Run (12H) 대기 중
 - **22-3: Parameter Tuning (PLANNED)**
   - Flash Guard, 쿨다운, 슬리피지 파라미터 튜닝
 
