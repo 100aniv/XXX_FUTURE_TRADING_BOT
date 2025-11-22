@@ -1,0 +1,19 @@
+# PHASE21-1B Validation: 3m Timeframe Test
+mode: paper
+duration_hours: 0.083  # 5 minutes
+timeframe: 3m
+
+symbols:
+  - BTCUSDT
+
+leverage:
+  min: 1
+  max: 10
+  cap: 50
+  default: 2
+
+ensemble:
+  enabled: false
+
+strategy:
+  selected: scalping

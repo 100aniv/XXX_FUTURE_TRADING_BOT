@@ -1,0 +1,49 @@
+# PHASE21-1B Validation Test: 3m Timeframe
+mode: paper
+duration_mode: wall_clock
+duration_hours: 0.083  # 5 minutes
+capital:
+  initial: 50000
+equity: 50000
+lookback: 400
+
+symbols:
+  - BTCUSDT
+
+timeframe: 3m
+
+ensemble:
+  enabled: false
+
+strategy:
+  use_ensemble: false
+  selected: scalping
+  scalping:
+    enabled: true
+
+portfolio:
+  initial_balance: 50000
+  max_position_value: 5000
+  capital: 50000
+
+risk:
+  max_drawdown_pct: 30.0
+  max_positions: 5
+
+execution:
+  fees_bps: 10
+  slippage:
+    bps: 5
+
+monitoring:
+  log_level: INFO
+
+feed:
+  type: binance_websocket
+  symbols:
+    - BTCUSDT
+  timeframes:
+    - 3m
+
+broker:
+  type: paper

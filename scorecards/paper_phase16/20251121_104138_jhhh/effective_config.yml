@@ -1,0 +1,54 @@
+broker:
+  type: paper
+duration_hours: 0.083
+duration_mode: wall_clock
+ensemble:
+  enabled: false
+env: paper
+execution:
+  reject_cooldown_seconds: 0
+feed:
+  base_timeframe: 3m
+  symbols:
+  - BTCUSDT
+  timeframes:
+  - 3m
+  type: binance_websocket
+mode: paper
+monitoring:
+  log_level: INFO
+paper:
+  clean_start: true
+  duration_hours: 0.083
+  duration_mode: wall_clock
+  end_time: '2025-11-21T10:46:37.145641'
+  start_time: '2025-11-21T10:41:38.345641'
+portfolio:
+  capital: 50000
+  initial_balance: 50000
+  max_position_value: 5000
+  max_positions: 0
+  symbol_cooldown_seconds: 0
+risk:
+  max_drawdown_pct: 30.0
+  max_positions: 0
+  per_trade: 0.01
+  profiles:
+    paper:
+      cooldown_after_consecutive: 5
+      max_consecutive_losses: 50
+      max_daily_loss_pct: 0.5
+run_id: 20251121_104138_jhhh
+strategies:
+  scalping:
+    cooldown_candles: 1
+    entry_cooldown_seconds: 0
+strategy:
+  scalping:
+    enabled: true
+  selected: scalping
+  use_ensemble: false
+symbol: BTCUSDT
+symbols:
+- BTCUSDT
+timeframe: 3m
