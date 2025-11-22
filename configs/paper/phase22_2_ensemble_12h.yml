@@ -1,0 +1,119 @@
+# PHASE22-2: Ensemble v2 Main Validation (12H)
+# 5개 전략 통합 장기 안정성 검증
+
+mode: paper
+duration_mode: wall_clock
+duration_hours: 12  # 12시간
+
+symbols:
+  - BTCUSDT
+
+# 단일 Timeframe (5m 통일, Multi-TF 지원 전까지)
+timeframe: 5m
+
+ensemble:
+  enabled: true
+  tier1_threshold: 0.8
+  tier2_threshold: 0.5
+  tier2_min_votes: 2
+
+# 5개 전략 모두 활성화
+strategies:
+  scalping_v3:
+    enabled: true
+    params:
+      entry_threshold: 0.5
+      exit_threshold: 0.3
+      max_position_size: 0.1
+      stop_loss_pct: 1.0
+      take_profit_pct: 0.5
+      rsi_oversold: 30
+      rsi_overbought: 70
+      volume_spike_mult: 1.5
+      atr_mult_sl: 1.2
+      risk_reward: 1.5
+
+  breakout_v2:
+    enabled: true
+    params:
+      entry_threshold: 0.5
+      lookback_period: 20
+      atr_buffer_mult: 0.5
+      volume_spike_mult: 1.5
+      atr_mult_sl: 1.5
+      risk_reward: 2.0
+
+  reversion_v2:
+    enabled: true
+    params:
+      entry_threshold: 0.5
+      rsi_oversold: 25
+      rsi_overbought: 75
+      bb_period: 20
+      bb_std: 2.0
+      atr_mult_sl: 1.2
+      risk_reward: 1.5
+
+  trend_v2:
+    enabled: true
+    params:
+      entry_threshold: 0.5
+      sma_fast: 50
+      sma_slow: 200
+      macd_fast: 12
+      macd_slow: 26
+      macd_signal: 9
+      atr_mult_sl: 2.0
+      risk_reward: 2.5
+
+  volume_v2:
+    enabled: true
+    params:
+      entry_threshold: 0.5
+      obv_lookback: 20
+      volume_spike_mult: 1.5
+      ema_period: 21
+      atr_mult_sl: 1.5
+      risk_reward: 1.8
+
+portfolio:
+  initial_balance: 50000
+  max_position_value: 10000  # 단일 포지션 최대 $10K
+  max_open_positions: 5
+
+risk:
+  max_drawdown_pct: 50.0
+  per_trade_risk_pct: 2.0
+  max_leverage: 10
+  extreme_loss_threshold: -10000  # 12H 장기 실행, 임계값 확대
+  position_size_mode: kelly_fraction
+
+# FlowGuardian 설정
+flow_guardian:
+  enabled: true
+  flash_pct: 0.03  # 3% 급변동 감지
+  flash_window: 10  # 10캔들 윈도우
+  cooldown_seconds: 60  # 전역 쿨다운 1분
+  strategy_cooldown_seconds: 30  # 전략별 쿨다운 30초
+
+monitoring:
+  log_level: INFO
+  log_to_file: true
+  metrics_interval_seconds: 300  # 12H 장기 실행, 5분마다 메트릭
+
+feed:
+  type: binance_websocket
+  symbols:
+    - BTCUSDT
+  timeframes:
+    - 5m
+
+broker:
+  type: paper
+  slippage_pct: 0.05
+  commission_pct: 0.1
+
+# Scorecard 출력
+scorecard:
+  enabled: true
+  output_dir: scorecards/paper_phase22_2
