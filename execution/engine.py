@@ -587,13 +587,17 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict):
         
         # ⭐ PHASE16+: Wall-clock Duration 체크 (루프 시작 시 먼저 확인)
         # PHASE22-1-FIX: Duration 종료 로그 명확화
+        # PHASE22-2-FIX: Duration 체크 디버그 로그 추가
         if duration_mode == 'wall_clock':
             elapsed_wall = time.time() - start_wall_time
+            # DEBUG: 매 30초마다 경과 시간 출력
+            if int(elapsed_wall) % 30 == 0 and int(elapsed_wall) > 0:
+                logger.info(f"⏱️  [WALL-CLOCK] 경과: {elapsed_wall:.0f}s / {duration_seconds:.0f}s ({elapsed_wall/duration_seconds*100:.1f}%)")
             if elapsed_wall >= duration_seconds:
                 logger.info(f"⏱️  [WALL-CLOCK] Duration 종료 조건 도달!")
                 logger.info(f"    - 설정: {duration_hours:.2f}시간 ({duration_seconds:.0f}초)")
                 logger.info(f"    - 경과: {elapsed_wall:.1f}초 ({elapsed_wall/60:.1f}분)")
-                logger.info(f"    - 초과: {elapsed_wall - duration_seconds:.1f}초")
+                logger.info(f"    - 초과: {elapsed_wall - duration_seconds:.1f}초)")
                 logger.info(f"✅ [WALL-CLOCK] 엔진 정상 종료 (Duration 만료)")
                 break
         
