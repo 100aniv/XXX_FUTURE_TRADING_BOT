@@ -1195,6 +1195,7 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict):
 
                     if signal and signal.get("side"):
                         signal["strategy_id"] = strategy_id
+                        signal["df"] = df_tf  # ⭐ PHASE22-3: Ensemble에 df 전달
                         # 캔들 닫힘 시간: 전략 TF 기준
                         try:
                             _last_time = df_tf["time"].iloc[-1]

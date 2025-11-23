@@ -292,6 +292,93 @@ class EnsembleAggregator:
         decisions = self.evaluate_strategies(strategy_names, df, regime)
         return self.aggregate(decisions, regime)
     
+    def combine_signals(
+        self,
+        signals: List[Dict[str, Any]],
+        conn,
+        config: Dict[str, Any]
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Engine 호환용 Wrapper (PHASE22-3 호환성 복구)
+        
+        Engine.py가 호출하는 legacy 인터페이스를 지원하기 위한 wrapper.
+        signals 리스트를 받아서 decide() 로직을 실행하고,
+        engine이 기대하는 dict 형식으로 반환한다.
+        
+        Args:
+            signals: 각 전략이 생성한 신호 리스트 (engine에서 전달)
+                     [{'side': 'LONG', 'strategy_id': 'scalping', ...}, ...]
+            conn: DB 연결 (현재 미사용)
+            config: 전체 config dict
+        
+        Returns:
+            dict | None: 최종 결정 (side, strategy_id 등 포함) 또는 None (skip)
+        """
+        # 신호가 없으면 None 반환
+        if not signals:
+            return None
+        
+        # 신호가 있는 전략 이름만 추출
+        strategy_names = [s.get('strategy_id') for s in signals if s.get('direction')]
+        
+        if not strategy_names:
+            return None
+        
+        # TODO: df를 어떻게 가져올 것인가?
+        # 현재 engine.py는 df를 전달하지 않으므로, 임시로 signals[0]에서 가져온다고 가정
+        # 또는 signals에 'df' 키가 포함되어 있을 수도 있음
+        # 일단 signals에 df가 없으면 None 반환 (fallback)
+        df = signals[0].get('df') if signals else None
+        if df is None:
+            # df가 없으면 첫 번째 신호를 그대로 반환 (legacy fallback)
+            logger.warning("⚠️  [ENSEMBLE] combine_signals: df 없음, 첫 신호 사용 (fallback)")
+            return signals[0]
+        
+        # decide() 호출
+        regime = config.get('regime', None)
+        ensemble_decision = self.decide(strategy_names, df, regime)
+        
+        # EnsembleDecision을 engine이 기대하는 dict로 변환
+        if not ensemble_decision or not ensemble_decision.side:
+            return None
+        
+        # engine이 기대하는 키 형식으로 변환
+        # signals에서 해당 전략의 원래 신호를 찾아서 가져옴
+        chosen_strategy = ensemble_decision.chosen_strategy or (
+            ensemble_decision.contributing_strategies[0] if ensemble_decision.contributing_strategies else None
+        )
+        
+        if not chosen_strategy:
+            return None
+        
+        # 해당 전략의 원래 신호 찾기
+        original_signal = next(
+            (s for s in signals if s.get('strategy_id') == chosen_strategy),
+            signals[0]  # fallback
+        )
+        
+        # 최종 결정 dict 생성
+        decision = {
+            'side': ensemble_decision.side,
+            'strategy_id': chosen_strategy,
+            'confidence': ensemble_decision.confidence,
+            'tier': ensemble_decision.tier,
+            'contributing_strategies': ensemble_decision.contributing_strategies,
+            'reason': ensemble_decision.reason,
+            # 원래 신호의 entry/sl/tp 정보 복사
+            'entry': original_signal.get('entry', 0),
+            'sl': original_signal.get('sl', 0),
+            'tp': original_signal.get('tp', 0),
+        }
+        
+        logger.info(
+            f"✅ [ENSEMBLE] combine_signals: {ensemble_decision.side} "
+            f"by {chosen_strategy} (tier={ensemble_decision.tier}, "
+            f"confidence={ensemble_decision.confidence:.3f})"
+        )
+        
+        return decision
+    
     # =========================================================================
     # Private Methods
     # =========================================================================

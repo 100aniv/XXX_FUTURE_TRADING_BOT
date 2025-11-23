@@ -1,0 +1,657 @@
+accounting:
+  fee_bps: 5
+  fee_mode: taker
+  funding_model: avg_realized
+  slippage_model: atr_based
+analytics:
+  kpis:
+    enable_sharpe_like: true
+    enable_slippage: true
+  reports:
+    channels:
+    - log
+    - telegram
+    daily_time: '23:59'
+    weekly_day: SUN
+backtest:
+  custom:
+    end_date: '2024-09-30'
+    start_date: '2024-01-01'
+  data_dir: data
+  data_file: BTCUSDT_5m_WFA_04_OOS_SUMMER_RANGE.csv
+  period: custom
+  periods:
+    one_year:
+      end_date: '2024-12-31'
+      start_date: '2024-01-01'
+    ten_years:
+      end_date: '2025-10-19'
+      start_date: '2015-01-01'
+    three_months:
+      end_date: '2025-10-22'
+      start_date: '2025-07-24'
+    three_years:
+      end_date: '2024-12-31'
+      start_date: '2022-01-01'
+  persist_signals: false
+  symbol: BTCUSDT
+broker:
+  commission_pct: 0.1
+  slippage_pct: 0.05
+  type: paper
+capital:
+  initial: 50000
+cooldown_candles: 5
+database:
+  host: ${DB_HOST}
+  name: ${DB_NAME}
+  password: ${DB_PASSWORD}
+  port: ${DB_PORT}
+  url: ${DATABASE_URL}
+  user: ${DB_USER}
+duration_hours: 12
+duration_mode: wall_clock
+enable_mtf_confirm: true
+enable_vol_spike_filter: true
+ensemble:
+  enabled: true
+  min_tier1_score: 0.8
+  min_tier2_score: 0.5
+  min_tier2_votes: 2
+  strategies:
+  - scalping
+  - trend
+  - breakout
+  tier1_conflict_diff: 0.15
+  tier1_threshold: 0.8
+  tier2_min_votes: 2
+  tier2_threshold: 0.5
+entries:
+  cooldown_candles: 1
+  min_rr_required: 1.2
+  type: meanrev
+env: paper
+equity: 50000
+exchange:
+  funding:
+    cache_ttl_sec: 300
+    enabled: true
+  specs:
+    cache_ttl_sec: 3600
+    dynamic_rounding: true
+execution:
+  max_slippage_bp: 12
+  order_type: limit_post_only
+  reject_cooldown_seconds: 60
+  retry:
+    backoff_ms: 200
+    max_attempts: 3
+exits:
+  binance_api:
+    price_protect: true
+    working_type: CONTRACT_PRICE
+  price_levels:
+    advanced:
+      enabled: true
+  sl_priority: BEFORE_TP
+  stop:
+    k: 1.8
+    type: atr
+  take_profits:
+  - r_multiple: 1.5
+    size_pct: 30
+  - r_multiple: 3.0
+    size_pct: 40
+  time_exit_min: 360
+  trailing:
+    k: 3.0
+    move_to_break_even_at_r: 0.7
+    type: atr
+  use_ohlc_check: true
+  volatility_regime_multipliers:
+    high_vol: 1.2
+    low_vol: 0.9
+    neutral: 1.0
+exposure:
+  correlation_group_cap_pct: 1.0
+  symbol_groups:
+  - name: BTC-ETH
+    symbols:
+    - BTCUSDT
+    - ETHUSDT
+  - name: ALTS
+    symbols:
+    - SOLUSDT
+    - BNBUSDT
+    - XRPUSDT
+feed:
+  base_timeframe: 5m
+  symbols:
+  - BTCUSDT
+  timeframes:
+  - 5m
+  type: binance_websocket
+fees:
+  maker: 0.0002
+  slippage: 0.0005
+  taker: 0.0004
+filters:
+  atr_window: 14
+  htf: 1h
+  mtf_confirm: true
+  news_blackout_min: 40
+  regime_filter: false
+  require_trend_align: false
+  session_whitelist: []
+  volume_spike: true
+flash_guard:
+  enabled: true
+  log_throttle_sec: 300
+  pause_candles: 3
+  threshold_pct: 0.03
+  window_sec: 60
+flow_guardian:
+  cooldown_seconds: 60
+  enabled: true
+  essential_strategies:
+  - scalping
+  - daytrade
+  flash_pct: 0.03
+  flash_window: 10
+  functional:
+    scenarios:
+    - config:
+        fee: 0.0004
+        sl: 0.01
+        tp: 0.02
+      expect:
+        pf_min: 0.0
+        winrate_min: 0.0
+      feed: data/golden/BTCUSDT_15m_golden_300.csv
+      name: pnl_calculation_simple
+      slice:
+        len: 50
+        start: 0
+    - config:
+        max_consecutive_losses: 7
+      expect:
+        trades_max: 10
+      feed: data/golden/BTCUSDT_15m_golden_300.csv
+      name: risk_consecutive_losses
+      slice:
+        len: 30
+        start: 50
+    - config:
+        max_exposure_pct: 0.95
+      expect:
+        blocked_if_over_exposure: true
+      feed: data/golden/BTCUSDT_15m_golden_300.csv
+      name: portfolio_exposure_limit
+      slice:
+        len: 40
+        start: 100
+  on_not_ready: backfill_then_wait
+  selftest:
+    artifacts:
+      require_files:
+      - logs/trial_0000.json
+      - logs/application.log
+    consistency_checks:
+      db_vs_json_score_equal: true
+      risk_never_oversize: true
+      signals_no_nan: true
+    max_runtime_sec: 120
+    min_profit_factor: 0.0
+    min_winrate: 0.0
+    require_metrics:
+    - profit_factor
+    - winrate
+    - score_total
+    - exp_score
+    snapshot_rules:
+      require_segment_isolation: true
+  startup_bars:
+    15m: 1000
+    1h: 300
+    3m: 1000
+    4h: 200
+    5m: 1000
+  strategy_cooldown_seconds: 30
+  warmup_policy: indicator_max
+htf: 1h
+indicators:
+  atr:
+    length: 14
+  bollinger:
+    length: 20
+    std: 2.0
+  ema:
+    fast: 9
+    mid: 21
+    slow: 50
+  macd:
+    fast: 12
+    signal: 9
+    slow: 26
+  rsi:
+    length: 14
+  volume:
+    ma_length: 30
+leverage:
+  cap: 50
+  default: 2
+  max: 50
+  min: 2
+lookback: 1000
+metrics:
+  health:
+    max_api_latency_ms: 500
+    max_ws_message_lag_sec: 30
+  jitter_threshold: 60
+min_bars_for_signal: 60
+mode: paper
+monitoring:
+  flowguardian:
+    alerts:
+      api_latency_ms_p95: 500
+      cpu_pct_critical: 95
+      cpu_pct_warning: 85
+      queue_drop_rate_pct: 1.0
+      ws_last_message_ago_sec: 60
+    enabled: true
+    retention_days: 7
+    sample_interval_sec: 10
+    sinks:
+    - log
+    - telegram
+  log_level: INFO
+  log_to_file: true
+  metrics_interval_seconds: 300
+  redis:
+    host: localhost
+    port: 6379
+    ttl_seconds: 60
+  websocket:
+    connection_timeout_sec: 30
+    gap_detection:
+      large_gap_threshold: 100
+      max_backfill_batch: 50
+      threshold_multiplier: 1.5
+    heartbeat_interval_sec: 10
+    queue:
+      health_report_interval_sec: 10
+      maxsize: 5000
+      usage_threshold_pct: 80
+    reconnect:
+      backoff_ms: 500
+      max_attempts: 20
+notifications:
+  telegram:
+    enabled: false
+    system_name: TRADING
+paper:
+  clean_start: true
+  duration_hours: 12.0
+  duration_mode: wall_clock
+  end_time: '2025-11-23T09:22:26.545791'
+  start_time: '2025-11-22T21:22:26.545791'
+performance:
+  enable_profiling: false
+  log_level: INFO
+  poll_interval_sec: 5
+portfolio:
+  allow_duplicate_entry: false
+  budget:
+    default_allocation: 0.2
+    strategy_allocation:
+      breakout: 0.3
+      daytrade: 0.3
+      ensemble_1_signals: 0.25
+      ensemble_2_signals: 0.4
+      ensemble_3_signals: 0.55
+      ensemble_4_signals: 0.65
+      reversion: 0.3
+      scalping: 0.25
+      swing: 0.3
+      trend: 0.3
+  correlation:
+    max_pair_corr: 0.7
+    window_days: 14
+  duplicate_entry_policy: reject
+  initial_balance: 50000
+  max_duplicate_entries: 1
+  max_open_positions: 5
+  max_position_value: 10000
+  max_strategy_positions: 5
+  max_total_exposure: 0.95
+  symbol_cooldown_seconds: 60
+  use_dynamic_budget: true
+  use_dynamic_exposure: true
+position_sizing:
+  allow_partial_entry: true
+  context_scaling:
+    atr_high_pct: 0.02
+    atr_low_pct: 0.004
+    enabled: true
+    high_vol_mult: 0.7
+    low_vol_mult: 1.2
+    neutral_mult: 1.0
+  exposure_reduction_factor: 0.95
+  max_position_notional: 10000
+  max_position_value: 10000
+  min_position_notional: 100
+  min_position_value: 100
+  multi_position_scaling: true
+  quality_weight_max: 1.3
+  quality_weight_min: 0.7
+reports:
+  html: false
+require_htf_aligned: false
+risk:
+  cooldown_after_consecutive: 30
+  enforce_daily_loss_in_backtest: true
+  equity_stop_pct: null
+  extreme_loss_cutoff_pct: -20.0
+  extreme_loss_threshold: -10000
+  leverage_cap: 50
+  liq_buffer_multiple_of_SL: 4
+  margin_ratio: 0.01
+  max_consecutive_losses: 4
+  max_daily_loss_pct: 0.02
+  max_drawdown_pct: 50.0
+  max_exposure_pct: 0.95
+  max_exposure_per_symbol: 0.3
+  max_leverage: 10
+  max_positions: 20
+  max_sl_pct: 0.05
+  max_slippage_pct: 0.5
+  per_trade: 0.003
+  per_trade_risk_pct: 2.0
+  position_size_mode: kelly_fraction
+  profiles:
+    live:
+      cooldown_after_consecutive: 60
+      enforce_daily_loss_in_backtest: true
+      equity_stop_pct: 15.0
+      max_consecutive_losses: 6
+      max_daily_loss_pct: 0.03
+    paper:
+      cooldown_after_consecutive: 30
+      enforce_daily_loss_in_backtest: true
+      equity_stop_pct: 20.0
+      max_consecutive_losses: 15
+      max_daily_loss_pct: 0.2
+run_id: 20251122_212226_01yf
+scorecard:
+  enabled: true
+  output_dir: scorecards/paper_phase22_2
+session_windows_utc:
+  London:
+  - end: '11:00'
+    start: 07:00
+  NY-open:
+  - end: '16:00'
+    start: '13:30'
+strategies:
+  breakout:
+    atr_mult_sl: 1.8
+    cooldown_candles: 5
+    enabled: true
+    filters:
+      mtf_confirm: false
+      regime: false
+      volume_spike: false
+    min_bars_for_signal: 60
+    risk_per_trade: 0.01
+    rr: 1.6
+    timeframe: 15m
+  breakout_v2:
+    enabled: true
+    params:
+      atr_buffer_mult: 0.5
+      atr_mult_sl: 1.5
+      entry_threshold: 0.5
+      lookback_period: 20
+      risk_reward: 2.0
+      volume_spike_mult: 1.5
+  daytrade:
+    allow_breakout: false
+    atr_mult_sl: 1.3
+    cooldown_candles: 5
+    enabled: true
+    filters:
+      mtf_confirm: false
+      regime: true
+      volume_spike: true
+    min_bars_for_signal: 60
+    risk_per_trade: 0.008
+    rr: 3.0
+    rsi_long_min: 50
+    rsi_short_max: 55
+    timeframe: 5m
+  ensemble:
+    alpha_winrate: 0.4
+    atr_mult_sl: 1.5
+    beta_rr: 0.2
+    consensus_bonus: 0.2
+    cooldown_candles: 3
+    delta_confidence: 0.15
+    epsilon_regime: 0.05
+    experience:
+      min_trades: 20
+    filters:
+      mtf_confirm: false
+      regime: true
+      volume_spike: true
+    gamma_sharpe: 0.2
+    max_weight_per_strategy: 0.4
+    min_confidence: 0.6
+    performance_window_days: 30
+    risk_per_trade: 0.01
+    rr: 2.0
+    rr_bonus: 0.2
+    rr_bonus_threshold: 1.6
+    theta_long: 0.15
+    theta_short: 0.15
+    weights:
+      breakout: 2.0
+      daytrade: 2.5
+      reversion: 3.0
+      scalping: 2.0
+      swing: 2.2
+      trend: 1.5
+    window_sec: 10
+  reversion:
+    atr_mult_sl: 1.5
+    bb_lower_pct: 0.02
+    bb_upper_pct: 0.98
+    cooldown_candles: 5
+    enabled: true
+    filters:
+      allow_short: false
+      mtf_confirm: false
+      regime: true
+      trend_context_required: true
+      volume_spike: false
+    min_bars_for_signal: 60
+    risk_per_trade: 0.01
+    rr: 2.0
+    rsi_threshold: 30
+    timeframe: 15m
+    volume_mult: 1.2
+  reversion_v2:
+    enabled: true
+    params:
+      atr_mult_sl: 1.2
+      bb_period: 20
+      bb_std: 2.0
+      entry_threshold: 0.5
+      risk_reward: 1.5
+      rsi_overbought: 75
+      rsi_oversold: 25
+  scalping:
+    atr_mult_sl: 1.2
+    bb_stddev: 2.0
+    bb_window: 20
+    cooldown_candles: 1
+    enable_mean_reversion: false
+    enable_pattern_a: true
+    enable_pattern_b: true
+    enable_pattern_c: false
+    enable_pattern_d: false
+    enable_pattern_e: false
+    enabled: true
+    entry_cooldown_seconds: 5
+    filters:
+      allow_short: true
+      mtf_confirm: false
+      regime: false
+      session_whitelist: []
+      volume_spike: false
+      volume_spike_guard: false
+    max_cross_age_candles: 12
+    max_hold_minutes: 30
+    min_bars_for_signal: 60
+    momentum_enabled: false
+    momentum_lookback: 5
+    risk_per_trade: 0.003
+    rr: 1.3
+    rsi_neutral_max: 60
+    rsi_neutral_min: 40
+    rsi_overbought: 70
+    rsi_overbought_mr: 75
+    rsi_oversold: 30
+    rsi_oversold_mr: 25
+    timeframe: 3m
+    use_price_alignment: true
+    volume_mult: 1.3
+    volume_required: false
+  scalping_v3:
+    enabled: true
+    params:
+      atr_mult_sl: 1.2
+      entry_threshold: 0.5
+      exit_threshold: 0.3
+      max_position_size: 0.1
+      risk_reward: 1.5
+      rsi_overbought: 70
+      rsi_oversold: 30
+      stop_loss_pct: 1.0
+      take_profit_pct: 0.5
+      volume_spike_mult: 1.5
+  swing:
+    atr_mult_sl: 2.2
+    cooldown_candles: 5
+    enabled: true
+    filters:
+      mtf_confirm: false
+      regime: true
+      volume_spike: false
+    min_bars_for_signal: 60
+    risk_per_trade: 0.01
+    rr: 2.2
+    timeframe: 1h
+  swing_bb:
+    atr_mult_sl: 0.9
+    bb_bounce_lower_now_mult: 1.0
+    bb_bounce_lower_prev_mult: 1.008
+    condition_relax:
+      bb_bounce_tolerance: 0.002
+      ema_alignment_required: 3
+      entry_mode: strict
+      macd_tolerance: 0.0
+      rsi_tolerance: 0.0
+    cooldown_candles: 3
+    enabled: true
+    filters:
+      allow_short: true
+      mtf_confirm: false
+      regime: false
+      session_whitelist: []
+      volume_spike: true
+      volume_spike_guard: false
+    min_bars_for_signal: 60
+    risk_per_trade: 0.003
+    rr: 1.6
+    timeframe: 5m
+    volume_mult: 1.1
+  trend:
+    atr_mult_sl: 2.8
+    cooldown_candles: 10
+    enabled: true
+    filters:
+      mtf_confirm: true
+      regime: true
+      volume_spike: false
+    min_bars_for_signal: 60
+    risk_per_trade: 0.01
+    rr: 2.5
+    timeframe: 4h
+  trend_v2:
+    enabled: true
+    params:
+      atr_mult_sl: 2.0
+      entry_threshold: 0.5
+      macd_fast: 12
+      macd_signal: 9
+      macd_slow: 26
+      risk_reward: 2.5
+      sma_fast: 50
+      sma_slow: 200
+  volume_v2:
+    enabled: true
+    params:
+      atr_mult_sl: 1.5
+      ema_period: 21
+      entry_threshold: 0.5
+      obv_lookback: 20
+      risk_reward: 1.8
+      volume_spike_mult: 1.5
+strategy:
+  selector: null
+  use_ensemble: true
+symbols:
+- BTCUSDT
+system:
+  candle_queue_size: 600000
+  timezone: Asia/Seoul
+telegram:
+  chat_id: ${TELEGRAM_CHAT_ID}
+  emoji:
+    default: ⚪
+    long_arrow: 📈
+    long_circle: 🔵
+    short_arrow: 📉
+    short_circle: 🔴
+    stop_loss: ⛔🛑
+    take_profit: ✅🏆
+    tp1_partial: 🟡🎯
+  enabled: ${ENABLE_TELEGRAM}
+  terms:
+    exposure: 투입금액
+    fee: 수수료
+    margin: 증거금
+    slippage: 슬리피지
+  token: ${TELEGRAM_TOKEN}
+timeframe: 5m
+tp_sl:
+  atr_mult_sl: 1.8
+  atr_mult_tp: 3.0
+  atr_mult_trail: 2.5
+  enable_trailing: true
+  enabled: true
+  manual:
+    sl_pct: 0.015
+    tp_pct: 0.03
+  tp1_rr: 1.0
+  tp2_rr: 2.0
+  trail_after_tp1: true
+trial_id: null
+tuning:
+  schedules:
+    scalping:
+      every_hours: 1
+      recent_hours: 1
+      t_min_recent: 10
+      trials: 10
+vol_spike_mult: 2.5

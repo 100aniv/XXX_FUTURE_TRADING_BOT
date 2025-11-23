@@ -1,0 +1,121 @@
+# PHASE22-3: Ensemble v2 Parameter Tuning (1H Test)
+# 완화된 threshold로 트레이드 발생 검증
+
+mode: paper
+duration_mode: wall_clock
+duration_hours: 0.25  # 15분 (빠른 검증)
+
+symbols:
+  - BTCUSDT
+
+# 단일 Timeframe (5m 통일)
+timeframe: 5m
+
+ensemble:
+  enabled: true
+  tier1_threshold: 0.6  # 0.8 → 0.6 (완화)
+  tier2_threshold: 0.3  # 0.5 → 0.3 (완화)
+  tier2_min_votes: 2
+
+# 5개 전략 활성화 (registry 이름 사용)
+strategies:
+  scalping:
+    enabled: true
+    params:
+      entry_threshold: 0.3  # 0.5 → 0.3 (완화)
+      exit_threshold: 0.3
+      max_position_size: 0.1
+      stop_loss_pct: 1.0
+      take_profit_pct: 0.5
+      rsi_oversold: 40  # 30 → 40 (완화)
+      rsi_overbought: 60  # 70 → 60 (완화)
+      volume_spike_mult: 1.2  # 1.5 → 1.2 (완화)
+      atr_mult_sl: 1.2
+      risk_reward: 1.5
+      momentum_enabled: false  # 모멘텀 조건 제거
+      volume_required: false  # 거래량 조건 제거
+
+  breakout:
+    enabled: true
+    params:
+      entry_threshold: 0.3  # 0.5 → 0.3 (완화)
+      lookback_period: 20
+      atr_buffer_mult: 0.5
+      volume_spike_mult: 1.5
+      atr_mult_sl: 1.5
+      risk_reward: 2.0
+
+  reversion:
+    enabled: true
+    params:
+      entry_threshold: 0.3  # 0.5 → 0.3 (완화)
+      rsi_oversold: 25
+      rsi_overbought: 75
+      bb_period: 20
+      bb_std: 2.0
+      atr_mult_sl: 1.2
+      risk_reward: 1.5
+
+  trend:
+    enabled: true
+    params:
+      entry_threshold: 0.3  # 0.5 → 0.3 (완화)
+      sma_fast: 50
+      sma_slow: 200
+      macd_fast: 12
+      macd_slow: 26
+      macd_signal: 9
+      atr_mult_sl: 2.0
+      risk_reward: 2.5
+
+  swing_bb:
+    enabled: true
+    params:
+      entry_threshold: 0.3  # 0.5 → 0.3 (완화)
+      bb_period: 20
+      bb_std: 2.0
+      volume_spike_mult: 1.5
+      atr_mult_sl: 1.5
+      risk_reward: 1.8
+
+portfolio:
+  initial_balance: 50000
+  max_position_value: 10000  # 단일 포지션 최대 $10K
+  max_open_positions: 5
+
+risk:
+  max_drawdown_pct: 50.0
+  per_trade_risk_pct: 2.0
+  max_leverage: 10
+  extreme_loss_threshold: -5000  # 1H 짧은 테스트
+  position_size_mode: kelly_fraction
+
+# FlowGuardian 설정
+flow_guardian:
+  enabled: true
+  flash_pct: 0.03  # 3% 급변동 감지
+  flash_window: 10  # 10캔들 윈도우
+  cooldown_seconds: 60  # 전역 쿨다운 1분
+  strategy_cooldown_seconds: 30  # 전략별 쿨다운 30초
+
+monitoring:
+  log_level: INFO
+  log_to_file: true
+  metrics_interval_seconds: 180  # 1H 테스트, 3분마다 메트릭
+
+feed:
+  type: binance_websocket
+  symbols:
+    - BTCUSDT
+  timeframes:
+    - 5m
+
+broker:
+  type: paper
+  slippage_pct: 0.05
+  commission_pct: 0.1
+
+# Scorecard 출력
+scorecard:
+  enabled: true
+  output_dir: scorecards/paper_phase22_3

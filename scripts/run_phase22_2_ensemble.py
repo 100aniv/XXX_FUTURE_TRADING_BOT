@@ -281,12 +281,22 @@ def main():
             registry = StrategyRegistry()
             score_engine = ScoreEngine()
             
-            # Ensemble Aggregator 생성
+            # Ensemble Aggregator 생성 (Config threshold 적용)
+            tier1_threshold = ensemble_cfg.get('tier1_threshold', 0.8)
+            tier2_threshold = ensemble_cfg.get('tier2_threshold', 0.5)
+            tier2_min_votes = ensemble_cfg.get('tier2_min_votes', 2)
+            
             ensemble_module = EnsembleAggregator(
                 registry=registry,
-                score_engine=score_engine
+                score_engine=score_engine,
+                min_tier1_score=tier1_threshold,
+                min_tier2_score=tier2_threshold,
+                min_tier2_votes=tier2_min_votes
             )
-            logger.info("  ✅ Ensemble Aggregator 생성 완료")
+            logger.info(f"  ✅ Ensemble Aggregator 생성 완료")
+            logger.info(f"     Tier1 threshold: {tier1_threshold}")
+            logger.info(f"     Tier2 threshold: {tier2_threshold}")
+            logger.info(f"     Tier2 min votes: {tier2_min_votes}")
         except Exception as e:
             logger.warning(f"⚠️ Ensemble Aggregator 생성 실패: {e}")
             logger.warning("  ℹ️  Ensemble 없이 개별 전략으로 실행합니다")
