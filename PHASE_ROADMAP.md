@@ -435,6 +435,7 @@ Ensemble ON 모드로 4시간 이상 연속 Paper 테스트 (인프라 안정성
 
 **목적**
 
+
 - 이 프로젝트에서 사용하는 **전략들의 전체 후보 풀(Strategy Pool)** 을 한 곳에 정리한다.
 - "현재 구현되어 있는 전략"과 "향후 연구/추가 예정 전략"을 구분하고,
 - PHASE22-0에서 이 Pool을 기준으로 **Ensemble v1에 들어갈 7~8개 전략**을 선정한다.
@@ -609,17 +610,18 @@ Ensemble ON 모드로 4시간 이상 연속 Paper 테스트 (인프라 안정성
   - 산출물: `docs/PHASE22/PHASE22-1_STRATEGY_DESIGN.md`, `docs/PHASE22/PHASE22-1_COMPLETE_REPORT.md`
   - 코드: `strategies/research/*.py` (4개 전략 + __init__.py)
   - 테스트: `tests/test_phase22_1_new_strategies.py`
-- **22-2: 🔄 Extended Validation (Quick Smoke PASS - 2025-11-22 20:12)**
+- **22-2: ❌ Extended Validation (Quick Smoke PASS, Main Run FAIL - 2025-11-23 10:00)**
   - Ensemble v2 장기 안정성 검증 (12~24H Paper, 5개 전략 통합)
   - 전략별 신호 발생 빈도 확인
   - PnL/성능 기초 분석
   - 산출물: `docs/PHASE22/PHASE22-2_EXTENDED_VALIDATION_DESIGN.md`, `PHASE22-2_EXECUTION_GUIDE.md`, `PHASE22-2_EXTENDED_VALIDATION_REPORT.md`
   - Config: `configs/paper/phase22_2_ensemble_quick.yml`, `phase22_2_ensemble_12h.yml`
   - Script: `scripts/run_phase22_2_ensemble.py`
-  - Quick Smoke Test (30분): Duration 1800.1s (오차 0.006%), ERROR 0건, Trades 0건
+  - **Quick Smoke Test (30분)**: Duration 1800.1s (오차 0.006%), ERROR 0건, Trades 0건 → ✅ PASS
+  - **12H Main Run (2025-11-22 21:54:02 ~ 2025-11-23 09:55:30)**: Duration 43,328s (12.04h, 오차 +0.3%) → ✅ PASS, Infrastructure ✅ PASS, **Trading ❌ FAIL (0 trades, 0 decisions)**
   - Duration Fix: engine.py에 진행 로그 추가 (30초마다)
-  - Run ID: 20251122_194150_ouhr
-  - 상태: Quick Test PASS, Main Run (12H) 대기 중
+  - Run ID: Quick=20251122_194150_ouhr, Main=20251122_215340_au7g
+  - 상태: ❌ **FAIL (Trading Criteria 미충족, Infrastructure PASS)** → PHASE22-3 파라미터 튜닝 필요
 - **22-3: Parameter Tuning (PLANNED)**
   - Flash Guard, 쿨다운, 슬리피지 파라미터 튜닝
 
