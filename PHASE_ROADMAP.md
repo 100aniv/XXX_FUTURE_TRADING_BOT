@@ -627,7 +627,17 @@ Ensemble ON 모드로 4시간 이상 연속 Paper 테스트 (인프라 안정성
   - **Trades**: 0 (Target: ≥30 for 1H) → ❌ FAIL
   - **Root Cause**: Config params가 전략에 전달되지 않음 (load_strategies/engine 간 인터페이스 문제)
   - **산출물**: `docs/PHASE22/PHASE22-3_PARAM_TUNING_REPORT.md`
-  - **상태**: ❌ FAIL → PHASE22-4 또는 PHASE23
+  - **상태**: ❌ FAIL → PHASE22-4
+- **22-4: ⚠️ Config Integration Fix (2025-11-23) - PARTIAL**
+  - **목표**: 전략별 config params가 제대로 전달되도록 수정
+  - **Code Changes**: ✅ strategies/__init__.py, execution/engine.py 수정 완료
+  - **Unit Tests**: ✅ 6/6 PASS (`test_phase22_4_config_integration.py`)
+  - **Direct Test**: ✅ params 로딩 정상 작동 확인 (Python 직접 실행)
+  - **Runtime Issue**: ❌ run_paper.py 실행 시 params 빈 dict로 전달, RSI threshold 기본값(30/70) 사용
+  - **근본 원인**: 미파악 (2시간+ 디버깅, config 로딩/캐싱/코드 경로 문제 가능성)
+  - **산출물**: `docs/PHASE22/PHASE22-4_CONFIG_INTEGRATION_INCOMPLETE.md`
+  - **Config**: `configs/paper/phase22_4_scalping_param_smoke_30m.yml`
+  - **상태**: ⚠️ PARTIAL (Code PASS, Runtime FAIL) → Option D 추천 (PHASE23 진행 후 재검토)
 
 **진입 조건**: PHASE21 완료
 
