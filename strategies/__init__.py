@@ -51,9 +51,9 @@ def get_all_strategies() -> Dict[str, Any]:
     }
 
 
-def load_strategies(config: dict, all_strategies: dict = None) -> Dict[str, Any]:
+def load_strategies(config: dict, all_strategies: dict = None) -> Dict[str, Dict[str, Any]]:
     """
-    설정 기반 전략 로딩
+    설정 기반 전략 로딩 (PHASE22-4: Config Integration Fix)
     
     Args:
         config: 전체 설정 딕셔너리
@@ -61,6 +61,14 @@ def load_strategies(config: dict, all_strategies: dict = None) -> Dict[str, Any]
     
     Returns:
         로드된 전략 딕셔너리
+        {
+            "strategy_name": {
+                "module": <module>,
+                "params": {<strategy-specific params>},
+                "enabled": True
+            },
+            ...
+        }
     """
     import os
     
@@ -77,29 +85,61 @@ def load_strategies(config: dict, all_strategies: dict = None) -> Dict[str, Any]
     
     # 단일 전략 모드: selector로 1개만 선택
     if not use_ensemble and selector:
+        logger.info(f"🔍 [PHASE22-4 DEBUG] 단일 전략 모드: selector={selector}")
         if selector in all_strategies:
-            strategies[selector] = all_strategies[selector]
+            # PHASE22-4: params 추출
+            strategies_cfg = config.get('strategies', {})
+            logger.info(f"🔍 [PHASE22-4 DEBUG] strategies_cfg keys: {list(strategies_cfg.keys())}")
+            strategy_config = strategies_cfg.get(selector, {})
+            strategy_params = strategy_config.get('params', {})
+            logger.info(f"🔍 [PHASE22-4 DEBUG] {selector}: strategy_config={strategy_config}, params={strategy_params}")
+            
+            strategies[selector] = {
+                "module": all_strategies[selector],
+                "params": strategy_params,
+                "enabled": True
+            }
             logger.info(f"✅ 단일 전략 모드: {selector}")
         else:
             logger.error(f"❌ 전략 '{selector}' 없음, daytrade로 fallback")
-            strategies['daytrade'] = all_strategies.get('daytrade')
+            strategies_cfg = config.get('strategies', {})
+            strategy_params = strategies_cfg.get('daytrade', {}).get('params', {})
+            strategies['daytrade'] = {
+                "module": all_strategies.get('daytrade'),
+                "params": strategy_params,
+                "enabled": True
+            }
     
     # 앙상블 모드: enabled=true인 모든 전략 로드
     else:
         strategies_cfg = config.get('strategies', {})
+        logger.info(f"🔍 [PHASE22-4 DEBUG] strategies_cfg keys: {list(strategies_cfg.keys())}")
         for name, module in all_strategies.items():
-            strategy_params = strategies_cfg.get(name, {})
-            enabled = strategy_params.get('enabled', True)
+            strategy_config = strategies_cfg.get(name, {})
+            enabled = strategy_config.get('enabled', True)
+            params = strategy_config.get('params', {})
+            logger.info(f"🔍 [PHASE22-4 DEBUG] {name}: strategy_config={strategy_config}, params={params}")
             
             if enabled:
-                strategies[name] = module
+                # PHASE22-4: module + params + enabled 포함
+                strategies[name] = {
+                    "module": module,
+                    "params": params,
+                    "enabled": True
+                }
                 logger.info(f"✅ 전략 활성화: {name}")
             else:
                 logger.info(f"⏸ 전략 비활성화: {name}")
     
     if not strategies:
         logger.warning("⚠️ 활성 전략 없음, daytrade를 기본으로 로드")
-        strategies['daytrade'] = all_strategies.get('daytrade')
+        strategies_cfg = config.get('strategies', {})
+        strategy_params = strategies_cfg.get('daytrade', {}).get('params', {})
+        strategies['daytrade'] = {
+            "module": all_strategies.get('daytrade'),
+            "params": strategy_params,
+            "enabled": True
+        }
     
     return strategies
 

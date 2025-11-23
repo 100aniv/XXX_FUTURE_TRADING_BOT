@@ -1,0 +1,107 @@
+# PHASE22-4: Scalping 단일 전략 Config Propagation Smoke Test (30분)
+# Config params가 전략에 제대로 전달되는지 검증
+
+mode: paper
+duration_mode: wall_clock
+duration_hours: 0.5  # 30분
+
+symbols:
+  - BTCUSDT
+
+# 단일 Timeframe (5m)
+timeframe: 5m
+
+# 단일 전략 모드
+strategy:
+  use_ensemble: false
+  selector: scalping
+
+# Scalping 전략만 활성화 + 완화된 params
+strategies:
+  scalping:
+    enabled: true
+    params:
+      # PHASE22-4: 진입 조건 대폭 완화 (트레이드 생성 유도)
+      rsi_oversold: 45  # 30 → 45 (완화)
+      rsi_overbought: 55  # 70 → 55 (완화)
+      rsi_neutral_min: 40
+      rsi_neutral_max: 60
+      
+      # EMA 설정
+      ema_fast: 8
+      ema_slow: 21
+      
+      # 모멘텀/거래량 조건 제거
+      momentum_enabled: false  # 모멘텀 조건 비활성화
+      volume_required: false   # 거래량 조건 비활성화
+      momentum_lookback: 5
+      volume_mult: 1.3
+      
+      # Risk/Reward
+      rr: 1.3
+      max_hold_minutes: 30
+      atr_mult_sl: 0.8
+      
+      # 기타
+      min_bars_for_signal: 60
+
+  # 나머지 전략은 명시적으로 disabled
+  swing_bb:
+    enabled: false
+  daytrade:
+    enabled: false
+  swing:
+    enabled: false
+  trend:
+    enabled: false
+  reversion:
+    enabled: false
+  breakout:
+    enabled: false
+
+# Portfolio 설정
+portfolio:
+  initial_balance: 50000
+  max_position_value: 10000
+  max_open_positions: 5
+
+# Risk 설정
+risk:
+  max_drawdown_pct: 50.0
+  per_trade_risk_pct: 2.0
+  max_leverage: 10
+  extreme_loss_threshold: -5000
+  position_size_mode: kelly_fraction
+
+# FlowGuardian 설정
+flow_guardian:
+  enabled: true
+  flash_pct: 0.03
+  flash_window: 10
+  cooldown_seconds: 60
+  strategy_cooldown_seconds: 30
+
+# Monitoring
+monitoring:
+  log_level: INFO
+  log_to_file: true
+  metrics_interval_seconds: 180
+
+# Feed
+feed:
+  type: binance_websocket
+  symbols:
+    - BTCUSDT
+  timeframes:
+    - 5m
+
+# Broker
+broker:
+  type: paper
+  slippage_pct: 0.05
+  commission_pct: 0.1
+
+# Scorecard
+scorecard:
+  enabled: true
+  output_dir: scorecards/paper_phase22_4

@@ -1038,16 +1038,28 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict):
             strategy_selector = config.get("strategy", {}).get("selector", "scalping")
             selected_strategies = {strategy_selector: strategies.get(strategy_selector)}
 
-            for strategy_id, strategy_module in selected_strategies.items():
-                if strategy_module is None:  # 전략이 없으면 스킵
+            for strategy_id, strategy_info in selected_strategies.items():
+                # PHASE22-4: strategy_info는 {"module": ..., "params": ..., "enabled": ...} dict
+                if not isinstance(strategy_info, dict) or not strategy_info.get("enabled", True):
                     continue
+                
                 try:
-                    # ⭐ 전략별 설정 + 전체 config 병합
+                    # PHASE22-4: module과 params 추출
+                    strategy_module = strategy_info["module"]
+                    strategy_params = strategy_info.get("params", {})
+                    
+                    # PHASE22-4 DEBUG: params 확인
+                    logger.info(f"🔍 [PHASE22-4 DEBUG] {strategy_id} params: {strategy_params}")
+                    
+                    # ⭐ 전략별 설정 + 전체 config 병합 (PHASE22-4: params 우선순위)
                     strategy_cfg = config.get("strategies", {}).get(strategy_id, {})
                     cfg = {
                         **config,  # 전체 config (leverage, tp_sl 등)
-                        **strategy_cfg,  # 전략별 설정 (rr, risk_per_trade, cooldown_candles)
+                        **strategy_params,  # PHASE22-4: 전략별 params (rsi_oversold 등) - 최우선
                     }
+                    
+                    # PHASE22-4 DEBUG: 병합된 cfg의 RSI 값 확인
+                    logger.info(f"🔍 [PHASE22-4 DEBUG] {strategy_id} cfg rsi_oversold={cfg.get('rsi_oversold', 'MISSING')}, rsi_overbought={cfg.get('rsi_overbought', 'MISSING')}")
 
                     # ⭐ 전략별 필터 설정 병합 (MTF, regime, volume)
                     strategy_filters = strategy_cfg.get("filters", {})
