@@ -5,6 +5,18 @@ PHASE16 Paper Trading Runner
 =============================
 REAL Paper Mode: 실제 엔진 + PaperBroker + WebSocket feed 사용
 
+TODO(PHASE23-1): REFACTOR THIS SCRIPT TO THIN WRAPPER
+- Remove strategy selection logic (Line ~243: effective_strategy calculation)
+- Remove load_strategies() call (Line ~361)
+- Remove config modifications except mode/duration
+- Delegate all strategy/config/ensemble logic to engine.run()
+- Goal: Script becomes <100 lines, only creates adapters + calls engine
+
+Context:
+- PHASE22-4 identified config propagation issue in runtime path
+- Root cause: script-level orchestration breaks clean config flow
+- TO-BE: Single-engine-centric architecture (see docs/PHASE23/PHASE23-0_ARCHITECTURE_TOBE_V2.md)
+
 Usage:
     python scripts/run_paper.py --duration-hours 12
     python scripts/run_paper.py --strategy scalping --symbol BTCUSDT --timeframe 3m --duration-hours 0.05
@@ -240,6 +252,7 @@ def main():
     
     # ⭐ PHASE21-1C: Effective values for execution (SSOT: cfg 우선)
     # Scorecard와 adapters가 실제 사용할 값을 미리 추출
+    # TODO(PHASE23-1): REMOVE - Strategy selection should be in engine, not script
     effective_strategy = cfg.get('strategy', {}).get('selector') or args.strategy
     effective_symbol = cfg.get('symbol', args.symbol)
     effective_timeframe = cfg.get('timeframe', args.timeframe)
@@ -355,6 +368,8 @@ def main():
     
     # 6. 전략 로드
     # ⭐ PHASE21-1C: effective_strategy는 이미 Line 243에서 계산됨
+    # TODO(PHASE23-1): REMOVE - load_strategies should be called by engine, not script
+    # This is where PHASE22-4 config propagation breaks (script-level call loses params)
     logger.info(f"🎯 전략 로드: {effective_strategy}")
     from strategies import load_strategies
     

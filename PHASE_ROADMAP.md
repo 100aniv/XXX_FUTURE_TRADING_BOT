@@ -628,16 +628,16 @@ Ensemble ON 모드로 4시간 이상 연속 Paper 테스트 (인프라 안정성
   - **Root Cause**: Config params가 전략에 전달되지 않음 (load_strategies/engine 간 인터페이스 문제)
   - **산출물**: `docs/PHASE22/PHASE22-3_PARAM_TUNING_REPORT.md`
   - **상태**: ❌ FAIL → PHASE22-4
-- **22-4: ⚠️ Config Integration Fix (2025-11-23) - PARTIAL**
+- **22-4: ⚠️ Config Integration Fix (2025-11-23) - PARTIAL, DEFERRED**
   - **목표**: 전략별 config params가 제대로 전달되도록 수정
   - **Code Changes**: ✅ strategies/__init__.py, execution/engine.py 수정 완료
   - **Unit Tests**: ✅ 6/6 PASS (`test_phase22_4_config_integration.py`)
   - **Direct Test**: ✅ params 로딩 정상 작동 확인 (Python 직접 실행)
   - **Runtime Issue**: ❌ run_paper.py 실행 시 params 빈 dict로 전달, RSI threshold 기본값(30/70) 사용
-  - **근본 원인**: 미파악 (2시간+ 디버깅, config 로딩/캐싱/코드 경로 문제 가능성)
+  - **근본 원인 (PHASE23-0 분석)**: Script-level orchestration 문제 (config 로딩/전달 경로가 script에서 중복/분산)
   - **산출물**: `docs/PHASE22/PHASE22-4_CONFIG_INTEGRATION_INCOMPLETE.md`
   - **Config**: `configs/paper/phase22_4_scalping_param_smoke_30m.yml`
-  - **상태**: ⚠️ PARTIAL (Code PASS, Runtime FAIL) → Option D 추천 (PHASE23 진행 후 재검토)
+  - **상태**: ⚠️ PARTIAL (Code-Level Fix OK, Runtime Integration FAIL) → **DEFERRED to PHASE23-1** (architectural refactoring required)
 
 **진입 조건**: PHASE21 완료
 
@@ -649,21 +649,63 @@ Ensemble ON 모드로 4시간 이상 연속 Paper 테스트 (인프라 안정성
 
 **상태**: 🟦 **PLANNED**
 
-**목적**: 5개 전략 패밀리 대표 전략 설계 및 Ensemble v2 Score 구조 확립
+**목적**: 5개 전략 패밀리 기반 단일 엔진 중심 아키텍처 확립 및 Ensemble v2 Score 구조 설계
 
-**Sub-phases**
-- **23-0: TO-BE 아키텍처 V2 문서화**
-  - `ARCHITECTURE_TOBE_V2.md`, `ENSEMBLE_STRATEGY_TOBE.md` 작성
-- **23-1: 전략 인벤토리 정리**
-  - `STRATEGY_INVENTORY_V2.md` - 살릴/냉동/폐기 분류
-- **23-2: 전략 패밀리 대표 전략 설계 V2**
-  - 패밀리별 대표 전략 1개씩 설계, 인터페이스 통일
-- **23-3: 단일 전략 Backtest + Rough 튜닝**
-  - 각 대표 전략 "쓸 가치 검증"
+**배경**:
+- PHASE22-1/2 중단 (기존 7개 전략 중 scalping 제외 correctness/튜닝/백테스트 없음)
+- 전략 품질 없이 엔진 테스트만 수행 → 의미 부족
+- PHASE22-0부터 재시작 (전략 세트 재정의)
 
-**진입 조건**: PHASE22 완료
+**목적**:
+- 5개 전략 패밀리 기반 Ensemble v2 설계/구현
+- 단일 심볼 기준 12~24h PAPER로 생존성 검증
 
-**퇴출 조건**: 5개 대표 전략 설계 완료, 각 전략 백테스트 PASS, 인터페이스 통일 완료
+**Sub-phases**:
+- **22-0: ✅ Strategy Set Reconstruction (COMPLETE - 2025-11-22)**
+  - 폴더 재구조화: core/scalping_v3.py (KEEP), deprecated/ (6개 전략), research/ (신규)
+  - 5개 패밀리 정의: HF Momentum, Volatility Breakout, Mean Reversion, Trend Following, Volume-Based
+  - 산출물: `docs/PHASE22/PHASE22-0_STRATEGY_POOL.md`
+- **22-1: ✅ Strategy Implementation & Validation (COMPLETE - 2025-11-22)**
+  - 4개 신규 전략 구현: volatility_breakout_v2, mean_reversion_v2, trend_follow_v2, volume_based_v2
+  - BaseStrategy 인터페이스 완벽 준수 (metadata + compute_signal)
+  - Unit Test 17/17 PASS (100% 성공률)
+  - 산출물: `docs/PHASE22/PHASE22-1_STRATEGY_DESIGN.md`, `docs/PHASE22/PHASE22-1_COMPLETE_REPORT.md`
+  - 코드: `strategies/research/*.py` (4개 전략 + __init__.py)
+  - 테스트: `tests/test_phase22_1_new_strategies.py`
+- **22-2: ❌ Extended Validation (Quick Smoke PASS, Main Run FAIL - 2025-11-23 10:00)**
+  - Ensemble v2 장기 안정성 검증 (12~24H Paper, 5개 전략 통합)
+  - 전략별 신호 발생 빈도 확인
+  - PnL/성능 기초 분석
+  - 산출물: `docs/PHASE22/PHASE22-2_EXTENDED_VALIDATION_DESIGN.md`, `PHASE22-2_EXECUTION_GUIDE.md`, `PHASE22-2_EXTENDED_VALIDATION_REPORT.md`
+  - Config: `configs/paper/phase22_2_ensemble_quick.yml`, `phase22_2_ensemble_12h.yml`
+  - Script: `scripts/run_phase22_2_ensemble.py`
+  - **Quick Smoke Test (30분)**: Duration 1800.1s (오차 0.006%), ERROR 0건, Trades 0건 → ✅ PASS
+  - **12H Main Run (2025-11-22 21:54:02 ~ 2025-11-23 09:55:30)**: Duration 43,328s (12.04h, 오차 +0.3%) → ✅ PASS, Infrastructure ✅ PASS, **Trading ❌ FAIL (0 trades, 0 decisions)**
+  - Duration Fix: engine.py에 진행 로그 추가 (30초마다)
+  - Run ID: Quick=20251122_194150_ouhr, Main=20251122_215340_au7g
+  - 상태: ❌ **FAIL (Trading Criteria 미충족, Infrastructure PASS)** → PHASE22-3 파라미터 튜닝 필요
+- **22-3: ❌ Parameter Tuning (2025-11-23) - FAIL**
+  - **Test Run (15분)**: 2025-11-23 11:04:38 ~ 11:19:38, Run ID: 20251123_110433_5lxj
+  - **Trades**: 0 (Target: ≥30 for 1H) → ❌ FAIL
+  - **Root Cause**: Config params가 전략에 전달되지 않음 (load_strategies/engine 간 인터페이스 문제)
+  - **산출물**: `docs/PHASE22/PHASE22-3_PARAM_TUNING_REPORT.md`
+  - **상태**: ❌ FAIL → PHASE22-4
+- **22-4: ⚠️ Config Integration Fix (2025-11-23) - PARTIAL, DEFERRED**
+  - **목표**: 전략별 config params가 제대로 전달되도록 수정
+  - **Code Changes**: ✅ strategies/__init__.py, execution/engine.py 수정 완료
+  - **Unit Tests**: ✅ 6/6 PASS (`test_phase22_4_config_integration.py`)
+  - **Direct Test**: ✅ params 로딩 정상 작동 확인 (Python 직접 실행)
+  - **Runtime Issue**: ❌ run_paper.py 실행 시 params 빈 dict로 전달, RSI threshold 기본값(30/70) 사용
+  - **근본 원인 (PHASE23-0 분석)**: Script-level orchestration 문제 (config 로딩/전달 경로가 script에서 중복/분산)
+  - **산출물**: `docs/PHASE22/PHASE22-4_CONFIG_INTEGRATION_INCOMPLETE.md`
+  - **Config**: `configs/paper/phase22_4_scalping_param_smoke_30m.yml`
+  - **상태**: ⚠️ PARTIAL (Code-Level Fix OK, Runtime Integration FAIL) → **DEFERRED to PHASE23-1** (architectural refactoring required)
+
+**진입 조건**: PHASE21 완료
+- [ ] Config propagation 정상 작동 (PHASE23-1)
+- [ ] 5개 전략 인터페이스 통일 (PHASE23-2)
+- [ ] 각 전략 개별 검증 PASS (PHASE23-3)
+- [ ] 앙상블 통합 테스트 PASS (PHASE23-4)
 
 ---
 
