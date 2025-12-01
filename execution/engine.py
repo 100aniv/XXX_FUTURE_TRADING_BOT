@@ -189,7 +189,7 @@ def _create_live_adapters(config: dict, clean_state: bool) -> dict:
 
 def _convert_ensemble_decision_to_signal(ensemble_decision) -> dict:
     """
-    PHASE19-3+: EnsembleDecision을 기존 엔진이 사용하는 signal dict로 변환
+    PHASE19-3+: EnsembleDecision (V1)을 기존 엔진이 사용하는 signal dict로 변환
     """
     if ensemble_decision.tier == 'tier1' and ensemble_decision.chosen_strategy:
         chosen = next((d for d in ensemble_decision.decisions if d.name == ensemble_decision.chosen_strategy), None)
@@ -213,6 +213,48 @@ def _convert_ensemble_decision_to_signal(ensemble_decision) -> dict:
                 signal['strategy_id'] = first_contrib
                 return signal
     return {'side': None}
+
+
+def _convert_ensemble_decision_v2_to_signal(ensemble_decision_v2) -> dict:
+    """
+    PHASE23-3: EnsembleDecisionV2를 기존 엔진이 사용하는 signal dict로 변환
+    
+    Args:
+        ensemble_decision_v2: EnsembleDecisionV2 인스턴스
+    
+    Returns:
+        signal dict: {'side', 'action', 'entry', 'sl', 'tp', 'ensemble_*', ...}
+    """
+    if not ensemble_decision_v2.side:
+        return {'side': None}
+    
+    # Base signal from EnsembleDecisionV2
+    signal = {
+        'side': ensemble_decision_v2.side,
+        'action': ensemble_decision_v2.action,
+        'entry': ensemble_decision_v2.entry,
+        'sl': ensemble_decision_v2.sl,
+        'tp': ensemble_decision_v2.tp,
+        'reason': ensemble_decision_v2.reason,
+        # Ensemble V2 meta
+        'ensemble_tier': ensemble_decision_v2.tier,
+        'ensemble_confidence': ensemble_decision_v2.confidence,
+        'ensemble_reason': '; '.join(ensemble_decision_v2.reason),
+        'ensemble_strategy_votes': ensemble_decision_v2.strategy_votes,
+        'ensemble_agg_S_NET': ensemble_decision_v2.agg_S_NET,
+        'ensemble_agg_S_RISK': ensemble_decision_v2.agg_S_RISK,
+        'ensemble_agg_S_QUALITY': ensemble_decision_v2.agg_S_QUALITY,
+    }
+    
+    # Add strategy_id (best contributor)
+    if ensemble_decision_v2.strategy_votes:
+        best_strategy = max(
+            ensemble_decision_v2.strategy_votes.items(),
+            key=lambda x: abs(x[1])
+        )[0]
+        signal['strategy_id'] = best_strategy
+    
+    return signal
 
 
 def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict):
@@ -365,11 +407,14 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict):
     # ⭐⭐⭐ SignalGenerator 초기화: config.merge_strategy_config 사용 ⭐⭐⭐
     from common.config_loader import merge_strategy_config
 
-    # PHASE19-3+: Ensemble 옵션 확인 및 초기화
+    # PHASE19-3+ / PHASE23-3: Ensemble 옵션 확인 및 초기화
     use_ensemble = config.get("ensemble", {}).get("enabled", False) or config.get("strategy", {}).get("use_ensemble", False)
+    ensemble_mode = config.get("ensemble", {}).get("mode", "factor")  # PHASE23-3: 'score_v2' | 'factor' | 'hybrid'
     ensemble_registry = None
     ensemble_score_engine = None
     ensemble_aggregator = None
+    ensemble_score_engine_v2 = None  # PHASE23-3
+    ensemble_aggregator_v2 = None    # PHASE23-3
 
     if not use_ensemble:
         # 단일 전략: config.merge_strategy_config로 병합 (lookback 포함)
@@ -381,32 +426,50 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict):
         )
         min_bars_required = signal_gen_config.get("min_bars_for_signal", 50)
     else:
-        # 앙상블 모드: Ensemble 컴포넌트 초기화 (PHASE19-3+)
+        # 앙상블 모드: Ensemble 컴포넌트 초기화 (PHASE19-3+ / PHASE23-3)
         signal_gen_config = config
         ensemble_strategies = config.get("ensemble", {}).get("strategies", ["scalping"])
+        ensemble_cfg = config.get("ensemble", {})
         
         try:
-            from common.registry import StrategyRegistry
-            from common.ensemble import ScoreEngine, EnsembleAggregator
-            
-            ensemble_registry = StrategyRegistry()
-            ensemble_registry.scan()
-            
-            ensemble_score_engine = ScoreEngine()
-            
-            # Config에서 Ensemble 파라미터 읽기
-            ensemble_cfg = config.get("ensemble", {})
-            ensemble_aggregator = EnsembleAggregator(
-                registry=ensemble_registry,
-                score_engine=ensemble_score_engine,
-                min_tier1_score=ensemble_cfg.get("min_tier1_score", 0.8),
-                min_tier2_score=ensemble_cfg.get("min_tier2_score", 0.5),
-                tier1_conflict_diff=ensemble_cfg.get("tier1_conflict_diff", 0.15),
-                min_tier2_votes=ensemble_cfg.get("min_tier2_votes", 2),
-            )
-            
-            logger.info(f"✅ [ENSEMBLE] Aggregator 초기화 완료 | strategies={ensemble_strategies}")
-            logger.info(f"✅ [ENSEMBLE] Registry: {len(ensemble_registry._registry)}개 전략 스캔 완료")
+            # PHASE23-3: Score V2 모드 지원
+            if ensemble_mode == 'score_v2':
+                logger.info(f"🎯 [PHASE23-3] Ensemble V2 초기화 (mode={ensemble_mode})")
+                from common.ensemble import ScoreEngineV2, EnsembleAggregatorV2
+                
+                ensemble_score_engine_v2 = ScoreEngineV2()
+                ensemble_aggregator_v2 = EnsembleAggregatorV2(
+                    score_engine=ensemble_score_engine_v2,
+                    config=config
+                )
+                
+                logger.info(
+                    f"✅ [ENSEMBLE V2] Aggregator V2 초기화 완료 | "
+                    f"strategies={ensemble_strategies} | "
+                    f"high_conf={ensemble_cfg.get('high_conf_threshold', 0.7)} | "
+                    f"consensus={ensemble_cfg.get('consensus_threshold', 0.4)}"
+                )
+            else:
+                # PHASE19-3: Factor-based 기존 모드
+                logger.info(f"🎯 [PHASE19] Ensemble V1 초기화 (mode={ensemble_mode})")
+                from common.registry import StrategyRegistry
+                from common.ensemble import ScoreEngine, EnsembleAggregator
+                
+                ensemble_registry = StrategyRegistry()
+                ensemble_registry.scan()
+                
+                ensemble_score_engine = ScoreEngine()
+                ensemble_aggregator = EnsembleAggregator(
+                    registry=ensemble_registry,
+                    score_engine=ensemble_score_engine,
+                    min_tier1_score=ensemble_cfg.get("min_tier1_score", 0.8),
+                    min_tier2_score=ensemble_cfg.get("min_tier2_score", 0.5),
+                    tier1_conflict_diff=ensemble_cfg.get("tier1_conflict_diff", 0.15),
+                    min_tier2_votes=ensemble_cfg.get("min_tier2_votes", 2),
+                )
+                
+                logger.info(f"✅ [ENSEMBLE] Aggregator 초기화 완료 | strategies={ensemble_strategies}")
+                logger.info(f"✅ [ENSEMBLE] Registry: {len(ensemble_registry._registry)}개 전략 스캔 완료")
         except Exception as e:
             logger.error(f"❌ [ENSEMBLE] 초기화 실패: {e}")
             raise RuntimeError(f"Ensemble 초기화 실패: {e}")
@@ -1128,8 +1191,8 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict):
         # ⭐⭐⭐ PHASE19-3+: Ensemble vs 단일 전략 모드 분기 ⭐⭐⭐
         signals = []
 
-        # ========== ENSEMBLE 모드 (PHASE19-3+) ==========
-        if use_ensemble and ensemble_aggregator is not None:
+        # ========== ENSEMBLE 모드 (PHASE19-3+ / PHASE23-3) ==========
+        if use_ensemble and (ensemble_aggregator is not None or ensemble_aggregator_v2 is not None):
             try:
                 ensemble_strategies = config.get("ensemble", {}).get("strategies", ["scalping"])
                 
@@ -1151,33 +1214,121 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict):
                         vol_cfg.get("ma_length", 30),
                     )
                 
-                # Aggregator 호출 (여러 전략의 신호 + 점수 통합)
-                logger.debug(f"🔔 [ENSEMBLE] 전략 평가 시작: {ensemble_strategies}")
-                ensemble_decision = ensemble_aggregator.decide(
-                    strategy_names=ensemble_strategies,
-                    df=df_with_indicators,
-                    regime=None  # PHASE19-4에서 Regime Classifier 추가 예정
-                )
-                
-                # EnsembleDecision → signal dict 변환
-                if ensemble_decision.side:
-                    signal = _convert_ensemble_decision_to_signal(ensemble_decision)
-                    signal["ts"] = ts
-                    signal["symbol"] = candle_symbol
-                    signal["timeframe"] = timeframe
+                # PHASE23-3: V2 모드 처리
+                if ensemble_mode == 'score_v2' and ensemble_aggregator_v2 is not None:
+                    logger.debug(f"🔔 [ENSEMBLE V2] 전략 평가 시작: {ensemble_strategies}")
                     
-                    # 신호 검증 (MTF, 쿨다운, 거래량 필터)
-                    if signal_gen.validate_signal(candle_symbol, signal, df_with_indicators):
-                        signals.append(signal)
-                        logger.info(
-                            f"✅ [ENSEMBLE] {ensemble_decision.tier.upper()} | "
-                            f"{ensemble_decision.side} (conf={ensemble_decision.confidence:.2f}) | "
-                            f"{ensemble_decision.reason}"
-                        )
+                    # 1) 각 전략에서 signal 생성 (compute_signal 호출)
+                    from common.ensemble import StrategyDecisionV2
+                    decisions_v2 = []
+                    
+                    for strategy_name in ensemble_strategies:
+                        strategy_info = strategies.get(strategy_name)
+                        if not strategy_info or not strategy_info.get('enabled', True):
+                            continue
+                        
+                        try:
+                            # Get BaseStrategy instance
+                            strategy_instance = strategy_info.get('instance')
+                            if not strategy_instance:
+                                logger.warning(f"⚠️  [ENSEMBLE V2] {strategy_name}: instance 없음")
+                                continue
+                            
+                            # Compute signal
+                            raw_signal = strategy_instance.compute_signal(df_with_indicators)
+                            
+                            if not raw_signal or not raw_signal.get('side'):
+                                logger.debug(f"⏸ [ENSEMBLE V2] {strategy_name}: 신호 없음")
+                                continue
+                            
+                            # Compute Score V2
+                            score_v2 = ensemble_score_engine_v2.compute_strategy_score_v2(
+                                signal=raw_signal,
+                                metadata=strategy_instance.metadata,
+                                mode='score_v2'
+                            )
+                            
+                            # Get strategy weight
+                            strategy_weights = config.get('ensemble', {}).get('strategy_weights', {})
+                            weight = strategy_weights.get(strategy_name, 1.0)
+                            
+                            # Create StrategyDecisionV2
+                            decision_v2 = StrategyDecisionV2(
+                                name=strategy_name,
+                                score_v2=score_v2,
+                                raw_signal=raw_signal,
+                                metadata=strategy_instance.metadata,
+                                weight=weight
+                            )
+                            decisions_v2.append(decision_v2)
+                            
+                            logger.debug(
+                                f"📊 [ENSEMBLE V2] {strategy_name}: "
+                                f"S_NET={score_v2.S_NET:.3f}, S_DIR={score_v2.S_DIR}"
+                            )
+                        
+                        except Exception as e:
+                            logger.warning(f"⚠️  [ENSEMBLE V2] {strategy_name} 평가 실패: {e}")
+                            continue
+                    
+                    # 2) Aggregate decisions
+                    ensemble_decision_v2 = ensemble_aggregator_v2.aggregate_v2(
+                        decisions_v2=decisions_v2,
+                        config=config,
+                        regime=None
+                    )
+                    
+                    # 3) Convert to signal dict
+                    if ensemble_decision_v2.side:
+                        signal = _convert_ensemble_decision_v2_to_signal(ensemble_decision_v2)
+                        signal["ts"] = ts
+                        signal["symbol"] = candle_symbol
+                        signal["timeframe"] = timeframe
+                        
+                        # 신호 검증 (MTF, 쿨다운, 거래량 필터)
+                        if signal_gen.validate_signal(candle_symbol, signal, df_with_indicators):
+                            signals.append(signal)
+                            logger.info(
+                                f"✅ [ENSEMBLE V2] {ensemble_decision_v2.tier.upper()} | "
+                                f"{ensemble_decision_v2.side} (conf={ensemble_decision_v2.confidence:.2f}) | "
+                                f"S_NET={ensemble_decision_v2.agg_S_NET:.3f} | "
+                                f"{ensemble_decision_v2.reason[0] if ensemble_decision_v2.reason else 'no_reason'}"
+                            )
+                        else:
+                            logger.debug(f"⏸ [ENSEMBLE V2] 신호 검증 실패")
                     else:
-                        logger.debug(f"⏸ [ENSEMBLE] 신호 검증 실패")
-                else:
-                    logger.debug(f"⏸ [ENSEMBLE] NO TRADE: {ensemble_decision.reason}")
+                        logger.debug(
+                            f"⏸ [ENSEMBLE V2] NO TRADE: {ensemble_decision_v2.reason[0] if ensemble_decision_v2.reason else 'unknown'}"
+                        )
+                
+                # PHASE19-3: V1 모드 처리 (기존 로직)
+                elif ensemble_aggregator is not None:
+                    logger.debug(f"🔔 [ENSEMBLE] 전략 평가 시작: {ensemble_strategies}")
+                    ensemble_decision = ensemble_aggregator.decide(
+                        strategy_names=ensemble_strategies,
+                        df=df_with_indicators,
+                        regime=None
+                    )
+                    
+                    # EnsembleDecision → signal dict 변환
+                    if ensemble_decision.side:
+                        signal = _convert_ensemble_decision_to_signal(ensemble_decision)
+                        signal["ts"] = ts
+                        signal["symbol"] = candle_symbol
+                        signal["timeframe"] = timeframe
+                        
+                        # 신호 검증 (MTF, 쿨다운, 거래량 필터)
+                        if signal_gen.validate_signal(candle_symbol, signal, df_with_indicators):
+                            signals.append(signal)
+                            logger.info(
+                                f"✅ [ENSEMBLE] {ensemble_decision.tier.upper()} | "
+                                f"{ensemble_decision.side} (conf={ensemble_decision.confidence:.2f}) | "
+                                f"{ensemble_decision.reason}"
+                            )
+                        else:
+                            logger.debug(f"⏸ [ENSEMBLE] 신호 검증 실패")
+                    else:
+                        logger.debug(f"⏸ [ENSEMBLE] NO TRADE: {ensemble_decision.reason}")
                     
             except Exception as e:
                 logger.error(f"❌ [ENSEMBLE] Aggregator 오류: {e}", exc_info=True)
