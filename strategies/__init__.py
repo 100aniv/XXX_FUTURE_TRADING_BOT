@@ -25,6 +25,13 @@ from . import reversion
 from . import breakout
 from . import ensemble
 
+# PHASE23-2: V2 전략 import
+from .core import scalping_v3
+from .research import volatility_breakout_v2
+from .research import mean_reversion_v2
+from .research import trend_follow_v2
+from .research import volume_based_v2
+
 logger = setup_logger('strategies', log_type='application')
 
 
@@ -41,13 +48,20 @@ def get_all_strategies() -> Dict[str, Any]:
         dict_keys(['scalping', 'swing_bb', 'daytrade', 'swing', 'trend', 'reversion', 'breakout'])
     """
     return {
+        # Legacy strategies
         'scalping': scalping,
         'swing_bb': swing_bb,
         'daytrade': daytrade,
         'swing': swing,
         'trend': trend,
         'reversion': reversion,
-        'breakout': breakout
+        'breakout': breakout,
+        # V2 strategies (PHASE23-2)
+        'scalping_v3': scalping_v3,
+        'volatility_breakout_v2': volatility_breakout_v2,
+        'mean_reversion_v2': mean_reversion_v2,
+        'trend_follow_v2': trend_follow_v2,
+        'volume_based_v2': volume_based_v2
     }
 
 

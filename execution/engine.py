@@ -1216,7 +1216,7 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict):
                 
                 # PHASE23-3: V2 모드 처리
                 if ensemble_mode == 'score_v2' and ensemble_aggregator_v2 is not None:
-                    logger.debug(f"🔔 [ENSEMBLE V2] 전략 평가 시작: {ensemble_strategies}")
+                    logger.info(f"🔔 [ENSEMBLE V2] 전략 평가 시작: {ensemble_strategies}")
                     
                     # 1) 각 전략에서 signal 생성 (compute_signal 호출)
                     from common.ensemble import StrategyDecisionV2
@@ -1238,7 +1238,7 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict):
                             raw_signal = strategy_instance.compute_signal(df_with_indicators)
                             
                             if not raw_signal or not raw_signal.get('side'):
-                                logger.debug(f"⏸ [ENSEMBLE V2] {strategy_name}: 신호 없음")
+                                logger.info(f"⏸ [ENSEMBLE V2] {strategy_name}: 신호 없음 (side={raw_signal.get('side') if raw_signal else None})")
                                 continue
                             
                             # Compute Score V2
@@ -1262,9 +1262,10 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict):
                             )
                             decisions_v2.append(decision_v2)
                             
-                            logger.debug(
+                            logger.info(
                                 f"📊 [ENSEMBLE V2] {strategy_name}: "
-                                f"S_NET={score_v2.S_NET:.3f}, S_DIR={score_v2.S_DIR}"
+                                f"side={raw_signal.get('side')}, S_NET={score_v2.S_NET:.3f}, S_DIR={score_v2.S_DIR}, "
+                                f"S_RISK={score_v2.S_RISK:.3f}, S_QUALITY={score_v2.S_QUALITY:.3f}"
                             )
                         
                         except Exception as e:
@@ -1274,8 +1275,13 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict):
                     # 2) Aggregate decisions
                     ensemble_decision_v2 = ensemble_aggregator_v2.aggregate_v2(
                         decisions_v2=decisions_v2,
-                        config=config,
                         regime=None
+                    )
+                    
+                    logger.info(
+                        f"🎯 [ENSEMBLE V2] Aggregate 결과: "
+                        f"tier={ensemble_decision_v2.tier}, side={ensemble_decision_v2.side}, "
+                        f"reason={ensemble_decision_v2.reason}, strategies={len(decisions_v2)}"
                     )
                     
                     # 3) Convert to signal dict
