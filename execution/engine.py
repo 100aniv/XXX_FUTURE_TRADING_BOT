@@ -38,6 +38,155 @@ from execution.position_tracker import PositionTracker
 logger = setup_logger(__name__, log_type="application")
 
 
+def run_v2(mode: str, config: dict, clean_state: bool = False):
+    """
+    PHASE23-1: Single-Engine Entry Point
+    =====================================
+    엔진 중심 아키텍처의 새로운 진입점
+    
+    Args:
+        mode: 실행 모드 ('paper', 'backtest', 'live')
+        config: 전체 설정 딕셔너리 (SSOT)
+        clean_state: Redis/DB 상태 초기화 여부 (PAPER/LIVE only)
+    
+    Design:
+        - Script는 config만 전달
+        - Engine이 load_strategies() 호출
+        - Engine이 use_ensemble 판단
+        - Engine이 adapter 생성
+        - Config params가 100% 전파됨 보장
+    """
+    logger.info("=" * 80)
+    logger.info(f"🚀 [PHASE23-1] Engine V2 시작 - Mode: {mode.upper()}")
+    logger.info("=" * 80)
+    
+    # 1. Config Validation
+    required_keys = ['timeframe', 'lookback', 'equity', 'risk', 'strategy']
+    missing = [k for k in required_keys if k not in config]
+    if missing:
+        raise ValueError(f"❌ Config 필수 키 누락: {missing}")
+    
+    symbol = config.get('symbol', 'BTCUSDT')
+    timeframe = config['timeframe']
+    logger.info(f"📊 Symbol: {symbol}, Timeframe: {timeframe}")
+    
+    # 2. Strategy 로딩 (Engine이 직접 호출 - PHASE23-1 핵심)
+    logger.info("🎯 [PHASE23-1] Engine에서 load_strategies() 직접 호출")
+    from strategies import load_strategies
+    
+    strategies = load_strategies(config=config)
+    if not strategies:
+        raise ValueError("❌ 로딩된 전략 없음")
+    
+    logger.info(f"✅ 전략 로딩 완료: {list(strategies.keys())}")
+    
+    # PHASE23-1 DEBUG: Params 전파 확인
+    for strategy_name, strategy_info in strategies.items():
+        params = strategy_info.get('params', {})
+        logger.info(f"🔍 [PHASE23-1 DEBUG] {strategy_name} params: {params}")
+    
+    # 3. Ensemble 모듈 로딩
+    ensemble_module = None
+    use_ensemble = config.get('strategy', {}).get('use_ensemble', False)
+    
+    if use_ensemble:
+        logger.info("🎯 [PHASE23-1] Ensemble 모드 활성화")
+        try:
+            from strategies import ensemble
+            ensemble_module = ensemble
+            logger.info("✅ Ensemble 모듈 로딩 완료")
+        except Exception as e:
+            logger.warning(f"⚠️  Ensemble 모듈 로딩 실패, 단일 전략 모드로 전환: {e}")
+            ensemble_module = None
+    else:
+        logger.info("ℹ️  단일 전략 모드")
+    
+    # 4. Mode-based Adapter 생성
+    logger.info(f"🔧 [PHASE23-1] {mode.upper()} 모드 Adapters 생성")
+    
+    if mode == 'paper':
+        adapters = _create_paper_adapters(config, clean_state)
+    elif mode == 'backtest':
+        adapters = _create_backtest_adapters(config)
+    elif mode == 'live':
+        adapters = _create_live_adapters(config, clean_state)
+    else:
+        raise ValueError(f"❌ 지원하지 않는 모드: {mode}")
+    
+    logger.info(f"✅ Adapters 생성 완료")
+    
+    # 5. Duration 설정
+    duration_hours = config.get('duration_hours')
+    if duration_hours:
+        config.setdefault('execution', {})['max_runtime_hours'] = duration_hours
+        logger.info(f"⏱️  Duration: {duration_hours}h")
+    
+    # 6. 기존 run() 호출 (단일 엔진 원칙)
+    logger.info("🚀 [PHASE23-1] Core engine.run() 호출")
+    
+    try:
+        run(
+            feed=adapters['feed'],
+            broker=adapters['broker'],
+            clock=adapters['clock'],
+            strategies=strategies,
+            ensemble_module=ensemble_module,
+            config=config
+        )
+        logger.info("✅ [PHASE23-1] Engine V2 정상 종료")
+        
+    finally:
+        # 7. Cleanup
+        if hasattr(adapters['feed'], 'stop'):
+            adapters['feed'].stop()
+            logger.info("✅ Feed 정리 완료")
+
+
+def _create_paper_adapters(config: dict, clean_state: bool) -> dict:
+    """PAPER 모드 adapters 생성"""
+    from execution.adapters import create_adapters
+    
+    symbol = config.get('symbol', 'BTCUSDT')
+    
+    # execution.adapters.create_adapters 호출
+    feed, broker, clock = create_adapters(
+        mode='paper',
+        symbols=[symbol],
+        config=config,
+        logger=logger
+    )
+    
+    # Clean state (if requested)
+    if clean_state and hasattr(broker, 'open_positions'):
+        broker.open_positions.clear()
+        logger.info("✅ Portfolio 상태 초기화")
+    
+    return {'feed': feed, 'broker': broker, 'clock': clock}
+
+
+def _create_backtest_adapters(config: dict) -> dict:
+    """BACKTEST 모드 adapters 생성"""
+    from execution.adapters import create_adapters
+    
+    symbol = config.get('symbol', 'BTCUSDT')
+    
+    # execution.adapters.create_adapters 호출
+    feed, broker, clock = create_adapters(
+        mode='backtest',
+        symbols=[symbol],
+        config=config,
+        logger=logger
+    )
+    
+    return {'feed': feed, 'broker': broker, 'clock': clock}
+
+
+def _create_live_adapters(config: dict, clean_state: bool) -> dict:
+    """LIVE 모드 adapters 생성"""
+    # TODO: LIVE 구현은 PHASE32에서
+    raise NotImplementedError("LIVE 모드는 PHASE32에서 구현 예정")
+
+
 def _convert_ensemble_decision_to_signal(ensemble_decision) -> dict:
     """
     PHASE19-3+: EnsembleDecision을 기존 엔진이 사용하는 signal dict로 변환

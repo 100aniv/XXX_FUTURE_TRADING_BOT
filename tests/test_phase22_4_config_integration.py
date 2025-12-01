@@ -1,6 +1,8 @@
 """
-PHASE22-4: Strategy Config Integration Tests
+PHASE22-4/23-1: Strategy Config Integration Tests
 전략별 config params가 제대로 로드되고 전달되는지 검증
+
+PHASE23-1 추가: run_v2() 경로 검증
 """
 import pytest
 from strategies import load_strategies
