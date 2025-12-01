@@ -53,7 +53,7 @@ def get_all_strategies() -> Dict[str, Any]:
 
 def load_strategies(config: dict, all_strategies: dict = None) -> Dict[str, Dict[str, Any]]:
     """
-    설정 기반 전략 로딩 (PHASE22-4: Config Integration Fix)
+    설정 기반 전략 로딩 (PHASE23-2: BaseStrategy 인스턴스 반환)
     
     Args:
         config: 전체 설정 딕셔너리
@@ -63,7 +63,7 @@ def load_strategies(config: dict, all_strategies: dict = None) -> Dict[str, Dict
         로드된 전략 딕셔너리
         {
             "strategy_name": {
-                "module": <module>,
+                "instance": <BaseStrategy 인스턴스>,
                 "params": {<strategy-specific params>},
                 "enabled": True
             },
@@ -71,10 +71,30 @@ def load_strategies(config: dict, all_strategies: dict = None) -> Dict[str, Dict
         }
     """
     import os
+    from common.registry.base_strategy import BaseStrategy
     
     # 전략 딕셔너리 자동 로드
     if all_strategies is None:
         all_strategies = get_all_strategies()
+    
+    def _get_strategy_class(module, strategy_name: str):
+        """
+        모듈에서 BaseStrategy 클래스 찾기
+        
+        Args:
+            module: 전략 모듈
+            strategy_name: 전략 이름
+        
+        Returns:
+            BaseStrategy 클래스 또는 None
+        """
+        # 모듈 내의 모든 클래스 탐색
+        for attr_name in dir(module):
+            attr = getattr(module, attr_name)
+            # BaseStrategy 상속 클래스 찾기
+            if isinstance(attr, type) and issubclass(attr, BaseStrategy) and attr is not BaseStrategy:
+                return attr
+        return None
     
     strategies = {}
     
@@ -85,17 +105,31 @@ def load_strategies(config: dict, all_strategies: dict = None) -> Dict[str, Dict
     
     # 단일 전략 모드: selector로 1개만 선택
     if not use_ensemble and selector:
-        logger.info(f"🔍 [PHASE22-4 DEBUG] 단일 전략 모드: selector={selector}")
+        logger.info(f"🔍 [PHASE23-2] 단일 전략 모드: selector={selector}")
         if selector in all_strategies:
-            # PHASE22-4: params 추출
+            # PHASE23-2: BaseStrategy 인스턴스 생성
             strategies_cfg = config.get('strategies', {})
-            logger.info(f"🔍 [PHASE22-4 DEBUG] strategies_cfg keys: {list(strategies_cfg.keys())}")
+            logger.info(f"🔍 [PHASE23-2 DEBUG] strategies_cfg keys: {list(strategies_cfg.keys())}")
             strategy_config = strategies_cfg.get(selector, {})
             strategy_params = strategy_config.get('params', {})
-            logger.info(f"🔍 [PHASE22-4 DEBUG] {selector}: strategy_config={strategy_config}, params={strategy_params}")
+            logger.info(f"🔍 [PHASE23-2 DEBUG] {selector}: strategy_config={strategy_config}, params={strategy_params}")
+            
+            # 모듈에서 BaseStrategy 클래스 찾기
+            strategy_module = all_strategies[selector]
+            strategy_class = _get_strategy_class(strategy_module, selector)
+            
+            if strategy_class:
+                # Config 병합: 글로벌 config + 전략별 params
+                merged_config = {**config, **strategy_params}
+                instance = strategy_class(config=merged_config)
+                logger.info(f"✅ [PHASE23-2] {selector} 인스턴스 생성 성공: {type(instance).__name__}")
+            else:
+                # 폴백: 모듈 그대로 사용 (legacy)
+                logger.warning(f"⚠️  [PHASE23-2] {selector}에서 BaseStrategy 클래스 찾을 수 없음, 모듈 그대로 사용")
+                instance = strategy_module
             
             strategies[selector] = {
-                "module": all_strategies[selector],
+                "instance": instance,
                 "params": strategy_params,
                 "enabled": True
             }
@@ -104,8 +138,17 @@ def load_strategies(config: dict, all_strategies: dict = None) -> Dict[str, Dict
             logger.error(f"❌ 전략 '{selector}' 없음, daytrade로 fallback")
             strategies_cfg = config.get('strategies', {})
             strategy_params = strategies_cfg.get('daytrade', {}).get('params', {})
+            
+            strategy_module = all_strategies.get('daytrade')
+            strategy_class = _get_strategy_class(strategy_module, 'daytrade')
+            if strategy_class:
+                merged_config = {**config, **strategy_params}
+                instance = strategy_class(config=merged_config)
+            else:
+                instance = strategy_module
+            
             strategies['daytrade'] = {
-                "module": all_strategies.get('daytrade'),
+                "instance": instance,
                 "params": strategy_params,
                 "enabled": True
             }
@@ -113,17 +156,29 @@ def load_strategies(config: dict, all_strategies: dict = None) -> Dict[str, Dict
     # 앙상블 모드: enabled=true인 모든 전략 로드
     else:
         strategies_cfg = config.get('strategies', {})
-        logger.info(f"🔍 [PHASE22-4 DEBUG] strategies_cfg keys: {list(strategies_cfg.keys())}")
+        logger.info(f"🔍 [PHASE23-2 DEBUG] strategies_cfg keys: {list(strategies_cfg.keys())}")
         for name, module in all_strategies.items():
             strategy_config = strategies_cfg.get(name, {})
             enabled = strategy_config.get('enabled', True)
             params = strategy_config.get('params', {})
-            logger.info(f"🔍 [PHASE22-4 DEBUG] {name}: strategy_config={strategy_config}, params={params}")
+            logger.info(f"🔍 [PHASE23-2 DEBUG] {name}: strategy_config={strategy_config}, params={params}")
             
             if enabled:
-                # PHASE22-4: module + params + enabled 포함
+                # PHASE23-2: BaseStrategy 인스턴스 생성
+                strategy_class = _get_strategy_class(module, name)
+                
+                if strategy_class:
+                    # Config 병합: 글로벌 config + 전략별 params
+                    merged_config = {**config, **params}
+                    instance = strategy_class(config=merged_config)
+                    logger.info(f"✅ [PHASE23-2] {name} 인스턴스 생성: {type(instance).__name__}")
+                else:
+                    # 폴백: 모듈 그대로 사용 (legacy)
+                    logger.warning(f"⚠️  [PHASE23-2] {name}에서 BaseStrategy 클래스 찾을 수 없음, 모듈 그대로 사용")
+                    instance = module
+                
                 strategies[name] = {
-                    "module": module,
+                    "instance": instance,
                     "params": params,
                     "enabled": True
                 }
@@ -135,8 +190,18 @@ def load_strategies(config: dict, all_strategies: dict = None) -> Dict[str, Dict
         logger.warning("⚠️ 활성 전략 없음, daytrade를 기본으로 로드")
         strategies_cfg = config.get('strategies', {})
         strategy_params = strategies_cfg.get('daytrade', {}).get('params', {})
+        
+        # PHASE23-2: BaseStrategy 인스턴스 생성
+        strategy_module = all_strategies.get('daytrade')
+        strategy_class = _get_strategy_class(strategy_module, 'daytrade')
+        if strategy_class:
+            merged_config = {**config, **strategy_params}
+            instance = strategy_class(config=merged_config)
+        else:
+            instance = strategy_module
+        
         strategies['daytrade'] = {
-            "module": all_strategies.get('daytrade'),
+            "instance": instance,
             "params": strategy_params,
             "enabled": True
         }

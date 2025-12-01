@@ -201,6 +201,46 @@ class MeanReversionStrategy(BaseStrategy):
             }
         )
     
-    def compute_signal(self, df: pd.DataFrame) -> Dict[str, Any]:
-        """신호 계산"""
-        return signal_logic(df, self.config)
+    def compute_signal(self, df: pd.DataFrame, config: dict = None) -> Dict[str, Any]:
+        """
+        신호 계산 (PHASE23-2: Ensemble Score V2 필드 추가)
+        
+        Args:
+            df: OHLCV + 지표 DataFrame
+            config: Override config (기본은 self.config)
+        
+        Returns:
+            dict: 신호 정보 + Ensemble Score V2 필드
+        """
+        cfg = config if config is not None else self.config
+        signal = signal_logic(df, cfg)
+        
+        # PHASE23-2: Ensemble Score V2 필드 추가
+        side = signal.get('side')
+        rsi = signal.get('rsi', 50)
+        
+        if side == 'LONG':
+            # RSI가 낮을수록 강한 LONG 신호
+            signal['S_LONG'] = min(1.0, 0.5 + (50 - rsi) / 50)
+            signal['S_SHORT'] = 0.0
+        elif side == 'SHORT':
+            # RSI가 높을수록 강한 SHORT 신호
+            signal['S_LONG'] = 0.0
+            signal['S_SHORT'] = min(1.0, 0.5 + (rsi - 50) / 50)
+        else:
+            signal['S_LONG'] = 0.0
+            signal['S_SHORT'] = 0.0
+        
+        # S_RISK: ATR% + mean reversion 위험 (반대 방향 추세 리스크)
+        atr_pct = signal.get('atr_pct', 0.01)
+        signal['S_RISK'] = min(1.0, atr_pct * 60)  # 평균 회귀는 위험 높음
+        
+        # S_QUALITY: RSI 극단값일수록 품질 높음
+        if side == 'LONG':
+            signal['S_QUALITY'] = min(1.0, (50 - rsi) / 25)  # RSI 25일 때 1.0
+        elif side == 'SHORT':
+            signal['S_QUALITY'] = min(1.0, (rsi - 50) / 25)  # RSI 75일 때 1.0
+        else:
+            signal['S_QUALITY'] = 0.0
+        
+        return signal

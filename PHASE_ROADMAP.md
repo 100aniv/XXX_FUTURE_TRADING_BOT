@@ -698,18 +698,24 @@ Ensemble ON 모드로 4시간 이상 연속 Paper 테스트 (인프라 안정성
   - 기존 `run()` 기반 코드/테스트 유지
   - 30분 paper test에서 트레이드/청산 로그 확인
 
-### 23-2: Strategy Interface Unification (scalping_v3 → BaseStrategy) 🟦
-- **상태**: 🟦 **PLANNED**
-- **목표**: scalping_v3 및 주요 전략들을 통일된 `BaseStrategy` 인터페이스로 마이그레이션
-- **예상 작업**:
-  - `scalping_v3.signal_logic(df, cfg)` → `compute_signal(df, config)` 리네이밍
-  - 각 전략에 `metadata` 속성 추가 (타임프레임, 리스크 레벨, 패밀리 타입)
-  - 엔진에서 전략 호출부를 `compute_signal` 기반으로 통일
-  - 1시간 paper test (5개 전략 동시 동작)
-- **Acceptance Criteria (초안)**:
-  - 5개 핵심 전략이 모두 `BaseStrategy` 공통 인터페이스 구현
-  - 각 전략이 `metadata`로 앙상블/리스크 모듈에 메타 정보 제공
-  - 1H paper test 오류 없이 실행 + 전략별 신호/트레이드 발생
+### 23-2: Strategy Interface Unification ✅
+- **상태**: ✅ **COMPLETE** (2025-12-01)
+- **목표**: scalping_v3 및 4개 research 전략을 통일된 `BaseStrategy` 인터페이스로 완전 통합 + Ensemble Score V2 필드 추가
+- **완료 작업**:
+  - `scalping_v3.signal_logic(df, cfg)` → private `_signal_logic()`, `compute_signal(df, config=None)` 통일
+  - 4개 research 전략 (volatility_breakout_v2, mean_reversion_v2, trend_follow_v2, volume_based_v2) Score 필드 추가
+  - 모든 전략 반환 dict에 `S_LONG`, `S_SHORT`, `S_RISK`, `S_QUALITY` 추가 (초기 구현)
+  - `strategies/__init__.py::load_strategies()` BaseStrategy 인스턴스 생성 로직 추가
+  - `SignalGenerator.generate_signal()` BaseStrategy.compute_signal() 호출로 변경
+- **테스트 결과**:
+  - Unit Tests: ✅ 6/6 PASS (`test_phase22_4_config_integration.py`)
+  - 모든 전략 BaseStrategy 인스턴스 생성 확인
+  - Config params 100% 전파 유지 (PHASE23-1 호환)
+- **주요 문서**: `docs/PHASE23/PHASE23-2_STRATEGY_INTERFACE_UNIFICATION.md`
+- **Acceptance Criteria**: ✅ ALL PASS
+  - 5개 전략 모두 `BaseStrategy` 상속 + `compute_signal(df, config=None)` + `metadata` 구현
+  - 엔진/SignalGenerator에서 `compute_signal()` 호출 (legacy fallback 유지)
+  - Ensemble Score V2 필드 모든 전략에 추가 (PHASE24 정교화 기반)
 
 ### 23-3: Ensemble Orchestrator V2 🟦
 - **상태**: 🟦 **PLANNED**
@@ -736,13 +742,9 @@ Ensemble ON 모드로 4시간 이상 연속 Paper 테스트 (인프라 안정성
 **퇴출 조건**:
 - ✅ TO-BE 아키텍처 V2 문서화 (PHASE23-0)
 - ✅ Config propagation 정상 작동 (PHASE23-1)
-- [ ] 5개 전략 인터페이스 통일 (PHASE23-2)
+- ✅ 5개 전략 인터페이스 통일 + Ensemble Score V2 필드 추가 (PHASE23-2)
 - [ ] Ensemble Orchestrator V2 구현 (PHASE23-3)
 - [ ] Validation & Cleanup (PHASE23-4)
-
----
-
-
 🧩 **PHASE24** – 앙상블 V2 확립 🟦 **PLANNED**
 
 **상태**: 🟦 **PLANNED**

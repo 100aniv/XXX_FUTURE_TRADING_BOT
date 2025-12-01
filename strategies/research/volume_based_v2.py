@@ -238,6 +238,48 @@ class VolumeBasedStrategy(BaseStrategy):
             }
         )
     
-    def compute_signal(self, df: pd.DataFrame) -> Dict[str, Any]:
-        """신호 계산"""
-        return signal_logic(df, self.config)
+    def compute_signal(self, df: pd.DataFrame, config: dict = None) -> Dict[str, Any]:
+        """
+        신호 계산 (PHASE23-2: Ensemble Score V2 필드 추가)
+        
+        Args:
+            df: OHLCV + 지표 DataFrame
+            config: Override config (기본은 self.config)
+        
+        Returns:
+            dict: 신호 정보 + Ensemble Score V2 필드
+        """
+        cfg = config if config is not None else self.config
+        signal = signal_logic(df, cfg)
+        
+        # PHASE23-2: Ensemble Score V2 필드 추가
+        side = signal.get('side')
+        vol_spike = signal.get('vol_spike', False)
+        obv = signal.get('obv', 0)
+        obv_ma = signal.get('obv_ma', 0)
+        
+        # OBV 강도 계산
+        obv_strength = abs(obv - obv_ma) / max(abs(obv_ma), 1) if obv_ma != 0 else 0
+        
+        if side == 'LONG':
+            signal['S_LONG'] = min(1.0, 0.5 + obv_strength * 0.5)
+            signal['S_SHORT'] = 0.0
+        elif side == 'SHORT':
+            signal['S_LONG'] = 0.0
+            signal['S_SHORT'] = min(1.0, 0.5 + obv_strength * 0.5)
+        else:
+            signal['S_LONG'] = 0.0
+            signal['S_SHORT'] = 0.0
+        
+        # S_RISK: 거래량 주도 신호는 확인 후 미려 리스크 있음
+        atr_pct = signal.get('atr_pct', 0.01)
+        signal['S_RISK'] = min(1.0, atr_pct * 55)
+        
+        # S_QUALITY: Volume spike 강도 + OBV 일치도
+        quality = 0.0
+        if vol_spike: quality += 0.5
+        if obv_strength > 0.2: quality += 0.3
+        if side: quality += 0.2
+        signal['S_QUALITY'] = min(1.0, quality)
+        
+        return signal

@@ -217,6 +217,43 @@ class VolatilityBreakoutStrategy(BaseStrategy):
             }
         )
     
-    def compute_signal(self, df: pd.DataFrame) -> Dict[str, Any]:
-        """신호 계산"""
-        return signal_logic(df, self.config)
+    def compute_signal(self, df: pd.DataFrame, config: dict = None) -> Dict[str, Any]:
+        """
+        신호 계산 (PHASE23-2: Ensemble Score V2 필드 추가)
+        
+        Args:
+            df: OHLCV + 지표 DataFrame
+            config: Override config (기본은 self.config)
+        
+        Returns:
+            dict: 신호 정보 + Ensemble Score V2 필드
+        """
+        cfg = config if config is not None else self.config
+        signal = signal_logic(df, cfg)
+        
+        # PHASE23-2: Ensemble Score V2 필드 추가
+        side = signal.get('side')
+        
+        if side == 'LONG':
+            signal['S_LONG'] = 0.7  # Breakout은 신호 강도 높음
+            signal['S_SHORT'] = 0.0
+        elif side == 'SHORT':
+            signal['S_LONG'] = 0.0
+            signal['S_SHORT'] = 0.7
+        else:
+            signal['S_LONG'] = 0.0
+            signal['S_SHORT'] = 0.0
+        
+        # S_RISK: ATR expansion 기반
+        atr_pct = signal.get('atr_pct', 0.01)
+        atr_expanding = signal.get('atr_expanding', False)
+        signal['S_RISK'] = min(1.0, atr_pct * 40) * (1.2 if atr_expanding else 1.0)
+        
+        # S_QUALITY: 조건 충족도
+        quality = 0.0
+        if signal.get('vol_spike'): quality += 0.4
+        if atr_expanding: quality += 0.4
+        if side: quality += 0.2  # 신호 있음
+        signal['S_QUALITY'] = quality
+        
+        return signal

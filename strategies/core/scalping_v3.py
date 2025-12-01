@@ -50,9 +50,9 @@ logger = logging.getLogger(__name__)
 _PARAMS_LOGGED = False
 
 
-def signal_logic(df: pd.DataFrame, config: dict) -> Dict[str, Any]:
+def _signal_logic(df: pd.DataFrame, config: dict) -> Dict[str, Any]:
     """
-    SCALPING V2 전략: EMA 교차 + RSI 극단 + 모멘텀 (1분봉 고빈도)
+    SCALPING V3 전략: EMA Fresh Trend + Optional MR (PHASE23-2: Private)
     
     Args:
         df: OHLCV + 지표가 포함된 DataFrame
@@ -61,14 +61,7 @@ def signal_logic(df: pd.DataFrame, config: dict) -> Dict[str, Any]:
     Returns:
         dict: 신호 정보
     
-    전략 로직 (PHASE9-6):
-    - 1분봉 기반 고빈도 스캘핑
-    - LONG: EMA 골든크로스 + RSI < 30 + higher low
-    - SHORT: EMA 데드크로스 + RSI > 70 + lower high
-    - RR: 1.2~1.5 (작은 RR, 빠른 청산)
-    - 최대 보유: 30분
-    
-     이 버전은 튜닝 전 초기 뼈대(V1)입니다.
+    **PHASE23-2**: Private helper로 변경, compute_signal()에서만 호출
     """
     global _PARAMS_LOGGED
     
@@ -514,14 +507,42 @@ class ScalpingStrategy(BaseStrategy):
             }
         )
     
-    def compute_signal(self, df: pd.DataFrame) -> Dict[str, Any]:
+    def compute_signal(self, df: pd.DataFrame, config: dict = None) -> Dict[str, Any]:
         """
-        신호 계산 (기존 signal_logic 호출)
+        신호 계산 (PHASE23-2: BaseStrategy 완전 통합)
         
         Args:
             df: OHLCV + 지표 DataFrame
+            config: Override config (기본은 self.config)
         
         Returns:
-            dict: 신호 정보
+            dict: 신호 정보 + Ensemble Score V2 필드
         """
-        return signal_logic(df, self.config)
+        cfg = config if config is not None else self.config
+        
+        # 기존 signal_logic 호출 (private)
+        signal = _signal_logic(df, cfg)
+        
+        # PHASE23-2: Ensemble Score V2 필드 추가
+        side = signal.get('side')
+        
+        # 초기 구현 (보수적, PHASE24에서 정교화)
+        if side == 'LONG':
+            signal['S_LONG'] = 0.6  # 기본 LONG 신호 강도
+            signal['S_SHORT'] = 0.0
+        elif side == 'SHORT':
+            signal['S_LONG'] = 0.0
+            signal['S_SHORT'] = 0.6  # 기본 SHORT 신호 강도
+        else:
+            signal['S_LONG'] = 0.0
+            signal['S_SHORT'] = 0.0
+        
+        # S_RISK: ATR% 기반 (높을수록 위험)
+        atr_pct = signal.get('atr_pct', 0.01)
+        signal['S_RISK'] = min(1.0, atr_pct * 50)  # 2% ATR = 1.0 risk
+        
+        # S_QUALITY: 조건 충족도 (reason 개수 기반)
+        reason = signal.get('reason', [])
+        signal['S_QUALITY'] = min(1.0, len(reason) * 0.2)  # 5개 조건 = 1.0 quality
+        
+        return signal

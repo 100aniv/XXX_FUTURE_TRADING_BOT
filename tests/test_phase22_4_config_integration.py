@@ -1,15 +1,18 @@
 """
-PHASE22-4/23-1: Strategy Config Integration Tests
+PHASE22-4/23-1/23-2: Strategy Config Integration Tests
 전략별 config params가 제대로 로드되고 전달되는지 검증
 
-PHASE23-1 추가: run_v2() 경로 검증
+PHASE23-1: run_v2() 경로 검증
+PHASE23-2: BaseStrategy 인스턴스 검증 (module → instance)
 """
 import pytest
 from strategies import load_strategies
 
 
 def test_load_strategies_returns_dict_with_params():
-    """load_strategies가 params를 포함한 dict를 반환하는지 테스트"""
+    """
+    PHASE23-2: load_strategies가 BaseStrategy instance + params를 포함한 dict를 반환하는지 테스트
+    """
     config = {
         "strategies": {
             "scalping": {
@@ -35,9 +38,14 @@ def test_load_strategies_returns_dict_with_params():
     # scalping은 enabled=True이므로 로드되어야 함
     assert "scalping" in strategies
     assert isinstance(strategies["scalping"], dict)
-    assert "module" in strategies["scalping"]
+    # PHASE23-2: module → instance
+    assert "instance" in strategies["scalping"]
     assert "params" in strategies["scalping"]
     assert "enabled" in strategies["scalping"]
+    
+    # PHASE23-2: instance는 BaseStrategy를 상속해야 함
+    from common.registry.base_strategy import BaseStrategy
+    assert isinstance(strategies["scalping"]["instance"], BaseStrategy)
     
     # params 검증
     scalping_params = strategies["scalping"]["params"]

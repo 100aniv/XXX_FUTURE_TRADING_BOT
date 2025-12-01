@@ -39,23 +39,35 @@ class SignalGenerator:
         """
         Args:
             config: 설정 딕셔너리 (CFG)
-            strategy_modules: 전략 모듈 딕셔너리 (선택)
+            strategy_modules: 전략 dict (PHASE23-2: {name: {"instance": ..., "params": ...}} 형태)
         """
         self.config = config
-        self.buffers: dict = {}  # 심볼별 캔들 버퍼
+        self.buffers: dict = {}  # 심볼별 캠들 버퍼
         self.last_alert_ts: dict = {}  # 쿨다운
         self.last_regime: dict = {}  # 레짐
         
-        # ⭐ MTF 캐시 (API 호출 최소화)
+        # ⭐ MTF 캠시 (API 호출 최소화)
         self.mtf_cache: dict = {}  # {symbol: {'regime': str, 'ts': int}}
         self.mtf_cache_ttl = 300000  # 5분 (ms)
         
-        # 전략 모듈
-        self.strategy_modules = strategy_modules or {
-            "1m": scalping, "3m": scalping,
-            "5m": daytrade,
-            "15m": swing
-        }
+        # PHASE23-2: strategy_modules에서 instance 추출
+        if strategy_modules:
+            # load_strategies()가 반환하는 형태: {name: {"instance": ..., "params": ...}}
+            self.strategy_modules = {}
+            for name, strategy_info in strategy_modules.items():
+                if isinstance(strategy_info, dict) and "instance" in strategy_info:
+                    # PHASE23-2 형태
+                    self.strategy_modules[name] = strategy_info["instance"]
+                else:
+                    # Legacy 형태 (모듈 직접 전달)
+                    self.strategy_modules[name] = strategy_info
+        else:
+            # 기본값 (legacy)
+            self.strategy_modules = {
+                "1m": scalping, "3m": scalping,
+                "5m": daytrade,
+                "15m": swing
+            }
         
         # 지표 파라미터
         self.EMA_FAST = config.get("ema_fast", 8)
@@ -130,31 +142,46 @@ class SignalGenerator:
     
     def generate_signal(self, df: pd.DataFrame) -> Dict[str, Any]:
         """
-        신호 생성 (전략 호출)
+        신호 생성 (PHASE23-2: BaseStrategy.compute_signal() 호출)
         
         Args:
             df: 지표가 계산된 DataFrame
         
         Returns:
-            신호 딕셔너리
+            신호 딕셔너리 (Ensemble Score V2 필드 포함)
         """
-        # ⭐ 전역 leverage 설정을 전략 config에 병합
-        strategy_config = dict(self.config)
-        if 'leverage' not in strategy_config and 'leverage' in self.config:
-            # 이미 있으면 유지, 없으면 전역에서 가져오기
-            pass
+        from common.registry.base_strategy import BaseStrategy
         
-        # ⭐⭐⭐ 단일 전략 모드: 전달된 전략 사용
+        # Config 병합
+        strategy_config = dict(self.config)
+        
+        # 단일 전략 모드
         if len(self.strategy_modules) == 1:
             strategy = list(self.strategy_modules.values())[0]
-            return strategy.signal_logic(df, strategy_config)
+            
+            # PHASE23-2: BaseStrategy 인스턴스면 compute_signal() 호출
+            if isinstance(strategy, BaseStrategy):
+                return strategy.compute_signal(df, config=strategy_config)
+            # Legacy: 모듈이면 signal_logic() 호출
+            elif hasattr(strategy, 'signal_logic'):
+                return strategy.signal_logic(df, strategy_config)
+            else:
+                logger.error(f"❌ 전략에 compute_signal/signal_logic 메서드 없음: {type(strategy)}")
+                return {'side': None, 'reason': 'invalid_strategy'}
         
-        # ⭐ 앙상블 모드: 타임프레임에 따라 전략 선택 (레거시)
-        tf = strategy_config["timeframe"]
+        # 앙상블 모드: 타임프레임에 따라 전략 선택
+        tf = strategy_config.get("timeframe", "5m")
         strategy = self.strategy_modules.get(tf, list(self.strategy_modules.values())[0])
         
-        # 전략 실행
-        return strategy.signal_logic(df, strategy_config)
+        # PHASE23-2: BaseStrategy 인스턴스면 compute_signal() 호출
+        if isinstance(strategy, BaseStrategy):
+            return strategy.compute_signal(df, config=strategy_config)
+        # Legacy: 모듈이면 signal_logic() 호출
+        elif hasattr(strategy, 'signal_logic'):
+            return strategy.signal_logic(df, strategy_config)
+        else:
+            logger.error(f"❌ 전략에 compute_signal/signal_logic 메서드 없음: {type(strategy)}")
+            return {'side': None, 'reason': 'invalid_strategy'}
     
     def validate_signal(self, symbol: str, signal: dict, df: pd.DataFrame) -> bool:
         """
