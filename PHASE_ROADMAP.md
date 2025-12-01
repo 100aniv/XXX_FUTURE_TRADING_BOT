@@ -645,69 +645,103 @@ Ensemble ON 모드로 4시간 이상 연속 Paper 테스트 (인프라 안정성
 
 ---
 
-🧩 **PHASE23** – 전략·앙상블 TO-BE 재설계 블록 🟦 **PLANNED**
+🧩 **PHASE23** – Ensemble & Engine Architecture V2 🔄 **IN PROGRESS**
 
-**상태**: 🟦 **PLANNED**
+**상태**: 🔄 **IN PROGRESS** (2025-11-29 시작, 23-0/23-1 완료)
 
-**목적**: 5개 전략 패밀리 기반 단일 엔진 중심 아키텍처 확립 및 Ensemble v2 Score 구조 설계
-
-**배경**:
-- PHASE22-1/2 중단 (기존 7개 전략 중 scalping 제외 correctness/튜닝/백테스트 없음)
-- 전략 품질 없이 엔진 테스트만 수행 → 의미 부족
-- PHASE22-0부터 재시작 (전략 세트 재정의)
-
-**목적**:
-- 5개 전략 패밀리 기반 Ensemble v2 설계/구현
-- 단일 심볼 기준 12~24h PAPER로 생존성 검증
+**목적**: 
+- PHASE22-2/3/4에서 드러난 구조적 문제(0-trade, 튜닝 실패, config 전파 실패)를 **엔진 중심 아키텍처 + 5-패밀리 앙상블 구조**로 해결
+- 이후 전략/튜닝/멀티심볼 확장의 "기준선"이 되는 아키텍처 V2 완성
 
 **Sub-phases**:
-- **22-0: ✅ Strategy Set Reconstruction (COMPLETE - 2025-11-22)**
-  - 폴더 재구조화: core/scalping_v3.py (KEEP), deprecated/ (6개 전략), research/ (신규)
-  - 5개 패밀리 정의: HF Momentum, Volatility Breakout, Mean Reversion, Trend Following, Volume-Based
-  - 산출물: `docs/PHASE22/PHASE22-0_STRATEGY_POOL.md`
-- **22-1: ✅ Strategy Implementation & Validation (COMPLETE - 2025-11-22)**
-  - 4개 신규 전략 구현: volatility_breakout_v2, mean_reversion_v2, trend_follow_v2, volume_based_v2
-  - BaseStrategy 인터페이스 완벽 준수 (metadata + compute_signal)
-  - Unit Test 17/17 PASS (100% 성공률)
-  - 산출물: `docs/PHASE22/PHASE22-1_STRATEGY_DESIGN.md`, `docs/PHASE22/PHASE22-1_COMPLETE_REPORT.md`
-  - 코드: `strategies/research/*.py` (4개 전략 + __init__.py)
-  - 테스트: `tests/test_phase22_1_new_strategies.py`
-- **22-2: ❌ Extended Validation (Quick Smoke PASS, Main Run FAIL - 2025-11-23 10:00)**
-  - Ensemble v2 장기 안정성 검증 (12~24H Paper, 5개 전략 통합)
-  - 전략별 신호 발생 빈도 확인
-  - PnL/성능 기초 분석
-  - 산출물: `docs/PHASE22/PHASE22-2_EXTENDED_VALIDATION_DESIGN.md`, `PHASE22-2_EXECUTION_GUIDE.md`, `PHASE22-2_EXTENDED_VALIDATION_REPORT.md`
-  - Config: `configs/paper/phase22_2_ensemble_quick.yml`, `phase22_2_ensemble_12h.yml`
-  - Script: `scripts/run_phase22_2_ensemble.py`
-  - **Quick Smoke Test (30분)**: Duration 1800.1s (오차 0.006%), ERROR 0건, Trades 0건 → ✅ PASS
-  - **12H Main Run (2025-11-22 21:54:02 ~ 2025-11-23 09:55:30)**: Duration 43,328s (12.04h, 오차 +0.3%) → ✅ PASS, Infrastructure ✅ PASS, **Trading ❌ FAIL (0 trades, 0 decisions)**
-  - Duration Fix: engine.py에 진행 로그 추가 (30초마다)
-  - Run ID: Quick=20251122_194150_ouhr, Main=20251122_215340_au7g
-  - 상태: ❌ **FAIL (Trading Criteria 미충족, Infrastructure PASS)** → PHASE22-3 파라미터 튜닝 필요
-- **22-3: ❌ Parameter Tuning (2025-11-23) - FAIL**
-  - **Test Run (15분)**: 2025-11-23 11:04:38 ~ 11:19:38, Run ID: 20251123_110433_5lxj
-  - **Trades**: 0 (Target: ≥30 for 1H) → ❌ FAIL
-  - **Root Cause**: Config params가 전략에 전달되지 않음 (load_strategies/engine 간 인터페이스 문제)
-  - **산출물**: `docs/PHASE22/PHASE22-3_PARAM_TUNING_REPORT.md`
-  - **상태**: ❌ FAIL → PHASE22-4
-- **22-4: ⚠️ Config Integration Fix (2025-11-23) - PARTIAL, DEFERRED**
-  - **목표**: 전략별 config params가 제대로 전달되도록 수정
-  - **Code Changes**: ✅ strategies/__init__.py, execution/engine.py 수정 완료
-  - **Unit Tests**: ✅ 6/6 PASS (`test_phase22_4_config_integration.py`)
-  - **Direct Test**: ✅ params 로딩 정상 작동 확인 (Python 직접 실행)
-  - **Runtime Issue**: ❌ run_paper.py 실행 시 params 빈 dict로 전달, RSI threshold 기본값(30/70) 사용
-  - **근본 원인 (PHASE23-0 분석)**: Script-level orchestration 문제 (config 로딩/전달 경로가 script에서 중복/분산)
-  - **산출물**: `docs/PHASE22/PHASE22-4_CONFIG_INTEGRATION_INCOMPLETE.md`
-  - **Config**: `configs/paper/phase22_4_scalping_param_smoke_30m.yml`
-  - **상태**: ⚠️ PARTIAL (Code-Level Fix OK, Runtime Integration FAIL) → **DEFERRED to PHASE23-1** (architectural refactoring required)
 
-**진입 조건**: PHASE21 완료
-- [ ] Config propagation 정상 작동 (PHASE23-1)
+### 23-0: TO-BE Architecture V2 문서화 ✅
+- **상태**: ✅ **COMPLETE** (2025-11-29)
+- **범위**:
+  - AS-IS 아키텍처 분석 (엔진, 전략, 앙상블, config/script 레이어)
+  - PHASE22-2/3/4 Pain Point 및 Root Cause 정리
+  - Single-Engine-Centric Architecture 원칙 정의
+  - Strategy Config SSOT 원칙 정의
+  - Mode-based Adapter Pattern 설계 (backtest/paper/live 공통)
+  - 5 Strategy Families 기반 Ensemble TO-BE 구조 정리
+- **주요 문서**:
+  - `docs/PHASE23/PHASE23-0_ARCHITECTURE_TOBE_V2.md`
+  - `docs/PHASE23/ENSEMBLE_STRATEGY_TOBE_V2.md`
+- **Acceptance Criteria**: ✅ PASS
+  - AS-IS / TO-BE 비교 다이어그램 존재
+  - 5개 전략 패밀리(HF Momentum / Volatility Breakout / Mean Reversion / Trend Following / Volume-Based) 역할 명확
+  - PHASE23-1~3 실행 로드맵 정의
+
+### 23-1: Single-Engine Entry Point & Config Propagation Fix ✅
+- **상태**: ✅ **COMPLETE** (2025-12-01)
+- **목표**: PHASE22-4 runtime config propagation 이슈를 엔진 진입점 구조 리팩토링으로 근본 해결
+- **주요 변경사항**:
+  - `scripts/run_v2.py` 추가 (thin script, 97 lines)
+    - 역할: config 로딩 + `engine.run_v2(...)` 호출만 수행
+    - paper / backtest / live 모드 공통 진입점
+  - `execution/engine.py`
+    - `run_v2(mode, config, clean_state)` 추가
+    - 내부에서 `load_strategies(config)` 직접 호출
+    - use_ensemble / selector / adapter 생성 로직을 엔진으로 이동
+  - `tests/test_phase22_4_config_integration.py` docstring 업데이트
+- **검증 결과**:
+  - Unit Tests: 6/6 PASS
+  - 30분 PAPER smoke test: ✅ PASS
+    - RSI 45/55 정상 전파 (기본값 30/70 아님)
+    - 실제 트레이드 발생: 1 SHORT entry + 1 TP1 exit (+$19.23)
+  - 로그: `[PHASE23-1 DEBUG] scalping params: {'rsi_oversold': 45, 'rsi_overbought': 55, ...}`
+- **주요 문서**: `docs/PHASE23/PHASE23-1_ENGINE_ENTRYPOINT_REFACTOR.md`
+- **Acceptance Criteria**: ✅ ALL PASS
+  - `run_v2.py` 길이 < 100 lines (97 lines)
+  - `engine.run_v2()` 존재, 내부에서 `load_strategies(config)` 호출
+  - Config params 100% 전파 (RSI 45/55 등)
+  - 기존 `run()` 기반 코드/테스트 유지
+  - 30분 paper test에서 트레이드/청산 로그 확인
+
+### 23-2: Strategy Interface Unification (scalping_v3 → BaseStrategy) 🟦
+- **상태**: 🟦 **PLANNED**
+- **목표**: scalping_v3 및 주요 전략들을 통일된 `BaseStrategy` 인터페이스로 마이그레이션
+- **예상 작업**:
+  - `scalping_v3.signal_logic(df, cfg)` → `compute_signal(df, config)` 리네이밍
+  - 각 전략에 `metadata` 속성 추가 (타임프레임, 리스크 레벨, 패밀리 타입)
+  - 엔진에서 전략 호출부를 `compute_signal` 기반으로 통일
+  - 1시간 paper test (5개 전략 동시 동작)
+- **Acceptance Criteria (초안)**:
+  - 5개 핵심 전략이 모두 `BaseStrategy` 공통 인터페이스 구현
+  - 각 전략이 `metadata`로 앙상블/리스크 모듈에 메타 정보 제공
+  - 1H paper test 오류 없이 실행 + 전략별 신호/트레이드 발생
+
+### 23-3: Ensemble Orchestrator V2 🟦
+- **상태**: 🟦 **PLANNED**
+- **목표**: PHASE23-0에서 정의한 5-패밀리 기반 앙상블 구조를 실제 엔진 위에 구현
+- **예상 범위**:
+  - Strategy-level score (`S_LONG`, `S_SHORT`, `S_RISK`, `S_QUALITY`) 반영
+  - Ensemble-level decision 3-tier 로직 (High-Confidence / Consensus / Skip)
+  - Regime / Timeframe / Indicator diversification 반영
+- **Acceptance Criteria (초안)**:
+  - 5개 전략의 score가 엔진 공용 앙상블 모듈로 모여서 최종 포지션 결정
+  - 특정 전략이 60% 이상 과도하게 지배하지 않도록 가중치/캡 구조 존재
+  - 3H 이상 paper test에서 앙상블이 단일 전략 대비 안정적인 동작 패턴
+
+### 23-4: Validation & Cleanup 🟦
+- **상태**: 🟦 **PLANNED**
+- **목표**: PHASE23-0 ~ 23-3 변경 사항 정리 및 이후 PHASE로 넘어가기 위한 "클린 기준선" 생성
+- **Acceptance Criteria (초안)**:
+  - 모든 관련 문서와 코드 상태가 서로 모순 없이 정합적
+  - 최소 3H ~ 12H paper test 1회 이상 통과 (엔진/전략/앙상블 레벨 에러 없음)
+  - 변경된 아키텍처에 대한 요약 리포트 생성
+
+**진입 조건**: PHASE22-4 PARTIAL 완료 (code-level fix done, runtime integration deferred)
+
+**퇴출 조건**:
+- ✅ TO-BE 아키텍처 V2 문서화 (PHASE23-0)
+- ✅ Config propagation 정상 작동 (PHASE23-1)
 - [ ] 5개 전략 인터페이스 통일 (PHASE23-2)
-- [ ] 각 전략 개별 검증 PASS (PHASE23-3)
-- [ ] 앙상블 통합 테스트 PASS (PHASE23-4)
+- [ ] Ensemble Orchestrator V2 구현 (PHASE23-3)
+- [ ] Validation & Cleanup (PHASE23-4)
 
 ---
+
 
 🧩 **PHASE24** – 앙상블 V2 확립 🟦 **PLANNED**
 
