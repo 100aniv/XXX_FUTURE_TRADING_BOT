@@ -99,6 +99,7 @@ class RedisClient:
         for attempt in range(1, max_retries + 1):
             try:
                 import redis
+                logger.info(f"🔄 Redis 연결 시도 ({attempt}/{max_retries}): {self.host}:{self.port}")
                 self.redis_client = redis.Redis(
                     host=self.host,
                     port=self.port,
@@ -109,14 +110,14 @@ class RedisClient:
                 # 연결 테스트
                 self.redis_client.ping()
                 self.enabled = True
-                logger.info(f"✅ Redis 연결 성공: {self.host}:{self.port} (TTL: {self.ttl_seconds}초)")
+                logger.info(f"✅ Redis 연결 성공 (attempt {attempt}): {self.host}:{self.port} (TTL: {self.ttl_seconds}초)")
                 return
             except Exception as e:
                 if attempt < max_retries:
-                    logger.warning(f"⚠️ Redis 연결 실패 ({attempt}/{max_retries}): {e} - {retry_delay}초 후 재시도...")
+                    logger.info(f"🔄 Redis 연결 실패 ({attempt}/{max_retries}): {e} - {retry_delay}초 후 재시도...")
                     time.sleep(retry_delay)
                 else:
-                    logger.warning(f"⚠️ Redis 연결 최종 실패 ({max_retries}회 시도), 메모리 모드로 폴백")
+                    logger.warning(f"⚠️ Redis 연결 최종 실패 ({max_retries}회 시도) - 메모리 모드로 폴백: {e}")
                     self.redis_client = None
                     self.enabled = False
     

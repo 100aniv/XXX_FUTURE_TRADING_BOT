@@ -138,13 +138,13 @@ flow_guardian:
         - logs/application.log
 
 # ========================================
-# Monitoring (Redis/DB 설정 상속)
+# Monitoring (Redis/DB 설정)
 # ========================================
 monitoring:
   redis:
-    host: ${REDIS_HOST}
-    port: ${REDIS_PORT}
-    db: ${REDIS_DB}
+    host: localhost
+    port: 6379
+    db: 0
   metrics:
     enabled: true
     interval_sec: 60

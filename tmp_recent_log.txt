@@ -1,0 +1,100 @@
+﻿2025-12-02 11:00:07,858 [INFO] ?깍툘  [WALL-CLOCK] 寃쎄낵: 6121s / 10800s (56.7%)
+2025-12-02 11:00:08,898 [INFO] ?깍툘  [WALL-CLOCK] 寃쎄낵: 6000s / 10800s (55.6%)
+2025-12-02 11:00:38,092 [INFO] ?깍툘  [WALL-CLOCK] 寃쎄낵: 6151s / 10800s (57.0%)
+2025-12-02 11:00:39,131 [INFO] ?깍툘  [WALL-CLOCK] 寃쎄낵: 6031s / 10800s (55.8%)
+2025-12-02 11:01:00,072 [INFO] ?뱤 BTCUSDT 5m ?ㅼ떆媛??섏떊 以?.. (媛寃? 86378.50, ?ロ옒: False)
+2025-12-02 11:01:00,072 [INFO] ?뱤 BTCUSDT 5m ?ㅼ떆媛??섏떊 以?.. (媛寃? 86378.50, ?ロ옒: False)
+2025-12-02 11:01:08,331 [INFO] ?깍툘  [WALL-CLOCK] 寃쎄낵: 6181s / 10800s (57.2%)
+2025-12-02 11:01:09,351 [INFO] ?깍툘  [WALL-CLOCK] 寃쎄낵: 6061s / 10800s (56.1%)
+2025-12-02 11:01:37,508 [INFO] ?깍툘  [WALL-CLOCK] 寃쎄낵: 6210s / 10800s (57.5%)
+2025-12-02 11:01:39,552 [INFO] ?깍툘  [WALL-CLOCK] 寃쎄낵: 6091s / 10800s (56.4%)
+2025-12-02 11:02:00,397 [INFO] ?뱤 BTCUSDT 5m ?ㅼ떆媛??섏떊 以?.. (媛寃? 86349.00, ?ロ옒: False)
+2025-12-02 11:02:00,397 [INFO] ?뱤 BTCUSDT 5m ?ㅼ떆媛??섏떊 以?.. (媛寃? 86349.00, ?ロ옒: False)
+2025-12-02 11:02:07,685 [INFO] ?깍툘  [WALL-CLOCK] 寃쎄낵: 6240s / 10800s (57.8%)
+2025-12-02 11:02:08,737 [INFO] ?깍툘  [WALL-CLOCK] 寃쎄낵: 6120s / 10800s (56.7%)
+2025-12-02 11:02:37,853 [INFO] ?깍툘  [WALL-CLOCK] 寃쎄낵: 6271s / 10800s (58.1%)
+2025-12-02 11:02:38,909 [INFO] ?깍툘  [WALL-CLOCK] 寃쎄낵: 6150s / 10800s (56.9%)
+2025-12-02 11:03:00,174 [INFO] ?뱤 BTCUSDT 5m ?ㅼ떆媛??섏떊 以?.. (媛寃? 86385.00, ?ロ옒: False)
+2025-12-02 11:03:00,174 [INFO] ?뱤 BTCUSDT 5m ?ㅼ떆媛??섏떊 以?.. (媛寃? 86385.00, ?ロ옒: False)
+2025-12-02 11:03:08,048 [INFO] ?깍툘  [WALL-CLOCK] 寃쎄낵: 6301s / 10800s (58.3%)
+2025-12-02 11:03:09,097 [INFO] ?깍툘  [WALL-CLOCK] 寃쎄낵: 6180s / 10800s (57.2%)
+2025-12-02 11:03:38,243 [INFO] ?깍툘  [WALL-CLOCK] 寃쎄낵: 6331s / 10800s (58.6%)
+2025-12-02 11:03:39,311 [INFO] ?깍툘  [WALL-CLOCK] 寃쎄낵: 6211s / 10800s (57.5%)
+2025-12-02 11:04:00,066 [INFO] ?뱤 BTCUSDT 5m ?ㅼ떆媛??섏떊 以?.. (媛寃? 86435.70, ?ロ옒: False)
+2025-12-02 11:04:00,066 [INFO] ?뱤 BTCUSDT 5m ?ㅼ떆媛??섏떊 以?.. (媛寃? 86435.70, ?ロ옒: False)
+2025-12-02 11:04:07,463 [INFO] ?깍툘  [WALL-CLOCK] 寃쎄낵: 6360s / 10800s (58.9%)
+2025-12-02 11:04:09,521 [INFO] ?깍툘  [WALL-CLOCK] 寃쎄낵: 6241s / 10800s (57.8%)
+2025-12-02 11:04:37,660 [INFO] ?깍툘  [WALL-CLOCK] 寃쎄낵: 6390s / 10800s (59.2%)
+2025-12-02 11:04:38,716 [INFO] ?깍툘  [WALL-CLOCK] 寃쎄낵: 6270s / 10800s (58.1%)
+2025-12-02 11:04:58,951 [INFO] ?븧 BTCUSDT 5m WS ?ロ엺 罹붾뱾 ?섏떊: 1764640800000
+2025-12-02 11:04:58,951 [INFO] ?븧 BTCUSDT 5m WS ?ロ엺 罹붾뱾 ?섏떊: 1764640800000
+2025-12-02 11:04:58,962 [INFO] ?뵒 [ENSEMBLE V2] ?꾨왂 ?됯? ?쒖옉: ['scalping_v3', 'volatility_breakout_v2', 'mean_reversion_v2', 'trend_follow_v2', 'volume_based_v2']
+2025-12-02 11:04:58,964 [INFO] ?뵒 [ENSEMBLE V2] ?꾨왂 ?됯? ?쒖옉: ['scalping_v3', 'volatility_breakout_v2', 'mean_reversion_v2', 'trend_follow_v2', 'volume_based_v2']
+2025-12-02 11:04:58,966 [INFO] ??[ENSEMBLE V2] scalping_v3: ?좏샇 ?놁쓬 (side=None)
+2025-12-02 11:04:58,966 [INFO] ??[ENSEMBLE V2] volatility_breakout_v2: ?좏샇 ?놁쓬 (side=None)
+2025-12-02 11:04:58,967 [INFO] ??[ENSEMBLE V2] mean_reversion_v2: ?좏샇 ?놁쓬 (side=None)
+2025-12-02 11:04:58,967 [INFO] ??[ENSEMBLE V2] trend_follow_v2: ?좏샇 ?놁쓬 (side=None)
+2025-12-02 11:04:58,969 [INFO] ??[ENSEMBLE V2] scalping_v3: ?좏샇 ?놁쓬 (side=None)
+2025-12-02 11:04:58,970 [INFO] ??[ENSEMBLE V2] volatility_breakout_v2: ?좏샇 ?놁쓬 (side=None)
+2025-12-02 11:04:58,970 [INFO] ??[ENSEMBLE V2] mean_reversion_v2: ?좏샇 ?놁쓬 (side=None)
+2025-12-02 11:04:58,970 [INFO] ??[ENSEMBLE V2] trend_follow_v2: ?좏샇 ?놁쓬 (side=None)
+2025-12-02 11:04:59,199 [INFO] ??[ENSEMBLE V2] volume_based_v2: ?좏샇 ?놁쓬 (side=None)
+2025-12-02 11:04:59,199 [INFO] ?븧 BTCUSDT 5m 罹붾뱾 ?ロ옒 媛먯?: 1764640800000 ??1764641100000
+2025-12-02 11:04:59,199 [INFO] ?렞 [ENSEMBLE V2] Aggregate 寃곌낵: tier=skip, side=None, reason=['skip: no_signals'], strategies=0
+2025-12-02 11:04:59,204 [INFO] ??[ENSEMBLE V2] volume_based_v2: ?좏샇 ?놁쓬 (side=None)
+2025-12-02 11:04:59,204 [INFO] ?븧 BTCUSDT 5m 罹붾뱾 ?ロ옒 媛먯?: 1764640800000 ??1764641100000
+2025-12-02 11:04:59,204 [INFO] ?렞 [ENSEMBLE V2] Aggregate 寃곌낵: tier=skip, side=None, reason=['skip: no_signals'], strategies=0
+2025-12-02 11:05:00,066 [INFO] ?뱤 BTCUSDT 5m ?ㅼ떆媛??섏떊 以?.. (媛寃? 86421.20, ?ロ옒: False)
+2025-12-02 11:05:08,264 [INFO] ?깍툘  [WALL-CLOCK] 寃쎄낵: 6421s / 10800s (59.5%)
+2025-12-02 11:05:09,267 [INFO] ?깍툘  [WALL-CLOCK] 寃쎄낵: 6301s / 10800s (58.3%)
+2025-12-02 11:05:37,430 [INFO] ?깍툘  [WALL-CLOCK] 寃쎄낵: 6450s / 10800s (59.7%)
+2025-12-02 11:05:39,439 [INFO] ?깍툘  [WALL-CLOCK] 寃쎄낵: 6331s / 10800s (58.6%)
+2025-12-02 11:06:00,207 [INFO] ?뱤 BTCUSDT 5m ?ㅼ떆媛??섏떊 以?.. (媛寃? 86445.10, ?ロ옒: False)
+2025-12-02 11:06:07,575 [INFO] ?깍툘  [WALL-CLOCK] 寃쎄낵: 6480s / 10800s (60.0%)
+2025-12-02 11:06:09,593 [INFO] ?깍툘  [WALL-CLOCK] 寃쎄낵: 6361s / 10800s (58.9%)
+2025-12-02 11:06:37,772 [INFO] ?깍툘  [WALL-CLOCK] 寃쎄낵: 6510s / 10800s (60.3%)
+2025-12-02 11:06:38,787 [INFO] ?깍툘  [WALL-CLOCK] 寃쎄낵: 6390s / 10800s (59.2%)
+2025-12-02 11:07:00,224 [INFO] ?뱤 BTCUSDT 5m ?ㅼ떆媛??섏떊 以?.. (媛寃? 86300.00, ?ロ옒: False)
+2025-12-02 11:07:00,224 [INFO] ?뱤 BTCUSDT 5m ?ㅼ떆媛??섏떊 以?.. (媛寃? 86300.00, ?ロ옒: False)
+2025-12-02 11:07:07,959 [INFO] ?깍툘  [WALL-CLOCK] 寃쎄낵: 6541s / 10800s (60.6%)
+2025-12-02 11:07:08,966 [INFO] ?깍툘  [WALL-CLOCK] 寃쎄낵: 6420s / 10800s (59.4%)
+2025-12-02 11:07:38,120 [INFO] ?깍툘  [WALL-CLOCK] 寃쎄낵: 6571s / 10800s (60.8%)
+2025-12-02 11:07:39,125 [INFO] ?깍툘  [WALL-CLOCK] 寃쎄낵: 6451s / 10800s (59.7%)
+2025-12-02 11:08:00,200 [INFO] ?뱤 BTCUSDT 5m ?ㅼ떆媛??섏떊 以?.. (媛寃? 86310.90, ?ロ옒: False)
+2025-12-02 11:08:00,200 [INFO] ?뱤 BTCUSDT 5m ?ㅼ떆媛??섏떊 以?.. (媛寃? 86310.90, ?ロ옒: False)
+2025-12-02 11:08:08,289 [INFO] ?깍툘  [WALL-CLOCK] 寃쎄낵: 6601s / 10800s (61.1%)
+2025-12-02 11:08:09,299 [INFO] ?깍툘  [WALL-CLOCK] 寃쎄낵: 6481s / 10800s (60.0%)
+2025-12-02 11:08:37,465 [INFO] ?깍툘  [WALL-CLOCK] 寃쎄낵: 6630s / 10800s (61.4%)
+2025-12-02 11:08:39,483 [INFO] ?깍툘  [WALL-CLOCK] 寃쎄낵: 6511s / 10800s (60.3%)
+2025-12-02 11:09:00,034 [INFO] ?뱤 BTCUSDT 5m ?ㅼ떆媛??섏떊 以?.. (媛寃? 86364.70, ?ロ옒: False)
+2025-12-02 11:09:00,034 [INFO] ?뱤 BTCUSDT 5m ?ㅼ떆媛??섏떊 以?.. (媛寃? 86364.70, ?ロ옒: False)
+2025-12-02 11:09:07,656 [INFO] ?깍툘  [WALL-CLOCK] 寃쎄낵: 6660s / 10800s (61.7%)
+2025-12-02 11:09:08,660 [INFO] ?깍툘  [WALL-CLOCK] 寃쎄낵: 6540s / 10800s (60.6%)
+2025-12-02 11:09:37,881 [INFO] ?깍툘  [WALL-CLOCK] 寃쎄낵: 6691s / 10800s (61.9%)
+2025-12-02 11:09:38,892 [INFO] ?깍툘  [WALL-CLOCK] 寃쎄낵: 6570s / 10800s (60.8%)
+2025-12-02 11:09:59,266 [INFO] ?븧 BTCUSDT 5m WS ?ロ엺 罹붾뱾 ?섏떊: 1764641100000
+2025-12-02 11:09:59,266 [INFO] ?븧 BTCUSDT 5m WS ?ロ엺 罹붾뱾 ?섏떊: 1764641100000
+2025-12-02 11:09:59,267 [INFO] ?뮄 [ENSEMBLE] ?곹깭: 罹붾뱾 6,023媛?| ?쒖꽦 ?ъ??? 0媛?| 珥?嫄곕옒: 41嫄?| Equity: $51,493
+2025-12-02 11:09:59,268 [INFO] ?뮄 [ENSEMBLE] ?곹깭: 罹붾뱾 6,023媛?| ?쒖꽦 ?ъ??? 0媛?| 珥?嫄곕옒: 41嫄?| Equity: $51,456
+2025-12-02 11:09:59,468 [INFO] ?숋툘  [ENSEMBLE] ?깅뒫: ?좑툘 B (77/100) | CPU 0% | Mem 97MB | Speed 0.0/s | Latency 0.0ms
+2025-12-02 11:09:59,470 [INFO] ?숋툘  [ENSEMBLE] ?깅뒫: ?좑툘 B (77/100) | CPU 0% | Mem 108MB | Speed 0.0/s | Latency 0.0ms
+2025-12-02 11:09:59,483 [INFO] ?뵒 [ENSEMBLE V2] ?꾨왂 ?됯? ?쒖옉: ['scalping_v3', 'volatility_breakout_v2', 'mean_reversion_v2', 'trend_follow_v2', 'volume_based_v2']
+2025-12-02 11:09:59,488 [INFO] ?뵒 [ENSEMBLE V2] ?꾨왂 ?됯? ?쒖옉: ['scalping_v3', 'volatility_breakout_v2', 'mean_reversion_v2', 'trend_follow_v2', 'volume_based_v2']
+2025-12-02 11:09:59,489 [INFO] ??[ENSEMBLE V2] scalping_v3: ?좏샇 ?놁쓬 (side=None)
+2025-12-02 11:09:59,490 [INFO] ??[ENSEMBLE V2] volatility_breakout_v2: ?좏샇 ?놁쓬 (side=None)
+2025-12-02 11:09:59,490 [INFO] ??[ENSEMBLE V2] mean_reversion_v2: ?좏샇 ?놁쓬 (side=None)
+2025-12-02 11:09:59,491 [INFO] ??[ENSEMBLE V2] trend_follow_v2: ?좏샇 ?놁쓬 (side=None)
+2025-12-02 11:09:59,493 [INFO] ??[ENSEMBLE V2] scalping_v3: ?좏샇 ?놁쓬 (side=None)
+2025-12-02 11:09:59,494 [INFO] ??[ENSEMBLE V2] volatility_breakout_v2: ?좏샇 ?놁쓬 (side=None)
+2025-12-02 11:09:59,495 [INFO] ??[ENSEMBLE V2] mean_reversion_v2: ?좏샇 ?놁쓬 (side=None)
+2025-12-02 11:09:59,495 [INFO] ??[ENSEMBLE V2] trend_follow_v2: ?좏샇 ?놁쓬 (side=None)
+2025-12-02 11:09:59,719 [INFO] ??[ENSEMBLE V2] volume_based_v2: ?좏샇 ?놁쓬 (side=None)
+2025-12-02 11:09:59,719 [INFO] ?렞 [ENSEMBLE V2] Aggregate 寃곌낵: tier=skip, side=None, reason=['skip: no_signals'], strategies=0
+2025-12-02 11:09:59,722 [INFO] ??[ENSEMBLE V2] volume_based_v2: ?좏샇 ?놁쓬 (side=None)
+2025-12-02 11:09:59,722 [INFO] ?렞 [ENSEMBLE V2] Aggregate 寃곌낵: tier=skip, side=None, reason=['skip: no_signals'], strategies=0
+2025-12-02 11:09:59,839 [INFO] ?븧 BTCUSDT 5m 罹붾뱾 ?ロ옒 媛먯?: 1764641100000 ??1764641400000
+2025-12-02 11:09:59,839 [INFO] ?븧 BTCUSDT 5m 罹붾뱾 ?ロ옒 媛먯?: 1764641100000 ??1764641400000
+2025-12-02 11:10:00,104 [INFO] ?뱤 BTCUSDT 5m ?ㅼ떆媛??섏떊 以?.. (媛寃? 86349.80, ?ロ옒: False)
+2025-12-02 11:10:00,105 [INFO] ?뱤 BTCUSDT 5m ?ㅼ떆媛??섏떊 以?.. (媛寃? 86349.80, ?ロ옒: False)
+2025-12-02 11:10:07,787 [INFO] ?깍툘  [WALL-CLOCK] 寃쎄낵: 6720s / 10800s (62.2%)
+2025-12-02 11:10:08,797 [INFO] ?깍툘  [WALL-CLOCK] 寃쎄낵: 6600s / 10800s (61.1%)

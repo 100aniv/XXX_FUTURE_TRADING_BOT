@@ -766,22 +766,34 @@ Ensemble ON 모드로 4시간 이상 연속 Paper 테스트 (인프라 안정성
 
 ---
 
- PHASE24 – 앙상블 V2 확립 
+ **PHASE24** – 앙상블 V2 확립 
 **상태**: 
 
-**목적**: Ensemble Score V2 구조로 5개 대표 전략 통합 및 가중치 튜닝
+**목적**: Redis 연결/초기화 안정화 및 Ensemble V2 인프라 레벨 검증
 
 **Sub-phases**
-- **24-0: Ensemble Score V2 설계**
-  - S_LONG/S_SHORT/S_NET/S_ABS + 동적 가중치 구조
-- **24-1: 대표 전략 5개 앙상블 시뮬레이션**
-  - 1~3H PAPER, 행동 패턴 분석
-- **24-2: 앙상블 조합/가중치 초기 튜닝**
-  - 상승/하락/횡보 구간 행동 확인
+- **24-0: Redis Hardening & Ensemble V2 Infra Validation** COMPLETE (2025-12-02)
+  - .env에 Redis 환경변수 추가 (REDIS_HOST, REDIS_PORT, REDIS_DB)
+  - Config 파일 템플릿 제거 (${REDIS_HOST} → localhost:6379)
+  - clean_state_complete.py 재시도 로직 추가 (max_retries=10)
+  - database/redis.py 로그 가시성 개선 (INFO 레벨)
+  - 2H PAPER 실행: 10,798 aggregates, 78 trades, **Redis ERROR 0건**
+  - **Acceptance**: PASS (Production Ready Baseline 확립)
+- **24-1:** 전체 INFRA 진단 PLANNED
+  - DB, Redis, FlowGuardian 통합 점검
+  - Postgres DELETE 재출현 문제 해결
+- **24-2:** 환경변수 관리 자동화 PLANNED
+  - Jinja2 템플릿 또는 환경변수 통일
+  - Config validation 스크립트
 
 **진입 조건**: PHASE23 완료
 
-**퇴출 조건**: Ensemble v2 1~3H PAPER PASS, 가중치 초기 셋 확보
+**퇴출 조건**: 
+- Redis ERROR/CRITICAL 0건 (2H+ PAPER)
+- 전체 INFRA 진단 완료 (PHASE24-1)
+- 환경변수 관리 자동화 완료 (PHASE24-2)
+- ⏸️ 전체 INFRA 진단 완료 (PHASE24-1)
+- ⏸️ DB/Redis/FlowGuardian 통합 안정성 확보
 
 ---
 

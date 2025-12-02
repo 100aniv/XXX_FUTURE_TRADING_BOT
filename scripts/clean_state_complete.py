@@ -102,45 +102,70 @@ def clean_postgres():
 
 
 def clean_redis():
-    """Redis paper mode keys cleanup"""
+    """Redis paper mode keys cleanup with retry logic"""
     safe_print("[2/2] Redis Clean-State...")
     
-    try:
-        host = os.getenv("REDIS_HOST", "localhost")
-        port = int(os.getenv("REDIS_PORT", "6379"))
-        db = int(os.getenv("REDIS_DB", "0"))
-        
-        r = redis.Redis(host=host, port=port, db=db, decode_responses=True)
-        
-        # Paper mode key patterns (based on namespace.py)
-        patterns = [
-            "candle:seen:paper:*",      # Candle dedup
-            "cooldown:paper:*",         # Strategy cooldown
-            "signal:paper:*",           # Signal cache
-            "exposure:paper:*",         # Exposure tracking
-            "budget:paper:*",           # Budget tracking
-            "guard:paper:*",            # Guard states
-            "portfolio:paper:*",        # Portfolio states
-            "dedup:*",                  # Legacy dedup keys
-            "flow_guardian:*",          # Flow guardian states
-        ]
-        
-        total_deleted = 0
-        for pattern in patterns:
-            keys = r.keys(pattern)
-            if keys:
-                deleted = r.delete(*keys)
-                total_deleted += deleted
-                safe_print(f"  [OK] {pattern}: {deleted} keys deleted")
+    max_retries = 10
+    retry_delay = 1  # seconds
+    
+    for attempt in range(1, max_retries + 1):
+        try:
+            host = os.getenv("REDIS_HOST", "localhost")
+            port = int(os.getenv("REDIS_PORT", "6379"))
+            db = int(os.getenv("REDIS_DB", "0"))
+            
+            safe_print(f"  [INFO] Connecting to Redis: {host}:{port} (attempt {attempt}/{max_retries})")
+            r = redis.Redis(
+                host=host,
+                port=port,
+                db=db,
+                decode_responses=True,
+                socket_connect_timeout=5,
+                socket_timeout=5
+            )
+            
+            # Connection test
+            r.ping()
+            safe_print(f"  [OK] Redis connection successful!")
+            
+            # Paper mode key patterns (based on namespace.py)
+            patterns = [
+                "candle:seen:paper:*",      # Candle dedup
+                "cooldown:paper:*",         # Strategy cooldown
+                "signal:paper:*",           # Signal cache
+                "exposure:paper:*",         # Exposure tracking
+                "budget:paper:*",           # Budget tracking
+                "guard:paper:*",            # Guard states
+                "portfolio:paper:*",        # Portfolio states
+                "dedup:*",                  # Legacy dedup keys
+                "flow_guardian:*",          # Flow guardian states
+            ]
+            
+            total_deleted = 0
+            for pattern in patterns:
+                keys = r.keys(pattern)
+                if keys:
+                    deleted = r.delete(*keys)
+                    total_deleted += deleted
+                    safe_print(f"  [OK] {pattern}: {deleted} keys deleted")
+                else:
+                    safe_print(f"  [SKIP] {pattern}: no keys")
+            
+            safe_print(f"  [OK] Redis cleanup complete (total {total_deleted} keys deleted)\n")
+            return True
+            
+        except Exception as e:
+            if attempt < max_retries:
+                safe_print(f"  [RETRY] Redis connection failed ({attempt}/{max_retries}): {e}")
+                safe_print(f"  [WAIT] Retrying in {retry_delay} second(s)...")
+                import time
+                time.sleep(retry_delay)
             else:
-                safe_print(f"  [SKIP] {pattern}: no keys")
-        
-        safe_print(f"  [OK] Redis cleanup complete (total {total_deleted} keys deleted)\n")
-        return True
-        
-    except Exception as e:
-        safe_print(f"  [ERROR] Redis cleanup failed: {e}\n")
-        return False
+                safe_print(f"  [ERROR] Redis connection failed after {max_retries} attempts: {e}")
+                safe_print(f"  [HINT] Please check Docker container: docker ps | grep trading_redis\n")
+                return False
+    
+    return False
 
 
 def main():
