@@ -28,76 +28,53 @@ def safe_print(msg):
 
 
 def clean_postgres():
-    """Postgres paper mode data cleanup"""
+    """Postgres paper mode data cleanup (PHASE24-1 개선 - cleanup 헬퍼 사용)"""
     safe_print("\n[1/2] Postgres Clean-State...")
     
     try:
-        conn = psycopg2.connect(
-            host=os.getenv('DB_HOST'),
-            port=int(os.getenv('DB_PORT')),
-            database=os.getenv('DB_NAME'),
-            user=os.getenv('DB_USER'),
-            password=os.getenv('DB_PASSWORD')
-        )
-        cursor = conn.cursor()
+        # PHASE24-1: cleanup 헬퍼 모듈 사용
+        from database.cleanup import delete_trades_for_mode, delete_signals_for_mode, delete_metrics_for_env, verify_cleanup
         
-        # Check before delete
-        cursor.execute("SELECT COUNT(*) FROM trading.trades WHERE mode = 'paper';")
-        before_count = cursor.fetchone()[0]
-        safe_print(f"  [DEBUG] Before DELETE: {before_count} paper trades")
+        # 1. Before count
+        verify_before = verify_cleanup(mode="paper")
+        safe_print(f"  [DEBUG] Before DELETE: {verify_before['trades']} paper trades")
         
-        # Paper mode trades deletion
-        cursor.execute("DELETE FROM trading.trades WHERE mode = 'paper';")
-        deleted_trades = cursor.rowcount
+        # 2. Trades 삭제
+        deleted_trades = delete_trades_for_mode(mode="paper")
         safe_print(f"  [OK] trading.trades (paper): {deleted_trades} deleted")
         
-        # Check after delete (before commit)
-        cursor.execute("SELECT COUNT(*) FROM trading.trades WHERE mode = 'paper';")
-        after_count = cursor.fetchone()[0]
-        safe_print(f"  [DEBUG] After DELETE (before commit): {after_count} paper trades")
-        
-        # Monitoring signals deletion (if exists)
-        try:
-            cursor.execute("DELETE FROM monitoring.signals WHERE mode = 'paper';")
-            deleted_signals = cursor.rowcount
+        # 3. Signals 삭제
+        deleted_signals = delete_signals_for_mode(mode="paper")
+        if deleted_signals >= 0:
             safe_print(f"  [OK] monitoring.signals (paper): {deleted_signals} deleted")
-        except Exception as e:
-            if "does not exist" not in str(e):
-                safe_print(f"  [WARN] monitoring.signals: {e}")
+        else:
+            safe_print(f"  [SKIP] monitoring.signals: 테이블 없음")
         
-        # Monitoring metrics deletion (if exists)
-        try:
-            cursor.execute("DELETE FROM monitoring.metrics WHERE env = 'paper';")
-            deleted_metrics = cursor.rowcount
+        # 4. Metrics 삭제
+        deleted_metrics = delete_metrics_for_env(environment="paper")
+        if deleted_metrics >= 0:
             safe_print(f"  [OK] monitoring.metrics (paper): {deleted_metrics} deleted")
-        except Exception as e:
-            if "does not exist" not in str(e):
-                safe_print(f"  [WARN] monitoring.metrics: {e}")
+        else:
+            safe_print(f"  [SKIP] monitoring.metrics: 테이블 없음")
         
-        conn.commit()
-        cursor.close()
-        conn.close()
+        # 5. 검증 (새 연결로 재확인)
+        verify_after = verify_cleanup(mode="paper")
+        safe_print(f"  [VERIFY] After cleanup: trades={verify_after['trades']}, signals={verify_after['signals']}, metrics={verify_after['metrics']}")
         
-        # Check after commit with NEW connection
-        verify_conn = psycopg2.connect(
-            host=os.getenv('DB_HOST'),
-            port=int(os.getenv('DB_PORT')),
-            database=os.getenv('DB_NAME'),
-            user=os.getenv('DB_USER'),
-            password=os.getenv('DB_PASSWORD')
-        )
-        verify_cur = verify_conn.cursor()
-        verify_cur.execute("SELECT COUNT(*) FROM trading.trades WHERE mode = 'paper';")
-        final_count = verify_cur.fetchone()[0]
-        safe_print(f"  [DEBUG] After COMMIT (new connection): {final_count} paper trades")
-        verify_cur.close()
-        verify_conn.close()
+        # 6. 재등장 체크
+        if verify_after['trades'] > 0:
+            safe_print(f"  [WARN] ⚠️  {verify_after['trades']} trades reappeared after cleanup!")
+            safe_print(f"  [HINT] This may indicate concurrent inserts or transaction isolation issues.")
+        else:
+            safe_print(f"  [OK] ✅ No trades reappeared - cleanup successful")
         
         safe_print("  [OK] Postgres cleanup complete\n")
         return True
         
     except Exception as e:
         safe_print(f"  [ERROR] Postgres cleanup failed: {e}\n")
+        import traceback
+        traceback.print_exc()
         return False
 
 

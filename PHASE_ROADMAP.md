@@ -766,7 +766,6 @@ Ensemble ON 모드로 4시간 이상 연속 Paper 테스트 (인프라 안정성
 
 ---
 
- **PHASE24** – 앙상블 V2 확립 
 **상태**: 
 
 **목적**: Redis 연결/초기화 안정화 및 Ensemble V2 인프라 레벨 검증
@@ -779,9 +778,13 @@ Ensemble ON 모드로 4시간 이상 연속 Paper 테스트 (인프라 안정성
   - database/redis.py 로그 가시성 개선 (INFO 레벨)
   - 2H PAPER 실행: 10,798 aggregates, 78 trades, **Redis ERROR 0건**
   - **Acceptance**: PASS (Production Ready Baseline 확립)
-- **24-1:** 전체 INFRA 진단 PLANNED
-  - DB, Redis, FlowGuardian 통합 점검
-  - Postgres DELETE 재출현 문제 해결
+- **24-1: Full Infra Diagnostics** COMPLETE (2025-12-02)
+  - DB cleanup 안정성 확보 (database/cleanup.py 추가, trades 재등장 0건)
+  - 통합 인프라 진단 스크립트 (phase24_1_infra_diagnostics.py: DB/Redis/Engine 점검)
+  - DB 스키마 조사 (inspect_db_schema.py: mode 컬럼 확인, run_id 없음 발견)
+  - 6분 PAPER 스모크 테스트: 24 trades, **Redis/DB/Engine ERROR 0건**
+  - Tests: test_phase24_1_db_cleanup.py (4/4 PASS), test_phase24_1_infra_diagnostics.py (5/5 PASS)
+  - **Acceptance**: PASS (DB cleanup 안정성 + 인프라 진단 체계 확립)
 - **24-2:** 환경변수 관리 자동화 PLANNED
   - Jinja2 템플릿 또는 환경변수 통일
   - Config validation 스크립트
