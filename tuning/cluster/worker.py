@@ -122,11 +122,13 @@ class TuningWorker:
         import time
         import yaml
         from pathlib import Path
+        from datetime import datetime
         from database import get_db_connection
         from execution.engine import run_v2
         from common.config_loader import deep_merge
         
         start_time = time.time()
+        start_datetime = datetime.now()
         
         job_id = job['job_id']
         run_id = job['run_id']
@@ -221,9 +223,12 @@ class TuningWorker:
             
             # 5. 결과 메트릭 추출
             # 백테스트 결과는 DB의 trading.trades, portfolio 테이블에서 추출
+            end_datetime = datetime.now()
             runtime_sec = time.time() - start_time
             
-            result_metrics = self._extract_metrics_from_db(run_id, job_id, runtime_sec)
+            result_metrics = self._extract_metrics_from_db(
+                run_id, job_id, runtime_sec, start_datetime, end_datetime
+            )
             
             logger.info(f"[{self.worker_id}] Job 처리 완료: {job_id}")
             logger.info(f"[{self.worker_id}]   PnL: {result_metrics.get('pnl', 0):.2f} USDT")
@@ -239,33 +244,42 @@ class TuningWorker:
             logger.error(traceback.format_exc())
             raise
     
-    def _extract_metrics_from_db(self, run_id: str, job_id: str, runtime_sec: float) -> Dict[str, Any]:
+    def _extract_metrics_from_db(
+        self,
+        run_id: str,
+        job_id: str,
+        runtime_sec: float,
+        start_time: 'datetime',
+        end_time: 'datetime'
+    ) -> Dict[str, Any]:
         """
-        DB에서 백테스트 결과 메트릭 추출
+        DB에서 백테스트 결과 메트릭 추출 (PHASE25-4: 시간 기반 isolation + 정교한 계산)
         
         Args:
             run_id: Run ID
             job_id: Job ID
             runtime_sec: 실행 시간 (초)
+            start_time: Job 시작 시각
+            end_time: Job 종료 시각
         
         Returns:
             Dict[str, Any]: 메트릭 딕셔너리
         """
         from database import get_db_connection
+        import numpy as np
         
-        # 현재는 간단하게 최근 trades 및 portfolio 데이터 기반으로 계산
-        # 실제로는 run_id 기준으로 필터링해야 하나, PHASE25-2에서는 단일 워커 가정
+        # PHASE25-4: 시간 기반 isolation (start_time ~ end_time 범위의 trades만)
+        # 완벽하지는 않지만, 동시 실행 충돌을 최소화
         
-        sql_trades = """
+        sql_trades_detailed = """
         SELECT
-            COUNT(*) AS trade_count,
-            SUM(CASE WHEN pnl_usdt > 0 THEN 1 ELSE 0 END) AS win_count,
-            SUM(CASE WHEN pnl_usdt <= 0 THEN 1 ELSE 0 END) AS lose_count,
-            SUM(pnl_usdt) AS total_pnl,
-            AVG(CASE WHEN pnl_usdt > 0 THEN pnl_usdt ELSE NULL END) AS avg_win,
-            AVG(CASE WHEN pnl_usdt <= 0 THEN pnl_usdt ELSE NULL END) AS avg_lose
+            pnl_usdt,
+            pnl_pct,
+            exit_time
         FROM trading.trades
-        WHERE exit_time >= now() - interval '10 minutes'
+        WHERE exit_time >= %s
+          AND exit_time <= %s
+        ORDER BY exit_time ASC
         """
         
         sql_portfolio = """
@@ -282,16 +296,9 @@ class TuningWorker:
         try:
             with get_db_connection() as conn:
                 with conn.cursor() as cur:
-                    # Trades 메트릭
-                    cur.execute(sql_trades)
-                    trades_row = cur.fetchone()
-                    
-                    trade_count = trades_row[0] or 0
-                    win_count = trades_row[1] or 0
-                    lose_count = trades_row[2] or 0
-                    total_pnl = trades_row[3] or 0.0
-                    avg_win = trades_row[4] or 0.0
-                    avg_lose = trades_row[5] or 0.0
+                    # Trades 상세 조회 (시간 범위 기반)
+                    cur.execute(sql_trades_detailed, (start_time, end_time))
+                    trades_rows = cur.fetchall()
                     
                     # Portfolio 메트릭
                     cur.execute(sql_portfolio)
@@ -303,26 +310,48 @@ class TuningWorker:
                         pnl_pct = portfolio_row[2] or 0.0
                     else:
                         equity = 0.0
-                        pnl = total_pnl
+                        pnl = 0.0
                         pnl_pct = 0.0
             
-            # 계산된 메트릭
+            # Trades 파싱
+            trades = [
+                {
+                    'pnl_usdt': row[0],
+                    'pnl_pct': row[1],
+                    'exit_time': row[2]
+                }
+                for row in trades_rows
+            ]
+            
+            trade_count = len(trades)
+            
+            if trade_count == 0:
+                # Trades 없음
+                logger.warning(f"[{self.worker_id}] Trades 없음 (시간 범위: {start_time} ~ {end_time})")
+                return self._get_empty_metrics(runtime_sec)
+            
+            # 기본 메트릭 계산
+            win_count = sum(1 for t in trades if t['pnl_usdt'] > 0)
+            lose_count = trade_count - win_count
             win_rate = win_count / trade_count if trade_count > 0 else 0.0
             
-            # Sharpe ratio (간단 근사치)
-            # 실제로는 일별 수익률의 표준편차가 필요하나, 여기서는 단순 계산
-            sharpe_ratio = pnl_pct / 10.0 if pnl_pct != 0 else 0.0  # 임시 근사
-            
-            # Max Drawdown (임시)
-            max_drawdown = abs(pnl * 0.3) if pnl < 0 else 0.0
+            total_pnl = sum(t['pnl_usdt'] for t in trades)
+            avg_win = np.mean([t['pnl_usdt'] for t in trades if t['pnl_usdt'] > 0]) if win_count > 0 else 0.0
+            avg_lose = np.mean([t['pnl_usdt'] for t in trades if t['pnl_usdt'] <= 0]) if lose_count > 0 else 0.0
             
             # Profit Factor
             profit_factor = 0.0
             if win_count > 0 and lose_count > 0 and avg_lose != 0:
                 profit_factor = abs((avg_win * win_count) / (avg_lose * lose_count))
             
+            # Sharpe Ratio 개선 (일별 수익률 기반 근사)
+            sharpe_ratio = self._calculate_sharpe_ratio(trades)
+            
+            # Max Drawdown 개선 (cumulative PnL 기반)
+            max_drawdown, max_dd_duration_hours = self._calculate_max_drawdown(trades)
+            
             result = {
-                'pnl': round(pnl, 2),
+                'pnl': round(pnl if pnl != 0 else total_pnl, 2),
                 'pnl_pct': round(pnl_pct, 2),
                 'trade_count': trade_count,
                 'win_count': win_count,
@@ -330,7 +359,7 @@ class TuningWorker:
                 'win_rate': round(win_rate, 4),
                 'sharpe_ratio': round(sharpe_ratio, 4),
                 'max_drawdown': round(max_drawdown, 2),
-                'max_drawdown_duration_hours': 0.0,  # 추후 구현
+                'max_drawdown_duration_hours': round(max_dd_duration_hours, 2),
                 'profit_factor': round(profit_factor, 4),
                 'avg_win': round(avg_win, 2),
                 'avg_lose': round(avg_lose, 2),
@@ -341,22 +370,125 @@ class TuningWorker:
             
         except Exception as e:
             logger.error(f"메트릭 추출 실패: {e}")
+            import traceback
+            logger.error(traceback.format_exc())
             # Fallback: 빈 메트릭
-            return {
-                'pnl': 0.0,
-                'pnl_pct': 0.0,
-                'trade_count': 0,
-                'win_count': 0,
-                'lose_count': 0,
-                'win_rate': 0.0,
-                'sharpe_ratio': 0.0,
-                'max_drawdown': 0.0,
-                'max_drawdown_duration_hours': 0.0,
-                'profit_factor': 0.0,
-                'avg_win': 0.0,
-                'avg_lose': 0.0,
-                'runtime_sec': round(runtime_sec, 3)
-            }
+            return self._get_empty_metrics(runtime_sec)
+    
+    def _calculate_sharpe_ratio(self, trades: List[Dict[str, Any]]) -> float:
+        """
+        Sharpe Ratio 계산 (일별 수익률 기반 근사)
+        
+        Args:
+            trades: 거래 목록 [{'pnl_usdt': ..., 'pnl_pct': ..., 'exit_time': ...}, ...]
+        
+        Returns:
+            float: Sharpe Ratio (연율화)
+        
+        Note:
+            - 완벽한 Sharpe는 equity curve 필요
+            - 여기서는 trade별 pnl_pct를 일별로 근사하여 계산
+        """
+        import numpy as np
+        
+        if len(trades) < 2:
+            return 0.0
+        
+        # Trade별 수익률 추출 (pnl_pct)
+        returns = [t['pnl_pct'] / 100.0 for t in trades if 'pnl_pct' in t]
+        
+        if not returns:
+            return 0.0
+        
+        # 평균 및 표준편차
+        mean_return = np.mean(returns)
+        std_return = np.std(returns)
+        
+        if std_return == 0:
+            return 0.0
+        
+        # Sharpe Ratio (연율화: sqrt(365))
+        # 주의: trade별 수익률을 일별로 근사하므로 정확하지 않음
+        sharpe = (mean_return / std_return) * np.sqrt(365)
+        
+        return sharpe
+    
+    def _calculate_max_drawdown(self, trades: List[Dict[str, Any]]) -> tuple:
+        """
+        Max Drawdown 계산 (cumulative PnL 기반)
+        
+        Args:
+            trades: 거래 목록 (시간 순 정렬 필요)
+        
+        Returns:
+            (max_drawdown_pct, max_drawdown_duration_hours)
+        """
+        if not trades:
+            return 0.0, 0.0
+        
+        # Cumulative PnL 계산
+        cumulative_pnl = []
+        running_pnl = 0.0
+        for trade in trades:
+            running_pnl += trade['pnl_usdt']
+            cumulative_pnl.append(running_pnl)
+        
+        # Running Peak 및 Drawdown 계산
+        peak = cumulative_pnl[0]
+        max_dd_pct = 0.0
+        dd_start_idx = 0
+        dd_end_idx = 0
+        
+        for i, pnl in enumerate(cumulative_pnl):
+            if pnl > peak:
+                peak = pnl
+                dd_start_idx = i
+            
+            # Drawdown (절대값)
+            dd = peak - pnl
+            
+            # Drawdown % (peak 기준)
+            dd_pct = (dd / abs(peak)) * 100 if peak != 0 else 0.0
+            
+            if dd_pct > max_dd_pct:
+                max_dd_pct = dd_pct
+                dd_end_idx = i
+        
+        # Duration 계산 (시간)
+        if dd_end_idx > dd_start_idx and len(trades) > dd_end_idx:
+            start_time = trades[dd_start_idx]['exit_time']
+            end_time = trades[dd_end_idx]['exit_time']
+            duration_hours = (end_time - start_time).total_seconds() / 3600
+        else:
+            duration_hours = 0.0
+        
+        return max_dd_pct, duration_hours
+    
+    def _get_empty_metrics(self, runtime_sec: float) -> Dict[str, Any]:
+        """
+        빈 메트릭 반환 (fallback)
+        
+        Args:
+            runtime_sec: 실행 시간 (초)
+        
+        Returns:
+            Dict[str, Any]: 빈 메트릭 딕셔너리
+        """
+        return {
+            'pnl': 0.0,
+            'pnl_pct': 0.0,
+            'trade_count': 0,
+            'win_count': 0,
+            'lose_count': 0,
+            'win_rate': 0.0,
+            'sharpe_ratio': 0.0,
+            'max_drawdown': 0.0,
+            'max_drawdown_duration_hours': 0.0,
+            'profit_factor': 0.0,
+            'avg_win': 0.0,
+            'avg_lose': 0.0,
+            'runtime_sec': round(runtime_sec, 3)
+        }
     
     def _process_job_dummy(self, job: Dict[str, Any]) -> Dict[str, Any]:
         """

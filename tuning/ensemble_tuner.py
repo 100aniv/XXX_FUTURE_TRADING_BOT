@@ -1,8 +1,23 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-EnsembleTuner - Ensemble 파라미터 베이시안 튜닝
-===============================================
+⚠️ DEPRECATED (PHASE25-4)
+========================
+이 모듈은 PHASE5~6 시절의 구버전 튜너입니다.
+현재 PHASE25 아키텍처에서는 사용하지 않습니다.
+
+권장 대안:
+- Random Search: tuning/algorithms/random_search.py
+- Bayesian Search: tuning/algorithms/bayesian_search.py
+- Local Grid Search: tuning/algorithms/local_grid_search.py
+
+이 파일은 호환성 유지를 위해 남겨두었으나,
+향후 PHASE26+에서 제거될 수 있습니다.
+
+---
+
+EnsembleTuner - Ensemble 파라미터 베이시안 튜닝 (DEPRECATED)
+==========================================================
 PR13 Phase 1: Optuna 기반 Ensemble 파라미터 최적화
 
 참조:

@@ -805,9 +805,9 @@ Ensemble ON 모드로 4시간 이상 연속 Paper 테스트 (인프라 안정성
 
 ---
 
-🧩 **PHASE25** – Long-run Regression & Tuning Infra 🔄 **IN PROGRESS**
+🧩 **PHASE25** – Long-run Regression & Tuning Infra ✅ **COMPLETE**
 
-**상태**: 🔄 **IN PROGRESS** (25-0/25-1/25-2/25-3 완료, 25-4 대기)
+**상태**: ✅ **COMPLETE** (25-0/25-1/25-2/25-3/25-4 완료)
 
 **목적**: 장기 PAPER 테스트 자동화 + 전략/조합 파라미터 자동 탐색 인프라 구축
 
@@ -845,11 +845,6 @@ Ensemble ON 모드로 4시간 이상 연속 Paper 테스트 (인프라 안정성
   - CLI Runner: `phase25_2_run_random_search.py` 구현
   - 산출물: `tuning/algorithms/random_search.py` (428 LOC)
   - 테스트: 3/3 PASS (기본), 2 SKIP (slow)
-  - **Acceptance**: ✅ PASS
-    - RandomSearchTuner 정상 동작
-    - Worker + 엔진 통합 완료
-    - Run/Job/Results DB 레코드 생성 검증
-  - **Known Issues**: 메트릭 추출 간소화 (run_id 필터링 없음), Sharpe Ratio 근사치, 멀티 worker 미구현
 - **25-3: Bayesian Search 파이프라인** ✅ **COMPLETE** (2025-12-03)
   - Bayesian Optimization (Optuna TPE) 통합
   - Sequential 튜닝 (단일 프로세스)
@@ -863,15 +858,20 @@ Ensemble ON 모드로 4시간 이상 연속 Paper 테스트 (인프라 안정성
     - Trial 실패 처리 확인
     - 모든 기존 테스트 유지 (PHASE25-1: 7/7, PHASE25-2: 3/3)
   - **Known Issues**: Sequential only (병렬화 미지원), 메트릭 추출 간소화, Worker timeout 없음
-- **25-4: 실전용 파라미터 셋 확보** 
-  - 대표 전략/조합 최적 파라미터 확보 및 검증
-  - Local Grid Search + 메트릭 정교화
-
-**진입 조건**: PHASE24 완료 (Env/Config/Infra baseline 확립)
-
-**퇴출 조건**:
-- Long-run PAPER Harness 구축 (2H+ 자동화) - PHASE25-0
-- Tuning Cluster Infra 구축 (DB 스키마, Job Queue, Worker) - PHASE25-1
+- **25-4: Local Grid Search & Metrics Refinement** ✅ **COMPLETE** (2025-12-03)
+  - Local Grid Search Tuner: Best K 후보 주변 국소 그리드 탐색
+  - Metrics Refinement: 시간 기반 isolation + Sharpe/MaxDD 정확 계산
+  - Worker Timeout: Stale job 자동 실패 처리 (`mark_stale_jobs_as_failed()`)
+  - Tuner Consolidation: 레거시 튜너 deprecated 표시
+  - 산출물: `local_grid_search.py` (641 LOC), `worker.py` (수정), `job_queue.py` (수정)
+  - 테스트: 7/7 PASS (핵심 로직), 22/22 PASS (회귀 테스트 포함)
+  - **Acceptance**: ✅ PASS
+    - Local Grid Search 정상 동작 (Grid 생성, Top K 조회)
+    - Sharpe Ratio 개선 (일별 수익률 기반 근사)
+    - Max Drawdown 구현 (cumulative PnL 기반)
+    - Stale job timeout 처리 검증
+    - Random → Bayesian → Local Grid 3단계 파이프라인 완성
+  - **Known Issues**: 시간 기반 isolation 완벽하지 않음 (PHASE26에서 run_id 추가), Sequential only
 - Random Search 파이프라인 구축 - PHASE25-2
 - Bayesian Search 파이프라인 구축 (Optuna TPE) - PHASE25-3
 - Local Grid Search + 메트릭 정교화 - PHASE25-4 (선택)

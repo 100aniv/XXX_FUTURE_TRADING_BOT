@@ -8,7 +8,7 @@ PHASE25: 하이퍼파라미터 튜닝 알고리즘 모듈
 지원 알고리즘:
 - Random Search (PHASE25-2)
 - Bayesian Search (PHASE25-3)
-- Grid Search (PHASE25-4, TODO)
+- Local Grid Search (PHASE25-4)
 """
 
 from tuning.algorithms.random_search import (
@@ -22,10 +22,17 @@ from tuning.algorithms.bayesian_search import (
     BayesianSearchTuner
 )
 
+from tuning.algorithms.local_grid_search import (
+    LocalGridSearchConfig,
+    LocalGridSearchTuner
+)
+
 __all__ = [
     'ParamSpace',
     'RandomSearchConfig',
     'RandomSearchTuner',
     'BayesianSearchConfig',
     'BayesianSearchTuner',
+    'LocalGridSearchConfig',
+    'LocalGridSearchTuner',
 ]

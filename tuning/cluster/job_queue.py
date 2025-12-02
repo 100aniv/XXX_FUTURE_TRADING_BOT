@@ -487,3 +487,52 @@ class JobQueue:
         except Exception as e:
             logger.error(f"❌ Run 결과 조회 실패: {e}")
             return []
+    
+    def mark_stale_jobs_as_failed(self, max_runtime_sec: int = 3600) -> int:
+        """
+        Stale RUNNING job을 FAILED로 전환 (PHASE25-4: Worker Timeout)
+        
+        Args:
+            max_runtime_sec: 최대 허용 실행 시간 (초, 기본 1시간)
+        
+        Returns:
+            int: 실패 처리된 job 수
+        
+        Description:
+            RUNNING 상태이지만 started_at 이후 max_runtime_sec를 초과한 job을
+            FAILED로 전환하여 hanging job 방지.
+            
+        Usage:
+            # 주기적으로 호출 (예: 별도 스크립트 또는 Worker loop)
+            queue = JobQueue()
+            failed_count = queue.mark_stale_jobs_as_failed(max_runtime_sec=3600)
+        """
+        sql = """
+        UPDATE tuning.jobs
+        SET status = 'FAILED',
+            error_message = 'Job timeout: exceeded max runtime',
+            updated_at = now()
+        WHERE status = 'RUNNING'
+          AND (EXTRACT(EPOCH FROM (now() - started_at)) > %s)
+        RETURNING job_id, run_id
+        """
+        
+        try:
+            with get_db_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(sql, (max_runtime_sec,))
+                    failed_jobs = cur.fetchall()
+                    
+                    count = len(failed_jobs)
+                    
+                    if count > 0:
+                        logger.warning(f"⚠️  Stale job {count}개를 FAILED로 전환 (max_runtime: {max_runtime_sec}s)")
+                        for job_id, run_id in failed_jobs:
+                            logger.warning(f"   - Job {job_id} (Run: {run_id})")
+                    else:
+                        logger.debug(f"✅ Stale job 없음 (max_runtime: {max_runtime_sec}s)")
+                    
+                    return count
+        except Exception as e:
+            logger.error(f"❌ Stale job 처리 실패: {e}")
+            return 0
