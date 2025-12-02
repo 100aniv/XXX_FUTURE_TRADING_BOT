@@ -785,18 +785,23 @@ Ensemble ON 모드로 4시간 이상 연속 Paper 테스트 (인프라 안정성
   - 6분 PAPER 스모크 테스트: 24 trades, **Redis/DB/Engine ERROR 0건**
   - Tests: test_phase24_1_db_cleanup.py (4/4 PASS), test_phase24_1_infra_diagnostics.py (5/5 PASS)
   - **Acceptance**: PASS (DB cleanup 안정성 + 인프라 진단 체계 확립)
-- **24-2:** 환경변수 관리 자동화 PLANNED
-  - Jinja2 템플릿 또는 환경변수 통일
-  - Config validation 스크립트
+- **24-2: Env & Config Management** COMPLETE (2025-12-02)
+  - .env.example 생성 (필수 환경변수 문서화, 80 LOC)
+  - Env/Config Validator (env_config_validator.py: 환경변수 + YAML config 검증, 414 LOC)
+  - 검증 항목: 필수 키, 타입, 전략 이름, ensemble mode, duration/leverage 범위 등
+  - Tests: test_phase24_2_env_config_validation.py (11/11 PASS, 100%)
+  - 6분 PAPER 회귀 테스트: 33 trades, **인프라 ERROR 0건**
+  - **Acceptance**: PASS (Env/Config 검증 레이어 확립)
 
 **진입 조건**: PHASE23 완료
 
 **퇴출 조건**: 
-- Redis ERROR/CRITICAL 0건 (2H+ PAPER)
-- 전체 INFRA 진단 완료 (PHASE24-1)
-- 환경변수 관리 자동화 완료 (PHASE24-2)
-- ⏸️ 전체 INFRA 진단 완료 (PHASE24-1)
-- ⏸️ DB/Redis/FlowGuardian 통합 안정성 확보
+- ✅ Redis ERROR/CRITICAL 0건 (2H+ PAPER) - PHASE24-0 완료
+- ✅ 전체 INFRA 진단 완료 (PHASE24-1) - DB cleanup + 통합 진단 스크립트
+- ✅ 환경변수 관리 자동화 완료 (PHASE24-2) - Env/Config validator + .env.example
+- ✅ DB/Redis/Engine 통합 안정성 확보 - PHASE24-0~2 완료
+
+**PHASE24 판정**: ✅ **COMPLETE** - Production Ready Infra Baseline 확립
 
 ---
 
