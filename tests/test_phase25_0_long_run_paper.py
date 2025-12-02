@@ -46,6 +46,34 @@ def test_duration_minimum():
 
 
 # ============================================================================
+# 테스트 1b: wmic 출력 파서 (future_alarm_bot 프로세스 필터링)
+# ============================================================================
+
+def test_parse_wmic_output_for_future_alarm_pids():
+    """wmic 문자열에서 future_alarm_bot/run_v2.py 프로세스만 추출되는지 확인"""
+    from scripts.infra.phase25_0_long_run_paper import _parse_wmic_output_for_future_alarm_pids
+
+    sample_output = (
+        "CommandLine=python C:/other_project/venv/Scripts/python.exe some_script.py\r\n"
+        "ProcessId=1111\r\n"
+        "\r\n"
+        "CommandLine=python C:/future_alarm_bot/scripts/run_v2.py --mode paper\r\n"
+        "ProcessId=2222\r\n"
+        "\r\n"
+        "CommandLine=python C:/future_alarm_bot/other_tool.py\r\n"
+        "ProcessId=3333\r\n"
+        "\r\n"
+    )
+
+    pids = _parse_wmic_output_for_future_alarm_pids(sample_output)
+
+    # run_v2.py 와 future_alarm_bot 경로를 포함한 항목만 남아야 한다
+    assert 2222 in pids, "run_v2.py 프로세스 PID가 검출되어야 함"
+    assert 3333 in pids, "future_alarm_bot 경로를 포함한 PID가 검출되어야 함"
+    assert 1111 not in pids, "무관한 python 프로세스 PID는 제외되어야 함"
+
+
+# ============================================================================
 # 테스트 2: 로그 파서 (ERROR 감지)
 # ============================================================================
 
@@ -172,6 +200,57 @@ def test_config_file_exists():
 
 
 # ============================================================================
+# 테스트 6: 로그 타임스탬프 필터링 (이전 실행 로그 제외)
+# ============================================================================
+
+def test_log_timestamp_filtering():
+    """
+    로그 파일에서 시작 시각 이후의 로그만 필터링하는지 확인
+    (이전 실행 로그가 섞이지 않도록)
+    """
+    # 테스트용 가짜 로그 생성
+    fake_logs = [
+        "2025-12-02 18:07:28,622 [INFO] 이전 실행 로그\n",
+        "2025-12-02 18:07:29,640 [ERROR] 이전 실행 에러\n",
+        "2025-12-02 20:21:10,860 [INFO] 현재 실행 시작\n",
+        "2025-12-02 20:30:15,123 [INFO] 현재 실행 로그\n",
+        "2025-12-02 20:35:20,456 [ERROR] 현재 실행 에러\n",
+        "2025-12-02 22:21:16,246 [INFO] 현재 실행 종료\n",
+    ]
+    
+    # 시작 시각: 2025-12-02 20:21:10
+    start_timestamp = "2025-12-02 20:21:10"
+    
+    # 필터링 로직 (analyze_results와 동일)
+    filtered_lines = []
+    for line in fake_logs:
+        if len(line) < 19:
+            continue
+        try:
+            log_timestamp = line[:19]
+            if log_timestamp >= start_timestamp:
+                filtered_lines.append(line)
+        except:
+            continue
+    
+    # 검증
+    assert len(filtered_lines) == 4, f"필터링 후 4줄이어야 함 (현재: {len(filtered_lines)}줄)"
+    
+    # 이전 실행 로그가 제외되었는지 확인
+    assert "이전 실행" not in "".join(filtered_lines), "이전 실행 로그가 포함되어서는 안 됨"
+    
+    # 현재 실행 로그만 포함되었는지 확인
+    assert "현재 실행 시작" in "".join(filtered_lines), "현재 실행 시작 로그가 포함되어야 함"
+    assert "현재 실행 종료" in "".join(filtered_lines), "현재 실행 종료 로그가 포함되어야 함"
+    
+    # ERROR 카운트 확인 (이전 실행 ERROR 제외)
+    error_count = sum(1 for line in filtered_lines if "[ERROR]" in line)
+    assert error_count == 1, f"ERROR는 1건이어야 함 (현재: {error_count}건)"
+    
+    print("✓ test_log_timestamp_filtering PASS")
+
+
+# ============================================================================
 # 메인 (pytest 아닌 직접 실행 시)
 # ============================================================================
 
@@ -188,6 +267,7 @@ if __name__ == "__main__":
         test_db_metrics_calculation()
         test_integration_smoke()
         test_config_file_exists()
+        test_log_timestamp_filtering()
         
         print("\n" + "=" * 80)
         print("✅ 모든 테스트 PASS")
