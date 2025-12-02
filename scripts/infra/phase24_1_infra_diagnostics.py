@@ -249,12 +249,12 @@ def main() -> int:
     # Summary
     print("\n" + "=" * 80)
     if all_ok:
-        print("✅ INFRA OK - All subsystems ready")
+        print("[PASS] INFRA OK - All subsystems ready")
         print("=" * 80)
         print("\n[NEXT] You can now proceed with PAPER/BACKTEST/LIVE execution")
         return 0
     else:
-        print("❌ INFRA FAIL - One or more subsystems failed")
+        print("[FAIL] INFRA FAIL - One or more subsystems failed")
         print("=" * 80)
         print("\n[ACTION] Fix the failing subsystems before proceeding:")
         for subsystem, result in results.items():

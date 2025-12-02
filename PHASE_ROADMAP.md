@@ -805,25 +805,35 @@ Ensemble ON 모드로 4시간 이상 연속 Paper 테스트 (인프라 안정성
 
 ---
 
-🧩 **PHASE25** – Tuning Cluster & 자동 튜닝 인프라 🟦 **PLANNED**
+🧩 **PHASE25** – Long-run Regression & Tuning Infra 🔄 **IN PROGRESS**
 
-**상태**: 🟦 **PLANNED**
+**상태**: 🔄 **IN PROGRESS** (25-0 진행 중)
 
-**목적**: 전략/조합 파라미터 자동 탐색 인프라 구축
+**목적**: 장기 PAPER 테스트 자동화 + 전략/조합 파라미터 자동 탐색 인프라 구축
 
 **Sub-phases**
-- **25-0: Tuning Cluster Infra**
+- **25-0: Long-run PAPER Regression Harness** 🔄 IN PROGRESS (2025-12-02)
+  - 최소 2H 이상 PAPER 자동화 하네스 구축
+  - 완전 자동화: Pre-flight → Clean State → Run → Monitor → 분석 → 리포트
+  - 6분 스모크와 명확히 구분 (6분=개발/CI용, 2H+=Acceptance용)
+  - 실시간 ERROR 감지 & 즉시 중단
+  - 산출물: `phase25_0_long_run_paper.py`, 테스트, 2H Config, 리포트
+  - Acceptance: 실제 2H 실행 1회 PASS (ERROR 0건, Trade ≥50, Active Positions=0)
+- **25-1: Tuning Cluster Infra** 🟦 PLANNED
   - DB 스키마 (runs, params, results), Worker 구조, job queue
-- **25-1: Random Search 파이프라인**
+- **25-2: Random Search 파이프라인** 🟦 PLANNED
   - 초기 파라미터 탐색
-- **25-2: Bayesian + Local Grid 튜닝 파이프라인**
+- **25-3: Bayesian + Local Grid 튜닝 파이프라인** 🟦 PLANNED
   - 고도화된 파라미터 튜닝
-- **25-3: 실전용 파라미터 셋 확보**
+- **25-4: 실전용 파라미터 셋 확보** 🟦 PLANNED
   - 대표 전략/조합 최적 파라미터
 
-**진입 조건**: PHASE24 완료
+**진입 조건**: PHASE24 완료 (Env/Config/Infra baseline 확립)
 
-**퇴출 조건**: 튜닝 클러스터 정상 작동, 대표 전략 파라미터 셋 확보
+**퇴출 조건**:
+- ✅ Long-run PAPER Harness 구축 (2H+ 자동화) - PHASE25-0
+- ⏸️ 튜닝 클러스터 정상 작동 - PHASE25-1~3
+- ⏸️ 대표 전략 파라미터 셋 확보 - PHASE25-4
 
 ---
 

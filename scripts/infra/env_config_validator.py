@@ -276,10 +276,10 @@ def validate_all(config_paths: List[str] = None) -> int:
     env_valid, env_errors = validate_env()
     
     if env_valid:
-        print("  Status: ✅ PASS")
+        print("  Status: [PASS]")
         print()
     else:
-        print("  Status: ❌ FAIL")
+        print("  Status: [FAIL]")
         print("  Errors:")
         for error in env_errors:
             print(f"    - {error}")
@@ -298,7 +298,7 @@ def validate_all(config_paths: List[str] = None) -> int:
             config_paths = []
     
     if not config_paths:
-        print("  Status: ⚠️  SKIP (no config files found)")
+        print("  Status: [SKIP] (no config files found)")
         print()
     else:
         print(f"  Files to check: {len(config_paths)}")
@@ -310,10 +310,10 @@ def validate_all(config_paths: List[str] = None) -> int:
                 config_errors.append((config_path, errors))
         
         if not config_errors:
-            print("  Status: ✅ PASS")
+            print("  Status: [PASS]")
             print()
         else:
-            print("  Status: ❌ FAIL")
+            print("  Status: [FAIL]")
             print("  Errors:")
             for config_path, errors in config_errors:
                 print(f"    File: {Path(config_path).name}")
@@ -325,13 +325,13 @@ def validate_all(config_paths: List[str] = None) -> int:
     # 3. 최종 결과
     print("=" * 80)
     if all_valid:
-        print("✅ VALIDATION PASSED")
+        print("[PASS] VALIDATION PASSED")
         print("=" * 80)
         print()
         print("[ACTION] Environment and configs are ready for paper/backtest/live")
         return 0
     else:
-        print("❌ VALIDATION FAILED")
+        print("[FAIL] VALIDATION FAILED")
         print("=" * 80)
         print()
         print("[ACTION] Fix the issues above before running paper/backtest/live")
