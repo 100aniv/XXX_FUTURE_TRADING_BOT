@@ -7,12 +7,36 @@
 - 타입별 분류: signals, trading, errors, application
 - 일자별 로테이션: YYYY-MM-DD.log
 - 자동 정리: 30일 이상 로그 삭제
+
+PHASE26-3 추가:
+- TRACE 레벨 추가 (DEBUG보다 낮음, 개발용)
 """
 import os
 import logging
 from logging.handlers import TimedRotatingFileHandler
 from datetime import datetime, timedelta
 import glob
+
+# ============================================
+# PHASE26-3: TRACE 레벨 추가
+# ============================================
+TRACE = 5
+logging.addLevelName(TRACE, "TRACE")
+
+
+def trace(self, message, *args, **kwargs):
+    """
+    TRACE 레벨 로그 (DEBUG보다 낮음)
+    
+    Usage:
+        logger.trace("상세 디버그 메시지")
+    """
+    if self.isEnabledFor(TRACE):
+        self._log(TRACE, message, args, **kwargs)
+
+
+# Logger 클래스에 trace 메서드 추가
+logging.Logger.trace = trace
 
 
 def cleanup_old_logs(log_dir: str, days: int = 30):
