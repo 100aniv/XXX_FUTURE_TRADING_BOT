@@ -122,7 +122,7 @@ def test_profiler_disabled():
 
 def test_indicator_cache_basic():
     """IndicatorCache 기본 동작 검증"""
-    from common.indicators.indicator_cache import IndicatorCache
+    from indicators import IndicatorCache
     
     cache = IndicatorCache(enabled=True)
     
@@ -144,7 +144,7 @@ def test_indicator_cache_basic():
 
 def test_indicator_cache_rsi_accuracy():
     """RSI 계산 정확도 검증 (전체 재계산과 비교)"""
-    from common.indicators.indicator_cache import IndicatorCache
+    from indicators import IndicatorCache
     import pandas as pd
     
     cache = IndicatorCache(enabled=True)
@@ -184,7 +184,7 @@ def test_indicator_cache_rsi_accuracy():
 
 def test_indicator_cache_stats():
     """Cache 통계 검증"""
-    from common.indicators.indicator_cache import IndicatorCache
+    from indicators import IndicatorCache
     
     cache = IndicatorCache(enabled=True)
     
@@ -204,7 +204,7 @@ def test_indicator_cache_stats():
 
 def test_indicator_cache_disabled():
     """Cache 비활성화 시 동작 검증"""
-    from common.indicators.indicator_cache import IndicatorCache
+    from indicators import IndicatorCache
     
     cache = IndicatorCache(enabled=False)
     
