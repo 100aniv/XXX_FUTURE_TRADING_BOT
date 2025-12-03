@@ -944,7 +944,16 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict, sy
         clock.update(ts)
 
         # ⭐ PR7-4: Multi-TF 버퍼 관리: 캔들에서 symbol, timeframe 추출
-        candle_symbol = candle.get("symbol", symbol)  # 기본값 fallback
+        # PHASE26-1: Multi-Symbol 지원 - symbol fallback 안전 처리
+        candle_symbol = candle.get("symbol")
+        if not candle_symbol:
+            # Fallback: config.symbol 또는 symbols[0]
+            if symbols and len(symbols) > 0:
+                candle_symbol = symbols[0]
+            else:
+                candle_symbol = config.get("symbol", "UNKNOWN")
+            logger.warning(f"⚠️ 캔들에 symbol 키 없음, fallback 사용: {candle_symbol}")
+        
         candle_timeframe = candle.get(
             "timeframe", config.get("timeframe", "5m")
         )  # PR7-4

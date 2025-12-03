@@ -1,0 +1,41 @@
+{
+  "status": "success",
+  "top_n": 10,
+  "duration_minutes": 2.0,
+  "start_time": "2025-12-03T21:10:06.140643",
+  "end_time": "2025-12-03T21:12:11.152380",
+  "elapsed_minutes": 2.08352895,
+  "error_count": 0,
+  "analysis": {
+    "db_metrics": {
+      "trade_count": 0,
+      "entry_count": 0,
+      "exit_count": 0,
+      "active_positions": 0,
+      "time_range": {
+        "start": "2025-12-03T21:10:06.140643",
+        "end": "2025-12-03T21:12:11.152380"
+      }
+    },
+    "log_metrics": {
+      "ensemble_aggregate_count": 0,
+      "tier1_count": 0,
+      "tier2_count": 0,
+      "skip_count": 0,
+      "error_count": 23,
+      "critical_count": 6
+    },
+    "duration_metrics": {
+      "start_time": "2025-12-03T21:10:06.140643",
+      "end_time": "2025-12-03T21:12:11.152380",
+      "actual_duration_sec": 125.011737,
+      "actual_duration_hours": 0.0347254825
+    },
+    "multi_symbol": {
+      "symbol_count": 0,
+      "per_symbol_trades": {},
+      "symbols": []
+    }
+  },
+  "profiling": null
+}
