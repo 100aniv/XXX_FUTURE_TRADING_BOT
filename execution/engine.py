@@ -308,7 +308,7 @@ def _convert_ensemble_decision_v2_to_signal(ensemble_decision_v2) -> dict:
     return signal
 
 
-def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict, symbols: list = None):
+def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict, symbols: list = None, activity_tracker=None):
     """
     공통 트레이딩 루프 (PHASE26-1: Multi-Symbol 지원)
 
@@ -1305,6 +1305,14 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict, sy
                             # Compute signal
                             raw_signal = strategy_instance.compute_signal(df_with_indicators)
                             
+                            # ⭐ PHASE27-0: Strategy Signal Hook
+                            if activity_tracker:
+                                activity_tracker.record_strategy_signal(
+                                    symbol=candle_symbol,
+                                    strategy_id=strategy_name,
+                                    has_signal=(raw_signal is not None and raw_signal.get('side') is not None)
+                                )
+                            
                             if not raw_signal or not raw_signal.get('side'):
                                 logger.info(f"⏸ [ENSEMBLE V2] {strategy_name}: 신호 없음 (side={raw_signal.get('side') if raw_signal else None})")
                                 continue
@@ -1345,6 +1353,14 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict, sy
                         decisions_v2=decisions_v2,
                         regime=None
                     )
+                    
+                    # ⭐ PHASE27-0: Ensemble Decision Hook
+                    if activity_tracker:
+                        activity_tracker.record_ensemble_decision(
+                            symbol=candle_symbol,
+                            tier=ensemble_decision_v2.tier,
+                            side=ensemble_decision_v2.side
+                        )
                     
                     logger.info(
                         f"🎯 [ENSEMBLE V2] Aggregate 결과: "
@@ -1782,6 +1798,10 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict, sy
                 try:
                     ttl = redis_client.ttl(redis_cooldown_key)
                     if ttl > 0:
+                        # ⭐ PHASE27-0: Guard Block Hook (Cooldown)
+                        if activity_tracker:
+                            activity_tracker.record_guard_block(candle_symbol, reason="cooldown_active")
+                        
                         logger.warning(
                             f"❌ [ENTRY BLOCK] symbol={candle_symbol} side={decision.get('side')} strategy={strategy_id} "
                             f"reason={strategy_id}_cooldown_active remaining_seconds={ttl}"
@@ -1847,6 +1867,9 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict, sy
         
         # BLOCK 처리
         if exposure_decision.decision == "BLOCK":
+            # ⭐ PHASE27-0: Guard Block Hook (Exposure)
+            if activity_tracker:
+                activity_tracker.record_guard_block(candle_symbol, reason="exposure_exceeded")
             if strategy_cooldown > 0:
                 if redis_client:
                     try:
@@ -1995,6 +2018,14 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict, sy
         if not fill.get("success"):
             logger.error(f"❌ 거래 실행 실패: {candle_symbol}")
             continue
+        
+        # ⭐ PHASE27-0: Order Submission Hook
+        if activity_tracker:
+            activity_tracker.record_order_submitted(
+                symbol=candle_symbol,
+                side=decision.get("side"),
+                size=qty
+            )
         
         # ⭐ PHASE11-B: 진입 성공 로그
         logger.info(

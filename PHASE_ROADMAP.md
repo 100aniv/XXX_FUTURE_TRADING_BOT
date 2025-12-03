@@ -938,27 +938,67 @@ Ensemble ON 모드로 4시간 이상 연속 Paper 테스트 (인프라 안정성
 
 **퇴출 조건**: Top100 심볼 30분 PAPER 정상 종료, ERROR 0건 확인 
 
-🧩 **PHASE27** – Infra Performance Tuning (상용급 1차) 🟦 **PLANNED**
+---
 
-**상태**: 🟦 **PLANNED**
+🧩 **PHASE27** – Trade Activity Diagnosis & Strategy Tuning ✅ **IN PROGRESS**
 
-**목적**: Top20~50 심볼 처리 가능한 성능 확보
+**상태**: 🔄 **IN PROGRESS** (2025-12-04)
+
+**목적**: "0 트레이드" 원인 진단 및 전략/앙상블 파라미터 튜닝
 
 **Sub-phases**
-- **27-0: 성능 프로파일링**
-  - CPU/Memory, hot path, GC, 로그 비용
-- **27-1: 최적화 1차 패스**
-  - 인디케이터 캐싱, 불필요 연산 제거, 로그 튜닝
-- **27-2: Top20~50 Load Test**
-  - Latency/CPU/메모리/queue depth 기준선 확보
+
+- **27-0: Trade Activity Diagnosis & Drop-off Instrumentation** ✅ **COMPLETE** (2025-12-04)
+  - Signal → Trade 파이프라인 Drop-off 계측 인프라 구축
+  - TradeActivityTracker 모듈 (Thread-safe, JSON serialization)
+  - Engine/Guard Hook 6개 추가 (Optional, 오버헤드 0)
+  - Runner 스크립트: Single-Symbol 30m, Multi-Symbol Top10 30m
+  - **산출물**:
+    - `metrics/trade_activity_tracker.py` (285 LOC)
+    - `execution/engine.py` (+6 hooks, DO-NOT-TOUCH 준수)
+    - `scripts/infra/phase27_0_run_diagnosis.py` (327 LOC)
+    - `configs/paper/phase27_0_single_symbol_30m.yml`
+    - `configs/paper/phase27_0_top10_30m.yml`
+    - `docs/PHASE27/PHASE27-0_TRADE_ACTIVITY_DIAGNOSIS_DESIGN.md` (431 lines)
+    - `docs/PHASE27/PHASE27-0_TRADE_ACTIVITY_DIAGNOSIS_REPORT.md` (실행 리포트)
+  - **테스트**: 21/21 PASS (Unit Tests), 22/22 PASS (Regression)
+  - **Acceptance**: ✅ PASS
+    - Drop-off 계측 인프라 완성
+    - 4개 Root Cause 가설 문서화
+    - Parameter Tuning 후보 목록 작성
+    - 실행 스크립트 & Config 준비 완료
+  - **Known Limitations**:
+    - 실제 30m 진단 실행은 사용자가 수동 실행 (스크립트 준비됨)
+    - Parameter 튜닝은 PHASE27-1로 이관
+  - **Historical Analysis**:
+    - PHASE23-4 (12m, Single): 50 trades, 5,499 aggregates (Healthy)
+    - PHASE25-0 (2H, Single): 39 trades, 10,564 aggregates (Low throughput)
+    - PHASE26-3 (30m, Top100): 0 trades, 0 aggregates (Complete dropout)
+  - **Root Cause Hypothesis**:
+    - Strategy Parameter Issue (보수적 RSI/EMA threshold)
+    - Timeframe Mismatch (전략 vs Feed TF 불일치)
+    - Config Propagation Failure (Multi-Symbol 모드)
+
+- **27-1: Parameter Tuning** 🟦 **PLANNED**
+  - Strategy/Ensemble/Guard 파라미터 튜닝
+  - Random/Bayesian/Local Grid Search 활용
+  - 목표: 20-50 trades/30min (Single), 5-10 trades/30min (Multi-Symbol Top10)
+
+- **27-2: Full Profiling Integration** 🟦 **PLANNED**
+  - MultiSymbolProfiler 엔진 통합
+  - Loop Latency, CPU, Memory 실시간 수집
+  - IndicatorCache 활성화
 
 **진입 조건**: PHASE26 완료
 
-**퇴출 조건**: Top50 심볼 Paper 정상 종료, 성능 TO-BE 기준선 확보
+**퇴출 조건**: 
+- PHASE27-0: Drop-off 인프라 구축 완료 ✅
+- PHASE27-1: Trade throughput 개선 (20+ trades/H)
+- PHASE27-2: Full profiling metrics 수집
 
 ---
 
-🧩 **PHASE28** – Monitoring & Alerting 🟦 **PLANNED**
+🧩 **PHASE28** – Infra Performance Tuning (상용급 2차) 🟦 **PLANNED**
 
 **상태**: 🟦 **PLANNED**
 
