@@ -111,6 +111,34 @@
 **실행 종료**: 2025-12-03 23:09:58  
 **실제 실행 시간**: 30.08분 (1805초)
 
+### 3.0. Acceptance 절차 (재현 가능)
+
+**Pre-flight**:
+1. Docker 기반 Postgres/Redis up 확인
+2. `phase24_1_infra_diagnostics.py` 실행 → DB/Redis/Engine 진단 PASS
+3. `env_config_validator.py` 실행 → 환경변수 & Config 검증 PASS
+4. `clean_state_complete.py` 실행 → DB/Redis 잔재 제거
+
+**Run**:
+- Config: `configs/paper/phase26_3_top100_paper_30m.yml`
+- Runner: `scripts/infra/phase26_3_run_top100_paper.py`
+- Command: `python phase26_3_run_top100_paper.py --config [CONFIG] --duration-minutes 30 --mode single --top-n 100 --tag "ACCEPTANCE"`
+
+**Monitoring**:
+- 로그 실시간 모니터링 (ERROR/CRITICAL 발생 시 즉시 FAIL)
+- Redis/DB 연결 상태 확인 (연결 실패 시 Fail Fast)
+
+**Post**:
+- MultiSymbolProfiler JSON 저장
+- 로그 분석기로 ERROR/CRITICAL 카운트 (현재 실행 분리)
+- Summary JSON & 리포트 생성
+
+**인프라 진단 결과**: ✅ PASS
+- DB connection: OK (localhost:5433)
+- Redis connection: OK (localhost:6379)
+- Engine module: OK
+- Pre-flight checks: ✅ ALL PASS
+
 ### 3.1. 핵심 메트릭
 
 | 메트릭 | 값 |
