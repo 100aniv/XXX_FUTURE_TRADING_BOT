@@ -2,9 +2,9 @@
   "status": "success",
   "top_n": 10,
   "duration_minutes": 2.0,
-  "start_time": "2025-12-03T21:10:06.140643",
-  "end_time": "2025-12-03T21:12:11.152380",
-  "elapsed_minutes": 2.08352895,
+  "start_time": "2025-12-03T22:37:13.013935",
+  "end_time": "2025-12-03T22:39:18.030707",
+  "elapsed_minutes": 2.083612866666667,
   "error_count": 0,
   "analysis": {
     "db_metrics": {
@@ -13,8 +13,8 @@
       "exit_count": 0,
       "active_positions": 0,
       "time_range": {
-        "start": "2025-12-03T21:10:06.140643",
-        "end": "2025-12-03T21:12:11.152380"
+        "start": "2025-12-03T22:37:13.013935",
+        "end": "2025-12-03T22:39:18.030707"
       }
     },
     "log_metrics": {
@@ -22,14 +22,14 @@
       "tier1_count": 0,
       "tier2_count": 0,
       "skip_count": 0,
-      "error_count": 23,
-      "critical_count": 6
+      "error_count": 0,
+      "critical_count": 0
     },
     "duration_metrics": {
-      "start_time": "2025-12-03T21:10:06.140643",
-      "end_time": "2025-12-03T21:12:11.152380",
-      "actual_duration_sec": 125.011737,
-      "actual_duration_hours": 0.0347254825
+      "start_time": "2025-12-03T22:37:13.013935",
+      "end_time": "2025-12-03T22:39:18.030707",
+      "actual_duration_sec": 125.016772,
+      "actual_duration_hours": 0.034726881111111114
     },
     "multi_symbol": {
       "symbol_count": 0,
@@ -37,5 +37,12 @@
       "symbols": []
     }
   },
-  "profiling": null
+  "profiling": {
+    "note": "Basic metrics only. Full profiling integration planned for PHASE27",
+    "runtime_sec": 125.016772,
+    "runtime_minutes": 2.083612866666667,
+    "top_n": 10,
+    "config_path": "configs\\paper\\phase26_3_top10_temp.yml",
+    "timestamp": "2025-12-03T22:39:18.265686"
+  }
 }

@@ -1,0 +1,48 @@
+{
+  "status": "success",
+  "top_n": 100,
+  "duration_minutes": 30.0,
+  "start_time": "2025-12-03T22:39:53.491645",
+  "end_time": "2025-12-03T23:09:58.568599",
+  "elapsed_minutes": 30.0846159,
+  "error_count": 0,
+  "analysis": {
+    "db_metrics": {
+      "trade_count": 0,
+      "entry_count": 0,
+      "exit_count": 0,
+      "active_positions": 0,
+      "time_range": {
+        "start": "2025-12-03T22:39:53.491645",
+        "end": "2025-12-03T23:09:58.568599"
+      }
+    },
+    "log_metrics": {
+      "ensemble_aggregate_count": 0,
+      "tier1_count": 0,
+      "tier2_count": 0,
+      "skip_count": 0,
+      "error_count": 0,
+      "critical_count": 0
+    },
+    "duration_metrics": {
+      "start_time": "2025-12-03T22:39:53.491645",
+      "end_time": "2025-12-03T23:09:58.568599",
+      "actual_duration_sec": 1805.076954,
+      "actual_duration_hours": 0.501410265
+    },
+    "multi_symbol": {
+      "symbol_count": 0,
+      "per_symbol_trades": {},
+      "symbols": []
+    }
+  },
+  "profiling": {
+    "note": "Basic metrics only. Full profiling integration planned for PHASE27",
+    "runtime_sec": 1805.076954,
+    "runtime_minutes": 30.0846159,
+    "top_n": 100,
+    "config_path": "configs\\paper\\phase26_3_top100_temp.yml",
+    "timestamp": "2025-12-03T23:09:58.686883"
+  }
+}

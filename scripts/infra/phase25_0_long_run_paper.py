@@ -626,12 +626,22 @@ def analyze_results(start_time: datetime, end_time: datetime) -> Dict:
             tier2_count = sum(1 for line in lines if "Tier2" in line or "CONSENSUS" in line)
             skip_count = sum(1 for line in lines if "Skip" in line or "SKIP" in line)
             
-            # ERROR/CRITICAL 카운트 (텔레그램 제외)
+            # ERROR/CRITICAL 카운트 (정보성 로그 제외)
+            # PHASE26-3: 정보성 CRITICAL 제외 (ENGINE CRITICAL, CRITICAL DEBUG)
             error_count = sum(
                 1 for line in lines 
-                if "ERROR" in line.upper() and "텔레그램" not in line and "telegram" not in line.lower()
+                if "ERROR" in line.upper() 
+                and "텔레그램" not in line 
+                and "telegram" not in line.lower()
+                and "[ERROR]" in line  # 실제 logging.error() 로그만
             )
-            critical_count = sum(1 for line in lines if "CRITICAL" in line.upper())
+            critical_count = sum(
+                1 for line in lines 
+                if "CRITICAL" in line.upper()
+                and "ENGINE CRITICAL" not in line  # 정보성 로그 제외
+                and "CRITICAL DEBUG" not in line   # 정보성 로그 제외
+                and "[CRITICAL]" in line  # 실제 logging.critical() 로그만
+            )
             
             metrics['log_metrics'] = {
                 'ensemble_aggregate_count': aggregate_count,

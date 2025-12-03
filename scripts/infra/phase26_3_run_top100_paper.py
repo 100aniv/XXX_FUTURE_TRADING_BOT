@@ -147,7 +147,7 @@ def run_single_test(
     print(f"\n[STEP 6] Analyze Results")
     analysis = analyze_results_multi_symbol(start_time, end_time, str(temp_config_path))
     
-    # Profiling 데이터 로딩 (활성화된 경우)
+    # Profiling 데이터 로딩 또는 기본 메트릭 생성
     profiling_data = None
     if enable_profiling:
         profiler_output = config['performance'].get('profiler_output')
@@ -158,6 +158,19 @@ def run_single_test(
                 print(f"  [OK] 프로파일링 데이터 로딩: {profiler_output}")
             except Exception as e:
                 print(f"  [WARN] 프로파일링 데이터 로딩 실패: {e}")
+        else:
+            # PHASE26-3: 기본 메트릭 생성 (엔진 통합 프로파일링은 PHASE27 이후)
+            print(f"  [INFO] 프로파일링 파일 없음 - 기본 메트릭 생성")
+            elapsed_sec = (end_time - start_time).total_seconds()
+            profiling_data = {
+                "note": "Basic metrics only. Full profiling integration planned for PHASE27",
+                "runtime_sec": elapsed_sec,
+                "runtime_minutes": elapsed_sec / 60.0,
+                "top_n": top_n,
+                "config_path": str(temp_config_path),
+                "timestamp": datetime.now().isoformat()
+            }
+            print(f"  [OK] 기본 메트릭 생성 완료")
     
     # 결과 요약
     result = {
