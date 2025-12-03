@@ -671,3 +671,50 @@ def save_effective_config(cfg: Dict[str, Any], env: str, run_id: str) -> Path:
     logger.info(f"✅ [SNAPSHOT] effective_config.yml 저장: {config_path}")
     
     return config_path
+
+
+def load_universe_config(config: Dict[str, Any]) -> Any:
+    """
+    PHASE26-0: Universe Provider 설정 로딩
+    
+    Args:
+        config: 전체 config dict
+    
+    Returns:
+        UniverseProviderConfig or None (universe.enabled=false일 때)
+    
+    Examples:
+        >>> config = load_config_with_mode('paper')
+        >>> universe_cfg = load_universe_config(config)
+        >>> if universe_cfg:
+        ...     provider = create_universe_provider(universe_cfg)
+        ...     universe = await provider.get_universe()
+    """
+    from common.universe_provider import (
+        UniverseProviderConfig,
+        UniverseFilterConfig
+    )
+    
+    universe_cfg = config.get('universe', {})
+    
+    # universe.enabled가 false이거나 없으면 None 반환
+    if not universe_cfg.get('enabled', False):
+        return None
+    
+    provider_cfg = universe_cfg.get('provider', {})
+    filters_cfg = universe_cfg.get('filters', {})
+    
+    # UniverseProviderConfig 생성
+    return UniverseProviderConfig(
+        provider_type=provider_cfg.get('type', 'static'),
+        top_n=provider_cfg.get('top_n', 10),
+        filters=UniverseFilterConfig(
+            quote_assets=filters_cfg.get('quote_assets', ['USDT']),
+            exclude_symbols=filters_cfg.get('exclude_symbols', []),
+            min_24h_volume_usd=filters_cfg.get('min_24h_volume_usd', 0.0),
+            market_types=filters_cfg.get('market_types', ['PERPETUAL']),
+            contract_status=filters_cfg.get('contract_status', 'TRADING')
+        ),
+        static_symbols=provider_cfg.get('static_symbols', []),
+        cache_ttl_sec=provider_cfg.get('cache_ttl_sec', 3600)
+    )

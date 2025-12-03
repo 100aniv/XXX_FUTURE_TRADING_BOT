@@ -879,21 +879,42 @@ Ensemble ON 모드로 4시간 이상 연속 Paper 테스트 (인프라 안정성
 
 ---
 
- **PHASE26** – Multi-Symbol Engine v1 
+ **PHASE26** – Multi-Symbol Engine v1 🔄 **IN PROGRESS**
 
-**상태**:  **PLANNED**
+**상태**: 🔄 **IN PROGRESS** (26-0 완료, 26-1/26-2 대기)
 
 **목적**: TopN 심볼 확장 및 Multi-symbol 엔진 구조 확립
 
 **Sub-phases**
-- **26-0: Universe Provider 구현**
-  - TopN 심볼 선정 로직
-- **26-1: Multi-symbol 코루틴 구조**
-  - per-symbol state, queue, risk/portfolio 연동
-- **26-2: Top10 기준 Paper Load Test**
-  - engine/collector/portfolio 레벨 문제점 확인
 
-**진입 조건**: PHASE25 완료
+- **26-0: Universe Provider 구현** ✅ **COMPLETE** (2025-12-03)
+  - TopN 심볼 선정 로직 (Binance API 기반)
+  - Protocol-based 인터페이스 (StaticUniverseProvider, TopNByVolumeUniverseProvider)
+  - Config 스키마 확장 (`universe` 섹션)
+  - 캐싱 (TTL 1시간) + Fallback 안정성
+  - **산출물**: `common/universe_provider.py` (520 LOC), `load_universe_config()` 추가
+  - **테스트**: 23/23 PASS (100%), 회귀 테스트 20/20 PASS
+  - **Acceptance**: ✅ PASS
+    - UniverseProvider Protocol 정의
+    - 최소 2개 구현 (Static, TopN Volume)
+    - Config 로딩 + 검증
+    - 단일 심볼 모드 100% 호환
+  - **Known Limitations**: 
+    - 엔진 멀티 심볼 미지원 (PHASE26-1)
+    - DB 메트릭 미연동 (PHASE27+)
+    - Universe 자동 갱신 없음
+
+- **26-1: Multi-symbol 코루틴 구조** 🟦 **PLANNED**
+  - per-symbol state, queue, risk/portfolio 연동
+  - Universe → Engine 통합
+  - Symbol Router 구현
+
+- **26-2: Top10 기준 Paper Load Test** 🟦 **PLANNED**
+  - engine/collector/portfolio 레벨 문제점 확인
+  - 동시 포지션 관리 검증
+  - 성능/안정성 테스트
+
+**진입 조건**: PHASE25 완료 ✅
 
 **퇴출 조건**: Top10 심볼 Paper 정상 종료, per-symbol risk/portfolio 관리 확인
 
