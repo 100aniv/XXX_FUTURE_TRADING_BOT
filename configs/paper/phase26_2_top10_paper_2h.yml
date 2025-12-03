@@ -1,0 +1,226 @@
+# ========================================
+# PHASE26-2: Top10 Multi-Symbol PAPER Load Test Config
+# 목표: Universe Provider + Multi-Symbol Engine v1 검증용 2H+ PAPER 실행
+# ========================================
+
+# ========================================
+# Universe Provider 설정 (PHASE26-2 신규)
+# ========================================
+universe:
+  enabled: true  # ⭐ Universe 모드 활성화
+  
+  provider:
+    type: topn_volume  # 'static' | 'topn_volume'
+    top_n: 10           # Top10 심볼 선정
+    cache_ttl_sec: 3600  # 1시간 캐시 (프로세스 시작 시 1회만)
+    
+    # Static 모드 예시 (Top10 직접 지정):
+    # type: static
+    # static_symbols:
+    #   - BTCUSDT
+    #   - ETHUSDT
+    #   - BNBUSDT
+    #   - SOLUSDT
+    #   - XRPUSDT
+    #   - ADAUSDT
+    #   - DOGEUSDT
+    #   - AVAXUSDT
+    #   - DOTUSDT
+    #   - MATICUSDT
+  
+  filters:
+    quote_assets:
+      - USDT               # USDT 쌍만
+    exclude_symbols:
+      - BTCDOWNUSDT
+      - BTCUPUSDT
+      - ETHDOWNUSDT
+      - ETHUPUSDT          # 레버리지 토큰 제외
+    min_24h_volume_usd: 10000000  # 최소 24H 거래량 (10M USDT)
+    market_types:
+      - PERPETUAL          # 선물 마켓만 (or [SPOT])
+    contract_status: TRADING  # TRADING 상태만
+
+# ========================================
+# 실행 모드 & 환경
+# ========================================
+mode: paper
+env: paper
+run_id: "PHASE26-2_top10_paper_2h"
+
+# ⭐ symbol 키는 fallback용으로 유지 (universe 실패 시)
+symbol: BTCUSDT
+
+timeframe: 5m
+lookback: 1000
+
+# ========================================
+# Paper Trading 설정
+# ========================================
+paper:
+  duration_mode: "wall_clock"  # 실제 시계 기준
+  duration_hours: 2.0           # 2H 실행 (Acceptance 최소 기준)
+  clean_start: true             # 깨끗한 시작 (기존 포지션 무시)
+
+# ========================================
+# Portfolio 설정 (Multi-Symbol용 보수적 설정)
+# ========================================
+portfolio:
+  initial_balance: 10000.0
+  currency: USDT
+  max_open_positions: 10       # Top10 × 1포지션/심볼 가정
+  max_exposure_pct: 0.5         # ⭐ 50% (Multi-Symbol 안전 마진, 기존 90%→50%)
+  max_strategy_positions: 5     # 전략당 최대 포지션 (보수적)
+
+# ========================================
+# Position Sizing (Multi-Symbol용 축소)
+# ========================================
+position_sizing:
+  default_risk_per_trade: 0.002  # ⭐ 0.2% RPT (기존 2%→0.2%, Multi-Symbol 안전)
+  mode: kelly_fraction
+  kelly_fraction: 0.25
+  leverage: 3.0
+  max_leverage: 5.0
+
+# ========================================
+# Risk Manager (Multi-Symbol용 강화)
+# ========================================
+risk:
+  max_daily_loss_pct: 0.10      # 10% 일일 손실 한도
+  max_consecutive_losses: 10
+  cooldown_after_consecutive: 60
+  max_portfolio_dd_pct: 0.15    # 15% 포트폴리오 DD 한도
+  max_slippage_pct: 0.5
+  extreme_loss_cutoff_pct: -20.0
+  
+  # ⭐ Multi-Symbol 전용 리스크 파라미터
+  per_trade: 0.002                # 0.2% RPT (명시적)
+  max_positions: 10                # Top10 × 1포지션/심볼
+  max_exposure_per_symbol: 0.1    # 심볼당 10% 한도 (5심볼까지 허용)
+  max_exposure_pct: 0.5           # 전체 50% 한도
+  
+  profiles:
+    paper:
+      max_daily_loss_pct: 0.20        # Paper 모드는 완화
+      max_consecutive_losses: 15
+      cooldown_after_consecutive: 30
+
+# ========================================
+# Exits (PHASE17 Production 기준 유지)
+# ========================================
+exits:
+  default_tp_levels:
+    - 0.02  # +2%
+    - 0.04  # +4%
+  default_sl_pct: 0.015  # -1.5%
+  trailing_enabled: true
+  trailing_activation_pct: 0.01
+  trailing_callback_pct: 0.005
+
+# ========================================
+# Strategy Selector (단일 전략 시작)
+# ========================================
+strategy:
+  selector: scalping  # 단일 전략 (Multi-Symbol 초기 테스트)
+  # 향후 Ensemble 테스트 가능:
+  # selector: ensemble
+
+# ========================================
+# Ensemble 설정 (향후 활성화 가능)
+# ========================================
+# ensemble:
+#   enabled: false
+#   strategies:
+#     - scalping
+#   min_tier1_score: 0.8
+#   min_tier2_score: 0.5
+#   tier1_conflict_diff: 0.15
+#   min_tier2_votes: 2
+
+# ========================================
+# Scalping 전략 설정 (기존 설정 상속)
+# ========================================
+strategies:
+  scalping:
+    enabled: true
+    timeframe: 5m
+    risk_per_trade: 0.002
+    # 기타 설정은 base.yml 또는 strategies/scalping.py에서 상속
+
+# ========================================
+# FlowGuardian (Production 기준 유지)
+# ========================================
+flow_guardian:
+  enabled: true
+  selftest:
+    max_runtime_sec: 120
+    require_metrics:
+      - profit_factor
+      - winrate
+      - score_total
+      - exp_score
+    min_profit_factor: 0.0
+    min_winrate: 0.0
+    consistency_checks:
+      db_vs_json_score_equal: true
+      signals_no_nan: true
+      risk_never_oversize: true
+    snapshot_rules:
+      require_segment_isolation: true
+    artifacts:
+      require_files:
+        - logs/trial_0000.json
+        - logs/application.log
+
+# ========================================
+# Monitoring (Redis/DB 설정 상속)
+# ========================================
+monitoring:
+  redis:
+    host: ${REDIS_HOST}
+    port: ${REDIS_PORT}
+    db: ${REDIS_DB}
+  metrics:
+    enabled: true
+    interval_sec: 60
+
+# ========================================
+# Database (상속)
+# ========================================
+database:
+  url: ${DATABASE_URL}
+  host: ${DB_HOST}
+  port: ${DB_PORT}
+  name: ${DB_NAME}
+  user: ${DB_USER}
+  password: ${DB_PASSWORD}
+
+# ========================================
+# Telegram (상속)
+# ========================================
+telegram:
+  token: ${TELEGRAM_TOKEN}
+  chat_id: ${TELEGRAM_CHAT_ID}
+  enabled: ${ENABLE_TELEGRAM}
+
+# ========================================
+# Logging (상속)
+# ========================================
+logging:
+  level: INFO
+  format: detailed
+  file: logs/application.log
+
+# ========================================
+# Symbols (Legacy fallback, universe 실패 시 사용)
+# ========================================
+symbols:
+  - BTCUSDT
+
+# ========================================
+# Feed 설정 (PAPER 모드, WebSocket)
+# ========================================
+feed:
+  type: websocket
+  exchange: bybit
+  testnet: false

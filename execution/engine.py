@@ -40,8 +40,8 @@ logger = setup_logger(__name__, log_type="application")
 
 def run_v2(mode: str, config: dict, clean_state: bool = False):
     """
-    PHASE23-1: Single-Engine Entry Point
-    =====================================
+    PHASE23-1 / PHASE26-1: Single-Engine Entry Point (Multi-Symbol 지원)
+    =======================================================================
     엔진 중심 아키텍처의 새로운 진입점
     
     Args:
@@ -55,9 +55,10 @@ def run_v2(mode: str, config: dict, clean_state: bool = False):
         - Engine이 use_ensemble 판단
         - Engine이 adapter 생성
         - Config params가 100% 전파됨 보장
+        - PHASE26-1: Universe Provider 통합 (Multi-Symbol 지원)
     """
     logger.info("=" * 80)
-    logger.info(f"🚀 [PHASE23-1] Engine V2 시작 - Mode: {mode.upper()}")
+    logger.info(f"🚀 [PHASE23-1/26-1] Engine V2 시작 - Mode: {mode.upper()}")
     logger.info("=" * 80)
     
     # 1. Config Validation
@@ -66,9 +67,40 @@ def run_v2(mode: str, config: dict, clean_state: bool = False):
     if missing:
         raise ValueError(f"❌ Config 필수 키 누락: {missing}")
     
-    symbol = config.get('symbol', 'BTCUSDT')
+    # ⭐ PHASE26-1: Universe Provider 통합
+    from common.config_loader import load_universe_config
+    from common.universe_provider import create_universe_provider
+    import asyncio
+    
+    universe_cfg = load_universe_config(config)
+    symbols = []
+    
+    if universe_cfg:
+        logger.info(f"🌐 [PHASE26-1] Universe Provider 활성화: {universe_cfg.provider_type}")
+        try:
+            provider = create_universe_provider(universe_cfg)
+            universe = asyncio.run(provider.get_universe())
+            symbols = [s.symbol for s in universe]
+            logger.info(f"✅ [PHASE26-1] Universe: {len(symbols)}개 심볼 획득")
+            if len(symbols) <= 10:
+                logger.info(f"   심볼 목록: {symbols}")
+            else:
+                logger.info(f"   심볼 목록 (앞 10개): {symbols[:10]}...")
+        except Exception as e:
+            logger.error(f"❌ [PHASE26-1] Universe Provider 실패: {e}")
+            logger.warning(f"⚠️  Fallback: 단일 심볼 모드로 전환")
+            symbols = []
+    else:
+        logger.info(f"📊 [PHASE26-1] Universe Provider 비활성화 (단일 심볼 모드)")
+    
+    # 하위 호환: symbols가 없으면 config.symbol 사용
+    if not symbols:
+        symbol = config.get('symbol', 'BTCUSDT')
+        symbols = [symbol]
+        logger.info(f"📊 [PHASE26-1] 단일 심볼 모드: {symbol}")
+    
     timeframe = config['timeframe']
-    logger.info(f"📊 Symbol: {symbol}, Timeframe: {timeframe}")
+    logger.info(f"📊 Timeframe: {timeframe}, Symbols: {len(symbols)}개")
     
     # 2. Strategy 로딩 (Engine이 직접 호출 - PHASE23-1 핵심)
     logger.info("🎯 [PHASE23-1] Engine에서 load_strategies() 직접 호출")
@@ -101,15 +133,15 @@ def run_v2(mode: str, config: dict, clean_state: bool = False):
     else:
         logger.info("ℹ️  단일 전략 모드")
     
-    # 4. Mode-based Adapter 생성
-    logger.info(f"🔧 [PHASE23-1] {mode.upper()} 모드 Adapters 생성")
+    # 4. Mode-based Adapter 생성 (PHASE26-1: symbols 전달)
+    logger.info(f"🔧 [PHASE23-1/26-1] {mode.upper()} 모드 Adapters 생성")
     
     if mode == 'paper':
-        adapters = _create_paper_adapters(config, clean_state)
+        adapters = _create_paper_adapters(config, clean_state, symbols)
     elif mode == 'backtest':
-        adapters = _create_backtest_adapters(config)
+        adapters = _create_backtest_adapters(config, symbols)
     elif mode == 'live':
-        adapters = _create_live_adapters(config, clean_state)
+        adapters = _create_live_adapters(config, clean_state, symbols)
     else:
         raise ValueError(f"❌ 지원하지 않는 모드: {mode}")
     
@@ -121,8 +153,8 @@ def run_v2(mode: str, config: dict, clean_state: bool = False):
         config.setdefault('execution', {})['max_runtime_hours'] = duration_hours
         logger.info(f"⏱️  Duration: {duration_hours}h")
     
-    # 6. 기존 run() 호출 (단일 엔진 원칙)
-    logger.info("🚀 [PHASE23-1] Core engine.run() 호출")
+    # 6. 기존 run() 호출 (단일 엔진 원칙, PHASE26-1: symbols 전달)
+    logger.info("🚀 [PHASE23-1/26-1] Core engine.run() 호출")
     
     try:
         run(
@@ -131,9 +163,10 @@ def run_v2(mode: str, config: dict, clean_state: bool = False):
             clock=adapters['clock'],
             strategies=strategies,
             ensemble_module=ensemble_module,
-            config=config
+            config=config,
+            symbols=symbols  # ⭐ PHASE26-1: symbols 전달
         )
-        logger.info("✅ [PHASE23-1] Engine V2 정상 종료")
+        logger.info("✅ [PHASE23-1/26-1] Engine V2 정상 종료")
         
     finally:
         # 7. Cleanup
@@ -142,16 +175,22 @@ def run_v2(mode: str, config: dict, clean_state: bool = False):
             logger.info("✅ Feed 정리 완료")
 
 
-def _create_paper_adapters(config: dict, clean_state: bool) -> dict:
-    """PAPER 모드 adapters 생성"""
+def _create_paper_adapters(config: dict, clean_state: bool, symbols: list) -> dict:
+    """
+    PAPER 모드 adapters 생성
+    
+    Args:
+        config: 전체 설정
+        clean_state: Redis/DB 상태 초기화 여부
+        symbols: 심볼 리스트 (PHASE26-1)
+    """
     from execution.adapters import create_adapters
     
-    symbol = config.get('symbol', 'BTCUSDT')
-    
+    # ⭐ PHASE26-1: symbols 인자로 받음 (Multi-Symbol 지원)
     # execution.adapters.create_adapters 호출
     feed, broker, clock = create_adapters(
         mode='paper',
-        symbols=[symbol],
+        symbols=symbols,
         config=config,
         logger=logger
     )
@@ -164,16 +203,21 @@ def _create_paper_adapters(config: dict, clean_state: bool) -> dict:
     return {'feed': feed, 'broker': broker, 'clock': clock}
 
 
-def _create_backtest_adapters(config: dict) -> dict:
-    """BACKTEST 모드 adapters 생성"""
+def _create_backtest_adapters(config: dict, symbols: list) -> dict:
+    """
+    BACKTEST 모드 adapters 생성
+    
+    Args:
+        config: 전체 설정
+        symbols: 심볼 리스트 (PHASE26-1)
+    """
     from execution.adapters import create_adapters
     
-    symbol = config.get('symbol', 'BTCUSDT')
-    
+    # ⭐ PHASE26-1: symbols 인자로 받음 (Multi-Symbol 지원)
     # execution.adapters.create_adapters 호출
     feed, broker, clock = create_adapters(
         mode='backtest',
-        symbols=[symbol],
+        symbols=symbols,
         config=config,
         logger=logger
     )
@@ -181,8 +225,15 @@ def _create_backtest_adapters(config: dict) -> dict:
     return {'feed': feed, 'broker': broker, 'clock': clock}
 
 
-def _create_live_adapters(config: dict, clean_state: bool) -> dict:
-    """LIVE 모드 adapters 생성"""
+def _create_live_adapters(config: dict, clean_state: bool, symbols: list) -> dict:
+    """
+    LIVE 모드 adapters 생성
+    
+    Args:
+        config: 전체 설정
+        clean_state: Redis/DB 상태 초기화 여부
+        symbols: 심볼 리스트 (PHASE26-1)
+    """
     # TODO: LIVE 구현은 PHASE32에서
     raise NotImplementedError("LIVE 모드는 PHASE32에서 구현 예정")
 
@@ -257,17 +308,9 @@ def _convert_ensemble_decision_v2_to_signal(ensemble_decision_v2) -> dict:
     return signal
 
 
-def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict):
+def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict, symbols: list = None):
     """
-    공통 트레이딩 루프
-
-    Args:
-        feed: 데이터 피드
-        broker: 브로커
-        clock: 시계
-        strategies: 전략 딕셔너리
-        ensemble_module: 앙상블 모듈
-        config: 설정
+    공통 트레이딩 루프 (PHASE26-1: Multi-Symbol 지원)
 
     Args:
         feed: 데이터 공급자 (HistoricalFeed | LiveFeed)
@@ -276,6 +319,7 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict):
         strategies: 전략 dict {'scalping': module, ...}
         ensemble_module: ensemble 모듈 (None이면 첫 신호 사용)
         config: 설정 dict
+        symbols: 심볼 리스트 (PHASE26-1, None이면 config.symbol 사용)
     """
     logger.info("🚨 [ENGINE CRITICAL] run() 함수 시작 - 성공적으로 도달!")
     logger.info(f"🚨 [ENGINE CRITICAL] config mode: {config.get('mode', 'unknown')}")
@@ -315,8 +359,19 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict):
             raise RuntimeError(f"FlowGuardian 게이트 실패 - {mode.upper()} 모드 실행 불가: {e}")
     else:
         logger.info(f"ℹ️  FlowGuardian 게이트 우회 - {mode} 모드 (backtest 등)")
+    # ⭐ PHASE26-1: symbols 하위 호환 (None이면 config.symbol 사용)
+    if symbols is None:
+        symbol = config.get("symbol", "BTCUSDT")
+        symbols = [symbol]
+        logger.info(f"📊 [PHASE26-1] 하위 호환 (단일 심볼 모드): {symbol}")
+    else:
+        logger.info(f"🌐 [PHASE26-1] Multi-Symbol 모드: {len(symbols)}개 심볼")
+        if len(symbols) <= 10:
+            logger.info(f"   심벼: {symbols}")
+        else:
+            logger.info(f"   심볼 (앞 10개): {symbols[:10]}...")
+    
     # 필수 파라미터 (config.yml 필수)
-    symbol = config.get("symbol", "BTCUSDT")  # backtest에서 사용
     timeframe = config["timeframe"]
     lookback = config["lookback"]
     equity = config["equity"]
@@ -563,7 +618,11 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict):
             logger.warning(f"⚠️ [LIVE] 자산 동기화 실패 (무시하고 계속): {e}")
 
     logger.info("=" * 80)
-    logger.info(f"🚀 Trading Engine 시작: Symbol={symbol}, Timeframe={timeframe}")
+    # ⭐ PHASE26-1: Multi-Symbol 로그
+    if len(symbols) == 1:
+        logger.info(f"🚀 Trading Engine 시작: Symbol={symbols[0]}, Timeframe={timeframe}")
+    else:
+        logger.info(f"🚀 Trading Engine 시작: {len(symbols)}개 심볼, Timeframe={timeframe}")
 
     # ⭐ 성능 모니터링 시작 (5초 간격)
     start_monitoring(interval=5.0)
