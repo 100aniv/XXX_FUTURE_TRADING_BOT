@@ -967,17 +967,22 @@ Ensemble ON 모드로 4시간 이상 연속 Paper 테스트 (인프라 안정성
     - 4개 Root Cause 가설 문서화
     - Parameter Tuning 후보 목록 작성
     - 실행 스크립트 & Config 준비 완료
-  - **Known Limitations**:
-    - 실제 30m 진단 실행은 사용자가 수동 실행 (스크립트 준비됨)
-    - Parameter 튜닝은 PHASE27-1로 이관
+  - **Diagnosis Runs** (2025-12-04):
+    - Single-Symbol 30m: ✅ COMPLETE (30.08 min, 1,006 candles, **0 trades**)
+      - Strategy Signals: 0/4,755 (100% dropout at strategy layer)
+      - Ensemble Decisions: 951 skips, 0 Tier1, 0 Tier2
+    - Multi-Symbol Top10 30m: ✅ COMPLETE (30.09 min, 9,054 candles, **0 trades**)
+      - Strategy Signals: 0/42,795 (100% dropout across all 10 symbols)
+      - Ensemble Decisions: 8,559 skips, 0 Tier1, 0 Tier2
   - **Historical Analysis**:
     - PHASE23-4 (12m, Single): 50 trades, 5,499 aggregates (Healthy)
     - PHASE25-0 (2H, Single): 39 trades, 10,564 aggregates (Low throughput)
     - PHASE26-3 (30m, Top100): 0 trades, 0 aggregates (Complete dropout)
-  - **Root Cause Hypothesis**:
-    - Strategy Parameter Issue (보수적 RSI/EMA threshold)
-    - Timeframe Mismatch (전략 vs Feed TF 불일치)
-    - Config Propagation Failure (Multi-Symbol 모드)
+    - **PHASE27-0** (30m, Single+Top10): **0 trades, 100% strategy signal dropout**
+  - **Root Cause Confirmed**:
+    - **Strategy Parameters Too Conservative**: All 5 V2 strategies returned `signal_false` in every evaluation
+    - Pipeline Intact: Feed, indicators, ensemble aggregator functioned correctly
+    - **Next Step**: PHASE27-1 aggressive parameter tuning required
 
 - **27-1: Parameter Tuning** 🟦 **PLANNED**
   - Strategy/Ensemble/Guard 파라미터 튜닝

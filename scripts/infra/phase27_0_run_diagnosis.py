@@ -33,9 +33,12 @@ from metrics.trade_activity_tracker import TradeActivityTracker
 logger = setup_logger(__name__, log_type="application")
 
 
-def run_preflight_checks() -> bool:
+def run_preflight_checks(config_path: str = None) -> bool:
     """
     Pre-flight 체크: DB/Redis/Env 진단
+    
+    Args:
+        config_path: Config file path to validate
     
     Returns:
         bool: 모든 체크 통과 시 True
@@ -49,8 +52,12 @@ def run_preflight_checks() -> bool:
     validator_script = project_root / "scripts" / "infra" / "env_config_validator.py"
     
     if validator_script.exists():
+        cmd = [sys.executable, str(validator_script)]
+        if config_path:
+            cmd.extend(["--config", config_path])
+        
         result = subprocess.run(
-            [sys.executable, str(validator_script)],
+            cmd,
             capture_output=True,
             text=True
         )
@@ -100,7 +107,7 @@ def run_clean_state() -> bool:
     print("  [STEP 2] Clean State")
     print("=" * 80)
     
-    clean_script = project_root / "scripts" / "ops" / "clean_state_complete.py"
+    clean_script = project_root / "scripts" / "clean_state_complete.py"
     
     if not clean_script.exists():
         print(f"  [⚠] Clean state script not found, skipping...")
@@ -171,8 +178,14 @@ def run_paper_with_tracker(config_path: Path, output_json: Path) -> bool:
         # 1) Determine symbols
         symbols_list = []
         if config.get('universe', {}).get('enabled'):
-            from common.universe_provider import load_universe
-            symbols_list = load_universe(config)
+            import asyncio
+            from common.config_loader import load_universe_config
+            from common.universe_provider import create_universe_provider
+            
+            universe_cfg = load_universe_config(config)
+            provider = create_universe_provider(universe_cfg)
+            universe = asyncio.run(provider.get_universe())
+            symbols_list = [s.symbol for s in universe]
             print(f"  [✓] Universe loaded: {len(symbols_list)} symbols")
         else:
             symbol = config.get('symbol', 'BTCUSDT')
@@ -295,7 +308,7 @@ def main():
     
     # STEP 1: Pre-flight checks
     if not args.skip_preflight:
-        if not run_preflight_checks():
+        if not run_preflight_checks(str(config_path)):
             print("\n[FAILED] Pre-flight checks failed. Aborting.")
             sys.exit(1)
     else:
