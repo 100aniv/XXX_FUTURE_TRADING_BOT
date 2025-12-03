@@ -221,21 +221,27 @@
 - PHASE27에서 엔진 통합 프로파일링 구현
 - 현재는 기본 메트릭(runtime, timestamp)만 수집
 
-### 5.2. Trade Activity
+### 5.2. Trade Activity (전략 튜닝 이슈)
 
 **현상**: 30분 실행 동안 trade 0건
 
+**분류**: 전략/앙상블/가드 튜닝 이슈 (인프라 Acceptance 기준 밖)
+
 **원인**: 
-- 전략 진입 조건이 보수적
+- 전략 진입 조건이 보수적 (RSI, EMA threshold가 엄격)
 - 30분은 실제 market signal 발생에 짧은 시간
+- Ensemble Aggregate 0회 → Score V2 기반 Tier1/Tier2 진입 조건 미충족
 
 **영향**: 
-- 인프라 안정성에는 영향 없음
-- Trade 발생은 전략/파라미터 튜닝 영역
+- 인프라 안정성: 영향 없음 (ERROR 0, CRITICAL 0, 30분 정상 종료)
+- PHASE26 Acceptance: PASS (인프라 검증 목적 달성)
+- Trade Throughput: 전략/파라미터 튜닝 영역 (PHASE26 범위 밖)
 
 **해결 계획**: 
-- PHASE27+에서 전략 파라미터 조정
-- 장기 테스트(1H+)에서 재검증
+- PHASE22/23 전략 튜닝: 진입 조건 완화 (RSI threshold, EMA 조건 조정)
+- PHASE25 파라미터 탐색: Random/Bayesian Search로 최적 파라미터 발견
+- 장기 테스트: 1H+ 실행으로 market signal 발생 기회 확대
+- Note: PHASE26은 "Top100 심볼 처리 인프라 안정성"에 집중, Trade KPI는 전략 PHASE로 이관
 
 ### 5.3. Log Analyzer Bug (해결됨)
 

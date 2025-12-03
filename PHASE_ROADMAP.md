@@ -922,19 +922,21 @@ Ensemble ON 모드로 4시간 이상 연속 Paper 테스트 (인프라 안정성
     - `scripts/infra/phase26_3_run_top100_paper.py` (Runner)
     - `configs/paper/phase26_3_top100_paper_30m.yml`
   - **테스트**: 17/17 PASS
-  - **Acceptance**: ✅ PASS
+  - **Acceptance**: PASS
     - Top100 30분 PAPER 정상 종료
     - ERROR 0건, CRITICAL 0건
-    - 프로파일링 기본 메트릭 수집
+    - 프로파일링 기본 메트릭 수집 (기본 메트릭만, Full integration은 PHASE27)
+    - Redis/DB/Env Pre-flight 진단 통과
   - **Known Limitations**:
-    - Full profiling integration은 PHASE27로 연기
-    - 30분은 trade 발생에 짧음 (정상)
+    - **Trade 0건 → 전략/앙상블/가드 튜닝 이슈**
+      - 30분은 실제 market signal 발생에 짧은 시간
+      - 전략 진입 조건이 보수적 (RSI, EMA 조건 엄격)
+      - PHASE26은 인프라 안정성 검증에 집중, Trade throughput은 전략 튜닝 PHASE로 이관
+    - Full profiling integration (Loop Latency, CPU, Memory)은 PHASE27로 연기
 
-**진입 조건**: PHASE25 완료 ✅
+**진입 조건**: PHASE25 완료 
 
-**퇴출 조건**: Top100 심볼 30분 PAPER 정상 종료, ERROR 0건 확인 ✅
-
----
+**퇴출 조건**: Top100 심볼 30분 PAPER 정상 종료, ERROR 0건 확인 
 
 🧩 **PHASE27** – Infra Performance Tuning (상용급 1차) 🟦 **PLANNED**
 
