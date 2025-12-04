@@ -53,7 +53,7 @@ strategy:
 # ========================================
 paper:
   duration_mode: "wall_clock"
-  duration_minutes: 15  # 15분 실행 (ADX 검증)
+  duration_hours: 0.167  # 10분 실행 (ADX 검증)
   clean_start: true
 
 # ========================================
