@@ -1009,7 +1009,21 @@ Ensemble ON 모드로 4시간 이상 연속 Paper 테스트 (인프라 안정성
   - **Backtests**: Validate redesigned strategies produce signals on recent data (Nov-Dec 2024)
   - **Target**: ≥10 signals/day on BTCUSDT 5m, then proceed to PHASE27-3 forward tests
 
-- **27-3: Full Profiling Integration** 🟦 **PLANNED** (RENAMED FROM 27-2)
+- **27-3: Baseline Strategy Execution Validation** 🟡 **IN PROGRESS** (URGENT - PHASE27-2 CONTINUATION)
+  - **Goal**: Execute and validate `btc5m_baseline_v1` strategy in live Paper mode
+  - **Prerequisites**: Fix unicode encoding error in `phase27_0_run_diagnosis.py`
+  - **Execution**: 10-30 minutes BTCUSDT 5m Paper run
+  - **Validation Targets**:
+    - Strategy Signals (True) > 0 (anti-dropout)
+    - Signal → Ensemble → Order pipeline intact
+    - No structural errors, clean termination
+  - **Success Criteria**:
+    - ✅ Strategy signals generated (≥5 signals expected in 10min)
+    - ✅ ActivityTracker confirms signal flow
+    - (Optional) Orders submitted > 0
+  - **Next**: If signals verified → PHASE27-4 (signal quality analysis + param tuning)
+
+- **27-4: Full Profiling Integration** 🟦 **PLANNED** (RENAMED FROM 27-3)
   - MultiSymbolProfiler 엔진 통합
   - Loop Latency, CPU, Memory 실시간 수집
   - IndicatorCache 활성화
@@ -1017,17 +1031,17 @@ Ensemble ON 모드로 4시간 이상 연속 Paper 테스트 (인프라 안정성
 **진입 조건**: PHASE26 완료
 
 **퇴출 조건**: 
-- PHASE27-0: Drop-off 인프라 구축 완료 ✅
+- PHASE27-0: Drop-off 인프라 구축 완료 
 - PHASE27-1: Trade throughput 개선 (20+ trades/H)
 - PHASE27-2: Strategy Logic Redesign 완료
-- PHASE27-3: Full profiling metrics 수집
-- PHASE27-2: Full profiling metrics 수집
+- PHASE27-3: Baseline execution validation 완료
+- PHASE27-4: Full profiling metrics 수집
 
 ---
 
-🧩 **PHASE28** – Infra Performance Tuning (상용급 2차) 🟦 **PLANNED**
+ **PHASE28** – Infra Performance Tuning (상용급 2차) 
+**상태**: **PLANNED**
 
-**상태**: 🟦 **PLANNED**
 
 **목적**: 실시간 모니터링 및 알림 시스템 구축
 
