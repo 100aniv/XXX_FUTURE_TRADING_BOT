@@ -940,14 +940,15 @@ Ensemble ON 모드로 4시간 이상 연속 Paper 테스트 (인프라 안정성
 
 ---
 
-🧩 **PHASE27** – Trade Activity Diagnosis & Strategy Tuning ✅ **IN PROGRESS**
+ **PHASE27** – Trade Activity Diagnosis & Strategy Tuning **PARTIAL COMPLETE**
 
-**상태**: 🔄 **IN PROGRESS** (2025-12-04)
+**상태**: **PARTIAL COMPLETE** (27-0/27-1 완료, 27-2 필요) (2025-12-04)
 
 **목적**: "0 트레이드" 원인 진단 및 전략/앙상블 파라미터 튜닝
 
 **Sub-phases**
 
+- **27-0: Trade Activity Diagnosis & Drop-off Instrumentation** **COMPLETE** (2025-12-04)
 - **27-0: Trade Activity Diagnosis & Drop-off Instrumentation** ✅ **COMPLETE** (2025-12-04)
   - Signal → Trade 파이프라인 Drop-off 계측 인프라 구축
   - TradeActivityTracker 모듈 (Thread-safe, JSON serialization)
@@ -984,12 +985,31 @@ Ensemble ON 모드로 4시간 이상 연속 Paper 테스트 (인프라 안정성
     - Pipeline Intact: Feed, indicators, ensemble aggregator functioned correctly
     - **Next Step**: PHASE27-1 aggressive parameter tuning required
 
-- **27-1: Parameter Tuning** 🟦 **PLANNED**
-  - Strategy/Ensemble/Guard 파라미터 튜닝
-  - Random/Bayesian/Local Grid Search 활용
-  - 목표: 20-50 trades/30min (Single), 5-10 trades/30min (Multi-Symbol Top10)
+- **27-1: Parameter Tuning** ✅ **COMPLETE** (Tuning insufficient, escalate to 27-2)
+  - **V1 - Moderate Tuning** (2025-12-04, 08:03-08:33):
+    - Config: `phase27_1_single_symbol_30m_v1.yml`
+    - Changes: RSI 25/75, BB std 1.8, ensemble 0.6/0.3
+    - Result: **0 trades** (Strategy Signals: 0/4,755, 100% dropout)
+  - **V2 - Aggressive Tuning** (2025-12-04, 09:33-10:03):
+    - Config: `phase27_1_single_symbol_30m_v2.yml`
+    - Changes: RSI 20/80, BB std 1.5, ensemble 0.5/0.2
+    - Result: **0 trades** (Strategy Signals: 0/4,755, 100% dropout)
+  - **Verdict**: ❌ **Parameter-only tuning CANNOT solve 0-trade issue**
+  - **Root Cause Confirmed**: Strategy algorithms fundamentally incompatible with current market conditions (low-volatility consolidation)
+  - **Lesson**: Fixed-threshold indicator strategies (RSI/BB/ADX) fail in unfavorable regimes
+  - **Escalation**: PHASE27-2 (Strategy Logic Redesign) required
 
-- **27-2: Full Profiling Integration** 🟦 **PLANNED**
+- **27-2: Strategy Logic Redesign** 🟦 **PLANNED** (REQUIRED - ESCALATED FROM 27-1)
+  - **Problem**: Fixed-threshold indicator strategies fail in unfavorable market regimes
+  - **Approach 1**: Simplify entry conditions (reduce AND/OR complexity)
+  - **Approach 2**: Regime-adaptive parameters (compute thresholds from recent data)
+  - **Approach 3**: Multi-regime strategies (trend/range/volatile/calm detection + switching)
+  - **Approach 4**: Probability-based signals (0-1 strength instead of binary true/false)
+  - **Data Analysis**: Collect 30-90 days BTCUSDT 5m data, compute actual RSI/BB/Volume distributions
+  - **Backtests**: Validate redesigned strategies produce signals on recent data (Nov-Dec 2024)
+  - **Target**: ≥10 signals/day on BTCUSDT 5m, then proceed to PHASE27-3 forward tests
+
+- **27-3: Full Profiling Integration** 🟦 **PLANNED** (RENAMED FROM 27-2)
   - MultiSymbolProfiler 엔진 통합
   - Loop Latency, CPU, Memory 실시간 수집
   - IndicatorCache 활성화
@@ -999,6 +1019,8 @@ Ensemble ON 모드로 4시간 이상 연속 Paper 테스트 (인프라 안정성
 **퇴출 조건**: 
 - PHASE27-0: Drop-off 인프라 구축 완료 ✅
 - PHASE27-1: Trade throughput 개선 (20+ trades/H)
+- PHASE27-2: Strategy Logic Redesign 완료
+- PHASE27-3: Full profiling metrics 수집
 - PHASE27-2: Full profiling metrics 수집
 
 ---

@@ -1,0 +1,243 @@
+# ========================================
+# PHASE27-0: Trade Activity Diagnosis - Single-Symbol 30m
+# 목표: Drop-off instrumentation 검증 (PHASE23-4 기반)
+# ========================================
+
+# ========================================
+# 실행 모드 & 환경
+# ========================================
+mode: paper
+env: paper
+run_id: "phase27_0_single_symbol_30m"
+
+# ========================================
+# 심볼 & Timeframe
+# ========================================
+symbol: BTCUSDT
+timeframe: 5m
+lookback: 1000
+
+# ========================================
+# Ensemble 설정 (Score V2 모드)
+# ========================================
+ensemble:
+  enabled: true  # ⭐ Ensemble 모드 활성화
+  mode: score_v2  # ⭐ Score V2 엔진 사용
+  
+  # 5개 V2 전략 (PHASE23-2에서 통합)
+  strategies:
+    - scalping_v3
+    - volatility_breakout_v2
+    - mean_reversion_v2
+    - trend_follow_v2
+    - volume_based_v2
+  
+  # 전략별 가중치 (동일 가중치로 시작)
+  strategy_weights:
+    scalping_v3: 1.0
+    volatility_breakout_v2: 1.0
+    mean_reversion_v2: 1.0
+    trend_follow_v2: 1.0
+    volume_based_v2: 1.0
+  
+  # 3-Tier Decision Thresholds
+  high_conf_threshold: 0.5    # V2: Tier 1: 0.6 → 0.5 (much lower barrier)
+  consensus_threshold: 0.2    # V2: Tier 2: 0.3 → 0.2 (much lower barrier)
+  min_strategies: 2           # Tier 2 최소 동의 전략 수
+  max_strategy_weight: 0.7    # V2: 0.6 → 0.7 (allow more dominance)
+  
+  # Risk/Quality Filters
+  max_risk: 0.9               # V2: S_RISK > 0.9 시 Skip (0.85 → 0.9, much less strict)
+  min_quality: 0.15           # V2: S_QUALITY < 0.15 시 Skip (0.25 → 0.15, much less strict)
+
+# ========================================
+# Strategy Selector (Ensemble 식별용)
+# ========================================
+strategy:
+  selector: ensemble  # 엔진에서 Ensemble 모드 식별
+
+# ========================================
+# Paper Trading 설정
+# ========================================
+paper:
+  duration_mode: "wall_clock"  # 실제 시계 기준
+  duration_hours: 0.5          # 30분 실행 (PHASE27-1 Diagnosis용)
+  clean_start: true            # 깨끗한 시작 (기존 포지션 무시)
+
+# ========================================
+# Capital (FlowGuardian 필수)
+# ========================================
+capital:
+  initial: 50000
+
+# ========================================
+# Execution (FlowGuardian 필수)
+# ========================================
+execution:
+  order_type: MARKET
+  timeout_sec: 30
+  reject_cooldown_seconds: 60
+
+# ========================================
+# Equity (엔진 필수)
+# ========================================
+equity: 50000
+
+# ========================================
+# Portfolio 설정 (PHASE17 Production 기준)
+# ========================================
+portfolio:
+  initial_balance: 50000.0     # $50,000 (검증용)
+  currency: USDT
+  max_open_positions: 3
+  max_symbol_exposure_pct: 25  # 단일 심볼 최대 노출: 20% → 25%
+  max_exposure_pct: 60         # 전체 포트 최대 노출: 50% → 60% (PortfolioManager 필수)
+  max_total_exposure: 0.6      # PortfolioManager 필수 (동일 값)
+  max_strategy_positions: 2  # 전략당 최대 포지션
+  use_dynamic_exposure: true
+  use_dynamic_budget: true
+  symbol_cooldown_seconds: 60
+
+# ========================================
+# Position Sizing (PHASE17 Production 기준)
+# ========================================
+position_sizing:
+  default_risk_per_trade: 0.02  # 2% RPT
+  mode: kelly_fraction
+  kelly_fraction: 0.25
+  leverage: 3.0
+  max_leverage: 5.0
+  quality_weight_min: 0.7
+  quality_weight_max: 1.3
+  max_position_value: 25000  # $50k equity * 50%
+  min_position_value: 100
+  context_scaling:
+    enabled: true
+    atr_low_pct: 0.004
+    atr_high_pct: 0.02
+    low_vol_mult: 1.2
+    high_vol_mult: 0.7
+    neutral_mult: 1.0
+
+# ========================================
+# Risk Manager (PHASE17 Production 기준)
+# ========================================
+risk:
+  per_trade: 0.02                      # 2% RPT (엔진 필수)
+  max_positions: 3                     # 최대 포지션 수 (portfolio와 동일)
+  max_exposure_per_symbol: 0.3         # 심볼당 30% 한도
+  max_daily_loss_pct: 0.10      # 10% 일일 손실 한도
+  max_consecutive_losses: 10
+  cooldown_after_consecutive: 60
+  max_portfolio_dd_pct: 0.15    # 15% 포트폴리오 DD 한도
+  max_drawdown_pct: 10.0        # 최대 낙폭 10%
+  max_slippage_pct: 0.5
+  extreme_loss_cutoff_pct: -20.0
+  profiles:
+    paper:
+      max_daily_loss_pct: 0.20        # Paper 모드는 완화
+      max_consecutive_losses: 15
+      cooldown_after_consecutive: 30
+
+# ========================================
+# Exits (PHASE17 Production 기준)
+# ========================================
+exits:
+  default_tp_levels:
+    - 0.02  # +2%
+    - 0.04  # +4%
+  default_sl_pct: 0.015  # -1.5%
+  trailing_enabled: true
+  trailing_activation_pct: 0.01
+  trailing_callback_pct: 0.005
+
+# ========================================
+# FlowGuardian (Production 기준)
+# ========================================
+flow_guardian:
+  enabled: true
+  selftest:
+    max_runtime_sec: 120
+    require_metrics:
+      - profit_factor
+      - winrate
+      - score_total
+      - exp_score
+    min_profit_factor: 0.0
+    min_winrate: 0.0
+    consistency_checks:
+      db_vs_json_score_equal: true
+      signals_no_nan: true
+      risk_never_oversize: true
+    snapshot_rules:
+      require_segment_isolation: true
+    artifacts:
+      require_files:
+        - logs/trial_0000.json
+        - logs/application.log
+
+# ========================================
+# Monitoring (Redis/DB 설정)
+# ========================================
+monitoring:
+  redis:
+    host: localhost
+    port: 6379
+    db: 0
+  metrics:
+    enabled: true
+    interval_sec: 60
+
+# ========================================
+# Database (상속)
+# ========================================
+database:
+  url: ${DATABASE_URL}
+  host: ${DB_HOST}
+  port: ${DB_PORT}
+  name: ${DB_NAME}
+  user: ${DB_USER}
+  password: ${DB_PASSWORD}
+
+# ========================================
+# Telegram (상속)
+# ========================================
+telegram:
+  token: ${TELEGRAM_TOKEN}
+  chat_id: ${TELEGRAM_CHAT_ID}
+  enabled: ${ENABLE_TELEGRAM}
+
+# ========================================
+# 전략별 파라미터 (초기 기준선)
+# ========================================
+strategies:
+  scalping_v3:
+    rsi_oversold: 20          # V2: 25 → 20 (very aggressive)
+    rsi_overbought: 80        # V2: 75 → 80 (very aggressive)
+    bb_std: 1.5               # V2: 1.8 → 1.5 (very tight bands)
+    volume_spike_threshold: 1.1  # V2: 1.3 → 1.1 (very low threshold)
+  
+  volatility_breakout_v2:
+    atr_period: 14
+    bb_period: 20
+    bb_std: 1.7               # V2: 2.0 → 1.7 (much more breakout signals)
+    volume_multiplier: 1.2    # V2: 1.3 → 1.2 (very low volume threshold)
+  
+  mean_reversion_v2:
+    bb_period: 20
+    bb_std: 1.5               # V2: 1.8 → 1.5 (very tight bands)
+    rsi_period: 14
+    rsi_oversold: 35          # V2: 30 → 35 (more relaxed)
+    rsi_overbought: 65        # V2: 70 → 65 (more relaxed)
+  
+  trend_follow_v2:
+    fast_ema: 8               # V2: 10 → 8 (much faster EMA)
+    slow_ema: 21              # V2: 24 → 21 (much faster EMA)
+    signal_period: 9
+    adx_period: 14
+    adx_threshold: 15         # V2: 20 → 15 (very low barrier)
+  
+  volume_based_v2:
+    volume_period: 15         # V2: 18 → 15 (much faster adaptation)
+    volume_spike_threshold: 1.2  # V2: 1.5 → 1.2 (very low threshold)
+    obv_period: 14

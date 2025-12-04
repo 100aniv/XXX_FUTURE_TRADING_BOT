@@ -1,0 +1,52 @@
+{
+  "run_id": "phase27_0_single_symbol_30m",
+  "duration_minutes": 30.08708736896515,
+  "timestamp": "2025-12-04T08:03:44.923824",
+  "end_timestamp": "2025-12-04T08:33:52.861972",
+  "symbols": {
+    "BTCUSDT": {
+      "strategy_signals": {
+        "scalping_v3": {
+          "total_calls": 951,
+          "signal_true": 0,
+          "signal_false": 951
+        },
+        "volatility_breakout_v2": {
+          "total_calls": 951,
+          "signal_true": 0,
+          "signal_false": 951
+        },
+        "mean_reversion_v2": {
+          "total_calls": 951,
+          "signal_true": 0,
+          "signal_false": 951
+        },
+        "trend_follow_v2": {
+          "total_calls": 951,
+          "signal_true": 0,
+          "signal_false": 951
+        },
+        "volume_based_v2": {
+          "total_calls": 951,
+          "signal_true": 0,
+          "signal_false": 951
+        }
+      },
+      "ensemble_decisions": {
+        "skip": 951
+      },
+      "guard_blocks": {},
+      "orders_submitted": 0
+    }
+  },
+  "totals": {
+    "strategy_signals_total": 4755,
+    "strategy_signals_true": 0,
+    "strategy_signals_false": 4755,
+    "ensemble_tier1": 0,
+    "ensemble_tier2": 0,
+    "ensemble_skip": 951,
+    "guard_blocks_total": 0,
+    "orders_submitted": 0
+  }
+}
