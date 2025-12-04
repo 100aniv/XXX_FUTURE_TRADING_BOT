@@ -205,6 +205,93 @@ def donchian(df: pd.DataFrame, length: int = 20) -> pd.DataFrame:
     return df
 
 
+def compute_adx(
+    df: pd.DataFrame, 
+    period: int = 14, 
+    high_col: str = "high", 
+    low_col: str = "low", 
+    close_col: str = "close"
+) -> pd.DataFrame:
+    """
+    ADX (Average Directional Index) 계산
+    
+    ADX는 추세의 강도를 측정하는 지표로, 방향성은 알려주지 않고 추세의 강도만 측정합니다.
+    - ADX > 25: 강한 추세 (Trend regime)
+    - ADX <= 25: 약한 추세 또는 횡보 (Range regime)
+    
+    Args:
+        df: DataFrame (high, low, close 컬럼 필요)
+        period: ADX 계산 기간 (기본 14)
+        high_col: 고가 컬럼명
+        low_col: 저가 컬럼명
+        close_col: 종가 컬럼명
+    
+    Returns:
+        pd.DataFrame: plus_di_{period}, minus_di_{period}, adx_{period} 컬럼 추가
+        
+    Examples:
+        >>> df = compute_adx(df, period=14)
+        >>> print(df[['plus_di_14', 'minus_di_14', 'adx_14']])
+        
+    Notes:
+        - +DI (Plus Directional Indicator): 상승 방향 강도
+        - -DI (Minus Directional Indicator): 하락 방향 강도
+        - ADX: 추세 강도 (0-100, 방향 무관)
+        - 초기 period*2 행은 NaN (Wilder's smoothing 특성)
+    """
+    high = df[high_col]
+    low = df[low_col]
+    close = df[close_col]
+    
+    # True Range 계산 (ATR 계산과 동일)
+    high_low = high - low
+    high_close = np.abs(high - close.shift())
+    low_close = np.abs(low - close.shift())
+    ranges = pd.concat([high_low, high_close, low_close], axis=1)
+    tr = np.max(ranges, axis=1)
+    
+    # Directional Movement 계산
+    high_diff = high - high.shift()  # +DM 후보
+    low_diff = low.shift() - low     # -DM 후보
+    
+    # +DM: 상승이 하락보다 크고 양수일 때
+    plus_dm = np.where((high_diff > low_diff) & (high_diff > 0), high_diff, 0)
+    # -DM: 하락이 상승보다 크고 양수일 때
+    minus_dm = np.where((low_diff > high_diff) & (low_diff > 0), low_diff, 0)
+    
+    # Wilder's smoothing (EMA와 유사하지만 다른 방식)
+    # ATR_smooth = (ATR_prev * (n-1) + TR_current) / n
+    # 초기값은 단순 평균
+    alpha = 1.0 / period
+    
+    # ATR (smoothed TR)
+    atr_smooth = pd.Series(tr).ewm(alpha=alpha, adjust=False).mean()
+    
+    # Smoothed +DM, -DM
+    plus_dm_smooth = pd.Series(plus_dm).ewm(alpha=alpha, adjust=False).mean()
+    minus_dm_smooth = pd.Series(minus_dm).ewm(alpha=alpha, adjust=False).mean()
+    
+    # +DI, -DI 계산 (%)
+    plus_di = 100 * (plus_dm_smooth / atr_smooth)
+    minus_di = 100 * (minus_dm_smooth / atr_smooth)
+    
+    # DX (Directional Index)
+    # Division by zero 방지: denominator가 0에 가까우면 0으로 처리
+    di_sum = plus_di + minus_di
+    di_diff = np.abs(plus_di - minus_di)
+    dx = pd.Series(np.where(di_sum > 0.001, 100 * di_diff / di_sum, 0), index=df.index)
+    
+    # ADX (DX의 이동평균)
+    adx = dx.ewm(alpha=alpha, adjust=False).mean()
+    
+    # 결과 컬럼 추가
+    df[f"plus_di_{period}"] = plus_di
+    df[f"minus_di_{period}"] = minus_di
+    df[f"adx_{period}"] = adx
+    
+    return df
+
+
 # ============================================
 # Volume Indicators (거래량 지표)
 # ============================================
@@ -243,7 +330,9 @@ def add_indicators(
     bb_std: float = 2.0,
     atr_len: int = 14,
     vol_ma_len: int = 30,
-    dc_len: int = 20
+    dc_len: int = 20,
+    use_adx: bool = False,
+    adx_period: int = 14
 ) -> pd.DataFrame:
     """
     DataFrame에 모든 지표 추가
@@ -257,12 +346,15 @@ def add_indicators(
         atr_len: ATR 기간
         vol_ma_len: 거래량 MA 기간
         dc_len: Donchian Channel 기간
+        use_adx: ADX 계산 활성화 여부 (기본 False, 성능 고려)
+        adx_period: ADX 계산 기간 (기본 14)
     
     Returns:
         pd.DataFrame: 모든 지표가 추가된 DataFrame (NaN 제거됨)
         
     Examples:
         >>> df = add_indicators(df)
+        >>> df = add_indicators(df, use_adx=True, adx_period=14)
         >>> print(df.columns)
     """
     # EMA
@@ -287,6 +379,10 @@ def add_indicators(
     
     # Volume MA
     df["vol_ma"] = volume_ma(df["volume"], vol_ma_len)
+    
+    # ADX (선택적)
+    if use_adx:
+        df = compute_adx(df, period=adx_period)
     
     # NaN 제거
     return df.dropna().reset_index(drop=True)

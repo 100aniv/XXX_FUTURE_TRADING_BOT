@@ -1,0 +1,26 @@
+{
+  "run_id": "phase27_2_single_symbol_30m_baseline",
+  "duration_minutes": 30.076929032802582,
+  "timestamp": "2025-12-04T11:09:47.310395",
+  "end_timestamp": "2025-12-04T11:39:54.168562",
+  "symbols": {
+    "BTCUSDT": {
+      "strategy_signals": {},
+      "ensemble_decisions": {
+        "skip": 951
+      },
+      "guard_blocks": {},
+      "orders_submitted": 0
+    }
+  },
+  "totals": {
+    "strategy_signals_total": 0,
+    "strategy_signals_true": 0,
+    "strategy_signals_false": 0,
+    "ensemble_tier1": 0,
+    "ensemble_tier2": 0,
+    "ensemble_skip": 951,
+    "guard_blocks_total": 0,
+    "orders_submitted": 0
+  }
+}

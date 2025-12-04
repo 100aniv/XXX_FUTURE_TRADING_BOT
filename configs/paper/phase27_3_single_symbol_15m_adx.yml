@@ -1,0 +1,235 @@
+# ========================================
+# PHASE27-3: ADX Integration - Single-Symbol 15m Baseline + ADX
+# 목표: ADX 레짐 기반 전략 검증, Signal Dropout 최종 확인
+# ========================================
+
+# ========================================
+# 실행 모드 & 환경
+# ========================================
+mode: paper
+env: paper
+run_id: "phase27_3_single_symbol_15m_adx"
+
+# ========================================
+# 심볼 & Timeframe
+# ========================================
+symbol: BTCUSDT
+timeframe: 5m
+lookback: 1000
+
+# ========================================
+# Ensemble 설정 (Baseline 전략만 사용)
+# ========================================
+ensemble:
+  enabled: true
+  mode: score_v2
+  
+  # 베이스라인 전략만 활성화
+  strategies:
+    - btc5m_baseline_v1
+  
+  # 전략별 가중치
+  strategy_weights:
+    btc5m_baseline_v1: 1.0
+  
+  # 3-Tier Decision Thresholds (단일 전략이므로 완화)
+  high_conf_threshold: 0.4
+  consensus_threshold: 0.2
+  min_strategies: 1  # 단일 전략
+  max_strategy_weight: 1.0  # 단일 전략이므로 100% 허용
+  
+  # Risk/Quality Filters (신호 통과 우선)
+  max_risk: 0.95
+  min_quality: 0.1
+
+# ========================================
+# Strategy Selector (Ensemble 식별용)
+# ========================================
+strategy:
+  selector: ensemble
+
+# ========================================
+# Paper Trading 설정
+# ========================================
+paper:
+  duration_mode: "wall_clock"
+  duration_minutes: 15  # 15분 실행 (ADX 검증)
+  clean_start: true
+
+# ========================================
+# Capital
+# ========================================
+capital:
+  initial: 50000
+
+# ========================================
+# Execution
+# ========================================
+execution:
+  order_type: MARKET
+  timeout_sec: 30
+  reject_cooldown_seconds: 60
+
+# ========================================
+# Equity
+# ========================================
+equity: 50000
+
+# ========================================
+# Portfolio 설정
+# ========================================
+portfolio:
+  initial_balance: 50000.0
+  currency: USDT
+  max_open_positions: 3
+  max_symbol_exposure_pct: 30
+  max_exposure_pct: 60
+  max_total_exposure: 0.6
+  max_strategy_positions: 2
+  use_dynamic_exposure: true
+  use_dynamic_budget: true
+  symbol_cooldown_seconds: 60
+
+# ========================================
+# Position Sizing
+# ========================================
+position_sizing:
+  default_risk_per_trade: 0.02
+  mode: kelly_fraction
+  kelly_fraction: 0.25
+  leverage: 3.0
+  min_position_size: 0.001
+  max_position_size: 10.0
+
+# ========================================
+# Risk Management
+# ========================================
+risk:
+  max_open_positions: 3
+  max_risk_per_trade: 0.03
+  max_portfolio_risk: 0.1
+  max_daily_loss: 0.05
+  max_consecutive_losses: 5
+  drawdown_threshold: 0.15
+  risk_free_rate: 0.0
+
+# ========================================
+# Exits
+# ========================================
+exits:
+  use_trailing_stop: false
+  trailing_stop_pct: 0.02
+  use_time_exit: true
+  max_hold_minutes: 180
+  emergency_exit:
+    enabled: true
+    loss_threshold: 0.10
+
+# ========================================
+# FlowGuardian
+# ========================================
+flow_guardian:
+  enabled: true
+  cooldown:
+    enabled: true
+    seconds: 60
+  budget_cap:
+    enabled: true
+  position_safety:
+    enabled: true
+    max_positions: 3
+  strategy_diversity:
+    enabled: false  # 단일 전략이므로 비활성화
+    min_active_strategies: 1
+
+# ========================================
+# TradeActivityTracker (PHASE27-3 진단 도구)
+# ========================================
+trade_activity_tracker:
+  enabled: true
+  log_interval: 60  # 60초마다 로그
+  summary_file: "docs/PHASE27/phase27_3_single_symbol_15m_adx_summary.json"
+
+# ========================================
+# Monitoring
+# ========================================
+monitoring:
+  redis:
+    host: localhost
+    port: 6379
+    db: 0
+  metrics:
+    enabled: true
+    interval_sec: 60
+
+# ========================================
+# Database
+# ========================================
+database:
+  url: ${DATABASE_URL}
+  host: ${DB_HOST}
+  port: ${DB_PORT}
+  name: ${DB_NAME}
+  user: ${DB_USER}
+  password: ${DB_PASSWORD}
+
+# ========================================
+# Telegram
+# ========================================
+telegram:
+  token: ${TELEGRAM_TOKEN}
+  chat_id: ${TELEGRAM_CHAT_ID}
+  enabled: ${ENABLE_TELEGRAM}
+
+# ========================================
+# 전략별 파라미터 - BTC 5m Baseline V1 (PHASE27-3 ADX 통합)
+# ========================================
+strategies:
+  btc5m_baseline_v1:
+    # 신호 조건 (데이터 프로파일링 기반)
+    rsi_long_threshold: 45    # RSI p25 근처
+    rsi_short_threshold: 55   # RSI p75 근처
+    bb_std_main: 1.0          # 주요 BB 밴드
+    bb_std_strong: 1.5        # 강한 신호 BB 밴드
+    momentum_lookback: 5      # 모멘텀 확인 캔들 수
+    momentum_threshold: 0.001 # 0.1% 모멘텀 기준
+    
+    # ADX 레짐 설정 (PHASE27-3 추가)
+    use_adx: true             # ADX 활성화
+    adx_period: 14            # ADX 계산 기간
+    adx_trend_threshold: 25   # Trend/Range 구분 임계값
+    
+    # 위험 관리
+    rr: 1.5                   # Risk/Reward
+    atr_mult_sl: 1.5          # SL = ATR × 1.5
+    max_hold_minutes: 60      # 최대 보유 시간
+    min_bars_for_signal: 50   # 최소 데이터
+    
+    # Filters
+    filters:
+      allow_short: true
+    
+    # Leverage
+    leverage:
+      min: 1
+      max: 5
+      default: 3
+
+# ========================================
+# Indicators 설정 (ADX 지표 추가)
+# ========================================
+indicators:
+  ema_fast: 20
+  ema_mid: 50
+  ema_slow: 200
+  rsi_len: 14
+  macd_fast: 12
+  macd_slow: 26
+  macd_signal: 9
+  bb_len: 20
+  bb_std: 2.0
+  atr_len: 14
+  vol_ma_len: 30
+  dc_len: 20
+  use_adx: true      # ADX 계산 활성화
+  adx_period: 14     # ADX 계산 기간

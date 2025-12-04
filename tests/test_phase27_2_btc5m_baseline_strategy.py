@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-PHASE27-2: BTC 5m Baseline V1 전략 테스트
-==========================================
-베이스라인 전략의 신호 생성 및 기본 동작 검증
+PHASE27-3: BTC 5m Baseline V1 전략 테스트 (ADX 통합)
+======================================================
+베이스라인 전략의 신호 생성 및 기본 동작 검증 + ADX 레짐 로직
 """
 import pytest
 import pandas as pd
 import numpy as np
-from strategies.research.btc5m_baseline_v1 import signal_logic, BTC5mBaselineV1
+from strategies.btc5m_baseline_v1 import signal_logic, BTC5mBaselineV1
 
 
 @pytest.fixture
@@ -230,6 +230,126 @@ def test_multiple_conditions_or_logic(sample_df, base_config):
     # all_reasons에 여러 이유 포함 가능
     if 'all_reasons' in result:
         assert len(result['all_reasons']) >= 1
+
+
+def test_adx_range_regime(sample_df, base_config):
+    """ADX Range Regime 테스트 (ADX <= 25)"""
+    base_config['use_adx'] = True
+    base_config['adx_period'] = 14
+    base_config['adx_trend_threshold'] = 25
+    
+    # ADX 컬럼 추가 (Range regime)
+    sample_df['adx_14'] = 20.0  # ADX < 25 = Range
+    sample_df['plus_di_14'] = 15.0
+    sample_df['minus_di_14'] = 18.0
+    
+    last_idx = len(sample_df) - 1
+    
+    # RSI 조건만으로 LONG 신호 (Range regime)
+    sample_df.loc[last_idx, 'rsi'] = 40.0  # RSI < 45
+    sample_df.loc[last_idx, 'close'] = 90500
+    
+    result = signal_logic(sample_df, base_config)
+    
+    assert result['side'] == 'LONG'
+    assert 'metadata' in result
+    assert result['metadata']['regime'] == 'RANGE'
+    assert result['metadata']['adx'] == 20.0
+    assert '[RANGE]' in result['reason'] or 'RSI' in result['reason']
+
+
+def test_adx_trend_regime(sample_df, base_config):
+    """ADX Trend Regime 테스트 (ADX > 25)"""
+    base_config['use_adx'] = True
+    base_config['adx_period'] = 14
+    base_config['adx_trend_threshold'] = 25
+    
+    # ADX 컬럼 추가 (Trend regime)
+    sample_df['adx_14'] = 30.0  # ADX > 25 = Trend
+    sample_df['plus_di_14'] = 25.0
+    sample_df['minus_di_14'] = 10.0
+    
+    last_idx = len(sample_df) - 1
+    
+    # RSI만으로는 신호 없음 (Trend regime)
+    sample_df.loc[last_idx, 'rsi'] = 40.0  # RSI < 45
+    sample_df.loc[last_idx, 'close'] = 90500  # BB 조건 미충족
+    sample_df.loc[last_idx, 'bb_lower'] = 89000  # Lower가 훨씬 아래
+    
+    result = signal_logic(sample_df, base_config)
+    
+    # Trend regime에서는 RSI 단독 신호 없음
+    assert result['side'] is None or result['side'] != 'LONG'
+
+
+def test_adx_trend_regime_with_bb_strong(sample_df, base_config):
+    """ADX Trend Regime + BB Strong 조건"""
+    base_config['use_adx'] = True
+    base_config['adx_period'] = 14
+    base_config['adx_trend_threshold'] = 25
+    base_config['bb_std_strong'] = 1.5
+    
+    # ADX 컬럼 추가 (Trend regime)
+    sample_df['adx_14'] = 35.0
+    sample_df['plus_di_14'] = 30.0
+    sample_df['minus_di_14'] = 8.0
+    
+    last_idx = len(sample_df) - 1
+    
+    # BB 설정 (2.0 std 기준 - indicators 기본값)
+    bb_middle = 90000
+    bb_std = 2.0
+    bb_width_2std = 4000  # 2.0 std 기준 전체 폭
+    sample_df.loc[last_idx, 'bb_upper'] = bb_middle + bb_width_2std / 2
+    sample_df.loc[last_idx, 'bb_lower'] = bb_middle - bb_width_2std / 2
+    
+    # BB Lower 1.5 std 계산:
+    # bb_lower_strong = bb_middle - (bb_width_2std / 2) * (1.5 / 2.0)
+    # = 90000 - 2000 * 0.75 = 90000 - 1500 = 88500
+    # close를 88500보다 아래로 설정
+    sample_df.loc[last_idx, 'close'] = 88400
+    
+    result = signal_logic(sample_df, base_config)
+    
+    assert result['side'] == 'LONG'
+    assert result['metadata']['regime'] == 'TREND'
+    assert '[TREND]' in result['reason']
+
+
+def test_adx_off_backward_compatible(sample_df, base_config):
+    """ADX OFF 시 기존 로직 동작 (하위 호환성)"""
+    # ADX 사용하지 않음
+    base_config['use_adx'] = False
+    
+    last_idx = len(sample_df) - 1
+    
+    # RSI LONG 조건
+    sample_df.loc[last_idx, 'rsi'] = 40.0
+    
+    result = signal_logic(sample_df, base_config)
+    
+    # ADX OFF이므로 Range 로직 (기존 PHASE27-2)
+    assert result['side'] == 'LONG'
+    assert result['metadata']['regime'] == 'RANGE (ADX OFF)'
+    assert result['metadata']['use_adx'] is False
+
+
+def test_adx_metadata_inclusion(sample_df, base_config):
+    """ADX 관련 메타데이터 포함 확인"""
+    base_config['use_adx'] = True
+    sample_df['adx_14'] = 22.0
+    
+    last_idx = len(sample_df) - 1
+    sample_df.loc[last_idx, 'rsi'] = 40.0
+    
+    result = signal_logic(sample_df, base_config)
+    
+    assert 'metadata' in result
+    assert 'regime' in result['metadata']
+    assert 'adx' in result['metadata']
+    assert 'use_adx' in result['metadata']
+    assert result['metadata']['adx'] == 22.0
+    assert result['metadata']['use_adx'] is True
 
 
 if __name__ == '__main__':
