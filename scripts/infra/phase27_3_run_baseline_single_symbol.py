@@ -108,7 +108,7 @@ def run_paper_execution(config_path: str):
         return False
     
     # run_v2.py 실행 (출력은 실시간으로)
-    cmd = ["python", str(run_script), "--config", config_path]
+    cmd = ["python", str(run_script), "--mode", "paper", "--config", config_path]
     
     log(f"실행 명령: {' '.join(cmd)}")
     log("=" * 60)

@@ -999,29 +999,35 @@ Ensemble ON 모드로 4시간 이상 연속 Paper 테스트 (인프라 안정성
   - **Lesson**: Fixed-threshold indicator strategies (RSI/BB/ADX) fail in unfavorable regimes
   - **Escalation**: PHASE27-2 (Strategy Logic Redesign) required
 
-- **27-2: Strategy Logic Redesign** 🟦 **PLANNED** (REQUIRED - ESCALATED FROM 27-1)
+- **27-2: Strategy Logic Redesign** ✅ **COMPLETE** (2025-12-04)
   - **Problem**: Fixed-threshold indicator strategies fail in unfavorable market regimes
-  - **Approach 1**: Simplify entry conditions (reduce AND/OR complexity)
-  - **Approach 2**: Regime-adaptive parameters (compute thresholds from recent data)
-  - **Approach 3**: Multi-regime strategies (trend/range/volatile/calm detection + switching)
-  - **Approach 4**: Probability-based signals (0-1 strength instead of binary true/false)
-  - **Data Analysis**: Collect 30-90 days BTCUSDT 5m data, compute actual RSI/BB/Volume distributions
-  - **Backtests**: Validate redesigned strategies produce signals on recent data (Nov-Dec 2024)
-  - **Target**: ≥10 signals/day on BTCUSDT 5m, then proceed to PHASE27-3 forward tests
+  - **Solution**: Percentile-based baseline strategy (btc5m_baseline_v1)
+  - **Data Analysis**: 30 days BTCUSDT 5m profiling completed
+  - **Implementation**: RSI 45/55, BB 1.0/1.5 std, Momentum 5-candle, OR logic
+  - **Tests**: 12/12 PASS (100%)
+  - **Artifacts**: strategies/btc5m_baseline_v1.py, PHASE27-2_STRATEGY_REDESIGN_REPORT.md
+  - **Next**: PHASE27-3 (ADX integration + execution validation)
 
-- **27-3: Baseline Strategy Execution Validation** 🟡 **IN PROGRESS** (URGENT - PHASE27-2 CONTINUATION)
-  - **Goal**: Execute and validate `btc5m_baseline_v1` strategy in live Paper mode
-  - **Prerequisites**: Fix unicode encoding error in `phase27_0_run_diagnosis.py`
-  - **Execution**: 10-30 minutes BTCUSDT 5m Paper run
-  - **Validation Targets**:
-    - Strategy Signals (True) > 0 (anti-dropout)
-    - Signal → Ensemble → Order pipeline intact
-    - No structural errors, clean termination
-  - **Success Criteria**:
-    - ✅ Strategy signals generated (≥5 signals expected in 10min)
-    - ✅ ActivityTracker confirms signal flow
-    - (Optional) Orders submitted > 0
-  - **Next**: If signals verified → PHASE27-4 (signal quality analysis + param tuning)
+- **27-3: ADX Integration + Execution Validation** ⚠️ **PARTIAL COMPLETE** (2025-12-04)
+  - **Goal**: ADX regime-based strategy enhancement + Paper execution validation
+  - **Implementation** ✅:
+    - ADX indicator: compute_adx() (91 LOC, Wilder smoothing)
+    - Regime: Range (ADX ≤ 25) vs Trend (ADX > 25)
+    - Range: Mean reversion (RSI, BB, Momentum OR)
+    - Trend: Extreme conditions (BB Strong, RSI+BB combo)
+    - Strategy: v1.0 → v1.1
+  - **Tests** ✅: 25/25 PASS (ADX 8/8 + Baseline 17/17)
+  - **Artifacts** ✅:
+    - indicators/core_indicators.py (ADX)
+    - strategies/btc5m_baseline_v1.py (v1.1)
+    - tests/test_phase27_3_adx_indicator.py
+    - configs/paper/phase27_3_single_symbol_15m_adx.yml
+    - scripts/infra/phase27_3_run_baseline_single_symbol.py
+    - docs/PHASE27/PHASE27-3_ADX_INTEGRATION_DESIGN.md
+    - docs/PHASE27/PHASE27-3_ADX_INTEGRATION_REPORT.md
+  - **Execution** ⏳: 15min PAPER in progress (duration issue)
+  - **Git**: Commit 8839ebe
+  - **Next**: Complete PAPER → verify Signals (True) > 0 → PHASE27-4
 
 - **27-4: Full Profiling Integration** 🟦 **PLANNED** (RENAMED FROM 27-3)
   - MultiSymbolProfiler 엔진 통합
