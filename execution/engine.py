@@ -153,6 +153,63 @@ def run_v2(mode: str, config: dict, clean_state: bool = False):
         config.setdefault('execution', {})['max_runtime_hours'] = duration_hours
         logger.info(f"⏱️  Duration: {duration_hours}h")
     
+    # 5.5. Prometheus Exporter 설정 (PHASE28-0)
+    prometheus_exporter = None
+    monitoring_cfg = config.get('monitoring', {})
+    if monitoring_cfg.get('enabled', False):
+        logger.info("📊 [PHASE28-0] Prometheus Exporter 활성화")
+        from monitoring.prometheus_exporter import init_prometheus_exporter
+        
+        prometheus_port = monitoring_cfg.get('prometheus_port', 9091)
+        prometheus_exporter = init_prometheus_exporter(
+            enabled=True,
+            port=prometheus_port,
+            mode=mode
+        )
+        logger.info(f"✅ Prometheus Exporter 초기화 완료: port={prometheus_port}")
+    else:
+        logger.info("ℹ️  Prometheus Exporter 비활성화")
+    
+    # 5.6. TradeActivityTracker 설정 (PHASE27-5A + PHASE28-0 Exporter 통합)
+    activity_tracker = None
+    tracker_cfg = config.get('trade_activity_tracker', {})
+    if tracker_cfg.get('enabled', False):
+        logger.info("📊 [PHASE27-5A] TradeActivityTracker 활성화")
+        from metrics.trade_activity_tracker import TradeActivityTracker
+        from pathlib import Path
+        
+        run_id = config.get('run_id', 'unknown')
+        duration_minutes = duration_hours * 60 if duration_hours else None
+        output_file = tracker_cfg.get('output_file')
+        
+        activity_tracker = TradeActivityTracker(
+            run_id=run_id,
+            duration_minutes=duration_minutes,
+            prometheus_exporter=prometheus_exporter  # ⭐ PHASE28-0: Exporter 전달
+        )
+        
+        if output_file:
+            # output_file 경로를 절대 경로로 변환
+            output_path = Path(output_file)
+            if not output_path.is_absolute():
+                # 프로젝트 루트 기준 상대 경로
+                from pathlib import Path as PathLib
+                project_root = PathLib(__file__).parent.parent
+                output_path = project_root / output_file
+            
+            # 디렉토리 생성
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            
+            # Tracker에 output_file 정보 저장 (나중에 save_json 호출용)
+            activity_tracker._output_file = output_path
+            logger.info(f"✅ TradeActivityTracker 출력 파일: {output_path}")
+        else:
+            activity_tracker._output_file = None
+        
+        logger.info(f"✅ TradeActivityTracker 생성 완료: run_id={run_id}")
+    else:
+        logger.info("ℹ️  TradeActivityTracker 비활성화")
+    
     # 6. 기존 run() 호출 (단일 엔진 원칙, PHASE26-1: symbols 전달)
     logger.info("🚀 [PHASE23-1/26-1] Core engine.run() 호출")
     
@@ -164,9 +221,30 @@ def run_v2(mode: str, config: dict, clean_state: bool = False):
             strategies=strategies,
             ensemble_module=ensemble_module,
             config=config,
-            symbols=symbols  # ⭐ PHASE26-1: symbols 전달
+            symbols=symbols,  # ⭐ PHASE26-1: symbols 전달
+            activity_tracker=activity_tracker  # ⭐ PHASE27-5A: TradeActivityTracker 전달
         )
         logger.info("✅ [PHASE23-1/26-1] Engine V2 정상 종료")
+        
+        # PHASE28-0: Metrics 최종 동기화 (CPU/Memory)
+        if prometheus_exporter:
+            logger.info("📊 [PHASE28-0] Prometheus Metrics 최종 동기화...")
+            from monitoring.metrics_adapter import MetricsAdapter
+            from common.perf.perf_profiler import multi_symbol_profiler
+            
+            adapter = MetricsAdapter(
+                exporter=prometheus_exporter,
+                tracker=activity_tracker,
+                profiler=multi_symbol_profiler
+            )
+            adapter.sync_all()
+            logger.info("✅ Prometheus Metrics 최종 동기화 완료")
+        
+        # TradeActivityTracker Summary 저장 (PHASE27-5A)
+        if activity_tracker and hasattr(activity_tracker, '_output_file') and activity_tracker._output_file:
+            logger.info("📊 [PHASE27-5A] TradeActivityTracker Summary 저장 중...")
+            activity_tracker.save_json(activity_tracker._output_file)
+            logger.info(f"✅ TradeActivityTracker Summary 저장 완료: {activity_tracker._output_file}")
         
     finally:
         # 7. Cleanup
@@ -1280,6 +1358,9 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict, sy
                         bb_cfg.get("std", 2.0),
                         atr_cfg.get("length", 14),
                         vol_cfg.get("ma_length", 30),
+                        inds.get("dc_len", 20),  # PHASE27-7: Donchian
+                        use_adx=inds.get("use_adx", False),  # PHASE27-7: ADX 활성화
+                        adx_period=inds.get("adx_period", 14)  # PHASE27-7: ADX 기간
                     )
                 
                 # PHASE23-3: V2 모드 처리
@@ -1305,12 +1386,18 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict, sy
                             # Compute signal
                             raw_signal = strategy_instance.compute_signal(df_with_indicators)
                             
-                            # ⭐ PHASE27-0: Strategy Signal Hook
+                            # ⭐ PHASE27-0 / PHASE27-6: Strategy Signal Hook
                             if activity_tracker:
+                                has_signal = (raw_signal is not None and raw_signal.get('side') is not None)
+                                side = raw_signal.get('side') if has_signal else None
+                                regime = raw_signal.get('metadata', {}).get('regime') if has_signal else None
+                                
                                 activity_tracker.record_strategy_signal(
                                     symbol=candle_symbol,
                                     strategy_id=strategy_name,
-                                    has_signal=(raw_signal is not None and raw_signal.get('side') is not None)
+                                    has_signal=has_signal,
+                                    side=side,
+                                    regime=regime
                                 )
                             
                             if not raw_signal or not raw_signal.get('side'):
@@ -1434,9 +1521,13 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict, sy
                     continue
                 
                 try:
-                    # PHASE22-4: module과 params 추출
-                    strategy_module = strategy_info["module"]
+                    # PHASE23-2 / PHASE27-5A: instance와 params 추출
+                    strategy_instance = strategy_info.get("instance")
                     strategy_params = strategy_info.get("params", {})
+                    
+                    if not strategy_instance:
+                        logger.warning(f"⚠️  [{strategy_id}] instance 없음, 스킵")
+                        continue
                     
                     # PHASE22-4 DEBUG: params 확인
                     logger.info(f"🔍 [PHASE22-4 DEBUG] {strategy_id} params: {strategy_params}")
@@ -1445,6 +1536,7 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict, sy
                     strategy_cfg = config.get("strategies", {}).get(strategy_id, {})
                     cfg = {
                         **config,  # 전체 config (leverage, tp_sl 등)
+                        **strategy_cfg,  # PHASE27-7: strategies.{strategy_id} 설정 (use_adx, adx_period 등)
                         **strategy_params,  # PHASE22-4: 전략별 params (rsi_oversold 등) - 최우선
                     }
                     
@@ -1493,6 +1585,9 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict, sy
                             bb_cfg.get("std", 2.0),
                             atr_cfg.get("length", 14),
                             vol_cfg.get("ma_length", 30),
+                            inds.get("dc_len", 20),  # PHASE27-7: Donchian
+                            use_adx=inds.get("use_adx", False),  # PHASE27-7: ADX 활성화
+                            adx_period=inds.get("adx_period", 14)  # PHASE27-7: ADX 기간
                         )
                         logger.debug(
                             f"✅ [{strategy_id}] Multi-TF 버퍼 사용: {strategy_tf} ({len(buffers[strategy_buffer_key])}개)"
@@ -1590,10 +1685,40 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict, sy
                             bb_cfg.get("std", 2.0),
                             atr_cfg.get("length", 14),
                             vol_cfg.get("ma_length", 30),
+                            inds.get("dc_len", 20),  # PHASE27-7: Donchian
+                            use_adx=inds.get("use_adx", False),  # PHASE27-7: ADX 활성화
+                            adx_period=inds.get("adx_period", 14)  # PHASE27-7: ADX 기간
                         )
 
-                    # 전략 실행 (리샘플 DF)
-                    signal = strategy_module.signal_logic(df_tf, cfg)
+                    # 전략 실행 (리샘플 DF) - PHASE23-2 / PHASE27-5A
+                    from common.registry.base_strategy import BaseStrategy
+                    
+                    if isinstance(strategy_instance, BaseStrategy):
+                        # PHASE23-2: BaseStrategy.compute_signal() 호출
+                        # Config 병합: instance에 이미 config가 있지만, 런타임 cfg 우선
+                        strategy_instance.config = cfg
+                        signal = strategy_instance.compute_signal(df_tf)
+                    else:
+                        # Legacy: signal_logic() 함수 호출 (폴백)
+                        if hasattr(strategy_instance, 'signal_logic'):
+                            signal = strategy_instance.signal_logic(df_tf, cfg)
+                        else:
+                            logger.error(f"❌ [{strategy_id}] 전략 오류: BaseStrategy도 아니고 signal_logic도 없음")
+                            continue
+                    
+                    # ⭐ PHASE27-0 / PHASE27-6: Strategy Signal Hook
+                    if activity_tracker:
+                        has_signal = (signal is not None and signal.get('side') is not None)
+                        side = signal.get('side') if has_signal else None
+                        regime = signal.get('metadata', {}).get('regime') if has_signal else None
+                        
+                        activity_tracker.record_strategy_signal(
+                            symbol=candle_symbol,
+                            strategy_id=strategy_id,
+                            has_signal=has_signal,
+                            side=side,
+                            regime=regime
+                        )
 
                     if signal and signal.get("side"):
                         signal["strategy_id"] = strategy_id

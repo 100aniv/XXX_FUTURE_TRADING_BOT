@@ -332,7 +332,8 @@ def add_indicators(
     vol_ma_len: int = 30,
     dc_len: int = 20,
     use_adx: bool = False,
-    adx_period: int = 14
+    adx_period: int = 14,
+    drop_nan: bool = False  # PHASE27-7: NaN 제거 여부 (기본값 False로 변경)
 ) -> pd.DataFrame:
     """
     DataFrame에 모든 지표 추가
@@ -348,14 +349,23 @@ def add_indicators(
         dc_len: Donchian Channel 기간
         use_adx: ADX 계산 활성화 여부 (기본 False, 성능 고려)
         adx_period: ADX 계산 기간 (기본 14)
+        drop_nan: NaN 제거 여부 (기본 False)
+            PHASE27-7: Signal Parity를 위해 기본값 False로 변경
+            Warmup 처리는 호출자가 min_bars_for_signal로 제어
     
     Returns:
-        pd.DataFrame: 모든 지표가 추가된 DataFrame (NaN 제거됨)
+        pd.DataFrame: 모든 지표가 추가된 DataFrame
         
     Examples:
         >>> df = add_indicators(df)
         >>> df = add_indicators(df, use_adx=True, adx_period=14)
+        >>> df = add_indicators(df, drop_nan=True)  # Legacy 호환
         >>> print(df.columns)
+        
+    Notes:
+        PHASE27-7: NaN 제거를 호출자에게 위임하여 Signal Parity 달성
+        - Offline Scan: min_bars warmup 후 평가
+        - Engine Replay: min_bars_for_signal 체크 후 신호 생성
     """
     # EMA
     df["ema_fast"] = ema(df["close"], ema_fast)
@@ -384,8 +394,11 @@ def add_indicators(
     if use_adx:
         df = compute_adx(df, period=adx_period)
     
-    # NaN 제거
-    return df.dropna().reset_index(drop=True)
+    # PHASE27-7: NaN 제거 (선택적, 호출자가 결정)
+    if drop_nan:
+        return df.dropna().reset_index(drop=True)
+    else:
+        return df
 
 
 # ============================================

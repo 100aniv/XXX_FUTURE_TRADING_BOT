@@ -1,5 +1,22 @@
 #!/usr/bin/env python3
 """
+⚠️⚠️⚠️ DEPRECATED - LEGACY DIAGNOSTIC SCRIPT (PHASE27-8 격리) ⚠️⚠️⚠️
+========================================================================
+
+⛔ **이 스크립트는 SSOT(Single Source of Truth) 원칙에 위배되어 격리되었습니다.**
+
+**문제점**:
+- ❌ 엔진을 우회하여 신호를 직접 계산 (`signal_logic()` 직접 호출)
+- ❌ 지표를 엔진 외부에서 계산 (`add_indicators()` 직접 호출)
+- ❌ "두 번째 신호 경로" 생성
+
+**대안**:
+- 신호 분석: `TradeActivityTracker` Summary JSON 사용
+- 백테스트: `scripts/run_backtest.py --config xxx.yml`
+- 진단: `metrics/trade_activity_tracker.py`의 Drop-off 계측 활용
+
+---
+
 Scalping 무신호 진단 스크립트 (.windsurfrules 준수 - 코드 변경 없이 분석만)
 
 목적: 왜 신호가 안 나오는지 조건별 충족률 분석

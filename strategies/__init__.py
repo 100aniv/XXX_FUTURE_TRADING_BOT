@@ -32,6 +32,9 @@ from .research import mean_reversion_v2
 from .research import trend_follow_v2
 from .research import volume_based_v2
 
+# PHASE27-3: Baseline 전략 import
+from . import btc5m_baseline_v1
+
 logger = setup_logger('strategies', log_type='application')
 
 
@@ -61,7 +64,9 @@ def get_all_strategies() -> Dict[str, Any]:
         'volatility_breakout_v2': volatility_breakout_v2,
         'mean_reversion_v2': mean_reversion_v2,
         'trend_follow_v2': trend_follow_v2,
-        'volume_based_v2': volume_based_v2
+        'volume_based_v2': volume_based_v2,
+        # PHASE27-3: Baseline 전략
+        'btc5m_baseline_v1': btc5m_baseline_v1
     }
 
 
@@ -102,12 +107,48 @@ def load_strategies(config: dict, all_strategies: dict = None) -> Dict[str, Dict
         Returns:
             BaseStrategy 클래스 또는 None
         """
-        # 모듈 내의 모든 클래스 탐색
+        # 1) 전략명 기반 클래스 이름 직접 시도 (예: btc5m_baseline_v1 -> BTC5mBaselineV1)
+        # 일반적인 naming convention을 시도
+        class_name_candidates = [
+            # Special case: btc5m_baseline_v1 -> BTC5mBaselineV1 (대문자 약어 유지)
+            'BTC5mBaselineV1' if strategy_name == 'btc5m_baseline_v1' else None,
+            # CamelCase (btc5m_baseline_v1 -> Btc5mBaselineV1)
+            ''.join(word.capitalize() for word in strategy_name.split('_')),
+            # Pascal case with underscore preserved (btc5m_baseline_v1 -> Btc5mBaselineV1)
+            strategy_name.title().replace('_', ''),
+            # Simple capitalize
+            strategy_name.capitalize(),
+            # Upper first letter of each word (btc5m_baseline_v1 -> Btc5m_Baseline_V1)
+            strategy_name.title(),
+        ]
+        
+        # None 제거
+        class_name_candidates = [c for c in class_name_candidates if c is not None]
+        
+        for class_name in class_name_candidates:
+            if hasattr(module, class_name):
+                attr = getattr(module, class_name)
+                if isinstance(attr, type) and issubclass(attr, BaseStrategy) and attr is not BaseStrategy:
+                    logger.info(f"✅ [PHASE27-5A] {strategy_name} 클래스 찾기 성공: {class_name}")
+                    return attr
+        
+        # 2) 모듈 내의 모든 클래스 탐색 (폴백)
         for attr_name in dir(module):
-            attr = getattr(module, attr_name)
-            # BaseStrategy 상속 클래스 찾기
-            if isinstance(attr, type) and issubclass(attr, BaseStrategy) and attr is not BaseStrategy:
-                return attr
+            if attr_name.startswith('_'):  # private 속성 제외
+                continue
+            try:
+                attr = getattr(module, attr_name, None)
+                if attr is None:
+                    continue
+                # BaseStrategy 상속 클래스 찾기
+                if isinstance(attr, type) and issubclass(attr, BaseStrategy) and attr is not BaseStrategy:
+                    logger.info(f"✅ [PHASE27-5A] {strategy_name} 클래스 탐색 성공: {attr_name}")
+                    return attr
+            except (TypeError, AttributeError):
+                # getattr 또는 issubclass에서 발생할 수 있는 예외 무시
+                continue
+        
+        logger.warning(f"⚠️  [PHASE27-5A] {strategy_name}에서 BaseStrategy 클래스를 찾을 수 없음")
         return None
     
     strategies = {}

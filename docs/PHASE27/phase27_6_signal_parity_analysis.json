@@ -1,0 +1,104 @@
+{
+  "metadata": {
+    "timestamp": "2025-12-05T00:08:58.015151",
+    "offline_summary_file": "C:\\Users\\bback\\OneDrive\\Documents\\future_alarm_bot\\docs\\PHASE27\\phase27_4_btc5m_baseline_signal_scan_summary.json",
+    "replay_summary_file": "C:\\Users\\bback\\OneDrive\\Documents\\future_alarm_bot\\docs\\PHASE27\\phase27_5_btc5m_engine_replay_summary.json"
+  },
+  "aggregate_parity": {
+    "offline": {
+      "total_bars": 8612,
+      "warmup_skipped": 50,
+      "evaluated_bars": 8562,
+      "signals_true": 5741,
+      "signals_false": 2821,
+      "signal_rate": 67.05,
+      "long_signals": 2798,
+      "short_signals": 2943,
+      "long_ratio": 48.74,
+      "regime_range_signals": 4221,
+      "regime_trend_signals": 1520
+    },
+    "replay": {
+      "total_calls": 8743,
+      "signals_true": 6868,
+      "signals_false": 1875,
+      "signal_rate": 78.55,
+      "long_signals": 3378,
+      "short_signals": 3490,
+      "long_ratio": 49.18,
+      "regime_range": 6868,
+      "regime_trend": 0
+    },
+    "diff": {
+      "bar_count_diff": 181,
+      "bar_count_diff_pct": 2.11,
+      "signal_count_diff": 1127,
+      "signal_count_diff_pct": 19.63,
+      "signal_rate_diff": 11.5
+    },
+    "acceptance": {
+      "bar_count_within_10pct": true,
+      "signal_count_within_10pct": false,
+      "overall_pass": false
+    }
+  },
+  "warmup_nan_analysis": {
+    "offline": {
+      "total_bars": 8612,
+      "warmup_skipped": 50,
+      "evaluated_bars": 8562,
+      "warmup_method": "Fixed N bars (N=50)"
+    },
+    "replay": {
+      "warmup_method": "Engine default (to be verified)",
+      "note": "Engine의 warmup 처리는 add_indicators() + min_bars_for_signal 설정에 의존"
+    },
+    "potential_issue": {
+      "description": "Offline은 고정 50 bars warmup, Replay는 indicator별 warmup 기간이 다를 수 있음",
+      "recommendation": "add_indicators()의 warmup 처리와 Offline의 min_bars를 일치시킬 것"
+    }
+  },
+  "recommendations": [
+    {
+      "priority": "HIGH",
+      "category": "Signal Count Parity",
+      "issue": "신호 수 차이 19.6% (허용: 10%)",
+      "action": [
+        "Offline Scan과 Engine Replay의 indicator 계산 경로 확인",
+        "add_indicators() warmup 처리 통일",
+        "signal_logic()와 BaseStrategy.compute_signal() 동등성 검증"
+      ]
+    },
+    {
+      "priority": "MEDIUM",
+      "category": "Bar Count Parity",
+      "issue": "평가 bar 수 차이 2.1%",
+      "action": [
+        "Offline의 warmup (50 bars)와 Engine의 min_bars_for_signal 일치 확인",
+        "CSV 로딩 시 timestamp 변환 일관성 확인",
+        "Engine buffer의 데이터 범위 검증"
+      ]
+    },
+    {
+      "priority": "MEDIUM",
+      "category": "Regime Classification Parity",
+      "issue": "Regime 분류 차이 26.5%p (RANGE/TREND 비율)",
+      "action": [
+        "Offline vs Replay ADX 계산 결과 비교",
+        "adx_trend_threshold 파라미터 일치 확인",
+        "Signal metadata의 regime 설정 방식 검증"
+      ]
+    }
+  ],
+  "conclusion": {
+    "overall_status": "FAIL",
+    "signal_count_diff_pct": 19.63,
+    "acceptance_threshold": "±10%",
+    "next_steps": [
+      "TradeActivityTracker에 LONG/SHORT/Regime 카운트 추가",
+      "Warmup 처리 통일",
+      "Indicator 계산 경로 검증",
+      "Per-bar 로깅 추가 (선택적)"
+    ]
+  }
+}

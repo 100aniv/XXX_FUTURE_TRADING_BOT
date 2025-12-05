@@ -45,17 +45,21 @@ class TradeActivityTracker:
     Thread-safe for multi-threaded environments.
     """
     
-    def __init__(self, run_id: str, duration_minutes: Optional[float] = None):
+    def __init__(self, run_id: str, duration_minutes: Optional[float] = None, prometheus_exporter: Optional[Any] = None):
         """
         Initialize tracker
         
         Args:
             run_id: Unique identifier for this run
             duration_minutes: Duration of the run (optional, can be updated later)
+            prometheus_exporter: Prometheus Exporter instance (PHASE28-0, optional)
         """
         self.run_id = run_id
         self.duration_minutes = duration_minutes
         self.start_time = datetime.now()
+        
+        # PHASE28-0: Prometheus Exporter (optional)
+        self.prometheus_exporter = prometheus_exporter
         
         # Thread safety
         self._lock = threading.Lock()
@@ -63,7 +67,15 @@ class TradeActivityTracker:
         # Per-symbol counters
         # Structure: symbols[symbol][category][...] = count
         self.symbols: Dict[str, Dict[str, Any]] = defaultdict(lambda: {
-            "strategy_signals": defaultdict(lambda: {"total_calls": 0, "signal_true": 0, "signal_false": 0}),
+            "strategy_signals": defaultdict(lambda: {
+                "total_calls": 0,
+                "signal_true": 0,
+                "signal_false": 0,
+                "long_signals": 0,
+                "short_signals": 0,
+                "regime_range": 0,
+                "regime_trend": 0
+            }),
             "ensemble_decisions": defaultdict(int),  # tier1, tier2, skip
             "guard_blocks": defaultdict(int),  # reason -> count
             "orders_submitted": 0
@@ -74,6 +86,10 @@ class TradeActivityTracker:
             "strategy_signals_total": 0,
             "strategy_signals_true": 0,
             "strategy_signals_false": 0,
+            "long_signals": 0,
+            "short_signals": 0,
+            "regime_range": 0,
+            "regime_trend": 0,
             "ensemble_tier1": 0,
             "ensemble_tier2": 0,
             "ensemble_skip": 0,
@@ -81,7 +97,14 @@ class TradeActivityTracker:
             "orders_submitted": 0
         }
     
-    def record_strategy_signal(self, symbol: str, strategy_id: str, has_signal: bool) -> None:
+    def record_strategy_signal(
+        self,
+        symbol: str,
+        strategy_id: str,
+        has_signal: bool,
+        side: Optional[str] = None,
+        regime: Optional[str] = None
+    ) -> None:
         """
         Record strategy signal generation
         
@@ -89,6 +112,8 @@ class TradeActivityTracker:
             symbol: Trading symbol
             strategy_id: Strategy identifier
             has_signal: True if strategy generated a signal, False otherwise
+            side: Signal side ("LONG", "SHORT", optional)
+            regime: Signal regime ("RANGE", "TREND", optional)
         """
         with self._lock:
             symbol_data = self.symbols[symbol]
@@ -100,9 +125,39 @@ class TradeActivityTracker:
             if has_signal:
                 strategy_data["signal_true"] += 1
                 self.totals["strategy_signals_true"] += 1
+                
+                # PHASE27-6: LONG/SHORT 카운트
+                if side:
+                    side_upper = side.upper()
+                    if side_upper == "LONG":
+                        strategy_data["long_signals"] += 1
+                        self.totals["long_signals"] += 1
+                    elif side_upper == "SHORT":
+                        strategy_data["short_signals"] += 1
+                        self.totals["short_signals"] += 1
+                
+                # PHASE27-6: Regime 카운트
+                if regime:
+                    regime_upper = regime.upper()
+                    if "RANGE" in regime_upper:
+                        strategy_data["regime_range"] += 1
+                        self.totals["regime_range"] += 1
+                    elif "TREND" in regime_upper:
+                        strategy_data["regime_trend"] += 1
+                        self.totals["regime_trend"] += 1
             else:
                 strategy_data["signal_false"] += 1
                 self.totals["strategy_signals_false"] += 1
+            
+            # PHASE28-0: Prometheus Exporter 호출 (활성화된 경우)
+            if self.prometheus_exporter and hasattr(self.prometheus_exporter, 'record_strategy_signal'):
+                self.prometheus_exporter.record_strategy_signal(
+                    symbol=symbol,
+                    strategy=strategy_id,
+                    has_signal=has_signal,
+                    side=side,
+                    regime=regime
+                )
     
     def record_ensemble_decision(self, symbol: str, tier: str, side: Optional[str] = None) -> None:
         """
@@ -122,12 +177,16 @@ class TradeActivityTracker:
             symbol_data["ensemble_decisions"][tier_key] += 1
             
             # Update totals
-            if tier_key == "tier1":
-                self.totals["ensemble_tier1"] += 1
-            elif tier_key == "tier2":
-                self.totals["ensemble_tier2"] += 1
-            else:
-                self.totals["ensemble_skip"] += 1
+            total_key = f"ensemble_{tier_key}"
+            if total_key in self.totals:
+                self.totals[total_key] += 1
+            
+            # PHASE28-0: Prometheus Exporter 호출 (활성화된 경우)
+            if self.prometheus_exporter and hasattr(self.prometheus_exporter, 'record_ensemble_decision'):
+                self.prometheus_exporter.record_ensemble_decision(
+                    symbol=symbol,
+                    tier=tier_key
+                )
     
     def record_guard_block(self, symbol: str, reason: str) -> None:
         """
@@ -141,6 +200,13 @@ class TradeActivityTracker:
             symbol_data = self.symbols[symbol]
             symbol_data["guard_blocks"][reason] += 1
             self.totals["guard_blocks_total"] += 1
+            
+            # PHASE28-0: Prometheus Exporter 호출 (활성화된 경우)
+            if self.prometheus_exporter and hasattr(self.prometheus_exporter, 'record_guard_block'):
+                self.prometheus_exporter.record_guard_block(
+                    symbol=symbol,
+                    reason=reason
+                )
     
     def record_order_submitted(self, symbol: str, side: str, size: float) -> None:
         """
@@ -155,6 +221,12 @@ class TradeActivityTracker:
             symbol_data = self.symbols[symbol]
             symbol_data["orders_submitted"] += 1
             self.totals["orders_submitted"] += 1
+            
+            # PHASE28-0: Prometheus Exporter 호출 (활성화된 경우)
+            if self.prometheus_exporter and hasattr(self.prometheus_exporter, 'record_order_submitted'):
+                self.prometheus_exporter.record_order_submitted(
+                    symbol=symbol
+                )
     
     def set_duration(self, duration_minutes: float) -> None:
         """

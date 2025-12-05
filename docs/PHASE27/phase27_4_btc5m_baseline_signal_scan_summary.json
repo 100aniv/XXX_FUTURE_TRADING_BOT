@@ -1,0 +1,1052 @@
+{
+  "run_id": "phase27_4_btc5m_baseline_signal_scan",
+  "timestamp": "2025-12-05T00:49:07.136602",
+  "data_file": "C:\\Users\\bback\\OneDrive\\Documents\\future_alarm_bot\\data\\BTCUSDT_5m_2024-01-01_2024-12-31.csv",
+  "data_period": {
+    "start": "2024-11-30 15:00:00",
+    "end": "2024-12-30 15:00:00",
+    "days": 30
+  },
+  "base_config": {
+    "rsi_long_threshold": 45,
+    "rsi_short_threshold": 55,
+    "bb_std_main": 1.0,
+    "bb_std_strong": 1.5,
+    "momentum_lookback": 5,
+    "momentum_threshold": 0.001,
+    "use_adx": true,
+    "adx_period": 14,
+    "adx_trend_threshold": 20,
+    "rr": 1.5,
+    "atr_mult_sl": 1.5,
+    "max_hold_minutes": 60,
+    "min_bars_for_signal": 50,
+    "filters": {
+      "allow_short": true
+    },
+    "leverage": {
+      "min": 1,
+      "max": 5,
+      "default": 3
+    }
+  },
+  "scan_result": {
+    "total_bars": 8641,
+    "warmup_skipped": 50,
+    "evaluated_bars": 8591,
+    "signals_true": 5272,
+    "signals_false": 3319,
+    "long_signals": 2591,
+    "short_signals": 2681,
+    "regime_range_signals": 2855,
+    "regime_trend_signals": 2417,
+    "regime_range_total": 3881,
+    "regime_trend_total": 4710,
+    "signal_details": [
+      {
+        "index": 52,
+        "time": "2024-11-30 19:20:00",
+        "side": "SHORT",
+        "regime": "TREND",
+        "reason": "[TREND] BB_MAIN+RSI: Price > BB(1.0std) & RSI > 55 [TREND]",
+        "price": 96946.11,
+        "rsi": 59.492904293759764,
+        "adx": 24.345348388058362
+      },
+      {
+        "index": 55,
+        "time": "2024-11-30 19:35:00",
+        "side": "SHORT",
+        "regime": "TREND",
+        "reason": "[TREND] BB_STRONG: Price > BB(1.5std) [TREND]",
+        "price": 97035.02,
+        "rsi": 71.61481207526087,
+        "adx": 23.516378898178438
+      },
+      {
+        "index": 56,
+        "time": "2024-11-30 19:40:00",
+        "side": "SHORT",
+        "regime": "TREND",
+        "reason": "[TREND] BB_STRONG: Price > BB(1.5std) [TREND]",
+        "price": 97056.2,
+        "rsi": 72.81983178397327,
+        "adx": 24.424113745936964
+      },
+      {
+        "index": 57,
+        "time": "2024-11-30 19:45:00",
+        "side": "SHORT",
+        "regime": "TREND",
+        "reason": "[TREND] BB_MAIN+RSI: Price > BB(1.0std) & RSI > 55 [TREND]",
+        "price": 97018.83,
+        "rsi": 67.25678189586364,
+        "adx": 25.019634642980726
+      },
+      {
+        "index": 58,
+        "time": "2024-11-30 19:50:00",
+        "side": "SHORT",
+        "regime": "TREND",
+        "reason": "[TREND] BB_MAIN+RSI: Price > BB(1.0std) & RSI > 55 [TREND]",
+        "price": 97022.01,
+        "rsi": 67.27885597548354,
+        "adx": 25.064418959459392
+      },
+      {
+        "index": 59,
+        "time": "2024-11-30 19:55:00",
+        "side": "SHORT",
+        "regime": "TREND",
+        "reason": "[TREND] BB_MAIN+RSI: Price > BB(1.0std) & RSI > 55 [TREND]",
+        "price": 97019.68,
+        "rsi": 60.62515144172419,
+        "adx": 25.115963295950184
+      },
+      {
+        "index": 62,
+        "time": "2024-11-30 20:10:00",
+        "side": "SHORT",
+        "regime": "TREND",
+        "reason": "[TREND] BB_MAIN+RSI: Price > BB(1.0std) & RSI > 55 [TREND]",
+        "price": 97040.0,
+        "rsi": 56.38049511056308,
+        "adx": 23.644598427583986
+      },
+      {
+        "index": 66,
+        "time": "2024-11-30 20:30:00",
+        "side": "LONG",
+        "regime": "TREND",
+        "reason": "[TREND] BB_STRONG: Price < BB(1.5std) [TREND]",
+        "price": 96879.55,
+        "rsi": 43.195943735688765,
+        "adx": 21.32674053887407
+      },
+      {
+        "index": 68,
+        "time": "2024-11-30 20:40:00",
+        "side": "LONG",
+        "regime": "TREND",
+        "reason": "[TREND] BB_STRONG: Price < BB(1.5std) [TREND]",
+        "price": 96855.48,
+        "rsi": 43.26160585718071,
+        "adx": 20.215604913205738
+      },
+      {
+        "index": 70,
+        "time": "2024-11-30 20:50:00",
+        "side": "LONG",
+        "regime": "RANGE",
+        "reason": "[RANGE] RSI: RSI=36.8 < 45",
+        "price": 96939.47,
+        "rsi": 36.818808012828015,
+        "adx": 19.662478562449536
+      },
+      {
+        "index": 71,
+        "time": "2024-11-30 20:55:00",
+        "side": "LONG",
+        "regime": "RANGE",
+        "reason": "[RANGE] RSI: RSI=44.1 < 45",
+        "price": 96967.99,
+        "rsi": 44.142047287643884,
+        "adx": 18.493152891759784
+      },
+      {
+        "index": 72,
+        "time": "2024-11-30 21:00:00",
+        "side": "LONG",
+        "regime": "RANGE",
+        "reason": "[RANGE] RSI: RSI=40.2 < 45",
+        "price": 96930.47,
+        "rsi": 40.225933202358526,
+        "adx": 17.83205788266828
+      },
+      {
+        "index": 73,
+        "time": "2024-11-30 21:05:00",
+        "side": "LONG",
+        "regime": "RANGE",
+        "reason": "[RANGE] RSI: RSI=34.9 < 45",
+        "price": 96856.68,
+        "rsi": 34.90013710305017,
+        "adx": 18.16892744163544
+      },
+      {
+        "index": 74,
+        "time": "2024-11-30 21:10:00",
+        "side": "LONG",
+        "regime": "RANGE",
+        "reason": "[RANGE] RSI: RSI=39.8 < 45",
+        "price": 96871.37,
+        "rsi": 39.75488468616647,
+        "adx": 18.829198448614058
+      },
+      {
+        "index": 75,
+        "time": "2024-11-30 21:15:00",
+        "side": "LONG",
+        "regime": "RANGE",
+        "reason": "[RANGE] RSI: RSI=40.6 < 45",
+        "price": 96878.47,
+        "rsi": 40.58239678677751,
+        "adx": 19.15131079083278
+      },
+      {
+        "index": 76,
+        "time": "2024-11-30 21:20:00",
+        "side": "LONG",
+        "regime": "RANGE",
+        "reason": "[RANGE] RSI: RSI=29.2 < 45",
+        "price": 96831.57,
+        "rsi": 29.18904886474975,
+        "adx": 19.840003461601142
+      },
+      {
+        "index": 77,
+        "time": "2024-11-30 21:25:00",
+        "side": "LONG",
+        "regime": "TREND",
+        "reason": "[TREND] BB_STRONG: Price < BB(1.5std) [TREND]",
+        "price": 96818.34,
+        "rsi": 30.580137659784157,
+        "adx": 20.903931897372523
+      },
+      {
+        "index": 78,
+        "time": "2024-11-30 21:30:00",
+        "side": "LONG",
+        "regime": "TREND",
+        "reason": "[TREND] BB_STRONG: Price < BB(1.5std) [TREND]",
+        "price": 96783.83,
+        "rsi": 30.063141440942502,
+        "adx": 22.097183200453333
+      },
+      {
+        "index": 79,
+        "time": "2024-11-30 21:35:00",
+        "side": "LONG",
+        "regime": "TREND",
+        "reason": "[TREND] BB_STRONG: Price < BB(1.5std) [TREND]",
+        "price": 96794.51,
+        "rsi": 34.617082321783,
+        "adx": 23.350170275203933
+      },
+      {
+        "index": 81,
+        "time": "2024-11-30 21:45:00",
+        "side": "LONG",
+        "regime": "TREND",
+        "reason": "[TREND] BB_MAIN+RSI: Price < BB(1.0std) & RSI < 45 [TREND]",
+        "price": 96810.08,
+        "rsi": 41.70879882573662,
+        "adx": 22.35758969543005
+      },
+      {
+        "index": 83,
+        "time": "2024-11-30 21:55:00",
+        "side": "LONG",
+        "regime": "TREND",
+        "reason": "[TREND] BB_MAIN+RSI: Price < BB(1.0std) & RSI < 45 [TREND]",
+        "price": 96792.02,
+        "rsi": 38.22931391723744,
+        "adx": 20.866845435377012
+      },
+      {
+        "index": 85,
+        "time": "2024-11-30 22:05:00",
+        "side": "LONG",
+        "regime": "TREND",
+        "reason": "[TREND] BB_STRONG: Price < BB(1.5std) [TREND]",
+        "price": 96774.68,
+        "rsi": 32.708374331358854,
+        "adx": 22.11158975948274
+      },
+      {
+        "index": 86,
+        "time": "2024-11-30 22:10:00",
+        "side": "LONG",
+        "regime": "TREND",
+        "reason": "[TREND] BB_MAIN+RSI: Price < BB(1.0std) & RSI < 45 [TREND]",
+        "price": 96787.99,
+        "rsi": 36.6781359862378,
+        "adx": 22.94125524263041
+      },
+      {
+        "index": 87,
+        "time": "2024-11-30 22:15:00",
+        "side": "LONG",
+        "regime": "TREND",
+        "reason": "[TREND] BB_STRONG: Price < BB(1.5std) [TREND]",
+        "price": 96708.01,
+        "rsi": 36.258434236067004,
+        "adx": 24.27918299240912
+      },
+      {
+        "index": 88,
+        "time": "2024-11-30 22:20:00",
+        "side": "LONG",
+        "regime": "TREND",
+        "reason": "[TREND] BB_STRONG: Price < BB(1.5std) [TREND]",
+        "price": 96693.48,
+        "rsi": 33.55276539876921,
+        "adx": 25.88633213355464
+      },
+      {
+        "index": 89,
+        "time": "2024-11-30 22:25:00",
+        "side": "LONG",
+        "regime": "TREND",
+        "reason": "[TREND] BB_STRONG: Price < BB(1.5std) [TREND]",
+        "price": 96657.25,
+        "rsi": 30.592012914093544,
+        "adx": 27.53875976760146
+      },
+      {
+        "index": 90,
+        "time": "2024-11-30 22:30:00",
+        "side": "LONG",
+        "regime": "TREND",
+        "reason": "[TREND] BB_STRONG: Price < BB(1.5std) [TREND]",
+        "price": 96572.0,
+        "rsi": 28.663258092623423,
+        "adx": 29.777545555506236
+      },
+      {
+        "index": 91,
+        "time": "2024-11-30 22:35:00",
+        "side": "LONG",
+        "regime": "TREND",
+        "reason": "[TREND] BB_STRONG: Price < BB(1.5std) [TREND]",
+        "price": 96596.84,
+        "rsi": 32.133638768794086,
+        "adx": 32.04220279994002
+      },
+      {
+        "index": 92,
+        "time": "2024-11-30 22:40:00",
+        "side": "LONG",
+        "regime": "TREND",
+        "reason": "[TREND] BB_STRONG: Price < BB(1.5std) [TREND]",
+        "price": 96602.0,
+        "rsi": 34.60450781501383,
+        "adx": 34.14509881262853
+      },
+      {
+        "index": 93,
+        "time": "2024-11-30 22:45:00",
+        "side": "LONG",
+        "regime": "TREND",
+        "reason": "[TREND] BB_STRONG: Price < BB(1.5std) [TREND]",
+        "price": 96464.87,
+        "rsi": 27.01191107143937,
+        "adx": 36.917946784576316
+      },
+      {
+        "index": 94,
+        "time": "2024-11-30 22:50:00",
+        "side": "LONG",
+        "regime": "TREND",
+        "reason": "[TREND] BB_STRONG: Price < BB(1.5std) [TREND]",
+        "price": 96365.08,
+        "rsi": 17.70563685350639,
+        "adx": 39.72433640917317
+      },
+      {
+        "index": 95,
+        "time": "2024-11-30 22:55:00",
+        "side": "LONG",
+        "regime": "TREND",
+        "reason": "[TREND] BB_STRONG: Price < BB(1.5std) [TREND]",
+        "price": 96466.11,
+        "rsi": 28.87551434010986,
+        "adx": 42.34941939173889
+      },
+      {
+        "index": 98,
+        "time": "2024-11-30 23:10:00",
+        "side": "LONG",
+        "regime": "TREND",
+        "reason": "[TREND] BB_MAIN+RSI: Price < BB(1.0std) & RSI < 45 [TREND]",
+        "price": 96449.83,
+        "rsi": 26.888824355065978,
+        "adx": 43.13909176780275
+      },
+      {
+        "index": 99,
+        "time": "2024-11-30 23:15:00",
+        "side": "LONG",
+        "regime": "TREND",
+        "reason": "[TREND] BB_MAIN+RSI: Price < BB(1.0std) & RSI < 45 [TREND]",
+        "price": 96441.91,
+        "rsi": 28.59201502811463,
+        "adx": 43.6334884741945
+      },
+      {
+        "index": 100,
+        "time": "2024-11-30 23:20:00",
+        "side": "LONG",
+        "regime": "TREND",
+        "reason": "[TREND] BB_STRONG: Price < BB(1.5std) [TREND]",
+        "price": 96335.07,
+        "rsi": 23.992236488504275,
+        "adx": 44.529233907323075
+      },
+      {
+        "index": 101,
+        "time": "2024-11-30 23:25:00",
+        "side": "LONG",
+        "regime": "TREND",
+        "reason": "[TREND] BB_STRONG: Price < BB(1.5std) [TREND]",
+        "price": 96321.0,
+        "rsi": 25.95703440478151,
+        "adx": 45.43407678878172
+      },
+      {
+        "index": 102,
+        "time": "2024-11-30 23:30:00",
+        "side": "LONG",
+        "regime": "TREND",
+        "reason": "[TREND] BB_MAIN+RSI: Price < BB(1.0std) & RSI < 45 [TREND]",
+        "price": 96352.0,
+        "rsi": 29.211006940217047,
+        "adx": 45.37153109866534
+      },
+      {
+        "index": 112,
+        "time": "2024-12-01 00:20:00",
+        "side": "SHORT",
+        "regime": "TREND",
+        "reason": "[TREND] BB_MAIN+RSI: Price > BB(1.0std) & RSI > 55 [TREND]",
+        "price": 96555.15,
+        "rsi": 59.75871909862408,
+        "adx": 32.083509456164826
+      },
+      {
+        "index": 113,
+        "time": "2024-12-01 00:25:00",
+        "side": "SHORT",
+        "regime": "TREND",
+        "reason": "[TREND] BB_STRONG: Price > BB(1.5std) [TREND]",
+        "price": 96601.41,
+        "rsi": 63.79853277043344,
+        "adx": 30.156266125741407
+      },
+      {
+        "index": 114,
+        "time": "2024-12-01 00:30:00",
+        "side": "SHORT",
+        "regime": "TREND",
+        "reason": "[TREND] BB_STRONG: Price > BB(1.5std) [TREND]",
+        "price": 96672.49,
+        "rsi": 81.1158244190319,
+        "adx": 28.5431446847214
+      },
+      {
+        "index": 116,
+        "time": "2024-12-01 00:40:00",
+        "side": "LONG",
+        "regime": "TREND",
+        "reason": "[TREND] BB_STRONG: Price < BB(1.5std) [TREND]",
+        "price": 96272.27,
+        "rsi": 45.55747478687279,
+        "adx": 27.92322520105065
+      },
+      {
+        "index": 119,
+        "time": "2024-12-01 00:55:00",
+        "side": "LONG",
+        "regime": "TREND",
+        "reason": "[TREND] BB_MAIN+RSI: Price < BB(1.0std) & RSI < 45 [TREND]",
+        "price": 96340.6,
+        "rsi": 44.58407293851887,
+        "adx": 29.00841434030851
+      },
+      {
+        "index": 120,
+        "time": "2024-12-01 01:00:00",
+        "side": "LONG",
+        "regime": "TREND",
+        "reason": "[TREND] BB_STRONG: Price < BB(1.5std) [TREND]",
+        "price": 96180.0,
+        "rsi": 38.310368195165665,
+        "adx": 30.104422250985483
+      },
+      {
+        "index": 121,
+        "time": "2024-12-01 01:05:00",
+        "side": "LONG",
+        "regime": "TREND",
+        "reason": "[TREND] BB_STRONG: Price < BB(1.5std) [TREND]",
+        "price": 96212.56,
+        "rsi": 41.44704018486219,
+        "adx": 31.180160028548855
+      },
+      {
+        "index": 122,
+        "time": "2024-12-01 01:10:00",
+        "side": "LONG",
+        "regime": "TREND",
+        "reason": "[TREND] BB_MAIN+RSI: Price < BB(1.0std) & RSI < 45 [TREND]",
+        "price": 96251.52,
+        "rsi": 38.124924847151206,
+        "adx": 31.746485812307377
+      },
+      {
+        "index": 123,
+        "time": "2024-12-01 01:15:00",
+        "side": "LONG",
+        "regime": "TREND",
+        "reason": "[TREND] BB_STRONG: Price < BB(1.5std) [TREND]",
+        "price": 96201.86,
+        "rsi": 34.53612943191344,
+        "adx": 32.47438531405862
+      },
+      {
+        "index": 131,
+        "time": "2024-12-01 01:55:00",
+        "side": "LONG",
+        "regime": "TREND",
+        "reason": "[TREND] BB_STRONG: Price < BB(1.5std) [TREND]",
+        "price": 96106.62,
+        "rsi": 35.368363157045934,
+        "adx": 25.644170099492253
+      },
+      {
+        "index": 132,
+        "time": "2024-12-01 02:00:00",
+        "side": "LONG",
+        "regime": "TREND",
+        "reason": "[TREND] BB_MAIN+RSI: Price < BB(1.0std) & RSI < 45 [TREND]",
+        "price": 96172.0,
+        "rsi": 37.989828133672354,
+        "adx": 26.709267520728588
+      },
+      {
+        "index": 133,
+        "time": "2024-12-01 02:05:00",
+        "side": "LONG",
+        "regime": "TREND",
+        "reason": "[TREND] BB_MAIN+RSI: Price < BB(1.0std) & RSI < 45 [TREND]",
+        "price": 96183.48,
+        "rsi": 42.261470872160395,
+        "adx": 27.698286554733755
+      },
+      {
+        "index": 136,
+        "time": "2024-12-01 02:20:00",
+        "side": "LONG",
+        "regime": "TREND",
+        "reason": "[TREND] BB_MAIN+RSI: Price < BB(1.0std) & RSI < 45 [TREND]",
+        "price": 96103.01,
+        "rsi": 42.50002525073965,
+        "adx": 22.544784575651
+      },
+      {
+        "index": 138,
+        "time": "2024-12-01 02:30:00",
+        "side": "LONG",
+        "regime": "TREND",
+        "reason": "[TREND] BB_STRONG: Price < BB(1.5std) [TREND]",
+        "price": 95957.76,
+        "rsi": 24.425669682456004,
+        "adx": 20.67348812650861
+      },
+      {
+        "index": 139,
+        "time": "2024-12-01 02:35:00",
+        "side": "LONG",
+        "regime": "TREND",
+        "reason": "[TREND] BB_STRONG: Price < BB(1.5std) [TREND]",
+        "price": 95822.58,
+        "rsi": 20.249172516818902,
+        "adx": 21.369691727294637
+      },
+      {
+        "index": 140,
+        "time": "2024-12-01 02:40:00",
+        "side": "LONG",
+        "regime": "TREND",
+        "reason": "[TREND] BB_STRONG: Price < BB(1.5std) [TREND]",
+        "price": 95872.87,
+        "rsi": 21.481168169496215,
+        "adx": 22.074130584416174
+      },
+      {
+        "index": 141,
+        "time": "2024-12-01 02:45:00",
+        "side": "LONG",
+        "regime": "TREND",
+        "reason": "[TREND] BB_MAIN+RSI: Price < BB(1.0std) & RSI < 45 [TREND]",
+        "price": 95904.49,
+        "rsi": 24.844405917933116,
+        "adx": 21.98235029176779
+      },
+      {
+        "index": 142,
+        "time": "2024-12-01 02:50:00",
+        "side": "LONG",
+        "regime": "TREND",
+        "reason": "[TREND] BB_MAIN+RSI: Price < BB(1.0std) & RSI < 45 [TREND]",
+        "price": 95972.02,
+        "rsi": 28.416238380615567,
+        "adx": 21.748829635497863
+      },
+      {
+        "index": 143,
+        "time": "2024-12-01 02:55:00",
+        "side": "LONG",
+        "regime": "TREND",
+        "reason": "[TREND] BB_STRONG: Price < BB(1.5std) [TREND]",
+        "price": 95776.22,
+        "rsi": 24.967802937676836,
+        "adx": 22.4492752829709
+      },
+      {
+        "index": 149,
+        "time": "2024-12-01 03:25:00",
+        "side": "LONG",
+        "regime": "RANGE",
+        "reason": "[RANGE] RSI: RSI=43.4 < 45",
+        "price": 96047.61,
+        "rsi": 43.38763756853764,
+        "adx": 18.211378958133423
+      },
+      {
+        "index": 152,
+        "time": "2024-12-01 03:40:00",
+        "side": "SHORT",
+        "regime": "RANGE",
+        "reason": "[RANGE] RSI: RSI=64.1 > 55",
+        "price": 96306.72,
+        "rsi": 64.1199320223358,
+        "adx": 16.021629050475187
+      },
+      {
+        "index": 153,
+        "time": "2024-12-01 03:45:00",
+        "side": "SHORT",
+        "regime": "RANGE",
+        "reason": "[RANGE] RSI: RSI=73.9 > 55",
+        "price": 96385.61,
+        "rsi": 73.8691379588098,
+        "adx": 16.64030523525467
+      },
+      {
+        "index": 154,
+        "time": "2024-12-01 03:50:00",
+        "side": "SHORT",
+        "regime": "RANGE",
+        "reason": "[RANGE] RSI: RSI=71.9 > 55",
+        "price": 96373.7,
+        "rsi": 71.94639930589011,
+        "adx": 17.304576695120712
+      },
+      {
+        "index": 155,
+        "time": "2024-12-01 03:55:00",
+        "side": "SHORT",
+        "regime": "RANGE",
+        "reason": "[RANGE] RSI: RSI=68.9 > 55",
+        "price": 96336.75,
+        "rsi": 68.85358875047955,
+        "adx": 17.507292515231093
+      },
+      {
+        "index": 156,
+        "time": "2024-12-01 04:00:00",
+        "side": "SHORT",
+        "regime": "RANGE",
+        "reason": "[RANGE] RSI: RSI=64.2 > 55",
+        "price": 96290.49,
+        "rsi": 64.15308997502432,
+        "adx": 17.036601360957906
+      },
+      {
+        "index": 157,
+        "time": "2024-12-01 04:05:00",
+        "side": "SHORT",
+        "regime": "RANGE",
+        "reason": "[RANGE] RSI: RSI=77.9 > 55",
+        "price": 96301.53,
+        "rsi": 77.93221528612321,
+        "adx": 16.525760288829904
+      },
+      {
+        "index": 158,
+        "time": "2024-12-01 04:10:00",
+        "side": "SHORT",
+        "regime": "RANGE",
+        "reason": "[RANGE] RSI: RSI=72.2 > 55",
+        "price": 96281.41,
+        "rsi": 72.23990536470046,
+        "adx": 16.25887101167989
+      },
+      {
+        "index": 159,
+        "time": "2024-12-01 04:15:00",
+        "side": "SHORT",
+        "regime": "RANGE",
+        "reason": "[RANGE] RSI: RSI=65.7 > 55",
+        "price": 96218.42,
+        "rsi": 65.69924581302314,
+        "adx": 15.353599290801604
+      },
+      {
+        "index": 160,
+        "time": "2024-12-01 04:20:00",
+        "side": "SHORT",
+        "regime": "RANGE",
+        "reason": "[RANGE] RSI: RSI=61.2 > 55",
+        "price": 96328.35,
+        "rsi": 61.22947211142136,
+        "adx": 14.9206779626738
+      },
+      {
+        "index": 161,
+        "time": "2024-12-01 04:25:00",
+        "side": "SHORT",
+        "regime": "RANGE",
+        "reason": "[RANGE] RSI: RSI=65.1 > 55",
+        "price": 96400.0,
+        "rsi": 65.10515079384581,
+        "adx": 14.972604717564222
+      },
+      {
+        "index": 162,
+        "time": "2024-12-01 04:30:00",
+        "side": "SHORT",
+        "regime": "RANGE",
+        "reason": "[RANGE] RSI: RSI=69.9 > 55",
+        "price": 96361.44,
+        "rsi": 69.93528659734139,
+        "adx": 15.151682154622156
+      },
+      {
+        "index": 163,
+        "time": "2024-12-01 04:35:00",
+        "side": "SHORT",
+        "regime": "RANGE",
+        "reason": "[RANGE] RSI: RSI=68.2 > 55",
+        "price": 96331.28,
+        "rsi": 68.24080147125024,
+        "adx": 15.213882809951015
+      },
+      {
+        "index": 164,
+        "time": "2024-12-01 04:40:00",
+        "side": "SHORT",
+        "regime": "RANGE",
+        "reason": "[RANGE] RSI: RSI=65.2 > 55",
+        "price": 96355.43,
+        "rsi": 65.18594750049294,
+        "adx": 15.171271202682057
+      },
+      {
+        "index": 165,
+        "time": "2024-12-01 04:45:00",
+        "side": "SHORT",
+        "regime": "RANGE",
+        "reason": "[RANGE] RSI: RSI=63.6 > 55",
+        "price": 96384.01,
+        "rsi": 63.57239792305832,
+        "adx": 15.602010271732972
+      },
+      {
+        "index": 166,
+        "time": "2024-12-01 04:50:00",
+        "side": "SHORT",
+        "regime": "RANGE",
+        "reason": "[RANGE] RSI: RSI=60.0 > 55",
+        "price": 96430.81,
+        "rsi": 60.039806469360215,
+        "adx": 16.377524604954196
+      },
+      {
+        "index": 167,
+        "time": "2024-12-01 04:55:00",
+        "side": "SHORT",
+        "regime": "RANGE",
+        "reason": "[RANGE] RSI: RSI=60.4 > 55",
+        "price": 96515.52,
+        "rsi": 60.412625639217396,
+        "adx": 17.439158235256933
+      },
+      {
+        "index": 168,
+        "time": "2024-12-01 05:00:00",
+        "side": "SHORT",
+        "regime": "RANGE",
+        "reason": "[RANGE] RSI: RSI=57.5 > 55",
+        "price": 96472.0,
+        "rsi": 57.499008269506824,
+        "adx": 18.385602981225993
+      },
+      {
+        "index": 169,
+        "time": "2024-12-01 05:05:00",
+        "side": "SHORT",
+        "regime": "RANGE",
+        "reason": "[RANGE] RSI: RSI=56.5 > 55",
+        "price": 96423.82,
+        "rsi": 56.53041326033209,
+        "adx": 19.11894842206372
+      },
+      {
+        "index": 170,
+        "time": "2024-12-01 05:10:00",
+        "side": "SHORT",
+        "regime": "RANGE",
+        "reason": "[RANGE] RSI: RSI=58.4 > 55",
+        "price": 96398.62,
+        "rsi": 58.37451013801238,
+        "adx": 19.545621562521564
+      },
+      {
+        "index": 171,
+        "time": "2024-12-01 05:15:00",
+        "side": "SHORT",
+        "regime": "TREND",
+        "reason": "[TREND] BB_MAIN+RSI: Price > BB(1.0std) & RSI > 55 [TREND]",
+        "price": 96476.0,
+        "rsi": 62.253311421066385,
+        "adx": 20.54720267495424
+      },
+      {
+        "index": 179,
+        "time": "2024-12-01 05:55:00",
+        "side": "LONG",
+        "regime": "RANGE",
+        "reason": "[RANGE] RSI: RSI=44.5 < 45",
+        "price": 96308.83,
+        "rsi": 44.52965830374348,
+        "adx": 19.80045063615492
+      },
+      {
+        "index": 181,
+        "time": "2024-12-01 06:05:00",
+        "side": "LONG",
+        "regime": "RANGE",
+        "reason": "[RANGE] RSI: RSI=44.0 < 45",
+        "price": 96433.73,
+        "rsi": 43.990889721548044,
+        "adx": 17.936226777869848
+      },
+      {
+        "index": 182,
+        "time": "2024-12-01 06:10:00",
+        "side": "SHORT",
+        "regime": "RANGE",
+        "reason": "[RANGE] BB_MAIN+MOM: Price > BB(1.0std) & 상승모멘텀",
+        "price": 96473.35,
+        "rsi": 50.09975615162978,
+        "adx": 17.92548379770206
+      },
+      {
+        "index": 185,
+        "time": "2024-12-01 06:25:00",
+        "side": "LONG",
+        "regime": "RANGE",
+        "reason": "[RANGE] RSI: RSI=41.7 < 45",
+        "price": 96371.73,
+        "rsi": 41.691765868272626,
+        "adx": 15.324110480557747
+      },
+      {
+        "index": 190,
+        "time": "2024-12-01 06:50:00",
+        "side": "LONG",
+        "regime": "RANGE",
+        "reason": "[RANGE] RSI: RSI=41.0 < 45",
+        "price": 96334.63,
+        "rsi": 40.95822883334866,
+        "adx": 12.289538840400347
+      },
+      {
+        "index": 191,
+        "time": "2024-12-01 06:55:00",
+        "side": "LONG",
+        "regime": "RANGE",
+        "reason": "[RANGE] RSI: RSI=42.9 < 45",
+        "price": 96327.66,
+        "rsi": 42.90321411747688,
+        "adx": 12.330304635741685
+      },
+      {
+        "index": 192,
+        "time": "2024-12-01 07:00:00",
+        "side": "LONG",
+        "regime": "RANGE",
+        "reason": "[RANGE] BB_STRONG: Price < BB(1.5std)",
+        "price": 96315.6,
+        "rsi": 47.550200803213436,
+        "adx": 12.677009803793519
+      },
+      {
+        "index": 194,
+        "time": "2024-12-01 07:10:00",
+        "side": "LONG",
+        "regime": "RANGE",
+        "reason": "[RANGE] RSI: RSI=44.7 < 45",
+        "price": 96323.86,
+        "rsi": 44.65860021590482,
+        "adx": 11.426382113830329
+      },
+      {
+        "index": 195,
+        "time": "2024-12-01 07:15:00",
+        "side": "SHORT",
+        "regime": "RANGE",
+        "reason": "[RANGE] BB_MAIN+MOM: Price > BB(1.0std) & 상승모멘텀",
+        "price": 96449.99,
+        "rsi": 51.599134539733434,
+        "adx": 11.92465901729768
+      },
+      {
+        "index": 196,
+        "time": "2024-12-01 07:20:00",
+        "side": "SHORT",
+        "regime": "RANGE",
+        "reason": "[RANGE] BB_MAIN+MOM: Price > BB(1.0std) & 상승모멘텀",
+        "price": 96451.67,
+        "rsi": 47.69587212515319,
+        "adx": 12.51127384279995
+      },
+      {
+        "index": 197,
+        "time": "2024-12-01 07:25:00",
+        "side": "SHORT",
+        "regime": "RANGE",
+        "reason": "[RANGE] BB_MAIN+MOM: Price > BB(1.0std) & 상승모멘텀",
+        "price": 96455.64,
+        "rsi": 54.520711471887005,
+        "adx": 12.893208113041274
+      },
+      {
+        "index": 201,
+        "time": "2024-12-01 07:45:00",
+        "side": "SHORT",
+        "regime": "RANGE",
+        "reason": "[RANGE] BB_STRONG: Price > BB(1.5std)",
+        "price": 96480.0,
+        "rsi": 54.24480456679252,
+        "adx": 13.37495526216127
+      },
+      {
+        "index": 202,
+        "time": "2024-12-01 07:50:00",
+        "side": "SHORT",
+        "regime": "RANGE",
+        "reason": "[RANGE] RSI: RSI=59.6 > 55",
+        "price": 96473.78,
+        "rsi": 59.55198756959834,
+        "adx": 14.150052623549897
+      },
+      {
+        "index": 203,
+        "time": "2024-12-01 07:55:00",
+        "side": "SHORT",
+        "regime": "RANGE",
+        "reason": "[RANGE] RSI: RSI=60.5 > 55",
+        "price": 96472.97,
+        "rsi": 60.460102537138404,
+        "adx": 14.816343374531797
+      },
+      {
+        "index": 204,
+        "time": "2024-12-01 08:00:00",
+        "side": "SHORT",
+        "regime": "RANGE",
+        "reason": "[RANGE] RSI: RSI=74.5 > 55",
+        "price": 96510.0,
+        "rsi": 74.45135383843203,
+        "adx": 14.592828689137393
+      },
+      {
+        "index": 205,
+        "time": "2024-12-01 08:05:00",
+        "side": "SHORT",
+        "regime": "RANGE",
+        "reason": "[RANGE] RSI: RSI=76.8 > 55",
+        "price": 96523.77,
+        "rsi": 76.83424098957424,
+        "adx": 14.629112785788742
+      },
+      {
+        "index": 206,
+        "time": "2024-12-01 08:10:00",
+        "side": "SHORT",
+        "regime": "RANGE",
+        "reason": "[RANGE] RSI: RSI=86.7 > 55",
+        "price": 96717.21,
+        "rsi": 86.72433658260076,
+        "adx": 16.94479773046047
+      },
+      {
+        "index": 207,
+        "time": "2024-12-01 08:15:00",
+        "side": "SHORT",
+        "regime": "RANGE",
+        "reason": "[RANGE] RSI: RSI=88.0 > 55",
+        "price": 96799.99,
+        "rsi": 88.00700513820344,
+        "adx": 19.599620722787197
+      },
+      {
+        "index": 208,
+        "time": "2024-12-01 08:20:00",
+        "side": "SHORT",
+        "regime": "TREND",
+        "reason": "[TREND] BB_STRONG: Price > BB(1.5std) [TREND]",
+        "price": 96778.74,
+        "rsi": 87.25592976018845,
+        "adx": 22.06685599898416
+      },
+      {
+        "index": 209,
+        "time": "2024-12-01 08:25:00",
+        "side": "SHORT",
+        "regime": "TREND",
+        "reason": "[TREND] BB_STRONG: Price > BB(1.5std) [TREND]",
+        "price": 96950.0,
+        "rsi": 88.13318893854535,
+        "adx": 25.78300883406011
+      },
+      {
+        "index": 210,
+        "time": "2024-12-01 08:30:00",
+        "side": "SHORT",
+        "regime": "TREND",
+        "reason": "[TREND] BB_STRONG: Price > BB(1.5std) [TREND]",
+        "price": 96986.64,
+        "rsi": 88.73394442272296,
+        "adx": 29.23372218091635
+      },
+      {
+        "index": 211,
+        "time": "2024-12-01 08:35:00",
+        "side": "SHORT",
+        "regime": "TREND",
+        "reason": "[TREND] BB_STRONG: Price > BB(1.5std) [TREND]",
+        "price": 96896.0,
+        "rsi": 78.32844423858766,
+        "adx": 32.43795600299714
+      },
+      {
+        "index": 212,
+        "time": "2024-12-01 08:40:00",
+        "side": "SHORT",
+        "regime": "TREND",
+        "reason": "[TREND] BB_STRONG: Price > BB(1.5std) [TREND]",
+        "price": 97024.24,
+        "rsi": 84.73379855833834,
+        "adx": 35.48809718610925
+      }
+    ]
+  },
+  "grid_search": {
+    "enabled": false,
+    "results": []
+  }
+}

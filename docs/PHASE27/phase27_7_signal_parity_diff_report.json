@@ -1,0 +1,59 @@
+{
+  "metadata": {
+    "timestamp": "2025-12-05T00:49:31.670669",
+    "offline_summary_file": "phase27_4_btc5m_baseline_signal_scan",
+    "replay_summary_file": "20251205_004502_qzkk"
+  },
+  "aggregate_analysis": {
+    "offline": {
+      "evaluated_bars": 8591,
+      "signals_true": 5272,
+      "long_signals": 2591,
+      "short_signals": 2681,
+      "regime_range": 2855,
+      "regime_trend": 2417,
+      "range_ratio": 54.15
+    },
+    "replay": {
+      "total_calls": 8772,
+      "signals_true": 4334,
+      "long_signals": 2128,
+      "short_signals": 2206,
+      "regime_range": 2352,
+      "regime_trend": 1982,
+      "range_ratio": 54.27
+    },
+    "diff": {
+      "bar_count_diff": 181,
+      "bar_count_diff_pct": 2.11,
+      "signal_count_diff": -938,
+      "signal_count_diff_pct": -17.79,
+      "long_diff": -463,
+      "long_diff_pct": -17.87,
+      "short_diff": -475,
+      "short_diff_pct": -17.72,
+      "regime_range_ratio_diff": 0.11
+    },
+    "acceptance": {
+      "bar_count_within_10pct": true,
+      "signal_count_within_10pct": false,
+      "long_count_within_10pct": false,
+      "short_count_within_10pct": false,
+      "regime_diff_within_10pct": true,
+      "overall_pass": false
+    }
+  },
+  "conclusion": {
+    "overall_status": "FAIL",
+    "signal_count_diff_pct": -17.79,
+    "regime_diff": 0.11,
+    "acceptance_threshold": "±10%",
+    "improvements": [
+      "Bar count parity: 2.11%",
+      "Signal count parity: -17.79%",
+      "LONG parity: -17.87%",
+      "SHORT parity: -17.72%",
+      "Regime RANGE ratio diff: 0.11%p"
+    ]
+  }
+}

@@ -1,0 +1,144 @@
+# ========================================
+# PHASE28-0: Prometheus Monitoring Smoke Test Config
+# 목표: 6분 Paper 테스트로 Prometheus Metrics Exporter 검증
+# ========================================
+
+# ========================================
+# 실행 모드 & 환경
+# ========================================
+mode: paper
+env: paper
+run_id: "PHASE28-0_monitoring_smoke"
+
+# ========================================
+# 심볼 & Timeframe
+# ========================================
+symbol: BTCUSDT
+timeframe: 5m
+lookback: 200  # 지표 계산을 위한 lookback
+equity: 10000.0
+
+# ========================================
+# Duration (6분 wall-clock)
+# ========================================
+duration_hours: 0.1  # 6분 (0.1 * 60 = 6분)
+
+# ========================================
+# Strategy (단일 전략: btc5m_baseline_v1)
+# ========================================
+strategy:
+  selector: single  # 단일 전략 모드
+  single_strategy: btc5m_baseline_v1  # PHASE27에서 검증된 Baseline+ADX 전략
+  use_ensemble: false  # Ensemble 비활성화 (단순화)
+
+# ========================================
+# PHASE28-0: Prometheus Monitoring 설정
+# ========================================
+monitoring:
+  enabled: true  # ⭐ Prometheus Exporter 활성화
+  prometheus_port: 9091  # HTTP 서버 포트 (Arbitrage-Lite와 겹치지 않게)
+  redis:
+    host: ${REDIS_HOST:localhost}
+    port: ${REDIS_PORT:6379}
+    db: ${REDIS_DB:0}
+  metrics:
+    enabled: true
+    interval_sec: 60
+
+# ========================================
+# TradeActivityTracker 설정 (PHASE27-5A)
+# ========================================
+trade_activity_tracker:
+  enabled: true  # ⭐ TradeActivityTracker 활성화
+  output_file: "docs/PHASE28/phase28_0_smoke_tracker_summary.json"
+
+# ========================================
+# Portfolio 설정 (Production 기준 유지)
+# ========================================
+portfolio:
+  initial_balance: 10000.0
+  currency: USDT
+  max_open_positions: 3
+  max_exposure_pct: 0.9  # 90%
+
+# ========================================
+# Position Sizing
+# ========================================
+position_sizing:
+  default_risk_per_trade: 0.02  # 2% RPT
+  mode: kelly_fraction
+  kelly_fraction: 0.25
+  leverage: 3.0
+  max_leverage: 5.0
+
+# ========================================
+# Risk Manager
+# ========================================
+risk:
+  per_trade: 0.02
+  max_daily_loss_pct: 0.10
+  max_consecutive_losses: 10
+  cooldown_after_consecutive: 60
+  max_portfolio_dd_pct: 0.15
+  max_slippage_pct: 0.5
+  extreme_loss_cutoff_pct: -20.0
+  profiles:
+    paper:
+      max_daily_loss_pct: 0.20
+      max_consecutive_losses: 15
+      cooldown_after_consecutive: 30
+
+# ========================================
+# Exits
+# ========================================
+exits:
+  default_tp_levels:
+    - 0.02  # +2%
+    - 0.04  # +4%
+  default_sl_pct: 0.015  # -1.5%
+  trailing_enabled: true
+  trailing_activation_pct: 0.01
+  trailing_callback_pct: 0.005
+
+# ========================================
+# Execution
+# ========================================
+execution:
+  reject_cooldown_seconds: 60
+  max_runtime_hours: 0.1  # 6분
+
+# ========================================
+# FlowGuardian (간소화)
+# ========================================
+flow_guardian:
+  enabled: true
+  selftest:
+    max_runtime_sec: 120
+    require_metrics:
+      - profit_factor
+      - winrate
+    min_profit_factor: 0.0
+    min_winrate: 0.0
+    consistency_checks:
+      db_vs_json_score_equal: true
+      signals_no_nan: true
+      risk_never_oversize: true
+
+# ========================================
+# Database
+# ========================================
+database:
+  url: ${DATABASE_URL}
+  host: ${DB_HOST:localhost}
+  port: ${DB_PORT:5432}
+  name: ${DB_NAME:trading_bot}
+  user: ${DB_USER:postgres}
+  password: ${DB_PASSWORD:postgres}
+
+# ========================================
+# Telegram (비활성화 - 스모크 테스트)
+# ========================================
+telegram:
+  token: ${TELEGRAM_TOKEN:dummy}
+  chat_id: ${TELEGRAM_CHAT_ID:dummy}
+  enabled: false  # 스모크 테스트에서는 비활성화
