@@ -1,8 +1,8 @@
 {
-  "run_id": "20251205_174750_qnrv",
+  "run_id": "phase28_2_single_trial_smoke_20251205_212947",
   "duration_minutes": null,
-  "timestamp": "2025-12-05T17:47:53.647302",
-  "end_timestamp": "2025-12-05T17:50:57.913881",
+  "timestamp": "2025-12-05T21:29:47.692565",
+  "end_timestamp": "2025-12-05T21:32:47.863669",
   "symbols": {
     "BTCUSDT": {
       "strategy_signals": {
@@ -18,7 +18,7 @@
       },
       "ensemble_decisions": {},
       "guard_blocks": {},
-      "orders_submitted": 4
+      "orders_submitted": 3
     }
   },
   "totals": {
@@ -33,6 +33,6 @@
     "ensemble_tier2": 0,
     "ensemble_skip": 0,
     "guard_blocks_total": 0,
-    "orders_submitted": 4
+    "orders_submitted": 3
   }
 }

@@ -1,38 +1,38 @@
 {
-  "run_id": "phase28_1_baseline_smoke_test_20251205_170942",
+  "run_id": "phase28_1_baseline_smoke_test_20251205_175919",
   "duration_minutes": null,
-  "timestamp": "2025-12-05T17:09:42.513659",
-  "end_timestamp": "2025-12-05T17:11:47.160230",
+  "timestamp": "2025-12-05T17:59:19.455968",
+  "end_timestamp": "2025-12-05T18:02:00.031511",
   "symbols": {
     "BTCUSDT": {
       "strategy_signals": {
         "btc5m_baseline_v1": {
           "total_calls": 8772,
-          "signal_true": 5856,
-          "signal_false": 2916,
-          "long_signals": 2893,
-          "short_signals": 2963,
-          "regime_range": 5856,
-          "regime_trend": 0
+          "signal_true": 4334,
+          "signal_false": 4438,
+          "long_signals": 2128,
+          "short_signals": 2206,
+          "regime_range": 2352,
+          "regime_trend": 1982
         }
       },
       "ensemble_decisions": {},
       "guard_blocks": {},
-      "orders_submitted": 0
+      "orders_submitted": 3
     }
   },
   "totals": {
     "strategy_signals_total": 8772,
-    "strategy_signals_true": 5856,
-    "strategy_signals_false": 2916,
-    "long_signals": 2893,
-    "short_signals": 2963,
-    "regime_range": 5856,
-    "regime_trend": 0,
+    "strategy_signals_true": 4334,
+    "strategy_signals_false": 4438,
+    "long_signals": 2128,
+    "short_signals": 2206,
+    "regime_range": 2352,
+    "regime_trend": 1982,
     "ensemble_tier1": 0,
     "ensemble_tier2": 0,
     "ensemble_skip": 0,
     "guard_blocks_total": 0,
-    "orders_submitted": 0
+    "orders_submitted": 3
   }
 }

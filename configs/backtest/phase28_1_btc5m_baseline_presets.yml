@@ -67,11 +67,16 @@ position_sizing:
   leverage: 3.0
   min_position_size: 0.001
   max_position_size: 10.0
+  quality_weight_min: 0.5  # PHASE28-2-FIX: PositionSizer에서 사용
+  quality_weight_max: 1.5  # PHASE28-2-FIX: PositionSizer에서 사용
+  min_position_value: 100.0  # PHASE28-2-FIX: 최소 포지션 가치 (USDT)
+  max_position_value: 15000.0  # PHASE28-2-FIX: 최대 포지션 가치 (USDT)
 
 # ========================================
 # Risk Management
 # ========================================
 risk:
+  per_trade: 0.02  # PHASE28-2-FIX: engine.py에서 사용하는 키 (기본 리스크)
   max_open_positions: 3
   max_risk_per_trade: 0.03
   max_portfolio_risk: 0.1

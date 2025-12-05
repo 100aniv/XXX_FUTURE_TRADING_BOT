@@ -103,6 +103,69 @@ class TuningWorker:
         
         logger.info(f"[{self.worker_id}] Worker 종료 (처리: {self.jobs_processed}개)")
     
+    def _validate_tuning_config(self, config: dict):
+        """
+        PHASE28-2: 튜닝 config 필수 키 검증
+        
+        Base config가 엔진/PositionSizer/PortfolioManager/RiskManager가 요구하는
+        모든 필수 키를 포함하는지 검증한다.
+        
+        누락된 키가 있으면 명확한 ConfigError를 발생시킨다.
+        
+        Args:
+            config: 검증할 config 딕셔너리
+        
+        Raises:
+            ValueError: 필수 키 누락 시
+        """
+        required_keys = {
+            # Engine 필수
+            'timeframe': 'config["timeframe"]',
+            'lookback': 'config["lookback"]',
+            'equity': 'config["equity"]',
+            # Capital
+            'capital.initial': 'config["capital"]["initial"]',
+            # Risk (Engine + PositionSizer)
+            'risk.per_trade': 'config["risk"]["per_trade"]',
+            'risk.max_positions': 'config["risk"]["max_positions"]',
+            'risk.max_exposure_per_symbol': 'config["risk"]["max_exposure_per_symbol"]',
+            'risk.max_total_exposure': 'config["risk"]["max_total_exposure"]',
+            # PositionSizing
+            'position_sizing.quality_weight_min': 'config["position_sizing"]["quality_weight_min"]',
+            'position_sizing.quality_weight_max': 'config["position_sizing"]["quality_weight_max"]',
+            'position_sizing.min_position_value': 'config["position_sizing"]["min_position_value"]',
+            'position_sizing.max_position_value': 'config["position_sizing"]["max_position_value"]',
+            # Portfolio
+            'portfolio.max_symbol_exposure_pct': 'config["portfolio"]["max_symbol_exposure_pct"]',
+            'portfolio.max_exposure_pct': 'config["portfolio"]["max_exposure_pct"]',
+            'portfolio.max_total_exposure': 'config["portfolio"]["max_total_exposure"]',
+        }
+        
+        missing_keys = []
+        
+        for key_path, config_ref in required_keys.items():
+            parts = key_path.split('.')
+            value = config
+            try:
+                for part in parts:
+                    value = value[part]
+            except (KeyError, TypeError):
+                missing_keys.append(f"  - {key_path} ({config_ref})")
+        
+        if missing_keys:
+            error_msg = (
+                "❌ Tuning Config 필수 키 누락!\n"
+                "Base config가 엔진/PositionSizer/PortfolioManager가 요구하는 필수 키를 포함해야 합니다.\n"
+                "누락된 키:\n" + "\n".join(missing_keys) + "\n\n"
+                "해결 방법:\n"
+                "  1. configs/backtest/phase28_2_btc5m_tuning_base.yml을 확인하세요.\n"
+                "  2. docs/PHASE28/PHASE28_2_CONFIG_SSOT_ANALYSIS.md를 참고하세요.\n"
+            )
+            logger.error(error_msg)
+            raise ValueError(error_msg)
+        
+        logger.debug(f"✅ Config validation passed (모든 필수 키 존재)")
+    
     def process_job(self, job: Dict[str, Any]) -> Dict[str, Any]:
         """
         Job 처리 (PHASE25-2: 실제 백테스트 엔진 호출)
@@ -212,11 +275,19 @@ class TuningWorker:
             # Mode 설정
             config['mode'] = mode
             
+            # PHASE28-2: trial_id 설정 (tuning.results와 trading.trades 연결)
+            config['trial_id'] = job_id
+            config['run_id'] = run_id
+            
             # Duration 짧게 (백테스트 빠르게)
             # backtest 모드라면 기간은 이미 config에 있을 것
             # paper 모드라면 아주 짧게 (30초)
             if mode == 'paper':
                 config['duration_hours'] = 0.0083  # 30초
+            
+            # PHASE28-2: Config SSOT 검증
+            # Base config가 모든 필수 키를 포함하도록 강제
+            self._validate_tuning_config(config)
             
             logger.debug(f"[{self.worker_id}]   Final config (strategy params): {strategy_section.get(selected, {}).get('params', {})}")
             
@@ -231,6 +302,10 @@ class TuningWorker:
             )
             
             logger.info(f"[{self.worker_id}] 백테스트 완료")
+            
+            # PHASE28-2: DB commit 보장을 위한 대기
+            # Engine의 DB transaction이 완전히 commit되도록 1초 대기
+            time.sleep(1.0)
             
             # 5. 결과 메트릭 추출
             # 백테스트 결과는 DB의 trading.trades, portfolio 테이블에서 추출
@@ -279,56 +354,54 @@ class TuningWorker:
         from database import get_db_connection
         import numpy as np
         
-        # PHASE25-4: 시간 기반 isolation (start_time ~ end_time 범위의 trades만)
-        # 완벽하지는 않지만, 동시 실행 충돌을 최소화
+        # PHASE28-2: trial_id 기반 isolation (정확한 job별 거래 추출)
+        # 시간 기반 방식은 동시 실행 시 충돌 가능, trial_id로 완벽한 격리
         
         sql_trades_detailed = """
         SELECT
-            pnl_usdt,
+            pnl,
             pnl_pct,
-            exit_time
+            ts_close as exit_time
         FROM trading.trades
-        WHERE exit_time >= %s
-          AND exit_time <= %s
-        ORDER BY exit_time ASC
+        WHERE trial_id = %s
+          AND status = 'CLOSED'
+        ORDER BY ts_close ASC
         """
         
-        sql_portfolio = """
-        SELECT
-            total_equity,
-            total_pnl,
-            total_pnl_pct
-        FROM portfolio
-        WHERE symbol = 'BTCUSDT'  -- 단일 심볼 가정
-        ORDER BY updated_at DESC
-        LIMIT 1
-        """
+        # PHASE28-2: portfolio 테이블 제거 (존재하지 않음)
+        # 모든 메트릭은 trading.trades에서 계산
         
         try:
-            with get_db_connection() as conn:
-                with conn.cursor() as cur:
-                    # Trades 상세 조회 (시간 범위 기반)
-                    cur.execute(sql_trades_detailed, (start_time, end_time))
-                    trades_rows = cur.fetchall()
-                    
-                    # Portfolio 메트릭
-                    cur.execute(sql_portfolio)
-                    portfolio_row = cur.fetchone()
-                    
-                    if portfolio_row:
-                        equity = portfolio_row[0] or 0.0
-                        pnl = portfolio_row[1] or 0.0
-                        pnl_pct = portfolio_row[2] or 0.0
-                    else:
-                        equity = 0.0
-                        pnl = 0.0
-                        pnl_pct = 0.0
+            # PHASE28-2: 재시도 로직 (DB commit 대기)
+            # Engine의 DB transaction이 완전히 commit될 때까지 최대 3번 재시도
+            max_retries = 3
+            retry_delay = 0.5  # 초
+            trades_rows = []
+            
+            for attempt in range(max_retries):
+                with get_db_connection() as conn:
+                    with conn.cursor() as cur:
+                        # Trades 상세 조회 (trial_id 기반)
+                        logger.debug(f"[{self.worker_id}] Extracting metrics for trial_id={job_id} (attempt {attempt+1}/{max_retries})")
+                        cur.execute(sql_trades_detailed, (job_id,))
+                        trades_rows = cur.fetchall()
+                        logger.debug(f"[{self.worker_id}] Found {len(trades_rows)} trades for trial_id={job_id}")
+                
+                if len(trades_rows) > 0:
+                    # 거래 발견, 재시도 종료
+                    break
+                
+                if attempt < max_retries - 1:
+                    # 다음 재시도 전 대기
+                    logger.warning(f"[{self.worker_id}] No trades found for trial_id={job_id}, retrying in {retry_delay}s...")
+                    time.sleep(retry_delay)
             
             # Trades 파싱
+            # PHASE28-2: Decimal → float 변환
             trades = [
                 {
-                    'pnl_usdt': row[0],
-                    'pnl_pct': row[1],
+                    'pnl': float(row[0]) if row[0] is not None else 0.0,
+                    'pnl_pct': float(row[1]) if row[1] is not None else 0.0,
                     'exit_time': row[2]
                 }
                 for row in trades_rows
@@ -338,17 +411,17 @@ class TuningWorker:
             
             if trade_count == 0:
                 # Trades 없음
-                logger.warning(f"[{self.worker_id}] Trades 없음 (시간 범위: {start_time} ~ {end_time})")
+                logger.warning(f"[{self.worker_id}] Trades 없음 (trial_id: {job_id})")
                 return self._get_empty_metrics(runtime_sec)
             
             # 기본 메트릭 계산
-            win_count = sum(1 for t in trades if t['pnl_usdt'] > 0)
+            win_count = sum(1 for t in trades if t['pnl'] > 0)
             lose_count = trade_count - win_count
             win_rate = win_count / trade_count if trade_count > 0 else 0.0
             
-            total_pnl = sum(t['pnl_usdt'] for t in trades)
-            avg_win = np.mean([t['pnl_usdt'] for t in trades if t['pnl_usdt'] > 0]) if win_count > 0 else 0.0
-            avg_lose = np.mean([t['pnl_usdt'] for t in trades if t['pnl_usdt'] <= 0]) if lose_count > 0 else 0.0
+            total_pnl = sum(t['pnl'] for t in trades)
+            avg_win = np.mean([t['pnl'] for t in trades if t['pnl'] > 0]) if win_count > 0 else 0.0
+            avg_lose = np.mean([t['pnl'] for t in trades if t['pnl'] <= 0]) if lose_count > 0 else 0.0
             
             # Profit Factor
             profit_factor = 0.0
@@ -361,28 +434,46 @@ class TuningWorker:
             # Max Drawdown 개선 (cumulative PnL 기반)
             max_drawdown, max_dd_duration_hours = self._calculate_max_drawdown(trades)
             
+            # PHASE28-2: pnl_pct 계산 (trades 기반)
+            # portfolio 테이블이 없으므로 trades의 pnl_pct 평균 사용
+            avg_pnl_pct = np.mean([t['pnl_pct'] for t in trades]) if trade_count > 0 else 0.0
+            
+            # PHASE28-2: numpy 타입을 Python 기본 타입으로 변환
             result = {
-                'pnl': round(pnl if pnl != 0 else total_pnl, 2),
-                'pnl_pct': round(pnl_pct, 2),
-                'trade_count': trade_count,
-                'win_count': win_count,
-                'lose_count': lose_count,
-                'win_rate': round(win_rate, 4),
-                'sharpe_ratio': round(sharpe_ratio, 4),
-                'max_drawdown': round(max_drawdown, 2),
-                'max_drawdown_duration_hours': round(max_dd_duration_hours, 2),
-                'profit_factor': round(profit_factor, 4),
-                'avg_win': round(avg_win, 2),
-                'avg_lose': round(avg_lose, 2),
-                'runtime_sec': round(runtime_sec, 3)
+                'pnl': float(round(total_pnl, 2)),
+                'pnl_pct': float(round(avg_pnl_pct, 2)),
+                'trade_count': int(trade_count),
+                'win_count': int(win_count),
+                'lose_count': int(lose_count),
+                'win_rate': float(round(win_rate, 4)),
+                'sharpe_ratio': float(round(sharpe_ratio, 4)),
+                'max_drawdown': float(round(max_drawdown, 2)),
+                'max_drawdown_duration_hours': float(round(max_dd_duration_hours, 2)),
+                'profit_factor': float(round(profit_factor, 4)),
+                'avg_win': float(round(avg_win, 2)),
+                'avg_lose': float(round(avg_lose, 2)),
+                'runtime_sec': float(round(runtime_sec, 3))
             }
             
             return result
             
         except Exception as e:
-            logger.error(f"메트릭 추출 실패: {e}")
+            logger.error(f"❌ [PHASE28-2 DEBUG] 메트릭 추출 실패: {e}")
             import traceback
-            logger.error(traceback.format_exc())
+            error_trace = traceback.format_exc()
+            logger.error(error_trace)
+            
+            # PHASE28-2: 예외를 DB에 저장
+            try:
+                with get_db_connection() as conn:
+                    with conn.cursor() as cur:
+                        cur.execute("""
+                            INSERT INTO tuning.worker_errors (job_id, error_message, error_trace, created_at)
+                            VALUES (%s, %s, %s, NOW())
+                        """, (job_id, str(e), error_trace))
+            except:
+                pass  # DB 저장 실패해도 무시
+            
             # Fallback: 빈 메트릭
             return self._get_empty_metrics(runtime_sec)
     
@@ -406,7 +497,8 @@ class TuningWorker:
             return 0.0
         
         # Trade별 수익률 추출 (pnl_pct)
-        returns = [t['pnl_pct'] / 100.0 for t in trades if 'pnl_pct' in t]
+        # PHASE28-2: Decimal → float 변환
+        returns = [float(t['pnl_pct']) / 100.0 for t in trades if 'pnl_pct' in t]
         
         if not returns:
             return 0.0
@@ -441,7 +533,7 @@ class TuningWorker:
         cumulative_pnl = []
         running_pnl = 0.0
         for trade in trades:
-            running_pnl += trade['pnl_usdt']
+            running_pnl += trade['pnl']
             cumulative_pnl.append(running_pnl)
         
         # Running Peak 및 Drawdown 계산

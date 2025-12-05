@@ -1,0 +1,38 @@
+{
+  "run_id": "phase28_1_baseline_smoke_20251205_180245",
+  "duration_minutes": null,
+  "timestamp": "2025-12-05T18:02:46.096977",
+  "end_timestamp": "2025-12-05T18:03:22.763736",
+  "symbols": {
+    "BTCUSDT": {
+      "strategy_signals": {
+        "btc5m_baseline_v1": {
+          "total_calls": 2255,
+          "signal_true": 1115,
+          "signal_false": 1140,
+          "long_signals": 522,
+          "short_signals": 593,
+          "regime_range": 577,
+          "regime_trend": 538
+        }
+      },
+      "ensemble_decisions": {},
+      "guard_blocks": {},
+      "orders_submitted": 0
+    }
+  },
+  "totals": {
+    "strategy_signals_total": 2255,
+    "strategy_signals_true": 1115,
+    "strategy_signals_false": 1140,
+    "long_signals": 522,
+    "short_signals": 593,
+    "regime_range": 577,
+    "regime_trend": 538,
+    "ensemble_tier1": 0,
+    "ensemble_tier2": 0,
+    "ensemble_skip": 0,
+    "guard_blocks_total": 0,
+    "orders_submitted": 0
+  }
+}

@@ -43,8 +43,8 @@ target:
 # Base Config (공통 설정)
 # ========================================
 base_config:
-  # 베이스 config 경로 (PHASE28-1 config 재사용)
-  path: "configs/backtest/phase28_1_btc5m_baseline_presets.yml"
+  # 베이스 config 경로 (PHASE27-5 검증된 config 사용)
+  path: "configs/backtest/phase28_2_btc5m_tuning_base.yml"
   
   # Override 없이 사용할 공통 설정
   # (capital, portfolio, risk, exits, flow_guardian 등은 base config 그대로)

@@ -1,13 +1,13 @@
 {
-  "run_timestamp": "2025-12-05T17:09:42.293282",
+  "run_timestamp": "2025-12-05T18:02:45.872225",
   "config_path": "C:\\Users\\bback\\OneDrive\\Documents\\future_alarm_bot\\configs\\backtest\\phase28_1_btc5m_baseline_presets.yml",
-  "smoke_test": true,
+  "smoke_test": false,
   "preset_filter": "baseline",
   "results_by_preset_period": {
     "baseline": {
-      "smoke_test": {
+      "smoke": {
         "preset_description": "PHASE27-5 Grid Search Top 1",
-        "period_description": "30일 테스트 (Zero-Trade 버그 검증)",
+        "period_description": "7일 짧은 테스트",
         "metrics": {
           "total_trades": 0,
           "win_rate": 0.0,
@@ -16,11 +16,29 @@
           "max_drawdown": 0.0,
           "sharpe_like_ratio": 0.0,
           "avg_holding_minutes": 0.0,
-          "long_short_ratio": 0.9763752953088086,
-          "long_count": 2893,
-          "short_count": 2963,
-          "signal_true": 5856,
+          "long_short_ratio": 0.8802698145025295,
+          "long_count": 522,
+          "short_count": 593,
+          "signal_true": 1115,
           "orders_submitted": 0
+        }
+      },
+      "neutral": {
+        "preset_description": "PHASE27-5 Grid Search Top 1",
+        "period_description": "중립 시장 구간",
+        "metrics": {
+          "total_trades": 9,
+          "win_rate": 0.0,
+          "gross_pnl": 0.0,
+          "net_pnl": 0.0,
+          "max_drawdown": 0.0,
+          "sharpe_like_ratio": 0.0,
+          "avg_holding_minutes": 0.0,
+          "long_short_ratio": 0.9646418857660924,
+          "long_count": 2128,
+          "short_count": 2206,
+          "signal_true": 4334,
+          "orders_submitted": 9
         }
       }
     }

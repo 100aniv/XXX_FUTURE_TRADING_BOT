@@ -1,19 +1,19 @@
 {
-  "run_id": "20251205_004502_qzkk",
+  "run_id": "btc5m_baseline_tuning_round1_bull_89179a4e",
   "duration_minutes": null,
-  "timestamp": "2025-12-05T00:45:05.330129",
-  "end_timestamp": "2025-12-05T00:47:58.473480",
+  "timestamp": "2025-12-06T00:12:10.747904",
+  "end_timestamp": "2025-12-06T00:15:25.217544",
   "symbols": {
     "BTCUSDT": {
       "strategy_signals": {
         "btc5m_baseline_v1": {
           "total_calls": 8772,
-          "signal_true": 4334,
-          "signal_false": 4438,
-          "long_signals": 2128,
-          "short_signals": 2206,
-          "regime_range": 2352,
-          "regime_trend": 1982
+          "signal_true": 5228,
+          "signal_false": 3544,
+          "long_signals": 2667,
+          "short_signals": 2561,
+          "regime_range": 2911,
+          "regime_trend": 2317
         }
       },
       "ensemble_decisions": {},
@@ -23,12 +23,12 @@
   },
   "totals": {
     "strategy_signals_total": 8772,
-    "strategy_signals_true": 4334,
-    "strategy_signals_false": 4438,
-    "long_signals": 2128,
-    "short_signals": 2206,
-    "regime_range": 2352,
-    "regime_trend": 1982,
+    "strategy_signals_true": 5228,
+    "strategy_signals_false": 3544,
+    "long_signals": 2667,
+    "short_signals": 2561,
+    "regime_range": 2911,
+    "regime_trend": 2317,
     "ensemble_tier1": 0,
     "ensemble_tier2": 0,
     "ensemble_skip": 0,
