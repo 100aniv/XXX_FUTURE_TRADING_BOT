@@ -1196,11 +1196,16 @@ Ensemble ON 모드로 4시간 이상 연속 Paper 테스트 (인프라 안정성
 
 ---
 
- **PHASE28** – Monitoring & Observability ⚠️ **IN PROGRESS**
+🧩 **PHASE28** – Strategy Performance & Tuning Baseline ⚠️ **IN PROGRESS**
 
-**상태**: ⚠️ **IN PROGRESS** (28-0 완료, 2025-12-05)
+**상태**: ⚠️ **IN PROGRESS** (28-0, 28-1 완료, 2025-12-05)
 
-**목적**: Prometheus + Grafana 모니터링 및 Telegram/Slack Alert 구현
+**목적**: btc5m_baseline_v1 전략의 성능 기준선 측정 및 튜닝 (Monitoring 포함)
+
+**트랙 전환**: PHASE28부터 **인프라 → 전략/튜닝**으로 궤도 수정  
+- PHASE27까지: 엔진/SSOT/Guard 구조 완성
+- PHASE28: 전략 성능 측정 및 튜닝에 집중
+- Grafana/Alert는 PHASE30+ "Production Monitoring & Alerting"으로 미뤄짐
 
 **Sub-phases**
 
@@ -1213,7 +1218,6 @@ Ensemble ON 모드로 4시간 이상 연속 Paper 테스트 (인프라 안정성
     - ✅ Metrics Adapter (monitoring/metrics_adapter.py, 240 LOC)
     - ✅ 엔진 통합 (최소 침투 +30 LOC, Config 기반)
     - ✅ TradeActivityTracker 통합 (자동 Exporter 호출 +40 LOC)
-    - ✅ Config 확장 (phase28_0_monitoring_smoke_6m.yml)
     - ✅ Unit Test 23/23 PASS
     - ✅ 회귀 테스트 14/14 PASS (SSOT/Engine 무손상)
   - **Core 메트릭 카테고리** (5개):
@@ -1241,19 +1245,45 @@ Ensemble ON 모드로 4시간 이상 연속 Paper 테스트 (인프라 안정성
     - 성능 오버헤드 무시 가능 (< 1ms per metric)
   - **판정**: ✅ COMPLETE - Prometheus Monitoring Baseline 완성
 
-- **28-1: Grafana Dashboard** 🟦 PLANNED
-  - Prometheus + Grafana 통합
-  - 핵심 KPI 대시보드 (Equity Curve, Signal 분포, Loop Latency)
-  - 실시간 업데이트 (15초 간격)
+- **28-1: Single Strategy Performance Baseline (btc5m_baseline_v1)** ✅ **COMPLETE** (2025-12-05)
+  - 시장 구간별 성능 측정 인프라 구축
+  - **Status**: ✅ Infrastructure Ready (실제 실행 Pending)
+  - **목표**: 전략 성격 파악 및 튜닝 기준선 설정
+  - **완료 내역**:
+    - ✅ 백테스트 Preset Config (3 presets × 3 periods = 9 조합)
+    - ✅ Performance Runner (scripts/research/phase28_1_single_strategy_performance.py, 380 LOC)
+    - ✅ Unit Test 12/12 PASS
+    - ✅ 회귀 테스트 14/14 PASS (SSOT/Engine 무손상)
+  - **시장 구간** (3개):
+    - Bull Trend (2024-10-01 ~ 2024-10-31)
+    - Bear Trend (2024-08-01 ~ 2024-08-31)
+    - Range Consolidation (2024-11-15 ~ 2024-12-15)
+  - **파라미터 Preset** (3개):
+    - Conservative: 보수적 진입 (RSI 40/60, BB 1.5/2.0)
+    - Neutral: 현재 PHASE27 기준 (RSI 45/55, BB 1.0/1.5)
+    - Aggressive: 공격적 진입 (RSI 50/50, BB 0.8/1.2)
+  - **핵심 메트릭** (10개):
+    - Trade 빈도: total_trades, long_count, short_count
+    - 수익성: win_rate, gross_pnl, net_pnl
+    - 리스크: max_drawdown, sharpe_like_ratio
+    - 효율성: avg_holding_minutes, long_short_ratio
+  - **Artifacts** ✅:
+    - configs/backtest/phase28_1_btc5m_baseline_presets.yml
+    - scripts/research/phase28_1_single_strategy_performance.py
+    - tests/test_phase28_1_single_strategy_performance.py (12 tests)
+    - docs/PHASE28/PHASE28-1_SINGLE_STRATEGY_PERFORMANCE_BASELINE.md
+  - **Acceptance**: ✅ 7/10 PASS, ⏳ 3/10 PENDING (실제 실행 필요)
+  - **판정**: ✅ Infrastructure COMPLETE - 실제 백테스트 실행 준비 완료
 
-- **28-2: Alert Routing** 🟦 PLANNED
-  - Alertmanager 통합
-  - Telegram/Slack Webhook
-  - Critical 이벤트 자동 알림 (ERROR 급증, PnL 급락 등)
+- **28-2: Single Strategy Tuning Round 1** 🟦 PLANNED
+  - PHASE28-1 결과 기반 Random/Bayesian 튜닝
+  - tuning/algorithms/ (PHASE25 인프라) 활용
+  - 파라미터 공간: RSI (42~48), BB std (0.9~1.1), SL (1.0~2.0%)
+  - 목표: 최적 파라미터 세트 도출 및 Validation
 
 **진입 조건**: ✅ **PHASE27 완료** (단일 엔진 + SSOT Guard 테스트 PASS)
 
-**퇴출 조건**: Grafana 대시보드 정상 작동, Alert 정상 발송 (28-1/28-2 완료 시)
+**퇴출 조건**: 전략 성능/튜닝 완료 (28-1/28-2 완료 시)
 
 **목적**: 제어 기능 및 백테스트 결과 뷰어 추가
 

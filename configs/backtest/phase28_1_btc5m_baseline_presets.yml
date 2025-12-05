@@ -1,0 +1,213 @@
+# ========================================
+# PHASE28-1: Single Strategy Performance Baseline
+# btc5m_baseline_v1 전략 성능 측정 Config
+# ========================================
+
+# ========================================
+# 공통 설정 (Common Settings)
+# ========================================
+common:
+  symbol: BTCUSDT
+  timeframe: 5m
+  lookback: 200  # 지표 계산용
+  initial_equity: 10000.0
+  
+  # 수수료/슬리피지 (PHASE17 기준)
+  fees:
+    maker: 0.0002  # 0.02%
+    taker: 0.0004  # 0.04%
+  slippage: 0.0005  # 0.05%
+  
+  # Portfolio 설정
+  portfolio:
+    initial_balance: 10000.0
+    currency: USDT
+    max_open_positions: 3
+    max_exposure_pct: 0.9
+  
+  # Position Sizing
+  position_sizing:
+    default_risk_per_trade: 0.02  # 2% RPT
+    mode: kelly_fraction
+    kelly_fraction: 0.25
+    leverage: 3.0
+    max_leverage: 5.0
+  
+  # Risk Manager
+  risk:
+    per_trade: 0.02
+    max_daily_loss_pct: 0.10
+    max_consecutive_losses: 10
+    cooldown_after_consecutive: 60
+    max_portfolio_dd_pct: 0.15
+    max_slippage_pct: 0.5
+    extreme_loss_cutoff_pct: -20.0
+  
+  # Exits (전략 공통)
+  exits:
+    default_tp_levels:
+      - 0.02  # +2%
+      - 0.04  # +4%
+    default_sl_pct: 0.015  # -1.5%
+    trailing_enabled: true
+    trailing_activation_pct: 0.01
+    trailing_callback_pct: 0.005
+  
+  # Strategy 선택
+  strategy:
+    selector: single
+    single_strategy: btc5m_baseline_v1
+    use_ensemble: false
+
+# ========================================
+# 시장 구간 정의 (Market Periods)
+# ========================================
+# 참고: 실제 BTC 가격 데이터 기반으로 조정 필요
+# 여기서는 2024년 대표 구간 예시
+
+market_periods:
+  # 구간 1: 상승장 (Bull Market)
+  bull_trend:
+    name: "Bull Trend"
+    description: "상승 추세 구간, 지속적 고점 갱신"
+    start: "2024-10-01"
+    end: "2024-10-31"
+    expected_behavior: "추세 추종 신호 많음, Long 비율 높음"
+  
+  # 구간 2: 하락장 (Bear Market)
+  bear_trend:
+    name: "Bear Trend"
+    description: "하락 추세 구간, 지속적 저점 갱신"
+    start: "2024-08-01"
+    end: "2024-08-31"
+    expected_behavior: "추세 추종 신호 많음, Short 비율 높음"
+  
+  # 구간 3: 횡보장 (Range/Consolidation)
+  range_consolidation:
+    name: "Range Consolidation"
+    description: "저변동성 횡보 구간, ADX 낮음"
+    start: "2024-11-15"
+    end: "2024-12-15"
+    expected_behavior: "Mean reversion 신호, Long/Short 균형"
+
+# ========================================
+# 파라미터 Preset 정의 (3개)
+# ========================================
+presets:
+  # Preset 1: 보수적 (Conservative)
+  # - 신호 적게, 승률 높게
+  # - 극단적 조건만 진입
+  conservative:
+    name: "Conservative"
+    description: "보수적 진입, 신호 빈도 낮음, 승률 우선"
+    params:
+      # RSI: 더 극단적
+      rsi_long_threshold: 40
+      rsi_short_threshold: 60
+      
+      # BB: 더 넓은 범위
+      bb_std_main: 1.5
+      bb_std_strong: 2.0
+      
+      # Momentum: 더 강한 조건
+      momentum_lookback: 7
+      momentum_threshold_pct: 0.015  # 1.5%
+      
+      # ADX: 추세 구분
+      use_adx: true
+      adx_period: 14
+      adx_trend_threshold: 25
+      
+      # Exits: 더 빠른 이익 실현
+      tp_levels:
+        - 0.015  # 1.5%
+        - 0.03   # 3%
+      sl_pct: 0.01  # 1%
+      max_holding_minutes: 45
+  
+  # Preset 2: 중립 (Neutral) - 현재 PHASE27 기준
+  # - 균형잡힌 신호 빈도
+  neutral:
+    name: "Neutral"
+    description: "중립 진입, 현재 PHASE27 기준 파라미터"
+    params:
+      # RSI
+      rsi_long_threshold: 45
+      rsi_short_threshold: 55
+      
+      # BB
+      bb_std_main: 1.0
+      bb_std_strong: 1.5
+      
+      # Momentum
+      momentum_lookback: 5
+      momentum_threshold_pct: 0.01  # 1.0%
+      
+      # ADX
+      use_adx: true
+      adx_period: 14
+      adx_trend_threshold: 25
+      
+      # Exits
+      tp_levels:
+        - 0.02  # 2%
+        - 0.04  # 4%
+      sl_pct: 0.015  # 1.5%
+      max_holding_minutes: 60
+  
+  # Preset 3: 공격적 (Aggressive)
+  # - 신호 많이, 빈도 우선
+  # - False Positive 감수
+  aggressive:
+    name: "Aggressive"
+    description: "공격적 진입, 신호 빈도 높음, Expectancy 우선"
+    params:
+      # RSI: 더 완화
+      rsi_long_threshold: 50
+      rsi_short_threshold: 50
+      
+      # BB: 더 좁은 범위
+      bb_std_main: 0.8
+      bb_std_strong: 1.2
+      
+      # Momentum: 더 완화
+      momentum_lookback: 3
+      momentum_threshold_pct: 0.005  # 0.5%
+      
+      # ADX
+      use_adx: true
+      adx_period: 14
+      adx_trend_threshold: 25
+      
+      # Exits: 더 넓은 범위
+      tp_levels:
+        - 0.03  # 3%
+        - 0.06  # 6%
+      sl_pct: 0.02  # 2%
+      max_holding_minutes: 90
+
+# ========================================
+# 스모크 테스트 구간 (짧은 구간)
+# ========================================
+smoke_test:
+  name: "Smoke Test"
+  description: "7일 짧은 구간 테스트"
+  start: "2024-12-08"
+  end: "2024-12-15"
+
+# ========================================
+# 메트릭 계산 설정
+# ========================================
+metrics:
+  # 최소 거래 수 (이 미만이면 경고)
+  min_trades_threshold: 10
+  
+  # Sharpe Ratio 계산
+  sharpe_calculation: "daily_returns"  # 일별 수익률 기반
+  
+  # MDD 계산
+  mdd_calculation: "equity_curve"  # Equity curve 기반
+  
+  # 출력 포맷
+  output_format: "json"
+  output_path: "reports/phase28_1_btc5m_performance.json"
