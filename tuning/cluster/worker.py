@@ -185,9 +185,10 @@ class TuningWorker:
             # params는 strategy params 영역에 적용
             config = deep_merge(base_config, {})
             
-            # Strategy params override
+            # PHASE28-2: Strategy params override (2가지 구조 지원)
+            # 방식 1: strategy.{selected}.params (PHASE25 원래 구조)
             strategy_section = config.get('strategy', {})
-            selected = strategy_section.get('selected', 'scalping')
+            selected = strategy_section.get('selected', strategy_section.get('selector', 'scalping'))
             
             if selected in strategy_section:
                 strategy_config = strategy_section[selected]
@@ -197,6 +198,16 @@ class TuningWorker:
                 # Params 덮어쓰기
                 for key, value in params.items():
                     strategy_config['params'][key] = value
+            
+            # 방식 2: strategies.{strategy_name} (PHASE27/28-1 구조)
+            # merge_strategy_config()가 top-level로 복사하므로, strategies 섹션에도 적용
+            strategies_section = config.get('strategies', {})
+            if selected in strategies_section:
+                # strategies.{strategy_name}에 직접 적용 (params 키 없이)
+                for key, value in params.items():
+                    strategies_section[selected][key] = value
+                
+                logger.debug(f"[{self.worker_id}]   Params applied to strategies.{selected}")
             
             # Mode 설정
             config['mode'] = mode

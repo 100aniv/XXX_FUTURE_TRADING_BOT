@@ -1270,16 +1270,6 @@ Ensemble ON 모드로 4시간 이상 연속 Paper 테스트 (인프라 안정성
   - **Artifacts** ✅:
     - configs/backtest/phase28_1_btc5m_baseline_presets.yml
     - scripts/research/phase28_1_single_strategy_performance.py
-    - tests/test_phase28_1_single_strategy_performance.py (12 tests)
-    - docs/PHASE28/PHASE28-1_SINGLE_STRATEGY_PERFORMANCE_BASELINE.md
-  - **Acceptance**: ✅ 7/10 PASS, ⏳ 3/10 PENDING (실제 실행 필요)
-  - **판정**: ✅ Infrastructure COMPLETE - 실제 백테스트 실행 준비 완료
-
-- **28-2: Single Strategy Tuning Round 1** 🟦 PLANNED
-  - PHASE28-1 결과 기반 Random/Bayesian 튜닝
-  - tuning/algorithms/ (PHASE25 인프라) 활용
-  - 파라미터 공간: RSI (42~48), BB std (0.9~1.1), SL (1.0~2.0%)
-  - 목표: 최적 파라미터 세트 도출 및 Validation
 
 **진입 조건**: ✅ **PHASE27 완료** (단일 엔진 + SSOT Guard 테스트 PASS)
 
