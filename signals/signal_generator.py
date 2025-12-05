@@ -426,7 +426,8 @@ class SignalGenerator:
         else:
             ms = 5 * 60 * 1000
         
-        cooldown = ms * self.config["cooldown_candles"]
+        # PHASE28-1-FIX: cooldown_candles 기본값 0 (FlowGuardian이 쿨다운 관리)
+        cooldown = ms * self.config.get("cooldown_candles", 0)
         
         if prev and ts - prev < cooldown:
             return False

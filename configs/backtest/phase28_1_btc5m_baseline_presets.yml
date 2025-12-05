@@ -191,11 +191,17 @@ common:
 # PHASE28-1: Market Periods
 # ========================================
 market_periods:
-  smoke:
-    name: "Smoke Test"
-    description: "7일 짧은 테스트"
-    start: "2024-12-08"
-    end: "2024-12-15"
+  bull:
+    name: "Bull Trend"
+    description: "상승 추세 구간"
+    start: "2024-11-01"
+    end: "2024-11-30"
+  
+  range:
+    name: "Range Consolidation"
+    description: "횡보 구간"
+    start: "2024-10-01"
+    end: "2024-10-31"
   
   neutral:
     name: "Neutral Period"
@@ -208,7 +214,7 @@ market_periods:
 # ========================================
 smoke_test:
   name: "Smoke Test"
-  description: "30일 테스트 (Zero-Trade 버그 검증)"
+  description: "30일 테스트 (Zero-Trade 버그 검증) - PHASE27-5 구간"
   start: "2024-11-30"
   end: "2024-12-30"
 

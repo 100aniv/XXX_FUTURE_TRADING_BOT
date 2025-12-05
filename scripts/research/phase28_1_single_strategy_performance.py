@@ -193,14 +193,15 @@ def merge_config_for_backtest(
     # Preset 파라미터를 'strategies' 섹션 아래에 직접 배치 (params 키 없이)
     strategy_name = config['strategy'].get('selector', 'btc5m_baseline_v1')
     
-    # 'strategies' 섹션 생성
+    # 'strategies' 섹션이 이미 있다면 유지 (base 파라미터 보존)
     if 'strategies' not in config:
         config['strategies'] = {}
     if strategy_name not in config['strategies']:
         config['strategies'][strategy_name] = {}
     
-    # ✅ PHASE27-5 방식: params 키 없이 파라미터 직접 병합
-    # Preset 파라미터를 strategies.btc5m_baseline_v1 아래에 직접 추가
+    # ✅ PHASE28-1-FIX: 기존 전략 파라미터 유지하면서 Preset 병합 (덮어쓰기)
+    # Base config의 전략 파라미터는 이미 strategies 섹션에 있으므로,
+    # Preset 파라미터만 추가/덮어쓰기
     for key, value in preset_params.items():
         config['strategies'][strategy_name][key] = value
     
@@ -208,9 +209,11 @@ def merge_config_for_backtest(
     logger.info(f"  ✅ Config keys: {list(config.keys())}")
     logger.info(f"  ✅ Strategy selector: {strategy_name}")
     logger.info(f"  ✅ Strategies section: {list(config.get('strategies', {}).keys())}")
-    logger.info(f"  ✅ Strategy config keys: {list(config.get('strategies', {}).get(strategy_name, {}).keys())}")
+    strategy_config = config.get('strategies', {}).get(strategy_name, {})
+    logger.info(f"  ✅ Strategy config keys: {list(strategy_config.keys())}")
     logger.info(f"  ✅ Preset params to merge: {list(preset_params.keys())}")
-    logger.info(f"  ✅ RSI thresholds: long={config.get('strategies', {}).get(strategy_name, {}).get('rsi_long_threshold')}, short={config.get('strategies', {}).get(strategy_name, {}).get('rsi_short_threshold')}")
+    logger.info(f"  ✅ RSI thresholds: long={strategy_config.get('rsi_long_threshold')}, short={strategy_config.get('rsi_short_threshold')}")
+    logger.info(f"  ✅ ADX params: use_adx={strategy_config.get('use_adx')}, adx_period={strategy_config.get('adx_period')}, adx_trend_threshold={strategy_config.get('adx_trend_threshold')}")
     
     return config
 
@@ -452,11 +455,15 @@ def run_performance_baseline(
     periods = config.get('market_periods', {})
     smoke_cfg = config.get('smoke_test', {})
     
-    # ✅ PHASE28-1-FIX: strategies 섹션을 common에 병합
-    # Runner가 common만 복사하므로, config의 strategies 섹션을 common에 추가
+    # ✅ PHASE28-1-FIX: strategies & indicators 섹션을 common에 병합
+    # Runner가 common만 복사하므로, config의 strategies/indicators 섹션을 common에 추가
     if 'strategies' not in common_cfg and 'strategies' in config:
         common_cfg['strategies'] = config['strategies']
         logger.info(f"✅ strategies 섹션을 common에 병합: {list(config['strategies'].keys())}")
+    
+    if 'indicators' not in common_cfg and 'indicators' in config:
+        common_cfg['indicators'] = config['indicators']
+        logger.info(f"✅ indicators 섹션을 common에 병합: use_adx={config['indicators'].get('use_adx')}")
     
     # Smoke test 모드
     if smoke_test:

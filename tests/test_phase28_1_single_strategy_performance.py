@@ -114,8 +114,11 @@ class TestConfigMerge:
         assert 'run_id' in config
         assert config['start_date'] == '2024-01-01'
         assert config['end_date'] == '2024-01-31'
-        assert config['rsi_long_threshold'] == 45
-        assert config['rsi_short_threshold'] == 55
+        
+        # PHASE28-1-FIX: 파라미터는 strategies 섹션에 배치 (merge_strategy_config가 top-level로 복사)
+        strategy_cfg = config.get('strategies', {}).get('btc5m_baseline_v1', {})
+        assert strategy_cfg['rsi_long_threshold'] == 45
+        assert strategy_cfg['rsi_short_threshold'] == 55
 
 
 class TestMetricsExtraction:
