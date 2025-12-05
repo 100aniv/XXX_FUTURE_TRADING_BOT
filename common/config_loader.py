@@ -538,6 +538,14 @@ def merge_strategy_config(base_config: Dict[str, Any], strategy_id: str) -> Dict
     for key, value in indicators.items():
         merged[key] = value
     
+    # ✅ 8. PHASE28-1-FIX: 전략 파라미터를 top-level로 복사
+    #    전략 코드가 config.get('rsi_long_threshold', default)처럼 직접 읽으므로
+    #    strategy_cfg의 모든 키를 top-level로 복사 (nested dict 제외)
+    for key, value in strategy_cfg.items():
+        # filters, leverage 같은 nested dict는 제외
+        if not isinstance(value, dict):
+            merged[key] = value
+    
     return merged
 
 

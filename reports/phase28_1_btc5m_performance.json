@@ -1,0 +1,28 @@
+{
+  "run_timestamp": "2025-12-05T17:09:42.293282",
+  "config_path": "C:\\Users\\bback\\OneDrive\\Documents\\future_alarm_bot\\configs\\backtest\\phase28_1_btc5m_baseline_presets.yml",
+  "smoke_test": true,
+  "preset_filter": "baseline",
+  "results_by_preset_period": {
+    "baseline": {
+      "smoke_test": {
+        "preset_description": "PHASE27-5 Grid Search Top 1",
+        "period_description": "30일 테스트 (Zero-Trade 버그 검증)",
+        "metrics": {
+          "total_trades": 0,
+          "win_rate": 0.0,
+          "gross_pnl": 0.0,
+          "net_pnl": 0.0,
+          "max_drawdown": 0.0,
+          "sharpe_like_ratio": 0.0,
+          "avg_holding_minutes": 0.0,
+          "long_short_ratio": 0.9763752953088086,
+          "long_count": 2893,
+          "short_count": 2963,
+          "signal_true": 5856,
+          "orders_submitted": 0
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,38 @@
+{
+  "run_id": "20251205_171200_ciju",
+  "duration_minutes": null,
+  "timestamp": "2025-12-05T17:12:02.769496",
+  "end_timestamp": "2025-12-05T17:14:24.232255",
+  "symbols": {
+    "BTCUSDT": {
+      "strategy_signals": {
+        "btc5m_baseline_v1": {
+          "total_calls": 8772,
+          "signal_true": 4334,
+          "signal_false": 4438,
+          "long_signals": 2128,
+          "short_signals": 2206,
+          "regime_range": 2352,
+          "regime_trend": 1982
+        }
+      },
+      "ensemble_decisions": {},
+      "guard_blocks": {},
+      "orders_submitted": 2
+    }
+  },
+  "totals": {
+    "strategy_signals_total": 8772,
+    "strategy_signals_true": 4334,
+    "strategy_signals_false": 4438,
+    "long_signals": 2128,
+    "short_signals": 2206,
+    "regime_range": 2352,
+    "regime_trend": 1982,
+    "ensemble_tier1": 0,
+    "ensemble_tier2": 0,
+    "ensemble_skip": 0,
+    "guard_blocks_total": 0,
+    "orders_submitted": 2
+  }
+}

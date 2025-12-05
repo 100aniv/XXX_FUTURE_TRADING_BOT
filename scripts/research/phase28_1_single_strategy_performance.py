@@ -25,6 +25,7 @@ import json
 import yaml
 import logging
 import argparse
+import copy
 from pathlib import Path
 from datetime import datetime
 from typing import Dict, List, Any, Tuple
@@ -79,7 +80,8 @@ except ImportError:
 logger = logging.getLogger(__name__)
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s [%(levelname)s] %(message)s'
+    format='%(asctime)s [%(levelname)s] %(message)s',
+    handlers=[logging.StreamHandler()]
 )
 
 
@@ -117,24 +119,98 @@ def merge_config_for_backtest(
     Returns:
         병합된 Config
     """
-    # 공통 설정 복사
-    config = common_cfg.copy()
+    # 공통 설정 복사 (deepcopy로 nested dict도 복사)
+    config = copy.deepcopy(common_cfg)
     
     # Backtest 모드 설정
     config['mode'] = 'backtest'
+    config['env'] = 'backtest'
     config['run_id'] = f"phase28_1_{preset_name}_{period_name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
     
-    # 기간 설정
+    # Backtest 섹션 생성 (엔진이 데이터 로드에 필요)
+    if 'backtest' not in config:
+        config['backtest'] = {}
+    config['backtest']['symbol'] = config.get('symbol', 'BTCUSDT')
+    config['backtest']['data_dir'] = config.get('data_dir', 'data')
+    config['backtest']['data_file'] = config.get('data_file', 'BTCUSDT_5m_2024-01-01_2024-12-31.csv')
+    config['backtest']['start_date'] = period_cfg['start']
+    config['backtest']['end_date'] = period_cfg['end']
+    
+    # 기간 설정 (top-level, 호환성)
     config['start_date'] = period_cfg['start']
     config['end_date'] = period_cfg['end']
     
-    # 전략 파라미터 병합
+    # 엔진 필수 키 매핑 ('initial_equity' → 'equity')
+    if 'equity' not in config and 'initial_equity' in config:
+        config['equity'] = config['initial_equity']
+    
+    # PositionSizer 필수 키: 'capital.initial'
+    if 'capital' not in config:
+        equity_value = config.get('equity', config.get('initial_equity', 10000.0))
+        config['capital'] = {'initial': equity_value}
+    
+    # Position Sizing 키 보완 (누락 시 기본값)
+    if 'position_sizing' not in config:
+        config['position_sizing'] = {}
+    ps_cfg = config['position_sizing']
+    ps_cfg.setdefault('quality_weight_min', 0.5)
+    ps_cfg.setdefault('quality_weight_max', 1.5)
+    ps_cfg.setdefault('max_position_value', 20000.0)
+    ps_cfg.setdefault('min_position_value', 100.0)
+    
+    # Risk 키 보완 (Risk Manager + PortfolioManager 필수)
+    if 'risk' not in config:
+        config['risk'] = {}
+    risk_cfg = config['risk']
+    risk_cfg.setdefault('per_trade', 0.02)
+    risk_cfg.setdefault('max_positions', 3)  # PortfolioManager 필수
+    risk_cfg.setdefault('max_open_positions', 3)
+    risk_cfg.setdefault('max_risk_per_trade', 0.03)
+    risk_cfg.setdefault('max_portfolio_risk', 0.1)
+    risk_cfg.setdefault('max_daily_loss', 0.05)
+    risk_cfg.setdefault('max_consecutive_losses', 5)
+    risk_cfg.setdefault('drawdown_threshold', 0.15)
+    risk_cfg.setdefault('max_exposure_per_symbol', 0.3)  # PortfolioManager 필수
+    
+    # Portfolio 키 보완 (PortfolioManager 필수)
+    if 'portfolio' not in config:
+        config['portfolio'] = {}
+    portfolio_cfg = config['portfolio']
+    portfolio_cfg.setdefault('initial_balance', config.get('equity', 10000.0))
+    portfolio_cfg.setdefault('currency', 'USDT')
+    portfolio_cfg.setdefault('max_open_positions', 3)
+    portfolio_cfg.setdefault('max_total_exposure', 0.6)  # PortfolioManager 필수
+    portfolio_cfg.setdefault('max_strategy_positions', 2)  # PortfolioManager 필수
+    portfolio_cfg.setdefault('max_exposure_pct', 0.9)
+    portfolio_cfg.setdefault('use_dynamic_exposure', True)
+    portfolio_cfg.setdefault('use_dynamic_budget', True)
+    portfolio_cfg.setdefault('symbol_cooldown_seconds', 60)
+    
+    # 전략 파라미터 병합 (PHASE28-1-FIX: PHASE27-5 방식 적용)
     if 'strategy' not in config:
         config['strategy'] = {}
     
-    # Preset 파라미터 추가
+    # Preset 파라미터를 'strategies' 섹션 아래에 직접 배치 (params 키 없이)
+    strategy_name = config['strategy'].get('selector', 'btc5m_baseline_v1')
+    
+    # 'strategies' 섹션 생성
+    if 'strategies' not in config:
+        config['strategies'] = {}
+    if strategy_name not in config['strategies']:
+        config['strategies'][strategy_name] = {}
+    
+    # ✅ PHASE27-5 방식: params 키 없이 파라미터 직접 병합
+    # Preset 파라미터를 strategies.btc5m_baseline_v1 아래에 직접 추가
     for key, value in preset_params.items():
-        config[key] = value
+        config['strategies'][strategy_name][key] = value
+    
+    # DEBUG: Config 검증
+    logger.info(f"  ✅ Config keys: {list(config.keys())}")
+    logger.info(f"  ✅ Strategy selector: {strategy_name}")
+    logger.info(f"  ✅ Strategies section: {list(config.get('strategies', {}).keys())}")
+    logger.info(f"  ✅ Strategy config keys: {list(config.get('strategies', {}).get(strategy_name, {}).keys())}")
+    logger.info(f"  ✅ Preset params to merge: {list(preset_params.keys())}")
+    logger.info(f"  ✅ RSI thresholds: long={config.get('strategies', {}).get(strategy_name, {}).get('rsi_long_threshold')}, short={config.get('strategies', {}).get(strategy_name, {}).get('rsi_short_threshold')}")
     
     return config
 
@@ -171,16 +247,23 @@ def run_single_backtest(
     )
     
     try:
+        # ✅ PHASE28-1-FIX: TradeActivityTracker 결과 파일 설정
+        tracker_output = f"reports/phase28_1_{preset_name}_{period_name}_tracker.json"
+        if 'trade_activity_tracker' not in config:
+            config['trade_activity_tracker'] = {}
+        config['trade_activity_tracker']['enabled'] = True
+        config['trade_activity_tracker']['output_file'] = tracker_output
+        
         # 엔진 실행 (run_v2 단일 진입점 사용)
         logger.info(f"  ↪ 엔진 호출: execution.engine.run_v2(mode='backtest')")
-        result = engine.run_v2(
+        engine.run_v2(
             mode='backtest',
             config=config,
             clean_state=True
         )
         
-        # 결과에서 메트릭 추출
-        metrics = extract_metrics_from_result(result, config)
+        # ✅ PHASE28-1-FIX: TradeActivityTracker 결과에서 메트릭 추출
+        metrics = extract_metrics_from_tracker(tracker_output, config)
         
         logger.info(f"✅ 백테스트 완료: {metrics.get('total_trades', 0)} trades")
         return metrics
@@ -193,6 +276,66 @@ def run_single_backtest(
             'period': period_name,
             'status': 'FAILED'
         }
+
+
+def extract_metrics_from_tracker(tracker_file: str, config: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    TradeActivityTracker 결과에서 메트릭 추출 (PHASE28-1-FIX)
+    
+    Args:
+        tracker_file: TradeActivityTracker JSON 파일 경로
+        config: 백테스트 Config
+    
+    Returns:
+        메트릭 dictionary
+    """
+    import json
+    from pathlib import Path
+    
+    tracker_path = Path(tracker_file)
+    if not tracker_path.exists():
+        logger.warning(f"⚠️ Tracker 파일 없음: {tracker_file}")
+        return {
+            'total_trades': 0,
+            'win_rate': 0.0,
+            'gross_pnl': 0.0,
+            'net_pnl': 0.0,
+            'max_drawdown': 0.0,
+            'sharpe_like_ratio': 0.0,
+            'avg_holding_minutes': 0.0,
+            'long_short_ratio': 0.0,
+            'long_count': 0,
+            'short_count': 0
+        }
+    
+    with open(tracker_path, 'r', encoding='utf-8') as f:
+        tracker_data = json.load(f)
+    
+    # Tracker에서 신호 통계 추출
+    totals = tracker_data.get('totals', {})
+    orders_submitted = totals.get('orders_submitted', 0)
+    signal_true = totals.get('strategy_signals_true', 0)
+    long_signals = totals.get('long_signals', 0)
+    short_signals = totals.get('short_signals', 0)
+    
+    logger.info(f"  📊 Tracker: orders_submitted={orders_submitted}, signal_true={signal_true}, long={long_signals}, short={short_signals}")
+    
+    # PHASE28-1: Tracker만으로는 win rate / PnL을 알 수 없으므로 기본값 반환
+    # 실제 trade 결과는 DB나 별도 로그에서 가져와야 함
+    return {
+        'total_trades': orders_submitted,
+        'win_rate': 0.0,  # Tracker에 없음
+        'gross_pnl': 0.0,  # Tracker에 없음
+        'net_pnl': 0.0,  # Tracker에 없음
+        'max_drawdown': 0.0,  # Tracker에 없음
+        'sharpe_like_ratio': 0.0,  # Tracker에 없음
+        'avg_holding_minutes': 0.0,  # Tracker에 없음
+        'long_short_ratio': long_signals / short_signals if short_signals > 0 else 0.0,
+        'long_count': long_signals,
+        'short_count': short_signals,
+        'signal_true': signal_true,
+        'orders_submitted': orders_submitted
+    }
 
 
 def extract_metrics_from_result(result: Any, config: Dict[str, Any]) -> Dict[str, Any]:
@@ -212,13 +355,16 @@ def extract_metrics_from_result(result: Any, config: Dict[str, Any]) -> Dict[str
     if isinstance(result, dict):
         trades = result.get('trades', [])
         equity_curve = result.get('equity_curve', [])
+        logger.info(f"  📊 Result type: dict, keys: {list(result.keys())}")
     else:
         # Result가 객체인 경우
         trades = getattr(result, 'trades', [])
         equity_curve = getattr(result, 'equity_curve', [])
+        logger.info(f"  📊 Result type: {type(result)}, has trades: {hasattr(result, 'trades')}")
     
     # 기본 메트릭
     total_trades = len(trades)
+    logger.info(f"  📊 Extracted trades count: {total_trades}")
     
     if total_trades == 0:
         return {
@@ -305,6 +451,12 @@ def run_performance_baseline(
     presets = config.get('presets', {})
     periods = config.get('market_periods', {})
     smoke_cfg = config.get('smoke_test', {})
+    
+    # ✅ PHASE28-1-FIX: strategies 섹션을 common에 병합
+    # Runner가 common만 복사하므로, config의 strategies 섹션을 common에 추가
+    if 'strategies' not in common_cfg and 'strategies' in config:
+        common_cfg['strategies'] = config['strategies']
+        logger.info(f"✅ strategies 섹션을 common에 병합: {list(config['strategies'].keys())}")
     
     # Smoke test 모드
     if smoke_test:
