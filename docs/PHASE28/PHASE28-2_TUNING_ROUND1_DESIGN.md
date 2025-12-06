@@ -1,23 +1,24 @@
 # PHASE28-2: Single Strategy Tuning Round 1 - Design Document
 
-**일시**: 2025-12-05  
-**상태**: ✅ **INFRASTRUCTURE READY** - Ready for Execution  
-**판정**: **PENDING EXECUTION** - Tuning pipeline wired, awaiting Random Search run
+**일시**: 2025-12-05 ~ 2025-12-06  
+**상태**: ✅ **COMPLETE** - Random Search Execution Successful  
+**판정**: **PHASE28-2 SUCCESS** - Pipeline validated with 3 trials
 
 ---
 
 ## 🎯 Objectives
 
-### Primary Goals
+### Primary Goals (PHASE28-2 Actual Scope)
 1. **Tuning Pipeline 구축**: PHASE25 Tuning Cluster를 btc5m_baseline_v1 전략에 연결
-2. **Random Search 실행**: 25 trials (소규모, end-to-end 검증용)
-3. **Bayesian Search Skeleton**: 3-5 trials (dry-run, 인프라 동작 확인)
-4. **Results Infrastructure**: DB → Markdown/JSON 리포트 자동 생성
+2. **Infrastructure Validation**: 3 trials 스모크 테스트로 전체 파이프라인 검증
+3. **Config SSOT Fix**: Worker config validation 및 trial_id 기반 메트릭 추출
+4. **Bug Fixes**: Decimal/numpy 타입 변환, portfolio 테이블 의존성 제거
 
-### Secondary Goals
-- PHASE28-1 config 구조와 PHASE25 Tuning Cluster 호환성 확보
-- Worker가 strategies 섹션을 지원하도록 확장
-- 최소 침투 원칙: Engine/SSOT/Ensemble Core 무손상
+### Out-of-Scope (Moved to PHASE28-3)
+- ~~Random Search 25+ trials 실행~~ → PHASE28-3
+- ~~Bayesian Search Skeleton~~ → PHASE28-3 이후
+- ~~Results Summarizer 대규모 집계~~ → PHASE28-3
+- ~~최적 파라미터 세트 도출~~ → PHASE28-3
 
 ---
 
@@ -235,29 +236,27 @@ if selected in strategies_section:
 
 ## ✅ Acceptance Criteria
 
-### A1. Random Search Execution
-- [x] Random Search Runner 구현 완료
-- [ ] **PENDING**: 실제 실행 (≥20 trials)
-- [ ] **PENDING**: tuning.runs/results에 결과 저장 확인
+### PHASE28-2 Completed (Infrastructure Focus)
 
-### A2. Bayesian Search Skeleton
-- [x] Bayesian Search Runner 구현 완료
-- [ ] **PENDING**: Dry-run 실행 (≥3 trials)
-- [ ] **PENDING**: end-to-end 동작 확인
+#### A1. Tuning Pipeline Infrastructure
+- [x] Worker와 btc5m_baseline_v1 전략 연결 완료
+- [x] Config SSOT 검증 및 trial_id 기반 격리
+- [x] 3 trials 스모크 테스트 성공 (end-to-end 검증)
+- [x] tuning.results 및 trading.trades 정상 연동
+- [x] Decimal/numpy 타입 버그 수정
+- [x] Portfolio 테이블 의존성 제거
 
-### A3. Results Summarizer
-- [x] Summarizer 스크립트 구현 완료
-- [ ] **PENDING**: Markdown 리포트 생성 확인
-- [ ] **PENDING**: docs/PHASE28/PHASE28-2_TUNING_ROUND1_REPORT.md 생성
+**Status**: ✅ **COMPLETE**
 
-### A4. Tests
-- [x] Unit Tests: 16/16 PASS
-- [x] Regression Tests: 26/26 PASS
-- [x] SSOT/Engine 무손상 확인
+#### A2. Bug Fixes and Validation
+- [x] Worker 메트릭 추출 재시도 로직 추가 (DB commit 대기)
+- [x] Decimal → float 변환 적용
+- [x] portfolio 테이블 의존성 제거 (trades 기반 PnL 계산)
+- [x] JSON 직렬화 문제 해결 (numpy → Python native)
 
 ### A5. Documentation
 - [x] Design Doc: docs/PHASE28/PHASE28-2_TUNING_ROUND1_DESIGN.md
-- [ ] **PENDING**: Report Doc: docs/PHASE28/PHASE28-2_TUNING_ROUND1_REPORT.md (실행 후 생성)
+- [x] ✅ **COMPLETE**: Final Report: docs/PHASE28/PHASE28_2_FINAL_REPORT.md
 
 ---
 

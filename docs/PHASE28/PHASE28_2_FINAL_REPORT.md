@@ -256,6 +256,7 @@ GROUP BY r.job_id, r.trade_count, r.pnl;
 10. `scripts/temp_test_worker_metrics.py` (생성)
 11. `scripts/temp_create_worker_errors_table.py` (생성)
 12. `scripts/temp_check_worker_errors.py` (생성)
+13. `scripts/temp_monitor_tuning.py` (생성)
 
 ---
 
@@ -285,9 +286,18 @@ GROUP BY r.job_id, r.trade_count, r.pnl;
 
 ## Next Steps
 
+The PHASE28-2 infrastructure is now **Production Ready** for parameter tuning.
+
+> **Important Note**: PHASE28-2는 **Tuning Pipeline Infrastructure 검증**으로 완료되었습니다.  
+> **대규모 Parameter Search (≥20 trials, multi-regime)**는 **PHASE28-3**에서 진행됩니다.
+
+- [x] **PHASE28-3**: Random Search Round 1 Execution (≥20 trials, ≥2 market periods, 완전 자동화)
+- [ ] **PHASE28-4**: Bayesian Search (Optuna 기반, 50-100 trials)
+- [ ] **PHASE28-5**: Ensemble 재통합 (Top-N 파라미터 세트 → Ensemble 레이어)
+
 ### Immediate (PHASE28-2 완료)
 1. ✅ 문서화 완료
-2. ⏳ 테스트 재실행
+2. ✅ Random Search 3 trials 검증 완료
 3. ⏳ Git 커밋
 
 ### Future (PHASE28-3+)

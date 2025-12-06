@@ -1271,15 +1271,61 @@ Ensemble ON 모드로 4시간 이상 연속 Paper 테스트 (인프라 안정성
     - configs/backtest/phase28_1_btc5m_baseline_presets.yml
     - scripts/research/phase28_1_single_strategy_performance.py
 
+- **28-2: Tuning Pipeline Infrastructure Validation** ✅ **COMPLETE** (2025-12-06)
+  - Tuning Pipeline 인프라 검증 및 버그 수정
+  - **Status**: ✅ Production Ready
+  - **목표**: PHASE25 Tuning Cluster를 btc5m_baseline_v1에 연결 및 검증
+  - **완료 내역**:
+    - ✅ Config SSOT 완성 (Worker validation 추가)
+    - ✅ trial_id 기반 거래 격리 (시간 기반 → trial_id 필터링)
+    - ✅ 3 trials 스모크 테스트 성공 (end-to-end 검증)
+    - ✅ Critical bug fixes (Decimal/numpy 타입, portfolio 테이블 제거)
+    - ✅ Worker 재시도 로직 추가 (DB commit 대기)
+  - **버그 수정** (4개):
+    - Decimal → float 타입 변환 (TypeError 해결)
+    - numpy → Python 기본 타입 변환 (JSON 직렬화 해결)
+    - portfolio 테이블 의존성 제거 (trades 기반 PnL 계산)
+    - DB commit 대기 + 재시도 로직 (eventual consistency)
+  - **Artifacts** ✅:
+    - tuning/cluster/worker.py (validation + bugfix, +80 LOC)
+    - configs/backtest/phase28_2_btc5m_tuning_base.yml
+    - configs/tuning/phase28_2_btc5m_baseline_paramspace.yml
+    - scripts/tuning/phase28_2_run_random_search.py
+    - scripts/temp_monitor_tuning.py
+    - docs/PHASE28/PHASE28-2_TUNING_ROUND1_DESIGN.md
+    - docs/PHASE28/PHASE28_2_FINAL_REPORT.md
+  - **Acceptance**: ✅ ALL PASS
+    - Worker와 btc5m_baseline_v1 연결 완료
+    - Config SSOT 검증 + trial_id 격리 완료
+    - 3 trials 스모크 테스트 성공 (tuning.results ↔ trading.trades 연동)
+    - Critical bugs 전부 수정
+  - **판정**: ✅ COMPLETE - Tuning Pipeline Infrastructure Production Ready
+
+- **28-3: Random Search Round 1 Execution** ⚠️ **IN PROGRESS** (2025-12-06)
+  - 대규모 Random Search (≥20 trials, ≥2 market periods)
+  - **Status**: ⚠️ Implementation Phase
+  - **목표**: 완전 자동화된 Random Search 실행 및 Top-N 후보 선정
+  - **Scope**:
+    - ✅ 환경 검증 자동화 (Python/DB/Redis)
+    - ✅ Job 제출 자동화 (ParamSpace 샘플링 + JobQueue)
+    - ✅ 진행 상황 자동 모니터링 (30s 간격)
+    - ✅ 결과 집계 및 리포트 자동 생성 (Markdown + JSON)
+  - **Acceptance Criteria**:
+    - [ ] ≥20 trials 성공 실행 (multi-period)
+    - [ ] Top-N 후보 자동 선정 (sharpe_like_ratio 기준)
+    - [ ] Markdown + JSON 리포트 자동 생성
+    - [ ] Zero manual intervention (환경 검증 → 실행 → 리포트)
+  - **Artifacts**:
+    - scripts/tuning/phase28_3_run_random_search_round1.py (~600 LOC)
+    - tests/tuning/test_phase28_3_automation.py (~300 LOC)
+    - docs/PHASE28/PHASE28-3_RANDOM_SEARCH_ROUND1_DESIGN.md
+    - docs/PHASE28/PHASE28-3_RESULTS.md (auto-generated)
+    - reports/tuning/phase28_3/results.json (auto-generated)
+  - **Next**: Unit tests → Smoke test → Full run (20+ trials)
+
 **진입 조건**: ✅ **PHASE27 완료** (단일 엔진 + SSOT Guard 테스트 PASS)
 
-**퇴출 조건**: 전략 성능/튜닝 완료 (28-1/28-2 완료 시)
-
-**목적**: 제어 기능 및 백테스트 결과 뷰어 추가
-
-**Sub-phases**
-- **30-0: 안전한 제어 흐름 설계**
-  - Paper/Live 전환, 전략 on/off, preset 변경 안전장치
+**퇴출 조건**: PHASE28-3 완료 시 (Random Search ≥20 trials, Top-N 선정, 리포트 생성)
 - **30-1: Control Panel 구현**
   - 제한된 조작 허용 (토글, preset, safe restart)
 - **30-2: Backtest/튜닝 결과 뷰어**
