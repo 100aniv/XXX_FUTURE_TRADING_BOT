@@ -39,6 +39,16 @@ logger = setup_logger(__name__, log_type="application")
 
 
 # ========================================
+# Utility Functions
+# ========================================
+
+def generate_run_id(base_name: str) -> str:
+    """Generate unique run_id with timestamp (including milliseconds)"""
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")[:21]  # YYYYmmdd_HHMMSS_fff
+    return f"{base_name}_{timestamp}"
+
+
+# ========================================
 # Environment Check
 # ========================================
 
@@ -437,51 +447,43 @@ def generate_json_results(aggregation: Dict[str, Any], output_path: str):
 # Worker Execution
 # ========================================
 
-def run_worker(run_ids: List[str], max_iterations: int = 1000):
+def run_worker(run_ids: List[str]):
     """
-    Worker 실행 (순차 처리)
+    Worker 실행 (모든 job 완료까지 loop)
     
     Args:
         run_ids: 처리할 run_id 리스트
-        max_iterations: 최대 반복 횟수 (무한 루프 방지)
     """
     logger.info("=" * 80)
     logger.info("🔨 Starting TuningWorker")
     logger.info("=" * 80)
+    logger.info(f"🎯 Target run_ids: {run_ids}")
     
-    worker = TuningWorker(worker_id="phase28_3_worker")
+    job_queue = JobQueue()
     
-    for iteration in range(max_iterations):
-        # Job 획득 시도
-        job = worker.acquire_job()
+    # run_id 필터링을 위해 각 run_id별로 Worker 생성 및 처리
+    for run_id in run_ids:
+        logger.info(f"🔨 Processing run: {run_id}")
+        worker = TuningWorker(worker_id=f"phase28_3_worker_{run_id[:8]}", job_queue=job_queue, run_id=run_id)
         
-        if job is None:
-            # Job 없음 → 모든 job 완료되었는지 확인
+        # 해당 run의 모든 job이 완료될 때까지 loop
+        while True:
+            # 남은 pending job 확인
             with get_db_connection() as conn:
                 with conn.cursor() as cur:
                     cur.execute("""
                         SELECT COUNT(*) 
                         FROM tuning.jobs 
-                        WHERE run_id = ANY(%s) AND status = 'PENDING'
-                    """, (run_ids,))
+                        WHERE run_id = %s AND status = 'PENDING'
+                    """, (run_id,))
                     pending_count = cur.fetchone()[0]
             
             if pending_count == 0:
-                logger.info("✅ No more jobs to process. Worker exiting.")
+                logger.info(f"✅ All jobs completed for run: {run_id}")
                 break
-            else:
-                logger.debug(f"⏳ No job available (iteration {iteration+1}), retrying...")
-                time.sleep(5)
-                continue
-        
-        # Job 처리
-        logger.info(f"🔨 Processing job: {job.get('job_id')}")
-        result = worker.process_job(job)
-        
-        if result.get('status') == 'COMPLETED':
-            logger.info(f"✅ Job completed: {job.get('job_id')}")
-        else:
-            logger.error(f"❌ Job failed: {job.get('job_id')}")
+            
+            # 1개 job 처리
+            worker.loop(once=True, poll_interval_sec=5)
     
     logger.info("=" * 80)
     logger.info("🔨 TuningWorker finished")
