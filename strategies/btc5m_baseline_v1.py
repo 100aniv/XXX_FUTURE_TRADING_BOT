@@ -61,9 +61,6 @@ from common.registry.strategy_metadata import StrategyMetadata
 
 logger = logging.getLogger(__name__)
 
-# 파라미터 로그 플래그
-_PARAMS_LOGGED = False
-
 
 def signal_logic(df: pd.DataFrame, config: dict) -> Dict[str, Any]:
     """
@@ -76,8 +73,6 @@ def signal_logic(df: pd.DataFrame, config: dict) -> Dict[str, Any]:
     Returns:
         dict: 신호 정보
     """
-    global _PARAMS_LOGGED
-    
     # Config 검증
     lv = config.get("leverage", {})
     if not all(k in lv for k in ("min", "max", "default")):
@@ -111,29 +106,6 @@ def signal_logic(df: pd.DataFrame, config: dict) -> Dict[str, Any]:
     atr_mult_sl = config.get('atr_mult_sl', 1.5)
     max_hold_minutes = config.get('max_hold_minutes', 60)
     allow_short = config.get('filters', {}).get('allow_short', True)
-    
-    if not _PARAMS_LOGGED:
-        logger.info("=" * 60)
-        logger.info("[BTC 5m BASELINE V1 INIT] 파라미터 로드 완료 (PHASE27-3 ADX 통합)")
-        logger.info("=" * 60)
-        logger.info(f"📊 신호 조건:")
-        logger.info(f"  - RSI LONG: < {rsi_long_threshold}")
-        logger.info(f"  - RSI SHORT: > {rsi_short_threshold}")
-        logger.info(f"  - BB Main: {bb_std_main} std")
-        logger.info(f"  - BB Strong: {bb_std_strong} std")
-        logger.info(f"  - Momentum: {momentum_lookback}캔들, {momentum_threshold*100:.1f}% 기준")
-        logger.info(f"🔄 ADX 레짐:")
-        logger.info(f"  - ADX 사용: {use_adx}")
-        if use_adx:
-            logger.info(f"  - ADX Period: {adx_period}")
-            logger.info(f"  - Trend 임계값: {adx_trend_threshold}")
-        logger.info(f"⚙️ 위험 관리:")
-        logger.info(f"  - RR: {rr}")
-        logger.info(f"  - SL 배수: {atr_mult_sl}x ATR")
-        logger.info(f"  - 최대 보유: {max_hold_minutes}분")
-        logger.info(f"  - 숏 허용: {allow_short}")
-        logger.info("=" * 60)
-        _PARAMS_LOGGED = True
     
     # BB 밴드 (indicators에서 이미 계산됨, 2.0 std 기본)
     bb_upper_default = float(last.get('bb_upper', price * 1.005))

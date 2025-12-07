@@ -552,6 +552,7 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict, sy
     if not use_ensemble:
         # 단일 전략: config.merge_strategy_config로 병합 (lookback 포함)
         strategy_selector = config.get("strategy", {}).get("selector", "scalping")
+        
         signal_gen_config = merge_strategy_config(config, strategy_selector)
 
         logger.info(

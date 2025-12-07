@@ -231,21 +231,22 @@ class BayesianSearchTuner:
             conn.commit()
         
         try:
-            # 2. Base config 로드
-            with open(config.base_config_path, 'r', encoding='utf-8') as f:
-                base_config = yaml.safe_load(f)
+            # 2. PHASE28-4: 공통 config builder 사용 (TuningWorker와 100% 동일)
+            from tuning.utils.config_builder import build_tuning_config
             
-            # 3. Params override
-            strategy_override = {
-                'strategy': {
-                    'params': params
-                }
-            }
-            merged_config = deep_merge(base_config, strategy_override)
+            # Period override는 필요 없음 (임시 config 파일에 이미 날짜 포함)
+            final_config = build_tuning_config(
+                base_config_path=config.base_config_path,
+                strategy_params=params,
+                trial_id=job_id,
+                run_id=run_id,
+                mode=config.mode,
+                period_override=None  # 임시 config에 이미 period 날짜 포함
+            )
             
-            # 4. 백테스트 실행
+            # 3. 백테스트 실행
             logger.info(f"  백테스트 실행 중 (mode={config.mode})...")
-            run_v2(mode=config.mode, config=merged_config, clean_state=True)
+            run_v2(mode=config.mode, config=final_config, clean_state=True)
             
             # 5. 메트릭 추출
             metrics = self._extract_metrics_from_db(run_id, job_id)
@@ -351,70 +352,123 @@ class BayesianSearchTuner:
     
     def _extract_metrics_from_db(self, run_id: str, job_id: str) -> Dict[str, Any]:
         """
-        DB에서 백테스트 결과 메트릭 추출
+        DB에서 백테스트 결과 메트릭 추출 (PHASE28-4: TuningWorker와 동일)
         
         Args:
             run_id: Run ID
-            job_id: Job ID
+            job_id: Job ID (trial_id로 사용)
         
         Returns:
             메트릭 딕셔너리
         """
-        with get_db_connection() as conn:
-            with conn.cursor() as cur:
-                # Trades 통계
-                cur.execute("""
-                    SELECT
-                        COUNT(*) as trade_count,
-                        SUM(CASE WHEN pnl > 0 THEN 1 ELSE 0 END) as win_count,
-                        SUM(CASE WHEN pnl <= 0 THEN 1 ELSE 0 END) as lose_count,
-                        SUM(pnl) as total_pnl,
-                        AVG(CASE WHEN pnl > 0 THEN pnl END) as avg_win,
-                        AVG(CASE WHEN pnl <= 0 THEN pnl END) as avg_lose
-                    FROM trading.trades
-                    WHERE created_at >= NOW() - INTERVAL '10 minutes'
-                """)
-                trade_row = cur.fetchone()
-                
-                # Portfolio 최종 상태
-                cur.execute("""
-                    SELECT equity
-                    FROM trading.portfolio
-                    ORDER BY updated_at DESC
-                    LIMIT 1
-                """)
-                portfolio_row = cur.fetchone()
+        import time
+        import numpy as np
         
-        trade_count = trade_row[0] if trade_row[0] else 0
-        win_count = trade_row[1] if trade_row[1] else 0
-        lose_count = trade_row[2] if trade_row[2] else 0
-        total_pnl = float(trade_row[3]) if trade_row[3] else 0.0
-        avg_win = float(trade_row[4]) if trade_row[4] else 0.0
-        avg_lose = float(trade_row[5]) if trade_row[5] else 0.0
+        # PHASE28-4: trial_id 기반 필터링 (TuningWorker와 동일)
+        sql_trades = """
+            SELECT pnl, pnl_pct, ts_close as exit_time
+            FROM trading.trades
+            WHERE trial_id = %s
+              AND status = 'CLOSED'
+            ORDER BY ts_close ASC
+        """
         
-        equity = float(portfolio_row[0]) if portfolio_row else 10000.0
-        initial_equity = 10000.0
-        pnl_pct = ((equity - initial_equity) / initial_equity) * 100.0
+        # Retry 로직 (DB commit 대기)
+        max_retries = 3
+        retry_delay = 0.5
+        trades_rows = []
         
+        for attempt in range(max_retries):
+            with get_db_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(sql_trades, (job_id,))
+                    trades_rows = cur.fetchall()
+            
+            if len(trades_rows) > 0:
+                break
+            
+            if attempt < max_retries - 1:
+                logger.warning(f"  No trades found for trial_id={job_id}, retrying in {retry_delay}s...")
+                time.sleep(retry_delay)
+        
+        # Trades 파싱 (Decimal → float)
+        trades = [
+            {
+                'pnl': float(row[0]) if row[0] is not None else 0.0,
+                'pnl_pct': float(row[1]) if row[1] is not None else 0.0,
+                'exit_time': row[2]
+            }
+            for row in trades_rows
+        ]
+        
+        trade_count = len(trades)
+        
+        if trade_count == 0:
+            logger.warning(f"  No trades found for trial_id={job_id}")
+            return {
+                'pnl': 0.0,
+                'pnl_pct': 0.0,
+                'trade_count': 0,
+                'win_count': 0,
+                'lose_count': 0,
+                'win_rate': 0.0,
+                'sharpe_ratio': 0.0,
+                'max_drawdown': 0.0,
+                'max_drawdown_duration_hours': 0.0,
+                'profit_factor': 0.0,
+                'avg_win': 0.0,
+                'avg_lose': 0.0
+            }
+        
+        # 메트릭 계산
+        win_count = sum(1 for t in trades if t['pnl'] > 0)
+        lose_count = trade_count - win_count
         win_rate = win_count / trade_count if trade_count > 0 else 0.0
-        profit_factor = abs(avg_win * win_count / (avg_lose * lose_count)) if lose_count > 0 and avg_lose != 0 else 0.0
         
-        # Sharpe Ratio 근사치 (일별 수익률 기반이 아니라 전체 pnl_pct 기반 간단 계산)
-        sharpe_ratio = pnl_pct / 10.0 if pnl_pct != 0 else 0.0
+        total_pnl = sum(t['pnl'] for t in trades)
+        avg_win = np.mean([t['pnl'] for t in trades if t['pnl'] > 0]) if win_count > 0 else 0.0
+        avg_lose = np.mean([t['pnl'] for t in trades if t['pnl'] <= 0]) if lose_count > 0 else 0.0
+        
+        # Profit Factor
+        profit_factor = 0.0
+        if win_count > 0 and lose_count > 0 and avg_lose != 0:
+            profit_factor = abs((avg_win * win_count) / (avg_lose * lose_count))
+        
+        # Sharpe Ratio (trade별 pnl_pct 기반 근사)
+        returns = [float(t['pnl_pct']) / 100.0 for t in trades if 'pnl_pct' in t]
+        sharpe_ratio = 0.0
+        if len(returns) > 1:
+            mean_return = np.mean(returns)
+            std_return = np.std(returns)
+            if std_return > 0:
+                sharpe_ratio = (mean_return / std_return) * np.sqrt(365)
+        
+        # Max Drawdown (cumulative PnL 기반)
+        cumulative = 0.0
+        peak = 0.0
+        max_dd = 0.0
+        for t in trades:
+            cumulative += t['pnl']
+            peak = max(peak, cumulative)
+            dd = peak - cumulative
+            max_dd = max(max_dd, dd)
+        
+        # pnl_pct 평균
+        avg_pnl_pct = np.mean([t['pnl_pct'] for t in trades]) if trade_count > 0 else 0.0
         
         return {
-            'pnl': round(total_pnl, 2),
-            'pnl_pct': round(pnl_pct, 2),
-            'trade_count': trade_count,
-            'win_count': win_count,
-            'lose_count': lose_count,
-            'win_rate': round(win_rate, 4),
-            'sharpe_ratio': round(sharpe_ratio, 4),
-            'max_drawdown': 0.0,  # TODO: 정확한 계산 추가
-            'max_drawdown_duration_hours': 0.0,
-            'profit_factor': round(profit_factor, 4),
-            'avg_win': round(avg_win, 2),
-            'avg_lose': round(avg_lose, 2)
+            'pnl': float(round(total_pnl, 2)),
+            'pnl_pct': float(round(avg_pnl_pct, 2)),
+            'trade_count': int(trade_count),
+            'win_count': int(win_count),
+            'lose_count': int(lose_count),
+            'win_rate': float(round(win_rate, 4)),
+            'sharpe_ratio': float(round(sharpe_ratio, 4)),
+            'max_drawdown': float(round(max_dd, 2)),
+            'max_drawdown_duration_hours': 0.0,  # TODO: duration 계산
+            'profit_factor': float(round(profit_factor, 4)),
+            'avg_win': float(round(avg_win, 2)),
+            'avg_lose': float(round(avg_lose, 2))
         }
     
     def _objective(

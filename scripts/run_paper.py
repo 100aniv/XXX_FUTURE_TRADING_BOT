@@ -63,7 +63,7 @@ def parse_args():
 def main():
     """메인 진입점"""
     logger.info("=" * 80)
-    logger.info(" PHASE23-3 Paper Trading Thin Wrapper")
+    logger.info("🚀 PHASE23-3 Paper Trading Thin Wrapper")
     logger.info("=" * 80)
     
     args = parse_args()
@@ -77,7 +77,7 @@ def main():
                 base_cfg = yaml.safe_load(f)
         else:
             base_cfg = {}
-            logger.warning("  base.yml 없음, custom config만 사용")
+            logger.warning("⚠️  base.yml 없음, custom config만 사용")
         
         # custom config 로드
         with open(args.config, 'r', encoding='utf-8') as f:
@@ -105,11 +105,11 @@ def main():
         if 'timeframe' in config:
             config.setdefault('feed', {})['base_timeframe'] = config['timeframe']
         
-        logger.info(f" Config 로딩 완료: {args.config}")
-        logger.info(f" Run ID: {run_id}")
+        logger.info(f"✅ Config 로딩 완료: {args.config}")
+        logger.info(f"🆔 Run ID: {run_id}")
         
     except Exception as e:
-        logger.error(f" Config 로딩 실패: {e}")
+        logger.error(f"❌ Config 로딩 실패: {e}")
         import traceback
         logger.error(traceback.format_exc())
         return 1
@@ -129,15 +129,15 @@ def main():
         )
         
         logger.info("=" * 80)
-        logger.info(" PAPER 실행 완료")
+        logger.info("✅ PAPER 실행 완료")
         logger.info("=" * 80)
         return 0
         
     except KeyboardInterrupt:
-        logger.warning("  사용자 중단")
+        logger.warning("⚠️  사용자 중단")
         return 130
     except Exception as e:
-        logger.error(f" 실행 실패: {e}")
+        logger.error(f"❌ 실행 실패: {e}")
         import traceback
         logger.error(traceback.format_exc())
         return 1

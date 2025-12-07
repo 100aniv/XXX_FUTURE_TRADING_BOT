@@ -188,7 +188,7 @@ class TuningWorker:
         from datetime import datetime
         from database import get_db_connection
         from execution.engine import run_v2
-        from common.config_loader import deep_merge
+        from tuning.utils.config_builder import build_tuning_config
         
         start_time = time.time()
         start_datetime = datetime.now()
@@ -236,60 +236,21 @@ class TuningWorker:
             logger.debug(f"[{self.worker_id}]   Base config: {base_config_path}")
             logger.debug(f"[{self.worker_id}]   Mode: {mode}")
             
-            # 2. Base config 로드
-            config_path = Path(base_config_path)
-            if not config_path.exists():
-                raise FileNotFoundError(f"Config file not found: {base_config_path}")
+            # 2. PHASE28-4: 공통 config builder 사용 (Random Search & Bayesian Search 통합)
+            config = build_tuning_config(
+                base_config_path=base_config_path,
+                strategy_params=params,
+                trial_id=job_id,
+                run_id=run_id,
+                mode=mode,
+                period_override=None  # Random Search는 base config의 날짜 사용
+            )
             
-            with open(config_path, 'r', encoding='utf-8') as f:
-                base_config = yaml.safe_load(f)
-            
-            # 3. Params override 적용
-            # params는 strategy params 영역에 적용
-            config = deep_merge(base_config, {})
-            
-            # PHASE28-2: Strategy params override (2가지 구조 지원)
-            # 방식 1: strategy.{selected}.params (PHASE25 원래 구조)
-            strategy_section = config.get('strategy', {})
-            selected = strategy_section.get('selected', strategy_section.get('selector', 'scalping'))
-            
-            if selected in strategy_section:
-                strategy_config = strategy_section[selected]
-                if 'params' not in strategy_config:
-                    strategy_config['params'] = {}
-                
-                # Params 덮어쓰기
-                for key, value in params.items():
-                    strategy_config['params'][key] = value
-            
-            # 방식 2: strategies.{strategy_name} (PHASE27/28-1 구조)
-            # merge_strategy_config()가 top-level로 복사하므로, strategies 섹션에도 적용
-            strategies_section = config.get('strategies', {})
-            if selected in strategies_section:
-                # strategies.{strategy_name}에 직접 적용 (params 키 없이)
-                for key, value in params.items():
-                    strategies_section[selected][key] = value
-                
-                logger.debug(f"[{self.worker_id}]   Params applied to strategies.{selected}")
-            
-            # Mode 설정
-            config['mode'] = mode
-            
-            # PHASE28-2: trial_id 설정 (tuning.results와 trading.trades 연결)
-            config['trial_id'] = job_id
-            config['run_id'] = run_id
-            
-            # Duration 짧게 (백테스트 빠르게)
-            # backtest 모드라면 기간은 이미 config에 있을 것
-            # paper 모드라면 아주 짧게 (30초)
-            if mode == 'paper':
-                config['duration_hours'] = 0.0083  # 30초
-            
-            # PHASE28-2: Config SSOT 검증
+            # 3. PHASE28-2: Config SSOT 검증
             # Base config가 모든 필수 키를 포함하도록 강제
             self._validate_tuning_config(config)
             
-            logger.debug(f"[{self.worker_id}]   Final config (strategy params): {strategy_section.get(selected, {}).get('params', {})}")
+            logger.debug(f"[{self.worker_id}]   Config build complete via build_tuning_config()")
             
             # 4. 엔진 호출
             logger.info(f"[{self.worker_id}] 백테스트 실행 중...")

@@ -1,0 +1,74 @@
+# ========================================
+# PHASE28-4: Bayesian Search Round 1 - Smoke Test Config
+# ========================================
+# Smoke test용 축소 설정 (각 Period당 3 trials)
+# ========================================
+
+run_metadata:
+  phase: "PHASE28-4"
+  run_name: "btc5m_bayesian_round1_smoke"
+  strategy_family: "baseline"
+  strategy_name: "btc5m_baseline_v1"
+  description: "Bayesian Search Round 1 Smoke Test"
+  tuning_method: "bayesian"
+  target_metric: "sharpe_like_ratio"
+
+bayesian_search:
+  max_trials_per_period: 3  # Smoke test: 3 trials만
+  n_startup_trials: 2
+  sampler: "TPE"
+  random_seed: 84
+  
+  objective:
+    metric: "sharpe_like_ratio"
+    direction: "maximize"
+    min_trades_for_valid_trial: 10
+    max_allowed_drawdown: -15.0
+    trade_penalty_weight: 2.0
+    drawdown_penalty_weight: 50.0
+
+top_n_seed:
+  random_search_results_path: "reports/tuning/phase28_3/results.json"
+  top_n: 3  # Smoke test: Top-3만
+  min_trades: 5
+  max_drawdown_threshold: -20.0
+
+target:
+  symbol: BTCUSDT
+  timeframe: 5m
+  mode: backtest
+
+base_config:
+  path: "configs/backtest/phase28_2_btc5m_tuning_base.yml"
+
+market_periods:
+  bull:
+    name: "Bull Trend"
+    start: "2024-11-01"
+    end: "2024-11-30"
+    weight: 1.0
+  
+  range:
+    name: "Range Consolidation"
+    start: "2024-10-01"
+    end: "2024-10-31"
+    weight: 1.0
+
+param_space_path: "configs/tuning/phase28_2_btc5m_baseline_paramspace.yml"
+
+execution:
+  timeout_seconds: 180
+  max_retries: 2
+  parallel:
+    enabled: false
+    max_workers: 1
+
+output:
+  results_dir: "reports/tuning/phase28_4_smoke"
+  top_n: 5
+  report:
+    enabled: true
+    path: "docs/PHASE28/PHASE28-4_SMOKE_TEST_RESULTS.md"
+  json:
+    enabled: true
+    path: "reports/tuning/phase28_4_smoke/results.json"
