@@ -1335,9 +1335,9 @@ Ensemble ON 모드로 4시간 이상 연속 Paper 테스트 (인프라 안정성
     - reports/tuning/phase28_3/results.json (전체 결과 데이터)
   - **판정**: ✅ COMPLETE - Random Search Round 1 완료
 
-- **28-4: Bayesian Search Round 1** ✅ **COMPLETE** (2025-12-07)
+- **28-4: Bayesian Search Round 1** ⚠️ **CONDITIONAL PASS** (2025-12-07)
   - Random Search 결과 기반 Bayesian Optimization 실행
-  - **Status**: ✅ **Infrastructure Complete** - **Parameter Passing VERIFIED & WORKING**
+  - **Status**: ⚠️ **CRITICAL FAILURE - Parameter Passing Completely Broken**
   - **목표**: PHASE28-3 Top-N 후보를 시드로 효율적 파라미터 탐색
   - **완료 내역**:
     - ✅ 설계 문서 작성 (PHASE28-4_BAYESIAN_SEARCH_ROUND1_DESIGN.md)
@@ -1348,34 +1348,45 @@ Ensemble ON 모드로 4시간 이상 연속 Paper 테스트 (인프라 안정성
     - ✅ 회귀 테스트: PHASE28-3 8/8 PASS, Engine SSOT 8/8 PASS
     - ✅ 공통 Config Builder (~150 LOC) - TuningWorker & BayesianSearchTuner 통합
     - ✅ DB 의존성 수정 - portfolio 테이블 제거, trial_id 기반 필터링
-    - ✅ 파라미터 전달 검증 - 전 단계 추적 완료
-  - **문제 해결** ✅:
-    - **근본 원인**: 로깅 에러로 인한 오인 (Windows 이모지 Unicode 문제)
-    - **실제 상태**: 파라미터가 항상 정상 전달되고 있었음
-    - **검증 결과**: CONFIG_BUILDER → ENGINE → STRATEGY 전 단계 파라미터 전달 확인
-    - 상세: docs/PHASE28/PHASE28-4_PARAM_PASSING_RESOLUTION.md
+    - ❌ 파라미터 전달 검증 - **완전 실패**
+  - **CRITICAL ISSUE** ❌:
+    - **실행 결과**: 13 trials 완료, **모든 Sharpe ≤ 0**, 9개 trials는 거래 0건
+    - **근본 원인**: 파라미터 전달 완전 실패 (`params: {}`, 모든 파라미터 `MISSING`)
+    - **실제 상태**: Bayesian Optimization이 **전혀 작동하지 않음**
+    - **영향**: 모든 trials가 default 파라미터로 실행됨
+    - **이전 검증의 문제**: PHASE28-4_PARAM_PASSING_RESOLUTION.md의 결론이 **잘못됨**
+    - 상세: docs/PHASE28/PHASE28-4_BAYESIAN_SEARCH_ROUND1_RESULTS.md
   - **Acceptance Criteria**:
     - [x] ✅ AC1: 설계 문서 작성
     - [x] ✅ AC2: 코드 구현 (Top-N 유틸, 실행 스크립트, Config, Common Builder)
     - [x] ✅ AC3: Unit tests 통과 (8/8 PASS)
     - [x] ✅ AC4: Smoke test PASS (1-trial 검증 완료, sharpe_ratio=-45.8204)
-    - [ ] ⏸️ AC5: Full execution (10 trials) - Ready to execute
-    - [ ] ⏸️ AC6: 결과 산출물 (AC5 실행 후)
+    - [x] ⚠️ AC5: Full execution (13 trials 완료, **하지만 파라미터 전달 실패**)
+    - [x] ⚠️ AC6: 결과 산출물 (JSON/Markdown 생성 완료, **하지만 결과 무효**)
     - [x] ✅ AC7: ROADMAP 업데이트 & Git commit
   - **Artifacts** ✅:
     - docs/PHASE28/PHASE28-4_BAYESIAN_SEARCH_ROUND1_DESIGN.md
     - docs/PHASE28/PHASE28-4_IMPLEMENTATION_BLOCKERS.md (Session 1&2 분석)
-    - docs/PHASE28/PHASE28-4_PARAM_PASSING_RESOLUTION.md ✨ (문제 해결 보고서)
+    - docs/PHASE28/PHASE28-4_PARAM_PASSING_RESOLUTION.md (❌ 잘못된 결론)
+    - docs/PHASE28/PHASE28-4_BAYESIAN_SEARCH_ROUND1_RESULTS.md ✨ (실행 결과 + CRITICAL ISSUES)
     - tuning/utils/result_selection.py (~180 LOC)
     - tuning/utils/config_builder.py (~150 LOC, 공통 helper, debug logging)
     - scripts/tuning/phase28_4_run_bayesian_search_round1.py (~400 LOC)
+    - scripts/tuning/phase28_4_summarize_bayesian_round1.py (~490 LOC, 결과 분석)
     - scripts/temp_phase28_4_debug_test.py (1-trial smoke test)
+    - scripts/temp_check_phase28_4_progress.py (DB 진행 모니터링)
     - configs/tuning/phase28_4_btc5m_bayesian_search.yml
     - configs/tuning/phase28_4_btc5m_bayesian_search_smoke.yml
     - tests/tuning/test_phase28_4_bayesian_search_round1.py (~290 LOC)
-    - tuning/algorithms/bayesian_search.py (config builder 통합, DB fix)
+    - reports/tuning/phase28_4/bayesian_round1_results.json (무효 결과)
+    - tuning/algorithms/bayesian_search.py (config builder 통합, DB fix, **파라미터 전달 broken**)
     - tuning/cluster/worker.py (config builder 통합)
-  - **판정**: ✅ **COMPLETE** - 파라미터 전달 정상 작동 확인, Full Round 1 실행 준비 완료
+  - **판정**: ⚠️ **CONDITIONAL PASS** - 형식적 AC 충족이지만 **실질적 실패**, 파라미터 전달 문제 해결 필수
+  - **Next Steps**:
+    1. BayesianSearchTuner._run_single_trial 파라미터 전달 경로 재조사
+    2. build_tuning_config 호출 시 params 인자 전달 확인
+    3. Random Search 대비 차이점 분석
+    4. 수정 후 PHASE28-4 재실행 필요
 
 **진입 조건**: PHASE29 완료
 

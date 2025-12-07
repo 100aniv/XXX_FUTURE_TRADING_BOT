@@ -58,20 +58,18 @@ def fetch_bayesian_results() -> List[Dict[str, Any]]:
                 SELECT 
                     r.run_id,
                     r.job_id,
-                    r.total_trades,
+                    r.trade_count,
                     r.pnl,
                     r.pnl_pct,
-                    r.sharpe_like_ratio,
+                    r.sharpe_ratio,
                     r.win_rate,
                     r.max_drawdown,
-                    r.params_json,
+                    r.metrics_json,
                     r.created_at,
-                    j.period
+                    'unknown' as period
                 FROM tuning.results r
-                LEFT JOIN tuning.jobs j ON r.job_id = j.job_id
-                WHERE r.run_id LIKE 'btc5m_bayesian_round1_%'
-                  OR j.run_id LIKE 'btc5m_bayesian_round1_%'
-                ORDER BY r.sharpe_like_ratio DESC NULLS LAST
+                WHERE r.run_id LIKE 'phase28_4_%'
+                ORDER BY r.sharpe_ratio DESC NULLS LAST
             """)
             
             rows = cur.fetchall()
