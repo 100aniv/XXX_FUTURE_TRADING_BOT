@@ -234,6 +234,9 @@ class BayesianSearchTuner:
             # 2. PHASE28-4: 공통 config builder 사용 (TuningWorker와 100% 동일)
             from tuning.utils.config_builder import build_tuning_config
             
+            logger.info(f"[PHASE28-4R PARAM DEBUG] Before build_tuning_config: params={params}")
+            logger.info(f"[PHASE28-4R PARAM DEBUG] strategy_name={config.strategy_name}")
+            
             # Period override는 필요 없음 (임시 config 파일에 이미 날짜 포함)
             final_config = build_tuning_config(
                 base_config_path=config.base_config_path,
@@ -243,6 +246,12 @@ class BayesianSearchTuner:
                 mode=config.mode,
                 period_override=None  # 임시 config에 이미 period 날짜 포함
             )
+            
+            logger.info(f"[PHASE28-4R PARAM DEBUG] After build_tuning_config:")
+            logger.info(f"[PHASE28-4R PARAM DEBUG]   selector={final_config.get('strategy', {}).get('selector')}")
+            if 'strategies' in final_config:
+                for key in final_config['strategies']:
+                    logger.info(f"[PHASE28-4R PARAM DEBUG]   strategies.{key} keys: {list(final_config['strategies'][key].keys())}")
             
             # 3. 백테스트 실행
             logger.info(f"  백테스트 실행 중 (mode={config.mode})...")
@@ -490,6 +499,8 @@ class BayesianSearchTuner:
         """
         # 1. 파라미터 제안
         params = self._suggest_params_from_space(trial, config.param_space)
+        logger.info(f"[PHASE28-4R PARAM DEBUG] Trial #{trial.number} suggested params: {params}")
+        logger.info(f"[PHASE28-4R PARAM DEBUG] param_space has {len(config.param_space.space)} params")
         
         # 2. Trial 실행
         job_index = trial.number

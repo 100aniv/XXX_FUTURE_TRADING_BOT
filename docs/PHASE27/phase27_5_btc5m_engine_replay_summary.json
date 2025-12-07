@@ -1,8 +1,8 @@
 {
-  "run_id": "phase28_4_bull_66931bd9_ed566794",
+  "run_id": "phase28_4_bull_d3f19874_4790333f",
   "duration_minutes": null,
-  "timestamp": "2025-12-07T17:55:15.158142",
-  "end_timestamp": "2025-12-07T17:58:22.314649",
+  "timestamp": "2025-12-07T18:57:37.081741",
+  "end_timestamp": "2025-12-07T19:01:07.805144",
   "symbols": {
     "BTCUSDT": {
       "strategy_signals": {
@@ -18,7 +18,7 @@
       },
       "ensemble_decisions": {},
       "guard_blocks": {},
-      "orders_submitted": 0
+      "orders_submitted": 1
     }
   },
   "totals": {
@@ -33,6 +33,6 @@
     "ensemble_tier2": 0,
     "ensemble_skip": 0,
     "guard_blocks_total": 0,
-    "orders_submitted": 0
+    "orders_submitted": 1
   }
 }

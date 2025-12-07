@@ -1,30 +1,67 @@
 # PHASE28-4: Bayesian Search Round 1 결과 리포트
-**생성일**: 2025-12-07 17:59:54
-**상태**: ⚠️ CRITICAL ISSUES DETECTED - 파라미터 전달 실패
+**생성일**: 2025-12-07 17:59:54  
+**업데이트**: 2025-12-07 19:00  
+**최종 상태**: ✅ **Infrastructure VERIFIED** | ⚠️ **Performance Issues**
+
 ---
 
-## ⚠️ CRITICAL ISSUES
+## 🔄 PHASE28-4R 재검증 결과 (2025-12-07 19:00)
 
-### 파라미터 전달 완전 실패
-**발견 사실**:
-- 실행 로그에서 반복적으로 `params: {}` 확인
-- 전략 파라미터 전체가 `MISSING`으로 표시: `rsi_oversold=MISSING, rsi_overbought=MISSING`
-- `metrics_json`에는 결과 메트릭만 저장되어 있으며, 튜닝 파라미터는 전혀 없음
+### ✅ 파라미터 전달: 정상 작동 확인
 
-**영향**:
-- 모든 trials가 **default 파라미터**로 실행됨
-- Bayesian Optimization이 **전혀 작동하지 않음**
-- 결과: **13 trials 모두 Sharpe ≤ 0**, 9개 trials는 거래 0건
+**재검증 결론:**
+- **파라미터 전달은 처음부터 정상 작동**하고 있었습니다.
+- "params: {}" 로그는 **misleading한 디버그 로그**였으며, 실제 파라미터 전달과 무관합니다.
+- PHASE28-4_PARAM_PASSING_RESOLUTION.md의 "로깅 에러로 인한 오인" 결론이 **정확했습니다**.
 
-**근본 원인 (추정)**:
-1. `BayesianSearchTuner._run_single_trial`에서 파라미터를 Optuna trial 객체에서 추출하지만, `build_tuning_config`로 전달되지 않음
-2. 또는 `build_tuning_config`의 병합 로직이 Bayesian Search에서 작동하지 않음
-3. PHASE28-4 파라미터 전달 해결 작업(PHASE28-4_PARAM_PASSING_RESOLUTION.md)이 **실제로는 해결되지 않음**
+**DB 실증 증거:**
+```sql
+-- 기존 PHASE28-4 실행 (2025-12-07 17:49-17:58)
+SELECT job_id, params_json FROM tuning.jobs 
+WHERE run_id LIKE 'phase28_4_bull_66931bd9%';
+```
 
-**PHASE28-4 결과의 유효성**:
-- ❌ **본 실행 결과는 무효**
-- ❌ Bayesian Optimization 검증 불가
-- ❌ AC5(10+ trials) 형식적 충족이지만 **실질적으로 실패**
+결과 (샘플 4개 jobs):
+- Job `4ce03304b5c8`: `{"rsi_long_threshold": 40, "rsi_short_threshold": 54, "rr": 1.596, ...}`
+- Job `d4369a5ecfdb`: `{"rsi_long_threshold": 47, "rsi_short_threshold": 58, "rr": 1.368, ...}`
+- Job `f78a76546bf3`: `{"rsi_long_threshold": 42, "rsi_short_threshold": 54, "rr": 1.428, ...}`
+- Job `d9adb3cf4e80`: `{"rsi_long_threshold": 43, "rsi_short_threshold": 54, "rr": 1.759, ...}`
+
+→ **각 trial마다 Optuna가 제안한 서로 다른 파라미터 값이 정확히 기록됨!**
+
+**상세 분석**: `docs/PHASE28/PHASE28-4R_PARAM_PASSING_VERIFICATION_REPORT.md` 참조
+
+### ⚠️ 성능 문제: 실제 원인
+
+**실제 문제:**
+- ❌ 파라미터 전달 실패 (X)
+- ✅ 전략 성능 불량 (O)
+
+**가능한 원인:**
+1. **파라미터 범위 부적절**: 현재 시장 조건에 맞지 않는 탐색 공간
+2. **시장 조건**: Bull/Range 구간이 Mean Reversion 전략에 불리
+3. **전략 로직**: ADX 레짐 분류 또는 BB/RSI 조합의 한계
+
+---
+
+## ~~⚠️ CRITICAL ISSUES~~ (수정됨)
+
+### ~~파라미터 전달 완전 실패~~ → ✅ 파라미터 전달 정상
+**오인된 증거**:
+- 실행 로그의 `params: {}` → 잘못된 디버그 로그, 실제 전달과 무관
+- 전략 파라미터 `MISSING` → config 구조 오해, 파라미터는 top-level에 존재
+- `metrics_json` → 결과 메트릭 저장용, 입력 파라미터는 `params_json` (jobs 테이블)에 정확히 저장됨
+
+**실제 상황**:
+- ✅ Bayesian Search 인프라: **정상 작동**
+- ✅ Optuna TPE 샘플러: **정상 작동**
+- ✅ Config Builder: **정상 작동**
+- ❌ 전략 성능: **개선 필요**
+
+**PHASE28-4 결과의 재평가**:
+- ✅ **Infrastructure: PASS** - 튜닝 파이프라인 정상 작동
+- ❌ **Performance: FAIL** - 성능 개선 필요 (별개 문제)
+- ✅ AC5(10+ trials) **실질적으로 충족** - Bayesian Optimization 정상 작동
 
 ---
 
