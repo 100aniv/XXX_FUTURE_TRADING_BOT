@@ -35,6 +35,9 @@ from .research import volume_based_v2
 # PHASE27-3: Baseline 전략 import
 from . import btc5m_baseline_v1
 
+# PHASE28-7: Baseline V2 전략 import
+from . import btc5m_baseline_v2
+
 logger = setup_logger('strategies', log_type='application')
 
 
@@ -66,7 +69,9 @@ def get_all_strategies() -> Dict[str, Any]:
         'trend_follow_v2': trend_follow_v2,
         'volume_based_v2': volume_based_v2,
         # PHASE27-3: Baseline 전략
-        'btc5m_baseline_v1': btc5m_baseline_v1
+        'btc5m_baseline_v1': btc5m_baseline_v1,
+        # PHASE28-7: Baseline V2 전략
+        'btc5m_baseline_v2': btc5m_baseline_v2
     }
 
 
@@ -110,8 +115,9 @@ def load_strategies(config: dict, all_strategies: dict = None) -> Dict[str, Dict
         # 1) 전략명 기반 클래스 이름 직접 시도 (예: btc5m_baseline_v1 -> BTC5mBaselineV1)
         # 일반적인 naming convention을 시도
         class_name_candidates = [
-            # Special case: btc5m_baseline_v1 -> BTC5mBaselineV1 (대문자 약어 유지)
+            # Special case: btc5m_baseline_v1/v2 -> BTC5mBaselineV1/V2 (대문자 약어 유지)
             'BTC5mBaselineV1' if strategy_name == 'btc5m_baseline_v1' else None,
+            'BTC5mBaselineV2' if strategy_name == 'btc5m_baseline_v2' else None,
             # CamelCase (btc5m_baseline_v1 -> Btc5mBaselineV1)
             ''.join(word.capitalize() for word in strategy_name.split('_')),
             # Pascal case with underscore preserved (btc5m_baseline_v1 -> Btc5mBaselineV1)
