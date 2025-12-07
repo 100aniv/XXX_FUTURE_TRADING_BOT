@@ -4,40 +4,43 @@
 Local Grid Search Tuner
 =======================
 PHASE25-4: Local Grid Search 기반 하이퍼파라미터 튜닝
+PHASE28-5: Sequential Local Grid Search (Bayesian Best 주변 탐색)
 
 주요 기능:
 - Random/Bayesian에서 얻은 Best K 후보 주변 국소 그리드 탐색
 - 각 후보의 파라미터를 중심으로 그리드 생성
-- JobQueue와 통합
+- JobQueue 통합 (클러스터 방식) 또는 Sequential 실행 (PHASE28-5)
 
 알고리즘:
 1. Base run (Random/Bayesian)에서 Top K 후보 조회
 2. 각 후보 주변 그리드 생성:
-   - int: center ± step * (grid_steps // 2)
-   - float: center ± delta * (grid_steps // 2), delta = (max - min) * step_factor
-   - categorical: 중심값만 사용
-3. 생성된 조합을 tuning.jobs에 enqueue
+   - int: center ± delta
+   - float: center ± (range * ratio)
+   - categorical: center 주변 이웃
+3. 생성된 조합을 실행 (클러스터 또는 Sequential)
 
-사용법:
+사용법 (PHASE28-5 Sequential):
+    from tuning.algorithms.local_grid_search import LocalGridSearchTuner
+    
+    # DB에서 seed trials 조회
+    seed_trials = [...]  # params_json 포함
+    
+    # Tuner 실행
+    tuner = LocalGridSearchTuner()
+    run_ids = tuner.run_from_seeds(
+        run_id_prefix='phase28_5_localgrid',
+        seed_trials=seed_trials,
+        param_space=param_space,
+        grid_config={...},
+        base_config_path='configs/...',
+        mode='backtest',
+        strategy_name='btc5m_baseline_v1'
+    )
+
+사용법 (PHASE25-4 클러스터):
     from tuning.algorithms import LocalGridSearchTuner, LocalGridSearchConfig
     
-    # Config 설정
-    config = LocalGridSearchConfig(
-        run_name='scalping_local_grid',
-        phase='PHASE25-4',
-        strategy_family='momentum',
-        strategy_name='scalping',
-        mode='backtest',
-        tuning_method='local_grid',
-        target_metric='sharpe_ratio',
-        base_run_id='<Random or Bayesian run_id>',
-        top_k=3,
-        grid_steps=3,
-        step_factor=0.1,
-        base_config_path='configs/paper/phase21_scalping_quick.yml'
-    )
-    
-    # Tuner 생성 및 실행
+    config = LocalGridSearchConfig(...)
     tuner = LocalGridSearchTuner()
     run_id = tuner.create_run_and_jobs(config)
 """
@@ -527,3 +530,464 @@ class LocalGridSearchTuner:
             })
         
         return results
+    
+    # ========================================
+    # PHASE28-5: Sequential Local Grid Search
+    # ========================================
+    
+    def run_from_seeds(
+        self,
+        run_id_prefix: str,
+        seed_trials: List[Dict[str, Any]],
+        param_space: ParamSpace,
+        grid_config: Dict[str, Any],
+        base_config_path: str,
+        mode: str = 'backtest',
+        strategy_name: str = 'btc5m_baseline_v1',
+        target_metric: str = 'sharpe_ratio'
+    ) -> List[str]:
+        """
+        PHASE28-5: Seed trials 기반 Sequential Local Grid Search
+        
+        BayesianSearchTuner.run_sequential()과 유사한 구조로,
+        각 seed 주변 grid를 생성하여 순차 실행
+        
+        Args:
+            run_id_prefix: Run ID prefix (예: 'phase28_5_localgrid')
+            seed_trials: Seed trial 리스트 [{'params_json': {...}, ...}, ...]
+            param_space: ParamSpace 인스턴스
+            grid_config: Grid 생성 설정
+                {
+                    'core_params': ['rsi_long_threshold', ...],  # Grid 대상
+                    'int_delta': 2,
+                    'float_ratio': 0.05,
+                    'discrete_neighbors': 1,
+                    'max_jobs': 30
+                }
+            base_config_path: Base config 파일 경로
+            mode: 실행 모드 ('backtest')
+            strategy_name: 전략 이름
+            target_metric: 목표 메트릭
+        
+        Returns:
+            생성된 run_id 리스트
+        """
+        import time
+        from database import get_db_connection
+        
+        logger.info("=" * 80)
+        logger.info(f"🔍 [PHASE28-5] Local Grid Search: Sequential Execution")
+        logger.info("=" * 80)
+        logger.info(f"Run ID Prefix: {run_id_prefix}")
+        logger.info(f"Seed Trials: {len(seed_trials)}")
+        logger.info(f"Grid Config: {grid_config}")
+        logger.info(f"Base Config: {base_config_path}")
+        logger.info("=" * 80)
+        
+        run_ids = []
+        
+        for seed_idx, seed_trial in enumerate(seed_trials, 1):
+            seed_params = seed_trial['params_json']
+            
+            logger.info(f"\n🌱 Seed {seed_idx}/{len(seed_trials)}")
+            logger.info(f"  Params: {seed_params}")
+            
+            # 1. Grid 생성
+            grid_params_list = self._build_grid_phase28_5(
+                seed_params=seed_params,
+                param_space=param_space,
+                grid_config=grid_config
+            )
+            
+            logger.info(f"  Generated Grid: {len(grid_params_list)} combinations")
+            
+            # max_jobs 제한
+            max_jobs = grid_config.get('max_jobs', 30)
+            if len(grid_params_list) > max_jobs:
+                import random
+                random.shuffle(grid_params_list)
+                grid_params_list = grid_params_list[:max_jobs]
+                logger.warning(f"  ⚠️  Grid size exceeds max_jobs, sampled {max_jobs} combinations")
+            
+            # 2. Run 생성
+            run_id = f"{run_id_prefix}_seed{seed_idx}_{uuid.uuid4().hex[:8]}"
+            
+            with get_db_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("""
+                        INSERT INTO tuning.runs (
+                            run_id, run_name, phase, strategy_family, strategy_name,
+                            mode, tuning_method, target_metric, total_jobs,
+                            metadata, config_override, created_at
+                        ) VALUES (
+                            %s, %s, %s, %s, %s,
+                            %s, %s, %s, %s,
+                            %s, %s, NOW()
+                        )
+                    """, (
+                        run_id,
+                        f"PHASE28-5 Local Grid Search Seed {seed_idx}",
+                        "PHASE28-5",
+                        "mean_reversion",
+                        strategy_name,
+                        mode,
+                        "local_grid_sequential",
+                        target_metric,
+                        len(grid_params_list),
+                        json.dumps({
+                            'seed_idx': seed_idx,
+                            'seed_params': seed_params,
+                            'grid_config': grid_config,
+                            'param_space': param_space.space
+                        }),
+                        json.dumps({'base_config_path': base_config_path})
+                    ))
+                conn.commit()
+            
+            logger.info(f"  ✅ Run created: {run_id}")
+            run_ids.append(run_id)
+            
+            # 3. 각 grid point 순차 실행
+            for job_idx, grid_params in enumerate(grid_params_list):
+                try:
+                    self._run_single_trial_phase28_5(
+                        run_id=run_id,
+                        job_index=job_idx,
+                        params=grid_params,
+                        base_config_path=base_config_path,
+                        mode=mode,
+                        strategy_name=strategy_name,
+                        target_metric=target_metric
+                    )
+                except Exception as e:
+                    logger.error(f"  ❌ Trial {job_idx} failed: {e}")
+                    continue
+            
+            logger.info(f"  ✅ Seed {seed_idx} completed: {len(grid_params_list)} trials")
+        
+        logger.info("=" * 80)
+        logger.info(f"🎉 [PHASE28-5] Local Grid Search completed: {len(run_ids)} runs")
+        logger.info("=" * 80)
+        
+        return run_ids
+    
+    def _build_grid_phase28_5(
+        self,
+        seed_params: Dict[str, Any],
+        param_space: ParamSpace,
+        grid_config: Dict[str, Any]
+    ) -> List[Dict[str, Any]]:
+        """
+        PHASE28-5: Seed 주변 grid 생성 (core params만 변경)
+        
+        Args:
+            seed_params: Seed trial의 파라미터
+            param_space: ParamSpace
+            grid_config: Grid 생성 설정
+        
+        Returns:
+            파라미터 조합 리스트
+        """
+        import itertools
+        
+        core_params = grid_config.get('core_params', [])
+        int_delta = grid_config.get('int_delta', 2)
+        float_ratio = grid_config.get('float_ratio', 0.05)
+        discrete_neighbors = grid_config.get('discrete_neighbors', 1)
+        
+        # 각 파라미터별 grid 값 생성
+        param_grids = {}
+        
+        for param_name in seed_params.keys():
+            center_value = seed_params[param_name]
+            spec = param_space.space.get(param_name)
+            
+            if not spec:
+                # ParamSpace에 없는 파라미터는 고정
+                param_grids[param_name] = [center_value]
+                continue
+            
+            # Core params가 아니면 고정
+            if param_name not in core_params:
+                param_grids[param_name] = [center_value]
+                continue
+            
+            param_type = spec['type']
+            
+            if param_type == 'int':
+                # int: center ± int_delta
+                grid_values = []
+                for delta in range(-int_delta, int_delta + 1):
+                    value = center_value + delta
+                    value = max(spec['min'], min(spec['max'], value))
+                    grid_values.append(value)
+                param_grids[param_name] = sorted(set(grid_values))
+            
+            elif param_type == 'float':
+                # float: center ± (range * float_ratio)
+                param_range = spec['max'] - spec['min']
+                delta = param_range * float_ratio
+                
+                grid_values = []
+                for multiplier in [-1, 0, 1]:
+                    value = center_value + multiplier * delta
+                    value = max(spec['min'], min(spec['max'], value))
+                    grid_values.append(round(value, 4))
+                param_grids[param_name] = sorted(set(grid_values))
+            
+            elif param_type == 'categorical':
+                # categorical: center 주변 이웃
+                candidates = spec.get('values', [center_value])
+                try:
+                    center_idx = candidates.index(center_value)
+                except ValueError:
+                    # center_value가 candidates에 없으면 고정
+                    param_grids[param_name] = [center_value]
+                    continue
+                
+                grid_values = []
+                for offset in range(-discrete_neighbors, discrete_neighbors + 1):
+                    idx = center_idx + offset
+                    if 0 <= idx < len(candidates):
+                        grid_values.append(candidates[idx])
+                param_grids[param_name] = list(set(grid_values))
+            
+            else:
+                # 알 수 없는 타입은 고정
+                param_grids[param_name] = [center_value]
+        
+        # Cartesian product
+        param_names = sorted(param_grids.keys())
+        param_values_list = [param_grids[name] for name in param_names]
+        
+        grid_combinations = []
+        for combo in itertools.product(*param_values_list):
+            params_dict = dict(zip(param_names, combo))
+            grid_combinations.append(params_dict)
+        
+        return grid_combinations
+    
+    def _run_single_trial_phase28_5(
+        self,
+        run_id: str,
+        job_index: int,
+        params: Dict[str, Any],
+        base_config_path: str,
+        mode: str,
+        strategy_name: str,
+        target_metric: str
+    ) -> Dict[str, Any]:
+        """
+        PHASE28-5: 단일 trial 실행 (BayesianSearchTuner._run_single_trial과 동일 구조)
+        
+        Args:
+            run_id: Run ID
+            job_index: Job index
+            params: 파라미터
+            base_config_path: Base config 경로
+            mode: 실행 모드
+            strategy_name: 전략 이름
+            target_metric: 목표 메트릭
+        
+        Returns:
+            메트릭 딕셔너리
+        """
+        import time
+        import json
+        import traceback
+        from execution.engine import run_v2
+        from tuning.utils.config_builder import build_tuning_config
+        from database import get_db_connection
+        
+        start_time = time.time()
+        job_id = f"job_{uuid.uuid4().hex[:12]}"
+        
+        logger.info(f"  🔬 Trial {job_index}: {job_id}")
+        
+        # 1. Job 레코드 생성
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    INSERT INTO tuning.jobs (
+                        job_id, run_id, job_index, params_json, status
+                    ) VALUES (%s, %s, %s, %s, 'RUNNING')
+                """, (job_id, run_id, job_index, json.dumps(params)))
+            conn.commit()
+        
+        try:
+            # 2. Config 생성 (build_tuning_config 재사용)
+            final_config = build_tuning_config(
+                base_config_path=base_config_path,
+                strategy_params=params,
+                trial_id=job_id,
+                run_id=run_id,
+                mode=mode,
+                period_override=None
+            )
+            
+            # 3. 백테스트 실행
+            run_v2(mode=mode, config=final_config, clean_state=True)
+            
+            # 4. 메트릭 추출 (BayesianSearchTuner와 동일)
+            metrics = self._extract_metrics_from_db_phase28_5(run_id, job_id)
+            
+            # 5. Runtime 추가
+            runtime_sec = time.time() - start_time
+            metrics['runtime_sec'] = round(runtime_sec, 3)
+            
+            # 6. DB 저장
+            with get_db_connection() as conn:
+                with conn.cursor() as cur:
+                    # Job 완료
+                    cur.execute("""
+                        UPDATE tuning.jobs
+                        SET status = 'COMPLETED',
+                            completed_at = NOW()
+                        WHERE job_id = %s
+                    """, (job_id,))
+                    
+                    # Result 삽입
+                    cur.execute("""
+                        INSERT INTO tuning.results (
+                            result_id, job_id, run_id,
+                            pnl, pnl_pct, trade_count, win_count, lose_count,
+                            win_rate, sharpe_ratio, max_drawdown,
+                            max_drawdown_duration_hours, profit_factor,
+                            avg_win, avg_lose, runtime_sec, metrics_json
+                        ) VALUES (
+                            %s, %s, %s,
+                            %s, %s, %s, %s, %s,
+                            %s, %s, %s,
+                            %s, %s,
+                            %s, %s, %s, %s
+                        )
+                    """, (
+                        f"result_{uuid.uuid4().hex[:12]}", job_id, run_id,
+                        metrics.get('pnl', 0.0),
+                        metrics.get('pnl_pct', 0.0),
+                        metrics.get('trade_count', 0),
+                        metrics.get('win_count', 0),
+                        metrics.get('lose_count', 0),
+                        metrics.get('win_rate', 0.0),
+                        metrics.get('sharpe_ratio', 0.0),
+                        metrics.get('max_drawdown', 0.0),
+                        metrics.get('max_drawdown_duration_hours', 0.0),
+                        metrics.get('profit_factor', 0.0),
+                        metrics.get('avg_win', 0.0),
+                        metrics.get('avg_lose', 0.0),
+                        runtime_sec,
+                        json.dumps(metrics)
+                    ))
+                    
+                    # Run 통계 업데이트
+                    cur.execute("""
+                        UPDATE tuning.runs
+                        SET completed_jobs = completed_jobs + 1
+                        WHERE run_id = %s
+                    """, (run_id,))
+                conn.commit()
+            
+            logger.info(f"    ✅ Trial {job_index} completed: {target_metric}={metrics.get(target_metric, 0.0):.4f}")
+            return metrics
+        
+        except Exception as e:
+            # 실패 처리
+            error_msg = f"{type(e).__name__}: {str(e)}"
+            runtime_sec = time.time() - start_time
+            
+            logger.error(f"    ❌ Trial {job_index} failed: {error_msg}")
+            
+            with get_db_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("""
+                        UPDATE tuning.jobs
+                        SET status = 'FAILED',
+                            error_message = %s,
+                            completed_at = NOW()
+                        WHERE job_id = %s
+                    """, (error_msg[:500], job_id))
+                conn.commit()
+            
+            # 실패한 경우에도 빈 메트릭 반환
+            return {
+                'pnl': 0.0,
+                'sharpe_ratio': 0.0,
+                'trade_count': 0,
+                'runtime_sec': runtime_sec,
+                'error': error_msg
+            }
+    
+    def _extract_metrics_from_db_phase28_5(
+        self,
+        run_id: str,
+        job_id: str
+    ) -> Dict[str, Any]:
+        """
+        PHASE28-5: DB에서 메트릭 추출 (BayesianSearchTuner와 동일)
+        
+        Args:
+            run_id: Run ID
+            job_id: Job ID
+        
+        Returns:
+            메트릭 딕셔너리
+        """
+        from database import get_db_connection
+        
+        # trading.trades 테이블에서 trial_id 기준으로 집계
+        sql = """
+        SELECT
+            COUNT(*) as trade_count,
+            COALESCE(SUM(CASE WHEN net_pnl > 0 THEN 1 ELSE 0 END), 0) as win_count,
+            COALESCE(SUM(CASE WHEN net_pnl <= 0 THEN 1 ELSE 0 END), 0) as lose_count,
+            COALESCE(SUM(net_pnl), 0.0) as pnl,
+            COALESCE(AVG(CASE WHEN net_pnl > 0 THEN net_pnl ELSE NULL END), 0.0) as avg_win,
+            COALESCE(AVG(CASE WHEN net_pnl <= 0 THEN net_pnl ELSE NULL END), 0.0) as avg_lose
+        FROM trading.trades
+        WHERE trial_id = %s
+        """
+        
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(sql, (job_id,))
+                row = cur.fetchone()
+        
+        trade_count = row[0] if row else 0
+        win_count = row[1] if row else 0
+        lose_count = row[2] if row else 0
+        pnl = float(row[3]) if row else 0.0
+        avg_win = float(row[4]) if row else 0.0
+        avg_lose = float(row[5]) if row else 0.0
+        
+        # 계산된 메트릭
+        win_rate = (win_count / trade_count) if trade_count > 0 else 0.0
+        profit_factor = (abs(avg_win * win_count) / abs(avg_lose * lose_count)) if lose_count > 0 and avg_lose != 0 else 0.0
+        
+        # PnL %
+        initial_balance = 50000.0  # Base config 기준
+        pnl_pct = (pnl / initial_balance) if initial_balance > 0 else 0.0
+        
+        # Sharpe-like (간단 버전)
+        sharpe_ratio = 0.0
+        if trade_count > 0 and avg_lose != 0:
+            sharpe_ratio = pnl / abs(avg_lose * lose_count) if lose_count > 0 else (pnl / abs(avg_win) if avg_win != 0 else 0.0)
+        
+        # Max Drawdown (간략 계산)
+        max_drawdown = abs(pnl) if pnl < 0 else 0.0
+        
+        metrics = {
+            'trade_count': trade_count,
+            'win_count': win_count,
+            'lose_count': lose_count,
+            'win_rate': round(win_rate, 4),
+            'pnl': round(pnl, 2),
+            'pnl_pct': round(pnl_pct, 4),
+            'avg_win': round(avg_win, 2),
+            'avg_lose': round(avg_lose, 2),
+            'profit_factor': round(profit_factor, 4),
+            'sharpe_ratio': round(sharpe_ratio, 4),
+            'max_drawdown': round(max_drawdown, 2),
+            'max_drawdown_duration_hours': 0.0
+        }
+        
+        return metrics

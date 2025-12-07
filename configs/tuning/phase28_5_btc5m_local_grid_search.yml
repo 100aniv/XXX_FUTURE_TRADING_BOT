@@ -1,0 +1,69 @@
+# PHASE28-5: Local Grid Search Round 1 Configuration
+# Local Grid Search around Bayesian Round 1 Best Trials
+
+run_name: "PHASE28-5: Local Grid Search Round 1 (BTC 5m)"
+base_run_id_prefix: "phase28_5_btc5m_localgrid_round1"
+
+# Source: PHASE28-4 Bayesian Round 1 Results
+source:
+  run_id_prefix: "phase28_4_"  # Bayesian Round 1
+  min_trades: 5                # Valid trials only
+  top_k_trials: 3              # Top 3 seeds
+
+# Grid Generation Config
+grid_config:
+  # Core parameters (grid search targets)
+  # Only these params will be varied, others fixed at seed values
+  core_params:
+    - rsi_long_threshold
+    - rsi_short_threshold
+    - bb_std_main
+    - bb_std_strong
+    - adx_trend_threshold
+  
+  # Grid generation rules
+  int_delta: 2              # Integer params: center ± 2
+  float_ratio: 0.05         # Float params: center ± (range * 0.05)
+  discrete_neighbors: 1     # Categorical params: center ± 1 index
+  max_jobs: 30              # Max jobs per seed (to prevent explosion)
+
+# Base Configuration
+base_config_path: "configs/backtest/phase28_2_btc5m_tuning_base.yml"
+param_space_path: "configs/tuning/phase28_2_btc5m_baseline_paramspace.yml"
+
+# Strategy Configuration
+strategy:
+  name: "btc5m_baseline_v1"
+  family: "mean_reversion"
+
+# Execution Settings
+mode: "backtest"
+target_metric: "sharpe_ratio"
+
+# Backtest Periods (same as Bayesian Round 1)
+periods:
+  - name: "bull"
+    start: "2024-11-01"
+    end: "2024-11-30"
+  - name: "range"
+    start: "2024-10-01"
+    end: "2024-10-31"
+
+# Output Paths
+output:
+  json:
+    path: "reports/tuning/phase28_5/local_grid_round1_results.json"
+  markdown:
+    path: "docs/PHASE28/PHASE28-5_LOCAL_GRID_SEARCH_ROUND1_RESULTS.md"
+
+# Logging
+logging:
+  level: "INFO"
+  console: true
+  file: "logs/tuning/phase28_5_local_grid_round1.log"
+
+# Notes
+# ------
+# - Grid explosion 방지: core_params만 변경, 나머지는 seed 고정
+# - max_jobs로 조합 수 제한 (초과 시 무작위 샘플링)
+# - 각 seed별로 별도 run_id 생성 (추적 편의)

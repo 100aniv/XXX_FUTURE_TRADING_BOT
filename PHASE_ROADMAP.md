@@ -1389,11 +1389,51 @@ Ensemble ON 모드로 4시간 이상 연속 Paper 테스트 (인프라 안정성
     - 13 trials, 모든 Sharpe ≤ 0 → 파라미터 범위/시장 조건/전략 로직 검토 필요
     - 후속 조치: PHASE28-5 (Local Grid Search) 또는 전략 로직 개선
 
+- **28-5: Local Grid Search Round 1** ✅ **COMPLETE** (2025-12-07)
+  - Bayesian Round 1 상위 trials 주변 국지 Grid Search 실행
+  - **Status**: ✅ **COMPLETE**
+  - **목표**: Bayesian Best 주변 정밀 탐색으로 성능 개선 가능성 확인
+  - **완료 내역**:
+    - ✅ 설계 문서 작성 (PHASE28-5_LOCAL_GRID_SEARCH_ROUND1_DESIGN.md)
+    - ✅ LocalGridSearchTuner 구현 (Sequential 실행 방식)
+      - `run_from_seeds()`: Seed trials 기반 grid 생성 및 순차 실행
+      - `_build_grid_phase28_5()`: Core params만 변경, 나머지 고정
+      - `_run_single_trial_phase28_5()`: BayesianSearchTuner와 동일 구조 재사용
+    - ✅ Config YAML (configs/tuning/phase28_5_btc5m_local_grid_search.yml)
+      - Grid 생성 규칙: int_delta=2, float_ratio=0.05, discrete_neighbors=1
+      - Max jobs=30 (grid explosion 방지)
+      - Core params: rsi_long_threshold, rsi_short_threshold, bb_std_main, bb_std_strong, adx_trend_threshold
+    - ✅ Runner 스크립트 (scripts/tuning/phase28_5_run_local_grid_search_round1.py)
+    - ✅ Progress/Summarize 스크립트
+      - scripts/temp_check_phase28_5_progress.py
+      - scripts/tuning/phase28_5_summarize_local_grid_round1.py
+    - ✅ Unit tests: 9/9 PASS (tests/tuning/test_local_grid_search.py)
+      - Grid 생성 로직 (int/float/categorical)
+      - Core params 필터링
+      - ParamSpace 경계 확인
+      - 중복 제거
+  - **Artifacts** ✅:
+    - tuning/algorithms/local_grid_search.py (PHASE28-5 Sequential 메서드 추가, ~994 LOC)
+    - scripts/tuning/phase28_5_run_local_grid_search_round1.py (~263 LOC)
+    - scripts/temp_check_phase28_5_progress.py (~155 LOC)
+    - scripts/tuning/phase28_5_summarize_local_grid_round1.py (~326 LOC)
+    - configs/tuning/phase28_5_btc5m_local_grid_search.yml
+    - tests/tuning/test_local_grid_search.py (~283 LOC, 9 tests)
+    - docs/PHASE28/PHASE28-5_LOCAL_GRID_SEARCH_ROUND1_DESIGN.md (상세 설계)
+    - docs/PHASE28/PHASE28-5_LOCAL_GRID_SEARCH_ROUND1_RESULTS.md (실행 후 생성)
+    - reports/tuning/phase28_5/local_grid_round1_results.json (실행 후 생성)
+  - **Acceptance Criteria**:
+    - [x] ✅ AC1: LocalGridSearchTuner 구현 완료
+    - [x] ✅ AC2: Runner & Config 존재 및 동작
+    - [x] ✅ AC3: 리포트 템플릿 준비 (실행 후 자동 생성)
+    - [x] ✅ AC4: Unit tests 9/9 PASS
+    - [x] ✅ AC5: ROADMAP 업데이트 완료
+  - **판정**: ✅ COMPLETE - Local Grid Search v1 Infrastructure Ready
+  - **참고**: 실제 실행 및 성능 검증은 별도 세션에서 수행 예정
+
 **진입 조건**: PHASE29 완료
 
 **퇴출 조건**: Control Panel 정상 작동, 백테스트 뷰어 정상 표시
-
----
 
 🧩 **PHASE31** – Infra Performance Tuning 2차 + 상용 준비 🟦 **PLANNED**
 
