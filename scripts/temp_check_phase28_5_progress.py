@@ -28,10 +28,10 @@ def check_progress():
     sql_runs = """
     SELECT
         run_id,
-        run_name,
         total_jobs,
         completed_jobs,
-        created_at
+        created_at,
+        status
     FROM tuning.runs
     WHERE run_id LIKE 'phase28_5_%'
     ORDER BY created_at DESC
@@ -54,15 +54,15 @@ def check_progress():
     
     for idx, run in enumerate(runs, 1):
         run_id = run[0]
-        run_name = run[1]
-        total_jobs = run[2]
-        completed_jobs = run[3]
-        created_at = run[4]
+        total_jobs = run[1]
+        completed_jobs = run[2]
+        created_at = run[3]
+        status = run[4]
         
         progress_pct = (completed_jobs / total_jobs * 100) if total_jobs > 0 else 0
         
         print(f"Run {idx}: {run_id}")
-        print(f"  Name: {run_name}")
+        print(f"  Status: {status}")
         print(f"  Progress: {completed_jobs}/{total_jobs} ({progress_pct:.1f}%)")
         print(f"  Created: {created_at}")
         print()

@@ -573,6 +573,8 @@ class LocalGridSearchTuner:
             생성된 run_id 리스트
         """
         import time
+        import json
+        import uuid
         from database import get_db_connection
         
         logger.info("=" * 80)
@@ -616,24 +618,28 @@ class LocalGridSearchTuner:
                 with conn.cursor() as cur:
                     cur.execute("""
                         INSERT INTO tuning.runs (
-                            run_id, run_name, phase, strategy_family, strategy_name,
+                            run_id, phase, strategy_family, strategy_name,
                             mode, tuning_method, target_metric, total_jobs,
+                            completed_jobs, failed_jobs, status,
                             metadata, config_override, created_at
                         ) VALUES (
-                            %s, %s, %s, %s, %s,
                             %s, %s, %s, %s,
+                            %s, %s, %s, %s,
+                            %s, %s, %s,
                             %s, %s, NOW()
                         )
                     """, (
                         run_id,
-                        f"PHASE28-5 Local Grid Search Seed {seed_idx}",
                         "PHASE28-5",
                         "mean_reversion",
                         strategy_name,
                         mode,
-                        "local_grid_sequential",
+                        "grid",  # tuning_method: 'random', 'bayesian', 'grid', 'manual'
                         target_metric,
                         len(grid_params_list),
+                        0,  # completed_jobs
+                        0,  # failed_jobs
+                        'RUNNING',  # status
                         json.dumps({
                             'seed_idx': seed_idx,
                             'seed_params': seed_params,
@@ -715,10 +721,10 @@ class LocalGridSearchTuner:
             param_type = spec['type']
             
             if param_type == 'int':
-                # int: center ± int_delta
+                # int: center ± int_delta (3 points only: -delta, 0, +delta)
                 grid_values = []
-                for delta in range(-int_delta, int_delta + 1):
-                    value = center_value + delta
+                for multiplier in [-1, 0, 1]:
+                    value = center_value + multiplier * int_delta
                     value = max(spec['min'], min(spec['max'], value))
                     grid_values.append(value)
                 param_grids[param_name] = sorted(set(grid_values))
@@ -736,7 +742,7 @@ class LocalGridSearchTuner:
                 param_grids[param_name] = sorted(set(grid_values))
             
             elif param_type == 'categorical':
-                # categorical: center 주변 이웃
+                # categorical: center 주변 이웃 (3 points only: -neighbors, 0, +neighbors)
                 candidates = spec.get('values', [center_value])
                 try:
                     center_idx = candidates.index(center_value)
@@ -746,7 +752,8 @@ class LocalGridSearchTuner:
                     continue
                 
                 grid_values = []
-                for offset in range(-discrete_neighbors, discrete_neighbors + 1):
+                for multiplier in [-1, 0, 1]:
+                    offset = multiplier * discrete_neighbors
                     idx = center_idx + offset
                     if 0 <= idx < len(candidates):
                         grid_values.append(candidates[idx])
@@ -938,11 +945,11 @@ class LocalGridSearchTuner:
         sql = """
         SELECT
             COUNT(*) as trade_count,
-            COALESCE(SUM(CASE WHEN net_pnl > 0 THEN 1 ELSE 0 END), 0) as win_count,
-            COALESCE(SUM(CASE WHEN net_pnl <= 0 THEN 1 ELSE 0 END), 0) as lose_count,
-            COALESCE(SUM(net_pnl), 0.0) as pnl,
-            COALESCE(AVG(CASE WHEN net_pnl > 0 THEN net_pnl ELSE NULL END), 0.0) as avg_win,
-            COALESCE(AVG(CASE WHEN net_pnl <= 0 THEN net_pnl ELSE NULL END), 0.0) as avg_lose
+            COALESCE(SUM(CASE WHEN pnl > 0 THEN 1 ELSE 0 END), 0) as win_count,
+            COALESCE(SUM(CASE WHEN pnl <= 0 THEN 1 ELSE 0 END), 0) as lose_count,
+            COALESCE(SUM(pnl), 0.0) as pnl,
+            COALESCE(AVG(CASE WHEN pnl > 0 THEN pnl ELSE NULL END), 0.0) as avg_win,
+            COALESCE(AVG(CASE WHEN pnl <= 0 THEN pnl ELSE NULL END), 0.0) as avg_lose
         FROM trading.trades
         WHERE trial_id = %s
         """
