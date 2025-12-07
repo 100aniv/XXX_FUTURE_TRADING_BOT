@@ -1,0 +1,264 @@
+# ========================================
+# PHASE28-8: btc5m_baseline_v2 Bear Period Baseline
+# 목표: V2 전략 Bear Trend 성능 검증
+# 데이터: 2024-08-01 ~ 2024-08-31 (Bear Trend, 31일)
+# ========================================
+
+# ========================================
+# 실행 모드 & 환경
+# ========================================
+mode: backtest
+env: backtest
+run_id: "phase28_8_btc5m_baseline_v2_bear"
+
+# ========================================
+# 심볼 & Timeframe
+# ========================================
+symbol: BTCUSDT
+timeframe: 5m
+lookback: 1000
+
+# ========================================
+# Backtest 설정 (Bear Trend 구간)
+# ========================================
+backtest:
+  symbol: BTCUSDT
+  data_dir: data
+  data_file: BTCUSDT_5m_2024-01-01_2024-12-31.csv
+  start_date: "2024-08-01"
+  end_date: "2024-08-31"
+
+# ========================================
+# Ensemble 설정 (단일 전략 V2 사용)
+# ========================================
+ensemble:
+  enabled: false
+  mode: score_v2
+  
+  strategies:
+    - btc5m_baseline_v2
+  
+  strategy_weights:
+    btc5m_baseline_v2: 1.0
+  
+  high_conf_threshold: 0.4
+  consensus_threshold: 0.2
+  min_strategies: 1
+  max_strategy_weight: 1.0
+  
+  max_risk: 0.95
+  min_quality: 0.1
+
+# ========================================
+# Strategy Selector (V2 단일 전략 직접 사용)
+# ========================================
+strategy:
+  selector: btc5m_baseline_v2
+  use_ensemble: false
+
+# ========================================
+# Capital
+# ========================================
+capital:
+  initial: 50000
+
+# ========================================
+# Execution
+# ========================================
+execution:
+  order_type: MARKET
+  timeout_sec: 30
+  reject_cooldown_seconds: 60
+
+# ========================================
+# Equity
+# ========================================
+equity: 50000
+
+# ========================================
+# Portfolio 설정
+# ========================================
+portfolio:
+  initial_balance: 50000.0
+  currency: USDT
+  max_open_positions: 3
+  max_symbol_exposure_pct: 30
+  max_exposure_pct: 60
+  max_total_exposure: 0.6
+  max_strategy_positions: 2
+  use_dynamic_exposure: true
+  use_dynamic_budget: true
+  symbol_cooldown_seconds: 60
+
+# ========================================
+# Position Sizing
+# ========================================
+position_sizing:
+  default_risk_per_trade: 0.02
+  mode: kelly_fraction
+  kelly_fraction: 0.25
+  leverage: 3.0
+  min_position_size: 0.001
+  max_position_size: 10.0
+  quality_weight_min: 0.5
+  quality_weight_max: 1.5
+  min_position_value: 100.0
+  max_position_value: 15000.0
+  multi_position_scaling: true
+  exposure_reduction_factor: 0.95
+  allow_partial_entry: true
+
+# ========================================
+# Risk Management
+# ========================================
+risk:
+  per_trade: 0.02
+  max_positions: 3
+  max_exposure_per_symbol: 0.3
+  max_total_exposure: 0.6
+  max_open_positions: 3
+  max_risk_per_trade: 0.03
+  max_portfolio_risk: 0.1
+  max_daily_loss: 0.05
+  max_consecutive_losses: 5
+  drawdown_threshold: 0.15
+  risk_free_rate: 0.0
+
+# ========================================
+# Exits
+# ========================================
+exits:
+  use_trailing_stop: false
+  trailing_stop_pct: 0.02
+  use_time_exit: true
+  max_hold_minutes: 180
+  emergency_exit:
+    enabled: true
+    loss_threshold: 0.10
+
+# ========================================
+# FlowGuardian
+# ========================================
+flow_guardian:
+  enabled: true
+  cooldown:
+    enabled: true
+    seconds: 60
+  budget_cap:
+    enabled: true
+  position_safety:
+    enabled: true
+    max_positions: 3
+  strategy_diversity:
+    enabled: false
+    min_active_strategies: 1
+
+# ========================================
+# TradeActivityTracker
+# ========================================
+trade_activity_tracker:
+  enabled: true
+  log_interval: 300
+  output_file: "reports/backtest/phase28_8/baseline_bear_summary.json"
+
+# ========================================
+# Monitoring
+# ========================================
+monitoring:
+  redis:
+    host: localhost
+    port: 6379
+    db: 0
+  metrics:
+    enabled: false
+
+# ========================================
+# Database
+# ========================================
+database:
+  url: ${DATABASE_URL}
+  host: ${DB_HOST}
+  port: ${DB_PORT}
+  name: ${DB_NAME}
+  user: ${DB_USER}
+  password: ${DB_PASSWORD}
+
+# ========================================
+# Telegram
+# ========================================
+telegram:
+  token: ${TELEGRAM_TOKEN}
+  chat_id: ${TELEGRAM_CHAT_ID}
+  enabled: false
+
+# ========================================
+# 전략별 파라미터 - BTC 5m Baseline V2 (PHASE28-6/7 Baseline)
+# ========================================
+strategies:
+  btc5m_baseline_v2:
+    # === Regime Detection ===
+    adx_period: 14
+    adx_trend_threshold: 25
+    di_diff_threshold: 5
+    atr_high_threshold: 70
+    atr_lookback: 100
+    
+    # === Dynamic Threshold Base ===
+    rsi_long_percentile_base: 25
+    rsi_short_percentile_base: 75
+    rsi_lookback: 100
+    
+    bb_mult_main_base: 0.8
+    bb_mult_strong_base: 1.5
+    
+    # === Regime Adjustment Factors ===
+    bull_rsi_adjustment: 1.2
+    bear_rsi_adjustment: 0.85
+    high_vol_bb_adjustment: 0.85
+    low_vol_bb_adjustment: 1.15
+    
+    # === Momentum ===
+    momentum_lookback: 5
+    momentum_threshold_base: 0.001
+    
+    # === Risk Management ===
+    atr_mult_sl: 1.5
+    rr: 1.5
+    max_hold_minutes: 60
+    min_bars_for_signal: 100
+    
+    # === Position Bias (Regime별) ===
+    bull_long_bias: 0.65
+    bear_short_bias: 0.65
+    
+    # === Filters ===
+    filters:
+      allow_short: true
+    
+    # === Leverage ===
+    leverage:
+      min: 1
+      max: 5
+      default: 3
+
+# ========================================
+# Indicators 설정 (V2용 확장)
+# ========================================
+indicators:
+  ema_fast: 20
+  ema_mid: 50
+  ema_slow: 200
+  rsi_len: 14
+  macd_fast: 12
+  macd_slow: 26
+  macd_signal: 9
+  bb_len: 20
+  bb_std: 2.0
+  atr_len: 14
+  vol_ma_len: 30
+  dc_len: 20
+  
+  # V2 전용: ADX + DI 지표 필수
+  use_adx: true
+  adx_period: 14
+  calculate_di: true

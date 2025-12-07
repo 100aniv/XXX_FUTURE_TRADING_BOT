@@ -1,0 +1,29 @@
+{
+  "run_id": "phase28_8_btc5m_baseline_v2_bear",
+  "period": "2024-08-01 ~ 2024-08-31",
+  "timestamp": "2025-12-08T00:58:52.662291",
+  "trades": {
+    "total": 3,
+    "long": 1,
+    "short": 2,
+    "long_short_ratio": 0.5
+  },
+  "performance": {
+    "win_count": 0,
+    "loss_count": 3,
+    "win_rate": 0.0,
+    "profit_factor": 0.0,
+    "sharpe_ratio": -6.2352
+  },
+  "pnl": {
+    "total": -124.04,
+    "avg_pnl": -41.35,
+    "avg_win": 0.0,
+    "avg_loss": -41.35,
+    "total_return_pct": -0.25
+  },
+  "risk": {
+    "max_drawdown": 0.25,
+    "final_equity": 49875.96
+  }
+}

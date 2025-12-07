@@ -13,7 +13,6 @@ PHASE26-3 추가:
 """
 import os
 import logging
-from logging.handlers import TimedRotatingFileHandler
 from datetime import datetime, timedelta
 import glob
 
@@ -110,12 +109,20 @@ def setup_logger(name: str, log_type: str = "application", level=logging.INFO):
     formatter = logging.Formatter('%(asctime)s [%(levelname)s] %(message)s')
     
     # 1. 콘솔 핸들러 (실시간 확인)
-    # PHASE22-1-FIX: 콘솔도 UTF-8 인코딩 명시 (Windows 환경 대응)
+    # PHASE28-8: UTF-8 인코딩 강제 (Windows 환경 Unicode 오류 방지)
     import sys
+    import io
+    
+    # Windows 환경에서 sys.stdout이 cp949일 경우 UTF-8로 재설정
+    try:
+        if hasattr(sys.stdout, 'reconfigure'):
+            # Python 3.7+
+            sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+            sys.stderr.reconfigure(encoding='utf-8', errors='replace')
+    except Exception:
+        pass  # reconfigure 실패 시 무시 (이미 UTF-8이거나 지원 안함)
+    
     console_handler = logging.StreamHandler(sys.stdout)
-    # StreamHandler는 encoding을 직접 설정할 수 없으므로 sys.stdout이 UTF-8인지 확인
-    # Python 3.7+ 에서는 sys.stdout.reconfigure(encoding='utf-8') 가능하지만,
-    # 이미 초기화된 stdout을 변경하는 것은 권장되지 않으므로 그대로 유지
     console_handler.setFormatter(formatter)
     logger.addHandler(console_handler)
     
@@ -140,16 +147,10 @@ def setup_logger(name: str, log_type: str = "application", level=logging.INFO):
         logger.addHandler(error_handler)
     
     # 4. 전체 통합 로그 (application.log, 최근 7일 로테이션)
-    # PHASE22-1: delay=True 추가로 파일 열림 시점을 실제 기록 순간으로 미룸 (PermissionError 방지)
+    # PHASE28-8: TimedRotatingFileHandler 대신 일반 FileHandler 사용 (PermissionError 방지)
+    # 백테스트/튜닝 환경에서는 로테이션 불필요 (세션별로 독립 실행)
     app_log_file = os.path.join(base_dir, "application.log")
-    app_handler = TimedRotatingFileHandler(
-        app_log_file, 
-        when='midnight', 
-        interval=1, 
-        backupCount=7,
-        encoding='utf-8',
-        delay=True
-    )
+    app_handler = logging.FileHandler(app_log_file, encoding='utf-8', delay=True, mode='a')
     app_handler.setFormatter(formatter)
     logger.addHandler(app_handler)
     

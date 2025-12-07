@@ -1,0 +1,38 @@
+{
+  "run_id": "20251207_235039_caxh",
+  "duration_minutes": null,
+  "timestamp": "2025-12-07T23:50:42.796072",
+  "end_timestamp": "2025-12-07T23:50:56.575291",
+  "symbols": {
+    "BTCUSDT": {
+      "strategy_signals": {
+        "btc5m_baseline_v2": {
+          "total_calls": 477,
+          "signal_true": 156,
+          "signal_false": 321,
+          "long_signals": 67,
+          "short_signals": 89,
+          "regime_range": 30,
+          "regime_trend": 0
+        }
+      },
+      "ensemble_decisions": {},
+      "guard_blocks": {},
+      "orders_submitted": 1
+    }
+  },
+  "totals": {
+    "strategy_signals_total": 477,
+    "strategy_signals_true": 156,
+    "strategy_signals_false": 321,
+    "long_signals": 67,
+    "short_signals": 89,
+    "regime_range": 30,
+    "regime_trend": 0,
+    "ensemble_tier1": 0,
+    "ensemble_tier2": 0,
+    "ensemble_skip": 0,
+    "guard_blocks_total": 0,
+    "orders_submitted": 1
+  }
+}
