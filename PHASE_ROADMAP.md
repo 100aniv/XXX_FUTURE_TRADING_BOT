@@ -1586,6 +1586,62 @@ Ensemble ON 모드로 4시간 이상 연속 Paper 테스트 (인프라 안정성
     - PHASE28-8-2: Guard 시스템 완화
     - PHASE29: 전략 패밀리 재평가 (Mean Reversion vs Trend Following)
 
+- **28-8-1: btc5m_baseline_v2 3-Month Extended Baseline Deep Dive** ✅ **COMPLETE** (2025-12-08)
+  - **Status**: ✅ **INFRASTRUCTURE COMPLETE** | ❌ **STRATEGY STILL NOT VIABLE**
+  
+  - **목표**: 3개월 연속 백테스트로 Regime/Signal/Order Funnel 정량적 진단
+  
+  - **완료 내역**:
+    1. ✅ 3개월 백테스트 Config 생성 (2024-08~10, 92일)
+    2. ✅ 3개월 백테스트 실행 완료 (46분 소요)
+    3. ✅ Extended Analyzer 구현 및 실행
+    4. ✅ 상세 리포트 생성 (JSON + Markdown)
+  
+  - **핵심 발견** (3개월 통합):
+    - **Trade Count**: 10건 (목표 60건 대비 83% 부족)
+    - **Win Rate**: 30% (목표 40% 미달, Bull/Bear 0%, Range 75%)
+    - **Sharpe Ratio**: -0.33 (목표 ≥0 미달)
+    - **Signal → Order 전환율**: **0.12%** (8,576 → 10)
+    - **Regime Trend**: **0건** (3개월 전체에서 Trend 미감지)
+    - **Regime Range**: 2,828건 (100% Range로 분류)
+  
+  - **근본 원인 확인**:
+    1. ❌ **Regime Detection 완전 오작동**
+       - Bull/Bear 구간 포함 3개월 전체에서 Trend Regime 0건
+       - ADX/DI 컬럼 미발견 경고 → 기본값 'range_low_vol' 사용
+       - 지표 계산 또는 컬럼명 불일치 문제
+    
+    2. ❌ **Guard/Portfolio 과도한 차단**
+       - Signal 8,576개 → Order 10건 (99.88% 차단)
+       - Budget Cap/Cooldown/Ensemble tier skip 복합 작용
+    
+    3. ❌ **V2 전략은 Range에서만 작동**
+       - Range 구간: Win Rate 75% (3/4)
+       - Trend 구간: Win Rate 0% (0/6)
+       - Mean Reversion 본질이 Trend에서 실패
+  
+  - **Acceptance Criteria**:
+    - [x] ✅ AC1: 3M Config 생성
+    - [x] ✅ AC2: 3M 백테스트 실행 완료
+    - [x] ✅ AC3: Extended Analyzer 구현
+    - [x] ✅ AC4: Funnel/Regime 분석 완료
+    - [x] ✅ AC5: 리포트 생성 및 문서화
+    - [x] ❌ AC6: Sharpe ≥ 0 달성 (실제: -0.33)
+  
+  - **Artifacts** ✅:
+    - configs/backtest/phase28_8_btc5m_baseline_v2_3m_v2.yml
+    - scripts/analysis/phase28_8_extended_baseline_deepdive.py
+    - reports/backtest/phase28_8/baseline_3m_summary.json
+    - reports/analysis/phase28_8_extended_baseline_3m_summary.json
+    - docs/PHASE28/PHASE28-8_EXTENDED_BASELINE_DEEPDIVE.md
+    - docs/PHASE28/PHASE28-8_MULTI_PERIOD_BASELINE_RESULTS.md (업데이트)
+  
+  - **판정**: ✅ **DEEP DIVE COMPLETE** - 근본 원인 정량적 확인, 전략 생존 불가 최종 판정
+  - **다음 단계**: 
+    - PHASE28-9: Regime Detection 컬럼명/지표 디버깅 (긴급)
+    - PHASE28-10: Guard 시스템 파라미터 완화
+    - PHASE29: 전략 패밀리 재평가 (Mean Reversion vs Trend Following)
+
 **Sub-phases**
 - **31-0: Multi-Symbol Top50/100 Full Load Test**
   - 대규모 심볼 동시 처리 검증

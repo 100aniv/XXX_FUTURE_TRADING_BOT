@@ -161,6 +161,75 @@ PHASE28-6/7에서 구현한 btc5m_baseline_v2 전략의 **Multi-Period Baseline 
 
 ---
 
+## 📊 Section 4-1: 3-Month Extended Baseline Deep Dive (2024-08-01 ~ 2024-10-31)
+
+**Status**: ✅ **COMPLETE** (PHASE28-8-1)
+
+### 4-1.1 실행 요약
+
+| Metric | Value |
+|--------|-------|
+| **Period** | 2024-08-01 ~ 2024-10-31 (92일) |
+| **Market Regimes** | Bear + Range + Bull (연속) |
+| **Candles** | 26,496개 (5m) |
+| **Strategy Calls** | 26,397회 |
+| **Signals Generated** | 8,576개 (LONG: 4,084, SHORT: 4,492) |
+| **Orders Submitted** | 10건 |
+| **Trades Completed** | 10건 (LONG: 4, SHORT: 6) |
+
+### 4-1.2 성능 메트릭
+
+| Metric | Result | Target (PHASE28-6) | Status |
+|--------|--------|---------------------|--------|
+| **Trade Count** | 10 | ≥ 60 (20/month × 3) | ❌ **FAIL** (83% 부족) |
+| **Win Rate** | 30.0% | ≥ 40% | ❌ **FAIL** |
+| **Sharpe Ratio** | -0.3323 | ≥ 0.0 | ❌ **FAIL** |
+| **Total PnL** | -$152.62 | Positive | ❌ **FAIL** |
+| **Total Return** | -0.31% | Positive | ❌ **FAIL** |
+| **Max Drawdown** | 0.4% | ≤ 20% | ✅ **PASS** |
+| **Final Equity** | $49,847.38 | > $50,000 | ❌ **FAIL** |
+| **Profit Factor** | 0.493 | ≥ 1.5 | ❌ **FAIL** |
+
+### 4-1.3 Signal → Order → Trade Funnel
+
+| Stage | Count | Conversion Rate |
+|-------|-------|-----------------|
+| **Signals Generated** | 8,576 | 100% |
+| **Orders Submitted** | 10 | **0.12%** |
+| **Trades Executed** | 10 | 100% (of orders) |
+
+**핵심 발견**:
+- ⚠️ **극도로 낮은 Signal → Order 전환율** (0.12%)
+- ⚠️ 8,566개 신호가 Guard/Portfolio 레이어에서 차단됨
+- Signal 대비 Order 비율이 1/857 수준
+
+### 4-1.4 Regime Distribution
+
+| Regime | Count | % |
+|--------|-------|---|
+| **Trend** | 0 | 0.0% |
+| **Range** | 2,828 | 100.0% |
+
+**핵심 발견**:
+- ❌ **Trend Regime이 전혀 감지되지 않음** (Bull/Bear 구간 포함)
+- ❌ 모든 캔들이 Range로 분류됨
+- ❌ Regime Detection 로직이 완전히 오작동
+
+### 4-1.5 Trade Breakdown (3개월)
+
+| Trade # | Side | PnL | Win/Loss |
+|---------|------|-----|----------|
+| 1-3 | LONG(1), SHORT(2) | -$134.21 (Bull 기간) | 3 Loss |
+| 4-6 | LONG(1), SHORT(2) | -$124.04 (Bear 기간) | 3 Loss |
+| 7-10 | LONG(2), SHORT(2) | $105.63 | 3 Win, 1 Loss |
+
+**관찰 사항**:
+- Bull/Bear 기간: Win Rate 0% (6전 6패)
+- Range 기간: Win Rate 75% (4전 3승 1패)
+- V2 전략이 Range 구간에서만 작동 (Trend 구간에서 실패)
+
+---
+
 ## 🔍 Section 5: 종합 분석
 
 ### 5.1 PHASE28-6 설계 목표 대비 비교

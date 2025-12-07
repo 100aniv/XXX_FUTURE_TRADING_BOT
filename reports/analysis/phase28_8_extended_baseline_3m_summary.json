@@ -1,0 +1,43 @@
+{
+  "trade_analysis": {
+    "trial_id": "phase28_8_btc5m_baseline_v2_3m_v2",
+    "total_trades": 10,
+    "long_trades": 4,
+    "short_trades": 6,
+    "win_count": 3,
+    "loss_count": 7,
+    "win_rate": 30.0,
+    "profit_factor": 0.493,
+    "sharpe_ratio": -0.3323,
+    "total_pnl": -152.62,
+    "avg_pnl": -15.26,
+    "avg_win": 49.52,
+    "avg_loss": -43.02,
+    "total_return_pct": -0.31,
+    "max_drawdown": 0.4,
+    "final_equity": 49847.38,
+    "daily_stats": [
+      {
+        "date": "2025-12-08",
+        "trades": 10,
+        "wins": 3,
+        "win_rate": 30.0,
+        "pnl": -152.62
+      }
+    ]
+  },
+  "funnel_analysis": {
+    "signals_generated": 8576,
+    "orders_submitted": 10,
+    "signal_to_order_ratio": 0.12,
+    "regime_distribution": {
+      "regime_trend": 0,
+      "regime_range": 2828
+    },
+    "signal_breakdown": {
+      "long_signals": 4084,
+      "short_signals": 4492
+    }
+  },
+  "timestamp": "2025-12-08T08:36:54.618400"
+}
