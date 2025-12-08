@@ -31,11 +31,15 @@ class PositionSizer:
     (업계 표준: Risk-per-trade + Quality weighting + Liquidation safety)
     """
     
-    def __init__(self, config: dict):
+    def __init__(self, config: dict, activity_tracker=None):
         """
         Args:
             config: config.yml 전체 설정
+            activity_tracker: TradeActivityTracker instance (PHASE28-10, optional)
         """
+        # ⭐ PHASE28-10: Activity Tracker (Guard Telemetry)
+        self.activity_tracker = activity_tracker
+        
         # 기본 설정 (config.yml에서)
         self.config = config
         self.equity = config['capital']['initial']
@@ -164,6 +168,10 @@ class PositionSizer:
         
         # min_position_value 체크
         if position_value < self.min_position_value:
+            # ⭐ PHASE28-10: Guard Telemetry
+            symbol = signal.get('symbol', 'UNKNOWN')
+            if self.activity_tracker:
+                self.activity_tracker.record_guard_block(symbol, "GUARD_MIN_NOTIONAL")
             return 0.0, {"reason": "below_min_value"}
         
         # 5) 거래소 최소 수량

@@ -62,11 +62,16 @@ class RiskManager:
     ⭐ PR12: PortfolioManager로 PnL 관리 통합, 가드 로직만 유지
     """
     
-    def __init__(self, config: dict, portfolio=None):
+    def __init__(self, config: dict, portfolio=None, activity_tracker=None):
         """
         Args:
             config: config.yml 전체 설정
+            portfolio: PortfolioManager instance (optional)
+            activity_tracker: TradeActivityTracker instance (PHASE28-10, optional)
         """
+        # ⭐ PHASE28-10: Activity Tracker (Guard Telemetry)
+        self.activity_tracker = activity_tracker
+        
         # 모드 확인
         self.mode = config.get('mode', 'paper')
         
@@ -315,6 +320,9 @@ class RiskManager:
         
         # 0-1) ⭐⭐⭐ 자본 소진 체크 (모든 모드)
         if self.equity <= 0:
+            # ⭐ PHASE28-10: Guard Telemetry
+            if self.activity_tracker:
+                self.activity_tracker.record_guard_block(symbol, "GUARD_EQUITY_DEPLETED")
             return False, f"자본 소진: ${self.equity:.2f}"
         
         # 0-2) ⭐ TUNING_VIBLE: 연속 손실 쿨다운 체크 (프로파일에 따라)
@@ -328,6 +336,9 @@ class RiskManager:
                 else:
                     remaining = max(0, self.cooldown_minutes - int(elapsed))
                     self._notify_guard(f"Cooldown active: {self.consecutive_losses} losses, {remaining}m left")
+                    # ⭐ PHASE28-10: Guard Telemetry
+                    if self.activity_tracker:
+                        self.activity_tracker.record_guard_block(symbol, "GUARD_CONSECUTIVE_LOSS_COOLDOWN")
                     return False, f"연속 손실 쿨다운 ({self.consecutive_losses}회, {remaining}분 남음)"
             else:
                 # 쿨다운 OFF 모드
@@ -338,6 +349,9 @@ class RiskManager:
             daily_pnl = self.portfolio.get_daily_pnl()
             if ((self.mode != 'backtest') or self.enforce_daily_loss_in_backtest) and abs(daily_pnl) >= self.daily_loss_limit:
                 self._notify_guard(f"Daily loss limit hit: {daily_pnl:.2f} ≥ {self.daily_loss_limit:.2f}")
+                # ⭐ PHASE28-10: Guard Telemetry
+                if self.activity_tracker:
+                    self.activity_tracker.record_guard_block(symbol, "GUARD_DAILY_LOSS_LIMIT")
                 return False, f"일일 손실 한도 초과: {daily_pnl:.2f}"
         
         # 1-1) 전체 자산 중지 한도 (equity stop)
@@ -345,11 +359,17 @@ class RiskManager:
             dd = max(0.0, self.initial_equity - self.equity)
             if dd >= self.equity_stop_limit:
                 self._notify_guard(f"Equity stop hit: DD={dd:.2f} ≥ {self.equity_stop_limit:.2f}")
+                # ⭐ PHASE28-10: Guard Telemetry
+                if self.activity_tracker:
+                    self.activity_tracker.record_guard_block(symbol, "GUARD_EQUITY_STOP")
                 return False, f"전체 자산 중지 한도 초과: {dd:.2f}"
         
         # 2) 동시 포지션 수 체크 (⭐ PHASE16+: 0 = 무제한)
         if self.max_positions > 0 and self.active_positions_count >= self.max_positions:
             self._notify_guard(f"Max positions reached: {self.active_positions_count}/{self.max_positions}")
+            # ⭐ PHASE28-10: Guard Telemetry
+            if self.activity_tracker:
+                self.activity_tracker.record_guard_block(symbol, "GUARD_MAX_POSITIONS")
             return False, f"동시 포지션 한도 도달: {self.active_positions_count}/{self.max_positions}"
         
         # 3) 심볼별 노출 한도 체크
@@ -369,6 +389,9 @@ class RiskManager:
         total_exposure = current_exposure + position_value
         if total_exposure > max_per_symbol + epsilon:
             self._notify_guard(f"Per-symbol exposure limit: {symbol} {total_exposure:.2f} > {max_per_symbol:.2f}")
+            # ⭐ PHASE28-10: Guard Telemetry
+            if self.activity_tracker:
+                self.activity_tracker.record_guard_block(symbol, "GUARD_SYMBOL_EXPOSURE")
             return False, f"심볼별 한도 초과: {symbol} {total_exposure:.2f} > {max_per_symbol:.2f}"
         
         # 모든 체크 통과

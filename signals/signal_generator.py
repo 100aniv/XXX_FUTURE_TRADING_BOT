@@ -35,13 +35,15 @@ logger = setup_logger('signals', log_type='signals')
 class SignalGenerator:
     """신호 생성 및 검증"""
     
-    def __init__(self, config: dict, strategy_modules: dict = None):
+    def __init__(self, config: dict, strategy_modules: dict = None, activity_tracker=None):
         """
         Args:
             config: 설정 딕셔너리 (CFG)
             strategy_modules: 전략 dict (PHASE23-2: {name: {"instance": ..., "params": ...}} 형태)
+            activity_tracker: PHASE28-10 Guard Telemetry
         """
         self.config = config
+        self.activity_tracker = activity_tracker
         self.buffers: dict = {}  # 심볼별 캠들 버퍼
         self.last_alert_ts: dict = {}  # 쿨다운
         self.last_regime: dict = {}  # 레짐
@@ -200,6 +202,9 @@ class SignalGenerator:
             last = df.iloc[-1]
             if last["vol_ma"] > 0 and last["volume"] > last["vol_ma"] * self.config["vol_spike_mult"]:
                 logger.info(f"⚠️ {symbol} 거래량 급증으로 신호 보류")
+                # ⭐ PHASE28-10: Filter Telemetry
+                if self.activity_tracker:
+                    self.activity_tracker.record_guard_block(symbol, "FILTER_VOLUME_SPIKE")
                 return False
         
         # 2. 세션 화이트리스트 확인 (UTC)
@@ -211,6 +216,9 @@ class SignalGenerator:
                 logger.info(f"⏸ {symbol} 세션 비허용")
                 d[symbol] = curr_min
                 self._last_session_log_minute = d
+            # ⭐ PHASE28-10: Filter Telemetry
+            if self.activity_tracker:
+                self.activity_tracker.record_guard_block(symbol, "FILTER_SESSION_NOT_ALLOWED")
             return False
 
         # 3. 레짐 필터 (동일 TF)
@@ -221,10 +229,16 @@ class SignalGenerator:
                 if signal.get("side") == "LONG":
                     if reg_now not in ("상승장", "횡보장"):
                         logger.info(f"⏸ {symbol} 레짐 비허용: {reg_now}")
+                        # ⭐ PHASE28-10: Filter Telemetry
+                        if self.activity_tracker:
+                            self.activity_tracker.record_guard_block(symbol, "FILTER_REGIME_NOT_ALLOWED")
                         return False
                 elif signal.get("side") == "SHORT":
                     if reg_now not in ("하락장", "횡보장"):
                         logger.info(f"⏸ {symbol} 레짐 비허용: {reg_now}")
+                        # ⭐ PHASE28-10: Filter Telemetry
+                        if self.activity_tracker:
+                            self.activity_tracker.record_guard_block(symbol, "FILTER_REGIME_NOT_ALLOWED")
                         return False
         except Exception:
             # 안전 장치: 오류 시 통과
@@ -242,10 +256,16 @@ class SignalGenerator:
                 if signal.get("side") == "LONG":
                     if not (ema_fast_ok_long and slope_mid > 0):
                         logger.info(f"⏸ {symbol} 트렌드 미정렬(LONG)")
+                        # ⭐ PHASE28-10: Filter Telemetry
+                        if self.activity_tracker:
+                            self.activity_tracker.record_guard_block(symbol, "FILTER_TREND_NOT_ALIGNED")
                         return False
                 elif signal.get("side") == "SHORT":
                     if not (ema_fast_ok_short and slope_mid < 0):
                         logger.info(f"⏸ {symbol} 트렌드 미정렬(SHORT)")
+                        # ⭐ PHASE28-10: Filter Telemetry
+                        if self.activity_tracker:
+                            self.activity_tracker.record_guard_block(symbol, "FILTER_TREND_NOT_ALIGNED")
                         return False
         except Exception:
             pass
@@ -253,10 +273,16 @@ class SignalGenerator:
         # 5. MTF 확인 (⭐ current_ts 전달 - 캐시 활용, 백테스트는 DF 리샘플 기반 오프라인 확인)
         if not self._mtf_confirm(symbol, signal["side"], current_ts, df):
             logger.info(f"⏸ {symbol} 멀티TF 미정렬")
+            # ⭐ PHASE28-10: Filter Telemetry
+            if self.activity_tracker:
+                self.activity_tracker.record_guard_block(symbol, "FILTER_MTF_NOT_CONFIRMED")
             return False
         
         # 6. 쿨다운 체크
         if not self._should_alert(symbol, signal["side"], signal["ts"]):
+            # ⭐ PHASE28-10: Filter Telemetry
+            if self.activity_tracker:
+                self.activity_tracker.record_guard_block(symbol, "FILTER_COOLDOWN_ACTIVE")
             return False
         
         # 7. 최소 손익비(min_rr_required) 검증 (config: entries.min_rr_required 또는 min_rr_required)
@@ -276,6 +302,9 @@ class SignalGenerator:
                     rr = (reward / risk) if risk > 0 else 0.0
                     if rr < float(min_rr):
                         logger.info(f"⏸ {symbol} RR 미달: {rr:.2f} < {min_rr}")
+                        # ⭐ PHASE28-10: Filter Telemetry
+                        if self.activity_tracker:
+                            self.activity_tracker.record_guard_block(symbol, "FILTER_RR_BELOW_MIN")
                         return False
         except Exception:
             pass

@@ -521,7 +521,8 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict, sy
     # Position Sizer & Portfolio Manager & Risk Manager (config 전달)
     # ⭐ PR12: 순서 변경 - portfolio를 먼저 초기화하고 risk에 전달
     # ⭐ PHASE8-2b: backtest 모드에서는 기존 포지션 로드 스킵
-    sizer = PositionSizer(config)
+    # ⭐ PHASE28-10: activity_tracker 전달 (Guard Telemetry)
+    sizer = PositionSizer(config, activity_tracker=activity_tracker)
     
     # ⭐ PHASE9-1 ROOT CAUSE FIX: backtest_raw 포함
     # ⭐ PHASE16+: paper 테스트 모드도 깨끗한 시작 (load_existing=False)
@@ -534,7 +535,8 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict, sy
     
     portfolio = PortfolioManager(config, load_existing=load_existing)
     
-    risk = RiskManager(config, portfolio=portfolio)  # ⭐ PR12: 포트폴리오 참조 추가
+    # ⭐ PHASE28-10: activity_tracker 전달 (Guard Telemetry)
+    risk = RiskManager(config, portfolio=portfolio, activity_tracker=activity_tracker)
     tracker = PositionTracker(config)  # ⭐ TUNING_VIBLE TP 분할 지원
 
     # ⭐⭐⭐ SignalGenerator 초기화: config.merge_strategy_config 사용 ⭐⭐⭐
@@ -610,7 +612,7 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict, sy
         
         min_bars_required = config.get("min_bars_for_signal", 50)
 
-    signal_gen = SignalGenerator(config=signal_gen_config, strategy_modules=strategies)
+    signal_gen = SignalGenerator(config=signal_gen_config, strategy_modules=strategies, activity_tracker=activity_tracker)
 
     # ✅ 실행 타임프레임 일원화: 선택 전략의 timeframe을 우선 적용
     if not use_ensemble:
@@ -1844,6 +1846,9 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict, sy
             candle_symbol, decision.get("side")
         ):
             logger.warning(f"⛔ [{candle_symbol}] Risk 거부: {decision.get('side')}")
+            # ⭐ PHASE28-10: Guard Telemetry
+            if activity_tracker:
+                activity_tracker.record_guard_block(candle_symbol, "GUARD_RISK_ALLOW_ENTRY")
             continue  # ⭐ PHASE9-1 FIX: 진입 거부 시 신호 스킵
 
         # ⭐ PHASE17: 포지션 사이즈 계산 + Multi-position Scaling
@@ -1871,6 +1876,9 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict, sy
 
         if qty <= 0:
             logger.warning(f"❌ [ENTRY BLOCK] symbol={candle_symbol} side={decision.get('side')} reason=position_size_zero qty={qty}")
+            # ⭐ PHASE28-10: Guard Telemetry
+            if activity_tracker:
+                activity_tracker.record_guard_block(candle_symbol, "GUARD_POSITION_SIZE_ZERO")
             continue
 
         # 2. Multi-position Scaling 적용 (PHASE17)
@@ -1976,6 +1984,9 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict, sy
                         f"❌ [ENTRY BLOCK] symbol={candle_symbol} side={decision.get('side')} strategy={strategy_id} "
                         f"reason=signal_idempotency candle_ts={normalized_ts} ttl={redis_ttl}s"
                     )
+                    # ⭐ PHASE28-10: Guard Telemetry
+                    if activity_tracker:
+                        activity_tracker.record_guard_block(candle_symbol, "GUARD_SIGNAL_IDEMPOTENCY")
                     continue
                 redis_client.setex(redis_signal_key, redis_ttl, "1")
                 logger.debug(f"✅ 멱등 키 설정: {redis_signal_key} (TTL={redis_ttl}초)")
@@ -2039,6 +2050,9 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict, sy
         # Risk Manager 체크 (기존 로직: 일일 손실, Flash Guard 등)
         allowed, reason = risk.check_order(decision, qty, position_value=position_value)
         if not allowed:
+            # ⭐ PHASE28-10: Guard Telemetry (reason에서 가져오기 보다는 단순화)
+            if activity_tracker:
+                activity_tracker.record_guard_block(candle_symbol, "GUARD_RISK_CHECK_ORDER")
             # ⭐ PR9 Phase 2: Redis 쿨다운 TTL 설정 (⭐ PHASE16+: 0초일 때는 skip)
             if strategy_cooldown > 0:
                 if redis_client:
@@ -2069,6 +2083,9 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict, sy
         )
 
         if not can_open:
+            # ⭐ PHASE28-10: Guard Telemetry
+            if activity_tracker:
+                activity_tracker.record_guard_block(candle_symbol, "GUARD_PORTFOLIO_CAN_OPEN")
             # ⭐ PR9 Phase 2: Redis 쿨다운 TTL 설정 (⭐ PHASE16+: 0초일 때는 skip)
             if strategy_cooldown > 0:
                 if redis_client:
