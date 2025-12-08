@@ -1863,35 +1863,36 @@ Ensemble ON 모드로 4시간 이상 연속 Paper 테스트 (인프라 안정성
 🧩 **PHASE32** – Live 연동 & Final Hardening 🟦 **PLANNED**
 {{ ... }
 
-**현재 Phase**: PHASE29-1 ✅ **COMPLETE** (btc5m_baseline_v3 코드 구현)
+**현재 Phase**: PHASE29-2 ❌ **CRITICAL_FAIL** (V3 백테스트 검증 실패)
 
-**상태**: ✅ **STRATEGY V3 IMPLEMENTED** | ⏳ **AWAITING PHASE29-2 BACKTEST**
+**상태**: ❌ **BACKTEST FAILED** | ⚠️ **SIGNAL FREQUENCY TOO LOW**
 
-**다음 Phase**: PHASE29-2 (V3 초기 검증 백테스트)
+**다음 Phase**: PHASE29-2A (긴급 디버깅) 또는 V3 설계 재검토
 
-**PHASE29-1 핵심 성과**:
-- ✅ V3 전략 코드 완전 구현 (524 라인, BaseStrategy 호환)
-- ✅ Regime별 진입 로직: Trend Pullback + Range Mean Reversion
-- ✅ Multi-TP 구조 구현 (TP1 1.2 RR 60%, TP2 3.0 RR 40%)
-- ✅ 시그널 필터링 추가 (ATR, Volume, 시간대)
-- ✅ Unit Test 12/12 통과
-- ✅ 1일 스모크 백테스트 정상 완료
+**PHASE29-2 핵심 결과**:
+- ❌ 1주일 백테스트: 1건 거래 (목표: 20+)
+- ❌ 1개월 백테스트: 2건 거래 (목표: 50+)
+- ⚠️ Signal Rate: 0.05% (V2 대비 **99% 감소**)
+- ✅ Regime 분포: Trend 74.5%, Range 25.5% (정상)
+- ❌ PHASE29-3 진입 불가
 
-**V3 전략 핵심 특징**:
-- 진입 로직: V2 OR → V3 AND (조건 강화)
-- SL/홀드: Trend 2.0 ATR/120분, Range 1.5 ATR/30분
-- 필터: 최소 ATR 0.2%, Volume 80%, 시간대 필터 (옵션)
+**진단**:
+- V3 진입 조건이 과도하게 엄격
+- 또는 전략 코드에 버그 존재 가능성
+- 필터 계층이 신호를 과도하게 차단
 
 **산출물**:
-- strategies/btc5m_baseline_v3.py
-- configs/tuning/btc5m_baseline_v3_paramspace.yml
-- tests/test_btc5m_baseline_v3.py
-- docs/PHASE29/PHASE29_1_BTC5M_BASELINE_V3_IMPLEMENTATION_KR.md
+- configs/backtest/phase29_2_btc5m_baseline_v3_{week,month}.yml
+- scripts/analysis/phase29_2_v3_backtest_diagnostics.py
+- reports/backtest/phase29_2/btc5m_baseline_v3_{week,month}_summary.json
+- reports/analysis/PHASE29/phase29_2_v3_backtest_summary.{json,md}
+- docs/PHASE29/PHASE29_2_BTC5M_BASELINE_V3_BACKTEST_KR.md
 
-**다음 단계 (PHASE29-2)**:
-- 1주일 백테스트 (Drawdown Guard OFF, 최소 20~50 trades)
-- 1개월 백테스트 (Drawdown Guard ON, Win Rate ≥ 45%)
-- Regime별 Win Rate, R:R, 홀드 타임 로그 분석
+**권장 조치 (PHASE29-2A)**:
+1. V3 전략 코드 재검토 및 디버깅 (진입 조건 통과율 로깅)
+2. 조건 완화 테스트 (AND → OR, 필터 개별 OFF)
+3. V2 대비 차이 격리 (점진적 변경 테스트)
+4. V3 설계 재검토 또는 V2.1 Hybrid 접근 고려
 
 ---
 
@@ -1983,21 +1984,28 @@ Ensemble ON 모드로 4시간 이상 연속 Paper 테스트 (인프라 안정성
   
   - **기간**: 1 session
 
-- **29-2: btc5m_baseline_v3 초기 검증 백테스트** 🔵 **NEXT**
-  - **Status**: 🔵 **PENDING** | ⏳ **NEXT PHASE**
+- **29-2: btc5m_baseline_v3 초기 검증 백테스트** ❌ **CRITICAL_FAIL**
+  - **Status**: ✅ **COMPLETE** | ❌ **FAILED** (신호 빈도 부족)
   
   - **목표**: V3 전략 초기 검증 (1주 + 1개월 백테스트)
   
-  - **작업 계획**:
-    1. 1주일 백테스트 (Drawdown Guard OFF, 최소 20~50 trades)
-    2. 1개월 백테스트 (Drawdown Guard ON, Win Rate ≥ 45%)
-    3. Regime별 Win Rate, R:R, 홀드 타임 로그 분석
+  - **실제 결과**:
+    - **1주일 백테스트**: 1건 거래 (목표: 20+) ❌
+    - **1개월 백테스트**: 2건 거래 (목표: 50+) ❌
+    - **Signal Rate**: 0.05% (V2 대비 99% 감소) ⚠️
+    - **Regime 분포**: Trend 74.5%, Range 25.5% ✅
   
-  - **판정 기준**:
-    - ✅ PASS: 1개월 전체 완료 + Win Rate ≥ 45%
-    - ❌ FAIL: Drawdown 10% 조기 종료 또는 Win Rate < 40%
+  - **Gate 평가**:
+    - 신호 빈도: ❌ FAIL (1/10, 2/30)
+    - Win Rate: N/A (거래 수 부족)
+    - Max DD: N/A
+    - **PHASE29-3 진입**: ❌ **불가**
   
-  - **기간**: 1 session
+  - **판정**: ❌ **CRITICAL_FAIL** (전략 로직 재검토 필요)
+  
+  - **다음 조치**: **PHASE29-2A** (긴급 디버깅) 또는 V3 설계 재검토
+  
+  - **기간**: 1 session (완료)
 
 - **29-3: Random/Bayesian/Local Grid 튜닝** 🔵 **PLANNED**
   - **Status**: 🔵 **PENDING**

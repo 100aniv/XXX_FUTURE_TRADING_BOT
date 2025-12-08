@@ -1,0 +1,96 @@
+{
+  "phase": "PHASE29-2",
+  "strategy": "btc5m_baseline_v3",
+  "timestamp": "2025-12-09T00:55:12.499111",
+  "results": {
+    "week": {
+      "period": "week",
+      "status": "OK",
+      "total_calls": 2205,
+      "signal_true": 1,
+      "signal_false": 2204,
+      "signal_rate_pct": 0.05,
+      "orders_submitted": 1,
+      "conversion_rate_pct": 100.0,
+      "guard_blocks": 0,
+      "regime": {
+        "trend": 1620,
+        "range": 585,
+        "trend_pct": 73.5,
+        "range_pct": 26.5
+      },
+      "direction": {
+        "long": 0,
+        "short": 1
+      },
+      "trades": 1,
+      "win_rate": null,
+      "avg_rr": null,
+      "max_dd": null,
+      "sharpe_ratio": null,
+      "pnl_total": null
+    },
+    "month": {
+      "period": "month",
+      "status": "OK",
+      "total_calls": 8829,
+      "signal_true": 4,
+      "signal_false": 8825,
+      "signal_rate_pct": 0.05,
+      "orders_submitted": 2,
+      "conversion_rate_pct": 50.0,
+      "guard_blocks": 2,
+      "regime": {
+        "trend": 6579,
+        "range": 2250,
+        "trend_pct": 74.5,
+        "range_pct": 25.5
+      },
+      "direction": {
+        "long": 1,
+        "short": 3
+      },
+      "trades": 2,
+      "win_rate": null,
+      "avg_rr": null,
+      "max_dd": null,
+      "sharpe_ratio": null,
+      "pnl_total": null
+    }
+  },
+  "gates": {
+    "week_frequency": {
+      "status": "FAIL",
+      "meets_gate": false,
+      "note": "1/10 trades (목표: 20+)"
+    },
+    "month_frequency": {
+      "status": "FAIL",
+      "meets_gate": false,
+      "note": "2/30 trades (목표: 50+)"
+    },
+    "winrate": {
+      "status": "N/A",
+      "meets_gate": null,
+      "note": "Win Rate 데이터 없음 (TradeActivityTracker 한계)"
+    },
+    "drawdown": {
+      "status": "N/A",
+      "meets_gate": null,
+      "note": "Max DD 데이터 없음"
+    },
+    "avg_rr": {
+      "status": "N/A",
+      "meets_gate": null,
+      "note": "Avg RR 데이터 없음"
+    },
+    "ready_for_phase29_3": false,
+    "overall_status": "CRITICAL_FAIL",
+    "recommendation": "전략 로직 재검토 필요 (신호 빈도 극단적으로 낮음)"
+  },
+  "summary": {
+    "overall_status": "CRITICAL_FAIL",
+    "ready_for_phase29_3": false,
+    "recommendation": "전략 로직 재검토 필요 (신호 빈도 극단적으로 낮음)"
+  }
+}
