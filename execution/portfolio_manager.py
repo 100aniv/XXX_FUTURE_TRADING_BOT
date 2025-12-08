@@ -442,8 +442,17 @@ class PortfolioManager:
             strategy_id: 전략 ID
             
         Returns:
-            float: 사용 가능한 예산 (USDT)
+            float or None: 사용 가능한 예산 (USDT), use_dynamic_budget=False이면 None
         """
+        # ⭐ PHASE28-9: Dynamic Budget 비활성화 시 총 Equity 반환 (Budget Cap 해제)
+        if not self.use_dynamic_budget:
+            unlimited_budget = self.equity  # 전체 Equity를 Budget으로 사용
+            logger.info(
+                f"💰 [Budget] {strategy_id}: Dynamic Budget 비활성화 → "
+                f"Budget Cap 해제 (Unlimited=${unlimited_budget:,.0f})"
+            )
+            return unlimited_budget
+        
         total_budget = self.calculate_strategy_budget(strategy_id)
         used_budget = self._get_used_budget(strategy_id)
         available = max(0.0, total_budget - used_budget)

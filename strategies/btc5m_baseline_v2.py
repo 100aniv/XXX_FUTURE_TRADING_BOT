@@ -161,7 +161,16 @@ def signal_logic(df: pd.DataFrame, config: dict) -> Dict[str, Any]:
         side = "SHORT"
         reasons = short_signals
     else:
-        return {"side": None, "reason": f"[{regime}] 조건 미충족"}
+        # ⭐ PHASE28-9: 신호 없을 때도 regime metadata 포함
+        return {
+            "side": None,
+            "reason": f"[{regime}] 조건 미충족",
+            "metadata": {
+                "regime": regime,
+                "trend": trend,
+                "volatility": volatility
+            }
+        }
     
     # === STEP 7: 진입/손절/익절 계산 ===
     entry = price

@@ -122,6 +122,16 @@ class TradeActivityTracker:
             strategy_data["total_calls"] += 1
             self.totals["strategy_signals_total"] += 1
             
+            # ⭐ PHASE28-9: Regime 카운트 (has_signal 여부와 무관하게 항상 집계)
+            if regime:
+                regime_upper = regime.upper()
+                if "RANGE" in regime_upper:
+                    strategy_data["regime_range"] += 1
+                    self.totals["regime_range"] += 1
+                elif "BULL" in regime_upper or "BEAR" in regime_upper:  # ⭐ PHASE28-9: "TREND" → "BULL/BEAR" 수정
+                    strategy_data["regime_trend"] += 1
+                    self.totals["regime_trend"] += 1
+            
             if has_signal:
                 strategy_data["signal_true"] += 1
                 self.totals["strategy_signals_true"] += 1
@@ -135,16 +145,6 @@ class TradeActivityTracker:
                     elif side_upper == "SHORT":
                         strategy_data["short_signals"] += 1
                         self.totals["short_signals"] += 1
-                
-                # PHASE27-6: Regime 카운트
-                if regime:
-                    regime_upper = regime.upper()
-                    if "RANGE" in regime_upper:
-                        strategy_data["regime_range"] += 1
-                        self.totals["regime_range"] += 1
-                    elif "TREND" in regime_upper:
-                        strategy_data["regime_trend"] += 1
-                        self.totals["regime_trend"] += 1
             else:
                 strategy_data["signal_false"] += 1
                 self.totals["strategy_signals_false"] += 1

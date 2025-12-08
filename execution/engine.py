@@ -1077,6 +1077,7 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict, sy
         bb_cfg = inds.get("bollinger", {})
         atr_cfg = inds.get("atr", {})
         vol_cfg = inds.get("volume", {})
+        adx_cfg = inds.get("adx", {})
         df = add_indicators(
             df,
             ema_cfg.get("fast", 20),
@@ -1090,6 +1091,9 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict, sy
             bb_cfg.get("std", 2.0),
             atr_cfg.get("length", 14),
             vol_cfg.get("ma_length", 30),
+            dc_len=20,
+            use_adx=True,
+            adx_period=adx_cfg.get("period", 14),
         )
 
         # 현재 가격
@@ -1346,6 +1350,7 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict, sy
                 # 지표 계산된 DataFrame 준비
                 df_with_indicators = df.copy()
                 if "ema_fast" not in df_with_indicators.columns:
+                    adx_cfg = inds.get("adx", {})
                     df_with_indicators = add_indicators(
                         df_with_indicators,
                         ema_cfg.get("fast", 20),
@@ -1359,9 +1364,9 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict, sy
                         bb_cfg.get("std", 2.0),
                         atr_cfg.get("length", 14),
                         vol_cfg.get("ma_length", 30),
-                        inds.get("dc_len", 20),  # PHASE27-7: Donchian
-                        use_adx=inds.get("use_adx", False),  # PHASE27-7: ADX 활성화
-                        adx_period=inds.get("adx_period", 14)  # PHASE27-7: ADX 기간
+                        dc_len=20,
+                        use_adx=True,
+                        adx_period=adx_cfg.get("period", 14),
                     )
                 
                 # PHASE23-3: V2 모드 처리
@@ -1379,7 +1384,7 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict, sy
                         
                         try:
                             # Get BaseStrategy instance
-                            strategy_instance = strategy_info.get('instance')
+                            strategy_instance = strategy_info.get("instance")
                             if not strategy_instance:
                                 logger.warning(f"⚠️  [ENSEMBLE V2] {strategy_name}: instance 없음")
                                 continue
@@ -1390,8 +1395,8 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict, sy
                             # ⭐ PHASE27-0 / PHASE27-6: Strategy Signal Hook
                             if activity_tracker:
                                 has_signal = (raw_signal is not None and raw_signal.get('side') is not None)
-                                side = raw_signal.get('side') if has_signal else None
-                                regime = raw_signal.get('metadata', {}).get('regime') if has_signal else None
+                                side = raw_signal.get('side') if raw_signal and has_signal else None
+                                regime = raw_signal.get('metadata', {}).get('regime') if raw_signal else None  # ⭐ PHASE28-9: signal 존재 시 항상 regime 추출
                                 
                                 activity_tracker.record_strategy_signal(
                                     symbol=candle_symbol,
@@ -1573,6 +1578,7 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict, sy
                         df_tf_raw = pd.DataFrame(list(buffers[strategy_buffer_key]))
                         df_tf = df_tf_raw.copy()
                         # 지표 계산
+                        adx_cfg = inds.get("adx", {})
                         df_tf = add_indicators(
                             df_tf,
                             ema_cfg.get("fast", 20),
@@ -1586,9 +1592,9 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict, sy
                             bb_cfg.get("std", 2.0),
                             atr_cfg.get("length", 14),
                             vol_cfg.get("ma_length", 30),
-                            inds.get("dc_len", 20),  # PHASE27-7: Donchian
-                            use_adx=inds.get("use_adx", False),  # PHASE27-7: ADX 활성화
-                            adx_period=inds.get("adx_period", 14)  # PHASE27-7: ADX 기간
+                            dc_len=20,
+                            use_adx=True,
+                            adx_period=adx_cfg.get("period", 14),
                         )
                         logger.debug(
                             f"✅ [{strategy_id}] Multi-TF 버퍼 사용: {strategy_tf} ({len(buffers[strategy_buffer_key])}개)"
@@ -1673,6 +1679,7 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict, sy
 
                     # Fallback 경로에서만 지표 계산 필요 (Multi-TF 경로는 이미 계산함)
                     if "ema_fast" not in df_tf.columns:
+                        adx_cfg = inds.get("adx", {})
                         df_tf = add_indicators(
                             df_tf,
                             ema_cfg.get("fast", 20),
@@ -1686,9 +1693,9 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict, sy
                             bb_cfg.get("std", 2.0),
                             atr_cfg.get("length", 14),
                             vol_cfg.get("ma_length", 30),
-                            inds.get("dc_len", 20),  # PHASE27-7: Donchian
-                            use_adx=inds.get("use_adx", False),  # PHASE27-7: ADX 활성화
-                            adx_period=inds.get("adx_period", 14)  # PHASE27-7: ADX 기간
+                            dc_len=20,
+                            use_adx=True,
+                            adx_period=adx_cfg.get("period", 14),
                         )
 
                     # 전략 실행 (리샘플 DF) - PHASE23-2 / PHASE27-5A
@@ -1710,8 +1717,8 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict, sy
                     # ⭐ PHASE27-0 / PHASE27-6: Strategy Signal Hook
                     if activity_tracker:
                         has_signal = (signal is not None and signal.get('side') is not None)
-                        side = signal.get('side') if has_signal else None
-                        regime = signal.get('metadata', {}).get('regime') if has_signal else None
+                        side = signal.get('side') if signal and has_signal else None
+                        regime = signal.get('metadata', {}).get('regime') if signal else None  # ⭐ PHASE28-9: signal 존재 시 항상 regime 추출
                         
                         activity_tracker.record_strategy_signal(
                             symbol=candle_symbol,

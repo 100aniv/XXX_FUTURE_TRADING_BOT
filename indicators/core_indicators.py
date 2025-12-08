@@ -383,6 +383,7 @@ def add_indicators(
     
     # ATR
     df["atr"] = atr(df, atr_len)
+    df[f"atr_{atr_len}"] = df["atr"]  # ⭐ PHASE28-9: 컬럼명 별칭 추가 (regime_detector 호환)
     
     # Donchian Channel
     df = donchian(df, dc_len)
