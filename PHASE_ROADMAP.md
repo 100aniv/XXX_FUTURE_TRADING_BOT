@@ -1741,6 +1741,15 @@ Ensemble ON 모드로 4시간 이상 연속 Paper 테스트 (인프라 안정성
   - **판정**: ✅ **PHASE28-10 COMPLETE** - 진단 인프라 완성, 최적화 방향 명확화
   - **다음 단계**: PHASE28-11 (Guard Optimization Based on Telemetry)
 
+- **28-11: Guard Optimization V1 - Profile Comparison** 🔴 **FAIL** (2025-12-08)
+  - **Status**: 🔴 **INFRASTRUCTURE COMPLETE** | ❌ **TARGET NOT ACHIEVED**
+  - **목표**: Guard/Filter 최적화로 전환율 0.40% → 3~5% 개선
+  - **실험 결과**: Profile A/B/C: 0.24% (15 orders), Profile D: 0.13% (8 orders)
+  - **근본 원인**: 전략 예산 제한(20% = $9,941)이 99.76% 신호 차단, Config 설정 미반영 버그
+  - **Artifacts**: 설계 문서, 4개 프로파일 Config, 분석 스크립트, 한국어 리포트
+  - **판정**: 🔴 **FAIL** - 목표 미달, 상용 후보 없음
+  - **다음 단계**: PHASE28-12 (전략 예산 로직 비활성화 및 재실험)
+
 **Sub-phases**
 - **31-0: Multi-Symbol Top50/100 Full Load Test**
   - 대규모 심볼 동시 처리 검증
@@ -1764,20 +1773,21 @@ Ensemble ON 모드로 4시간 이상 연속 Paper 테스트 (인프라 안정성
 
 ## 🎯 현재 상태 (2025-12-08)
 
-**현재 Phase**: PHASE28-10 (Guard Telemetry & Conversion Diagnosis)
+**현재 Phase**: PHASE28-11 (Guard Optimization V1)
 
-**상태**: ✅ **COMPLETE**
+**상태**: 🔴 **FAIL** (목표 미달성)
 
-**다음 Phase**: PHASE28-11 (Guard Optimization Based on Telemetry)
+**다음 Phase**: PHASE28-12 (Portfolio Guard 전략 예산 로직 비활성화)
 
-**주요 성과**:
-- Guard & Filter Telemetry 인프라 완성 (Signal → Order 전환 경로 100% 추적)
-- Top Blocking Factors 정량화:
-  1. FILTER_COOLDOWN_ACTIVE: 52.68%
-  2. GUARD_PORTFOLIO_CAN_OPEN: 36.87%
-  3. FILTER_VOLUME_SPIKE: 10.04%
-- Conversion Rate 0.40% 원인 완전 분석
+**PHASE28-11 결과**:
+- 4개 프로파일 실험: 모두 목표 전환율(3~5%) 미달
+- 최상 전환율: 0.24% (Profile A/B/C, 15 orders)
+- 근본 원인: 전략 예산 제한(20%)이 99.76% 신호 차단
+- Config 설정 미반영 버그 발견 (Critical)
 
-**진행 예정**: Guard 파라미터 최적화 및 전환율 개선 (Target: 5%+)
+**다음 단계 (PHASE28-12)**:
+- Portfolio Manager 전략 예산 체크 완전 비활성화
+- Profile E/F/G 재실험 (전략 예산 제거 후)
+- 기대 전환율: 5~20%
 
 ---

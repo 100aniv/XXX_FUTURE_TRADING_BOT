@@ -1,0 +1,40 @@
+{
+  "run_id": "20251208_140537_hl3m",
+  "duration_minutes": null,
+  "timestamp": "2025-12-08T14:05:40.432656",
+  "end_timestamp": "2025-12-08T14:17:49.690071",
+  "symbols": {
+    "BTCUSDT": {
+      "strategy_signals": {
+        "btc5m_baseline_v2": {
+          "total_calls": 26002,
+          "signal_true": 6194,
+          "signal_false": 19808,
+          "long_signals": 2955,
+          "short_signals": 3239,
+          "regime_range": 1745,
+          "regime_trend": 24257
+        }
+      },
+      "ensemble_decisions": {},
+      "guard_blocks": {
+        "GUARD_PORTFOLIO_CAN_OPEN": 6179
+      },
+      "orders_submitted": 15
+    }
+  },
+  "totals": {
+    "strategy_signals_total": 26002,
+    "strategy_signals_true": 6194,
+    "strategy_signals_false": 19808,
+    "long_signals": 2955,
+    "short_signals": 3239,
+    "regime_range": 1745,
+    "regime_trend": 24257,
+    "ensemble_tier1": 0,
+    "ensemble_tier2": 0,
+    "ensemble_skip": 0,
+    "guard_blocks_total": 6179,
+    "orders_submitted": 15
+  }
+}

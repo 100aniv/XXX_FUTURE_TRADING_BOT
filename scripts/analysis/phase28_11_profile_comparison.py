@@ -50,7 +50,7 @@ def load_profile_summary(profile_name: str) -> Dict[str, Any]:
 
 def calculate_conversion_rate(totals: Dict[str, Any]) -> float:
     """
-    전환율 계산: orders_submitted / signal_true * 100
+    전환율 계산: orders_submitted / strategy_signals_true * 100
     
     Args:
         totals: summary['totals'] 딕셔너리
@@ -58,7 +58,7 @@ def calculate_conversion_rate(totals: Dict[str, Any]) -> float:
     Returns:
         전환율 (%)
     """
-    signal_true = totals.get('signal_true', 0)
+    signal_true = totals.get('strategy_signals_true', 0)
     orders_submitted = totals.get('orders_submitted', 0)
     
     if signal_true == 0:
@@ -67,19 +67,24 @@ def calculate_conversion_rate(totals: Dict[str, Any]) -> float:
     return (orders_submitted / signal_true) * 100
 
 
-def extract_top_guard_blocks(totals: Dict[str, Any], top_n: int = 3) -> List[Dict[str, Any]]:
+def extract_top_guard_blocks(data: Dict[str, Any], top_n: int = 3) -> List[Dict[str, Any]]:
     """
     Guard Blocks 상위 N개 추출
     
     Args:
-        totals: summary['totals'] 딕셔너리
+        data: summary 딕셔너리 (전체)
         top_n: 상위 N개
     
     Returns:
         [{reason, count, percent}, ...]
     """
-    guard_blocks = totals.get('guard_blocks', {})
-    signal_true = totals.get('signal_true', 1)  # division by zero 방지
+    # guard_blocks는 symbols.BTCUSDT.guard_blocks에 있음
+    symbols = data.get('symbols', {})
+    btcusdt = symbols.get('BTCUSDT', {})
+    guard_blocks = btcusdt.get('guard_blocks', {})
+    
+    totals = data.get('totals', {})
+    signal_true = totals.get('strategy_signals_true', 1)  # division by zero 방지
     
     # (reason, count) 튜플 리스트로 변환 후 count 기준 내림차순 정렬
     sorted_blocks = sorted(guard_blocks.items(), key=lambda x: x[1], reverse=True)
@@ -122,11 +127,11 @@ def generate_comparison_json(profiles_data: Dict[str, Dict]) -> Dict[str, Any]:
         
         profile_summary = {
             'run_id': data.get('run_id', 'UNKNOWN'),
-            'signal_true': totals.get('signal_true', 0),
+            'signal_true': totals.get('strategy_signals_true', 0),
             'guard_blocks_total': totals.get('guard_blocks_total', 0),
             'orders_submitted': totals.get('orders_submitted', 0),
             'conversion_rate_pct': round(calculate_conversion_rate(totals), 2),
-            'top_guard_blocks': extract_top_guard_blocks(totals, top_n=3)
+            'top_guard_blocks': extract_top_guard_blocks(data, top_n=3)
         }
         
         comparison['profiles'][profile_name] = profile_summary

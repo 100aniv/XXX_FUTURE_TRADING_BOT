@@ -1,3 +1,5 @@
+new_section:
+  new_key: new_value
 strategies:
   ensemble:
     alpha_winrate: 0.4

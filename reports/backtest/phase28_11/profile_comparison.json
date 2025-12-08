@@ -1,0 +1,68 @@
+{
+  "timestamp": "2025-12-08T18:53:36.975333",
+  "phase": "PHASE28-11",
+  "objective": "Guard Optimization V1 - Profile Comparison",
+  "profiles": {
+    "a": {
+      "run_id": "20251208_140537_hl3m",
+      "signal_true": 6194,
+      "guard_blocks_total": 6179,
+      "orders_submitted": 15,
+      "conversion_rate_pct": 0.24,
+      "top_guard_blocks": [
+        {
+          "reason": "GUARD_PORTFOLIO_CAN_OPEN",
+          "count": 6179,
+          "percent": 99.76
+        }
+      ]
+    },
+    "b": {
+      "run_id": "20251208_181212_3mgz",
+      "signal_true": 6194,
+      "guard_blocks_total": 6179,
+      "orders_submitted": 15,
+      "conversion_rate_pct": 0.24,
+      "top_guard_blocks": [
+        {
+          "reason": "GUARD_PORTFOLIO_CAN_OPEN",
+          "count": 6179,
+          "percent": 99.76
+        }
+      ]
+    },
+    "c": {
+      "run_id": "20251208_182529_5wnj",
+      "signal_true": 6194,
+      "guard_blocks_total": 6179,
+      "orders_submitted": 15,
+      "conversion_rate_pct": 0.24,
+      "top_guard_blocks": [
+        {
+          "reason": "GUARD_PORTFOLIO_CAN_OPEN",
+          "count": 6179,
+          "percent": 99.76
+        }
+      ]
+    },
+    "d": {
+      "run_id": "20251208_183758_ucwd",
+      "signal_true": 6194,
+      "guard_blocks_total": 6186,
+      "orders_submitted": 8,
+      "conversion_rate_pct": 0.13,
+      "top_guard_blocks": [
+        {
+          "reason": "GUARD_PORTFOLIO_CAN_OPEN",
+          "count": 5981,
+          "percent": 96.56
+        },
+        {
+          "reason": "FILTER_VOLUME_SPIKE",
+          "count": 205,
+          "percent": 3.31
+        }
+      ]
+    }
+  }
+}
