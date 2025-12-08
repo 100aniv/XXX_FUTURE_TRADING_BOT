@@ -1,0 +1,40 @@
+{
+  "run_id": "20251208_220840_gzos",
+  "duration_minutes": null,
+  "timestamp": "2025-12-08T22:08:42.558118",
+  "end_timestamp": "2025-12-08T22:12:41.185780",
+  "symbols": {
+    "BTCUSDT": {
+      "strategy_signals": {
+        "btc5m_baseline_v2": {
+          "total_calls": 7746,
+          "signal_true": 1613,
+          "signal_false": 6133,
+          "long_signals": 754,
+          "short_signals": 859,
+          "regime_range": 378,
+          "regime_trend": 7368
+        }
+      },
+      "ensemble_decisions": {},
+      "guard_blocks": {
+        "FILTER_COOLDOWN_ACTIVE": 952
+      },
+      "orders_submitted": 465
+    }
+  },
+  "totals": {
+    "strategy_signals_total": 7746,
+    "strategy_signals_true": 1613,
+    "strategy_signals_false": 6133,
+    "long_signals": 754,
+    "short_signals": 859,
+    "regime_range": 378,
+    "regime_trend": 7368,
+    "ensemble_tier1": 0,
+    "ensemble_tier2": 0,
+    "ensemble_skip": 0,
+    "guard_blocks_total": 952,
+    "orders_submitted": 465
+  }
+}

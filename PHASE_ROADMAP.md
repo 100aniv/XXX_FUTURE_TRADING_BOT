@@ -1750,6 +1750,102 @@ Ensemble ON 모드로 4시간 이상 연속 Paper 테스트 (인프라 안정성
   - **판정**: 🔴 **FAIL** - 목표 미달, 상용 후보 없음
   - **다음 단계**: PHASE28-12 (전략 예산 로직 비활성화 및 재실험)
 
+- **28-12: Portfolio Guard Strategy Budget OFF** ✅ **PARTIAL SUCCESS** (2025-12-08)
+  - **Status**: ✅ **INFRASTRUCTURE COMPLETE** | ⚠️ **NEW BOTTLENECK IDENTIFIED**
+  
+  - **목표**: 전략 예산 Guard 비활성화로 전환율 0.24% → 3~5% 개선
+  
+  - **완료 내역**:
+    1. ✅ PortfolioManager에 Dynamic Budget 토글 구현 (Config 기반)
+    2. ✅ Profile E/F/G Config 생성 (Dynamic Budget OFF + 다양한 Portfolio 설정)
+    3. ✅ 3개월 백테스트 실행 (3개 프로파일)
+    4. ✅ 비교 분석 스크립트 구현 및 한국어 리포트 생성
+  
+  - **핵심 성과**:
+    - ✅ 전략 예산 Guard 완전 해결 (Config 기반 제어)
+    - ✅ 전환율 **9.3배 개선** (0.24% → 2.23%, 138 orders)
+    - ⚠️ 새로운 병목 발견: `GUARD_DAILY_LOSS_LIMIT` (**93.7%** 차단)
+      - Profile E: 5,804건 / 6,194 signals
+      - Daily Loss Limit이 압도적 차단 요인으로 등장
+  
+  - **Acceptance Criteria**:
+    - [x] ✅ AC1: Dynamic Budget 토글 구현
+    - [x] ✅ AC2: Profile E/F/G Config 생성
+    - [x] ✅ AC3: 3M 백테스트 실행
+    - [x] ⚠️ AC4: 전환율 3% 달성 (실제: 2.23%, 목표 74% 달성)
+    - [x] ✅ AC5: 비교 분석 및 리포트 생성
+    - [x] ✅ AC6: 문서화 완료
+  
+  - **Artifacts** ✅:
+    - execution/portfolio_manager.py (Dynamic Budget 토글)
+    - configs/backtest/phase28_12_btc5m_baseline_v2_profile_{e,f,g}.yml
+    - scripts/analysis/phase28_12_profile_comparison.py
+    - reports/backtest/phase28_12/profile_{e,f,g}_summary.json
+    - docs/PHASE28/PHASE28_12_FINAL_REPORT_KR.md
+  
+  - **판정**: ✅ **PARTIAL SUCCESS** - 전략 예산 문제 해결, 새로운 최적화 대상 발견
+  - **다음 단계**: PHASE28-13 (Daily Loss Guard 최적화)
+
+- **28-13: Daily Loss Guard Optimization** ✅ **COMPLETE** (2025-12-08)
+  - **Status**: ✅ **INFRASTRUCTURE COMPLETE** | ⚠️ **DRAWDOWN GUARD LIMITATION DISCOVERED**
+  
+  - **목표**: Daily Loss Guard 개선으로 전환율 2.23% → 10~20% 극대화
+  
+  - **완료 내역**:
+    1. ✅ RiskManager Daily Loss Guard 3단계 모드 구현 (OFF/SOFT/HARD)
+    2. ✅ abs() 버그 수정 (이익 신호 차단 문제 해결)
+    3. ✅ 역호환성 유지 (max_daily_loss_pct → soft_limit_pct 매핑)
+    4. ✅ YAML boolean 파싱 이슈 대응 (False → 'off' 변환)
+    5. ✅ Unit Test 8개 작성 및 통과 (OFF/SOFT/HARD 검증)
+    6. ✅ Profile H/I/J Config 생성 및 백테스트 재실행 (2회)
+    7. ✅ 비교 분석 및 한국어 리포트 생성
+  
+  - **핵심 성과**:
+    - ✅ Daily Loss Guard OFF로 **전환율 12.6배 증가** (2.23% → 28.3%)
+      - Profile E (SOFT): 138 orders (2.23%)
+      - Profile H (OFF): 612 orders (28.3%)
+    - ✅ GUARD_DAILY_LOSS 차단 **100% 제거** (5,804 → 0건)
+    - ⚠️ **Drawdown Guard 조기 차단 발견** (새로운 근본적 한계)
+      - 모든 Profile (H/I/J)이 약 10% 손실에서 시스템 정지
+      - 3개월 백테스트의 30~40%만 실행 (10,305 / 26,101 candles)
+      - 전환율은 극대화되었으나 생존 기간 단축
+  
+  - **Daily Loss Guard 3단계 모드**:
+    - **OFF**: 일일 손실 한도 비활성화 (연구용, 전환율 측정)
+    - **SOFT**: 신규 진입만 차단, 기존 포지션 유지 (운영 권장, 기본값)
+    - **HARD**: 신규 진입 차단 + 포지션 강제 청산 (비상 상황)
+  
+  - **버그 수정**:
+    - ❌ `abs(daily_pnl) >= limit` → ✅ `if daily_pnl < 0: abs(daily_pnl) >= limit`
+    - 이익 신호도 차단하던 버그 해결
+  
+  - **Acceptance Criteria**:
+    - [x] ✅ AC1: OFF/SOFT/HARD 모드 구현
+    - [x] ✅ AC2: abs() 버그 수정
+    - [x] ✅ AC3: 역호환성 유지
+    - [x] ✅ AC4: Unit Test 8/8 PASS
+    - [x] ✅ AC5: Profile H/I/J 백테스트 완료
+    - [x] ✅ AC6: 비교 분석 및 리포트 생성
+    - [x] ⚠️ AC7: 전환율 10% 달성 (실제: 28.3%, Drawdown 차단으로 40%만 실행)
+    - [x] ✅ AC8: 문서화 완료
+  
+  - **Artifacts** ✅:
+    - execution/risk_manager.py (Daily Loss Guard 3단계 모드, abs() 수정)
+    - tests/test_phase28_13_daily_loss_modes.py (8 tests)
+    - configs/backtest/phase28_13_btc5m_baseline_v2_profile_{h,i,j}.yml
+    - reports/backtest/phase28_13/profile_{h,i,j}_summary.json
+    - docs/PHASE28/PHASE28_13_DAILY_LOSS_OPTIMIZATION_REPORT_KR.md
+  
+  - **판정**: ✅ **COMPLETE** - Daily Loss Guard 최적화 완료, Drawdown Guard 한계 발견
+  - **권장사항**:
+    - 운영 모드: **SOFT** (안전성 우선, 기본 설정 유지)
+    - Drawdown Guard 한도 재검토 (10% → 15~20% 상향 고려)
+    - 전략 개선 우선순위: Win Rate 향상, Risk/Reward 조정, Multi-TP 최적화
+  - **다음 단계**: 
+    - PHASE29: 전략 Win Rate 개선 및 Drawdown 완화
+    - PHASE30: 멀티 심볼 포트폴리오 분산
+    - PHASE31: 앙상블 프레임워크 복구
+
 **Sub-phases**
 - **31-0: Multi-Symbol Top50/100 Full Load Test**
   - 대규모 심볼 동시 처리 검증
@@ -1771,20 +1867,31 @@ Ensemble ON 모드로 4시간 이상 연속 Paper 테스트 (인프라 안정성
 
 ## 🎯 현재 상태 (2025-12-08)
 
-**현재 Phase**: PHASE28-12 (Portfolio Guard 전략 예산 OFF)
+**현재 Phase**: PHASE28-13 ✅ **COMPLETE** (Daily Loss Guard 최적화)
 
-**상태**: ⚠️ **PARTIAL SUCCESS** (전략 예산 문제 해결, 전환율 목표 부분 달성)
+**상태**: ✅ **INFRASTRUCTURE COMPLETE** | ⚠️ **DRAWDOWN GUARD LIMITATION DISCOVERED**
 
-**다음 Phase**: PHASE28-13 (Daily Loss Limit 완화 및 재실험)
+**다음 Phase**: PHASE29 (전략 Win Rate 개선 및 Drawdown 완화)
 
-**PHASE28-12 핵심 성과**:
-- ✅ 전략 예산 Guard 문제 완전 해결 (Config 기반 토글)
-- ✅ 전환율 9.3배 개선 (0.24% → 2.23%)
-- ✅ 새로운 병목 발견: GUARD_DAILY_LOSS_LIMIT (93.7% 차단)
+**PHASE28-13 핵심 성과**:
+- ✅ Daily Loss Guard OFF로 전환율 **12.6배 증가** (2.23% → 28.3%)
+- ✅ GUARD_DAILY_LOSS 차단 **100% 제거** (5,804 → 0건)
+- ✅ OFF/SOFT/HARD 3단계 모드 구현 완료
+- ⚠️ Drawdown Guard 조기 차단 발견 (10% 손실에서 시스템 정지)
+- ⚠️ 백테스트 30~40%만 실행 (전환율 극대화 vs. 생존 기간 단축)
 
-**다음 단계 (PHASE28-13)**:
-- Daily Loss Limit 완화 또는 비활성화
-- Profile H/I/J 실험 (`max_daily_loss: null` 또는 10%)
-- 기대 전환율: 5~20%
+**주요 발견**:
+- Daily Loss Guard가 강력한 병목이었음 확인 (93.7% → 0% 차단)
+- Drawdown Guard가 더 근본적인 한계 (전략 Win Rate 문제)
+- Portfolio 설정은 Drawdown에 영향 없음 (H/I/J 모두 10%에서 차단)
 
----
+**권장사항**:
+- 운영 모드: **SOFT** 유지 (안전성 우선)
+- Drawdown Guard 한도 재검토 (10% → 15~20%)
+- 전략 개선 우선: Win Rate 향상, Risk/Reward 조정
+
+**다음 단계 (PHASE29)**:
+- 전략 Win Rate 개선 (현재 약 50%)
+- Risk/Reward Ratio 조정
+- Multi-TP 레벨 최적화
+- Mean Reversion vs Trend Following 전략 재평가

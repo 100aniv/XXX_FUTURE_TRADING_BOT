@@ -1,0 +1,41 @@
+{
+  "run_id": "20251208_215855_6uqz",
+  "duration_minutes": null,
+  "timestamp": "2025-12-08T21:58:57.422210",
+  "end_timestamp": "2025-12-08T22:03:53.287033",
+  "symbols": {
+    "BTCUSDT": {
+      "strategy_signals": {
+        "btc5m_baseline_v2": {
+          "total_calls": 10305,
+          "signal_true": 2162,
+          "signal_false": 8143,
+          "long_signals": 1029,
+          "short_signals": 1133,
+          "regime_range": 536,
+          "regime_trend": 9769
+        }
+      },
+      "ensemble_decisions": {},
+      "guard_blocks": {
+        "FILTER_COOLDOWN_ACTIVE": 1271,
+        "exposure_exceeded": 79
+      },
+      "orders_submitted": 612
+    }
+  },
+  "totals": {
+    "strategy_signals_total": 10305,
+    "strategy_signals_true": 2162,
+    "strategy_signals_false": 8143,
+    "long_signals": 1029,
+    "short_signals": 1133,
+    "regime_range": 536,
+    "regime_trend": 9769,
+    "ensemble_tier1": 0,
+    "ensemble_tier2": 0,
+    "ensemble_skip": 0,
+    "guard_blocks_total": 1350,
+    "orders_submitted": 612
+  }
+}

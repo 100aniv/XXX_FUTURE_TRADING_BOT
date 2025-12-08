@@ -105,18 +105,60 @@ class RiskManager:
             # 3순위: 하드코딩 기본값
             return default
         
-        # 일일 손실 한도
-        _ddl_pct = get_value('max_daily_loss_pct', 2.0)
-        if _ddl_pct is None:
-            # 일일 손실 한도 비활성화
-            self.daily_loss_limit_pct = None
-            self.daily_loss_limit = None
-            logger.info("✅ 일일 손실 한도: OFF")
+        # ⭐ PHASE28-13: Daily Loss Guard Modes (off/soft/hard)
+        _daily_loss_cfg = get_value('daily_loss', {})
+        
+        # Backwards compatibility: max_daily_loss_pct → soft_limit_pct
+        if isinstance(_daily_loss_cfg, dict):
+            self.daily_loss_mode = _daily_loss_cfg.get('mode', 'soft')
+            _soft_pct = _daily_loss_cfg.get('soft_limit_pct', get_value('max_daily_loss_pct', 0.05))
+            _hard_pct = _daily_loss_cfg.get('hard_limit_pct', 0.10)
         else:
-            _ddl_frac = float(_ddl_pct) / 100.0 if _ddl_pct > 1 else float(_ddl_pct)
-            self.daily_loss_limit_pct = max(0.0, min(1.0, _ddl_frac))
-            self.daily_loss_limit = self.daily_loss_limit_pct * self.equity
-            logger.info(f"✅ 일일 손실 한도: {self.daily_loss_limit_pct*100:.1f}% (${self.daily_loss_limit:,.0f})")
+            # 레거시: max_daily_loss_pct만 있는 경우
+            _soft_pct = get_value('max_daily_loss_pct', 0.05)
+            _hard_pct = 0.10
+            self.daily_loss_mode = 'off' if _soft_pct is None else 'soft'
+        
+        # ⭐ YAML 파싱 이슈 대응: boolean False/True → 문자열 변환
+        if isinstance(self.daily_loss_mode, bool):
+            self.daily_loss_mode = 'off' if not self.daily_loss_mode else 'soft'
+        
+        # Convert to fraction
+        if _soft_pct is not None:
+            _soft_frac = float(_soft_pct) / 100.0 if _soft_pct > 1 else float(_soft_pct)
+            self.daily_loss_soft_limit_pct = max(0.0, min(1.0, _soft_frac))
+            self.daily_loss_soft_limit = self.daily_loss_soft_limit_pct * self.equity
+        else:
+            self.daily_loss_soft_limit_pct = None
+            self.daily_loss_soft_limit = None
+        
+        if _hard_pct is not None:
+            _hard_frac = float(_hard_pct) / 100.0 if _hard_pct > 1 else float(_hard_pct)
+            self.daily_loss_hard_limit_pct = max(0.0, min(1.0, _hard_frac))
+            self.daily_loss_hard_limit = self.daily_loss_hard_limit_pct * self.equity
+        else:
+            self.daily_loss_hard_limit_pct = None
+            self.daily_loss_hard_limit = None
+        
+        # Backwards compatibility alias
+        self.daily_loss_limit_pct = self.daily_loss_soft_limit_pct
+        self.daily_loss_limit = self.daily_loss_soft_limit
+        
+        # Log
+        if self.daily_loss_mode == 'off':
+            logger.info(" Daily Loss Guard: OFF (연구용)")
+        elif self.daily_loss_mode == 'soft':
+            logger.info(f" Daily Loss Guard: SOFT (신규 진입 차단, Soft={self.daily_loss_soft_limit_pct*100:.1f}%)")
+        elif self.daily_loss_mode == 'hard':
+            logger.info(f" Daily Loss Guard: HARD (신규 진입 차단 + 포지션 정리, Soft={self.daily_loss_soft_limit_pct*100:.1f}%, Hard={self.daily_loss_hard_limit_pct*100:.1f}%)")
+        else:
+            logger.warning(f" Unknown daily_loss.mode: {self.daily_loss_mode}, defaulting to SOFT")
+            self.daily_loss_mode = 'soft'
+        
+        # Validate mode (after boolean conversion)
+        if self.daily_loss_mode not in ('off', 'soft', 'hard'):
+            logger.warning(f" Unknown daily_loss.mode: '{self.daily_loss_mode}', defaulting to SOFT")
+            self.daily_loss_mode = 'soft'
         
         # 포지션 한도
         self.max_positions = config['risk']['max_positions']
@@ -344,15 +386,33 @@ class RiskManager:
                 # 쿨다운 OFF 모드
                 self.in_cooldown = False
         
-        # 1) 일일 손실 한도 체크 (프로파일에 따라 ON/OFF)
-        if self.daily_loss_limit is not None and self.portfolio is not None:
+        # 1) ⭐ PHASE28-13: Daily Loss Guard (off/soft/hard)
+        if self.daily_loss_mode != 'off' and self.portfolio is not None:
             daily_pnl = self.portfolio.get_daily_pnl()
-            if ((self.mode != 'backtest') or self.enforce_daily_loss_in_backtest) and abs(daily_pnl) >= self.daily_loss_limit:
-                self._notify_guard(f"Daily loss limit hit: {daily_pnl:.2f} ≥ {self.daily_loss_limit:.2f}")
-                # ⭐ PHASE28-10: Guard Telemetry
-                if self.activity_tracker:
-                    self.activity_tracker.record_guard_block(symbol, "GUARD_DAILY_LOSS_LIMIT")
-                return False, f"일일 손실 한도 초과: {daily_pnl:.2f}"
+            
+            # ⭐ 버그 수정: abs() 제거 → 손실만 체크
+            # 공식: current_loss = -daily_pnl (daily_pnl이 음수일 때 손실)
+            if daily_pnl < 0:  # 손실 발생 시만 체크
+                current_loss = abs(daily_pnl)
+                
+                if ((self.mode != 'backtest') or self.enforce_daily_loss_in_backtest):
+                    # Hard 모드: Hard limit 체크 우선 (Soft보다 큰 손실)
+                    if self.daily_loss_mode == 'hard' and self.daily_loss_hard_limit is not None:
+                        if current_loss >= self.daily_loss_hard_limit:
+                            self._notify_guard(f"Daily loss HARD limit hit: ${current_loss:.2f} ≥ ${self.daily_loss_hard_limit:.2f}")
+                            # ⭐ PHASE28-10: Guard Telemetry
+                            if self.activity_tracker:
+                                self.activity_tracker.record_guard_block(symbol, "GUARD_DAILY_LOSS_LIMIT_HARD")
+                            # TODO: 포지션 강제 정리 로직 (향후 구현)
+                            return False, f"일일 손실 한도 초과 (HARD): ${current_loss:.2f} ≥ ${self.daily_loss_hard_limit:.2f}"
+                    
+                    # Soft Limit 체크 (Soft/Hard 모드 모두)
+                    if self.daily_loss_soft_limit is not None and current_loss >= self.daily_loss_soft_limit:
+                        self._notify_guard(f"Daily loss SOFT limit hit: ${current_loss:.2f} ≥ ${self.daily_loss_soft_limit:.2f}")
+                        # ⭐ PHASE28-10: Guard Telemetry
+                        if self.activity_tracker:
+                            self.activity_tracker.record_guard_block(symbol, "GUARD_DAILY_LOSS_LIMIT_SOFT")
+                        return False, f"일일 손실 한도 초과 (SOFT): ${current_loss:.2f} ≥ ${self.daily_loss_soft_limit:.2f}"
         
         # 1-1) 전체 자산 중지 한도 (equity stop)
         if self.equity_stop_limit is not None:
@@ -555,21 +615,37 @@ class RiskManager:
     
     def check_daily_loss_limit(self) -> bool:
         """
-        일일 손실 한도 (포트폴리오에서 PnL 가져옴)
+        ⭐ PHASE28-13: Daily Loss Guard 체크 (off/soft/hard)
         
         Returns:
             bool: True=허용, False=차단
         """
+        # OFF 모드
+        if self.daily_loss_mode == 'off':
+            return True
+        
         # 포트폴리오에서 daily_pnl 가져오기
-        if self.portfolio is None or self.daily_loss_limit is None:
+        if self.portfolio is None or self.daily_loss_soft_limit is None:
             return True
             
         daily_pnl = self.portfolio.get_daily_pnl()
         
-        if self.daily_loss_limit and daily_pnl < -self.daily_loss_limit:
-            logger.error(f"🚨 일일 손실 한도: ${daily_pnl:,.2f} < -${self.daily_loss_limit:,.2f}")
-            self._notify_guard(f"Daily loss limit: {daily_pnl:,.2f} < -{self.daily_loss_limit:,.2f}")
-            return False
+        # 손실 발생 시만 체크
+        if daily_pnl < 0:
+            current_loss = abs(daily_pnl)
+            
+            # Soft Limit
+            if current_loss >= self.daily_loss_soft_limit:
+                logger.error(f"🚨 일일 손실 한도 (SOFT): ${current_loss:.2f} ≥ ${self.daily_loss_soft_limit:.2f}")
+                self._notify_guard(f"Daily loss SOFT limit: ${current_loss:.2f} ≥ ${self.daily_loss_soft_limit:.2f}")
+                return False
+            
+            # Hard Limit (mode=hard일 때)
+            if self.daily_loss_mode == 'hard' and self.daily_loss_hard_limit is not None:
+                if current_loss >= self.daily_loss_hard_limit:
+                    logger.error(f"🚨 일일 손실 한도 (HARD): ${current_loss:.2f} ≥ ${self.daily_loss_hard_limit:.2f}")
+                    self._notify_guard(f"Daily loss HARD limit: ${current_loss:.2f} ≥ ${self.daily_loss_hard_limit:.2f}")
+                    return False
             
         return True
     
@@ -664,14 +740,19 @@ class RiskManager:
         old_equity = self.equity
         self.equity = max(0.0, new_equity)  # 음수 방지
         
-        # 일일 손실 한도 재계산 (한도가 있을 때만)
-        if self.daily_loss_limit_pct is not None:
-            old_limit = self.daily_loss_limit
-            self.daily_loss_limit = self.daily_loss_limit_pct * self.equity
+        # ⭐ PHASE28-13: Daily Loss 한도 재계산 (복리 적용)
+        if self.daily_loss_soft_limit_pct is not None:
+            old_soft = self.daily_loss_soft_limit
+            self.daily_loss_soft_limit = self.daily_loss_soft_limit_pct * self.equity
+            # Backwards compatibility alias
+            self.daily_loss_limit = self.daily_loss_soft_limit
+            
+            if self.daily_loss_hard_limit_pct is not None:
+                self.daily_loss_hard_limit = self.daily_loss_hard_limit_pct * self.equity
             
             if abs(self.equity - old_equity) > 0.01:  # 유의미한 변화만 로그
                 change_pct = ((self.equity - old_equity) / old_equity * 100) if old_equity > 0 else 0
-                logger.info(f"💰 Equity 업데이트: ${old_equity:,.2f} → ${self.equity:,.2f} ({change_pct:+.2f}%), DDL: ${old_limit:.2f} → ${self.daily_loss_limit:.2f}")
+                logger.info(f"💰 Equity 업데이트: ${old_equity:,.2f} → ${self.equity:,.2f} ({change_pct:+.2f}%), DDL_SOFT: ${old_soft:.2f} → ${self.daily_loss_soft_limit:.2f}")
         else:
             if abs(self.equity - old_equity) > 0.01:
                 change_pct = ((self.equity - old_equity) / old_equity * 100) if old_equity > 0 else 0
