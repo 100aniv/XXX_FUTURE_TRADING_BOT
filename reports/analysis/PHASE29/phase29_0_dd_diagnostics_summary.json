@@ -1,0 +1,144 @@
+{
+  "timestamp": "2025-12-08T23:01:54.791529",
+  "phase": "PHASE29-0",
+  "objective": "btc5m_baseline_v2 Strategy Drawdown Diagnostics",
+  "profiles": {
+    "e": {
+      "profile_name": "e",
+      "run_id": "20251208_193428_27o7",
+      "timestamp": "2025-12-08T19:34:31.634468",
+      "total_calls": 26002,
+      "signal_true": 6194,
+      "signal_false": 19808,
+      "orders_submitted": 138,
+      "guard_blocks_total": 11678,
+      "conversion_rate_pct": 2.23,
+      "regime_range": 1745,
+      "regime_range_pct": 6.71,
+      "regime_trend": 24257,
+      "regime_trend_pct": 93.29,
+      "long_signals": 2955,
+      "long_pct": 47.71,
+      "short_signals": 3239,
+      "short_pct": 52.29,
+      "guard_breakdown": [
+        {
+          "reason": "GUARD_DAILY_LOSS_LIMIT",
+          "count": 5804,
+          "percent": 93.7
+        },
+        {
+          "reason": "GUARD_RISK_CHECK_ORDER",
+          "count": 5804,
+          "percent": 93.7
+        },
+        {
+          "reason": "exposure_exceeded",
+          "count": 70,
+          "percent": 1.13
+        }
+      ]
+    },
+    "h": {
+      "profile_name": "h",
+      "run_id": "20251208_215855_6uqz",
+      "timestamp": "2025-12-08T21:58:57.422210",
+      "total_calls": 10305,
+      "signal_true": 2162,
+      "signal_false": 8143,
+      "orders_submitted": 612,
+      "guard_blocks_total": 1350,
+      "conversion_rate_pct": 28.31,
+      "regime_range": 536,
+      "regime_range_pct": 5.2,
+      "regime_trend": 9769,
+      "regime_trend_pct": 94.8,
+      "long_signals": 1029,
+      "long_pct": 47.59,
+      "short_signals": 1133,
+      "short_pct": 52.41,
+      "guard_breakdown": [
+        {
+          "reason": "FILTER_COOLDOWN_ACTIVE",
+          "count": 1271,
+          "percent": 58.79
+        },
+        {
+          "reason": "exposure_exceeded",
+          "count": 79,
+          "percent": 3.65
+        }
+      ]
+    },
+    "i": {
+      "profile_name": "i",
+      "run_id": "20251208_220413_fuq0",
+      "timestamp": "2025-12-08T22:04:15.889291",
+      "total_calls": 8154,
+      "signal_true": 1703,
+      "signal_false": 6451,
+      "orders_submitted": 485,
+      "guard_blocks_total": 1006,
+      "conversion_rate_pct": 28.48,
+      "regime_range": 405,
+      "regime_range_pct": 4.97,
+      "regime_trend": 7749,
+      "regime_trend_pct": 95.03,
+      "long_signals": 797,
+      "long_pct": 46.8,
+      "short_signals": 906,
+      "short_pct": 53.2,
+      "guard_breakdown": [
+        {
+          "reason": "FILTER_COOLDOWN_ACTIVE",
+          "count": 1006,
+          "percent": 59.07
+        }
+      ]
+    },
+    "j": {
+      "profile_name": "j",
+      "run_id": "20251208_220840_gzos",
+      "timestamp": "2025-12-08T22:08:42.558118",
+      "total_calls": 7746,
+      "signal_true": 1613,
+      "signal_false": 6133,
+      "orders_submitted": 465,
+      "guard_blocks_total": 952,
+      "conversion_rate_pct": 28.83,
+      "regime_range": 378,
+      "regime_range_pct": 4.88,
+      "regime_trend": 7368,
+      "regime_trend_pct": 95.12,
+      "long_signals": 754,
+      "long_pct": 46.75,
+      "short_signals": 859,
+      "short_pct": 53.25,
+      "guard_breakdown": [
+        {
+          "reason": "FILTER_COOLDOWN_ACTIVE",
+          "count": 952,
+          "percent": 59.02
+        }
+      ]
+    }
+  },
+  "comparison": {
+    "profile_e_conversion": 2.23,
+    "profile_h_conversion": 28.31,
+    "conversion_improvement": 12.7,
+    "profile_e_guard_blocks": 11678,
+    "profile_h_guard_blocks": 1350,
+    "guard_reduction_pct": 88.44,
+    "profile_e_signal_true": 6194,
+    "profile_h_signal_true": 2162,
+    "backtest_completion_ratio": 0.35,
+    "interpretation": "Daily Loss Guard OFF로 전환율 12.7배 증가, Guard 차단 88.4% 감소. 하지만 백테스트 34.9%만 완료 (Drawdown Guard 조기 차단)."
+  },
+  "hypotheses": [
+    "❌ **Drawdown Guard 조기 차단**: 백테스트 34.9%만 완료. 전략이 10% 손실 이후 시스템 정지 → 전략 기대값<0 추정.",
+    "📊 **Regime 편향**: Trend Regime 94.8% 지배. Range 구간 진입 부족 → 추세 추종 전략의 한계 (Trend 구간에서도 손실).",
+    "🔄 **전환율 vs 생존 기간 트레이드오프**: 전환율 28.3%로 극대화되었으나, 생존 기간은 단축됨 (더 많은 거래 = 더 빠른 손실 누적).",
+    "🚫 **Guard 차단 집중**: `FILTER_COOLDOWN_ACTIVE` 58.8% 차단. 특정 Guard가 지배적 → 전략 로직과 Guard 설정 불일치."
+  ]
+}

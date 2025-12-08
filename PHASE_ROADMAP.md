@@ -1895,3 +1895,128 @@ Ensemble ON 모드로 4시간 이상 연속 Paper 테스트 (인프라 안정성
 - Risk/Reward Ratio 조정
 - Multi-TP 레벨 최적화
 - Mean Reversion vs Trend Following 전략 재평가
+
+---
+
+## 🧪 PHASE29 – 전략 리디자인 & Win Rate 개선 🟢 **IN PROGRESS**
+
+**목표**: btc5m_baseline_v2 전략의 근본적 리디자인 (V3)으로 Win Rate 개선 및 Drawdown 완화
+
+**배경**:
+- PHASE28-13: Guard/Infra는 상용급, 하지만 전략 기대값<0 발견
+- Drawdown Guard 10%에서 조기 종료 (백테스트 35% 완료)
+- Trend Regime 95% 지배, 하지만 Trend 구간에서도 손실 발생
+- 전환율 28% 극대화되었으나, 생존 기간 단축
+
+**Sub-phases**:
+
+- **29-0: 전략 드로우다운 진단 & 리디자인 설계** ✅ **COMPLETE** (2025-12-08)
+  - **Status**: ✅ **DIAGNOSIS & DESIGN COMPLETE**
+  
+  - **목표**: PHASE28-10~13 백테스트 결과 정량 분석 및 V3 설계 문서 작성
+  
+  - **완료 내역**:
+    1. ✅ Profile E/H/I/J 백테스트 결과 정량 분석
+    2. ✅ 분석 스크립트 작성: `scripts/analysis/phase29_0_strategy_dd_diagnostics.py`
+    3. ✅ 진단 리포트 생성 (JSON + Markdown)
+    4. ✅ 전략 리디자인 설계 문서 작성: `docs/PHASE29/PHASE29_0_BTC5M_BASELINE_V2_STRATEGY_REDESIGN_KR.md`
+    5. ✅ PHASE_ROADMAP.md 업데이트
+  
+  - **핵심 발견**:
+    - ❌ **Drawdown Guard 조기 차단**: 백테스트 35%만 완료, 전략 기대값<0 추정
+    - 📊 **Regime 편향**: Trend Regime 95% 지배, Range 진입 부족
+    - 🔄 **전환율 vs 생존 기간 트레이드오프**: 28% 전환율 극대화 → 빠른 손실 누적
+    - 🚫 **Cooldown Filter 59% 차단**: 전략 로직과 Guard 설정 불일치
+  
+  - **근본 원인 가설**:
+    1. **Win Rate < 45%**: 진입 조건 너무 느슨 (RSI OR BB → 많은 False Signal)
+    2. **R:R < 1.2**: SL 너무 가까움, TP 너무 멀음 → 잦은 손절, 드문 TP
+    3. **Regime Detection 정상, 진입 로직 미흡**: Bull Trend LONG 타이밍 후행
+    4. **TP/SL 구조**: SL 1.5 ATR (노이즈), TP 2.25 ATR (미도달)
+  
+  - **V3 리디자인 설계 요약**:
+    - **정량 목표**: Win Rate ≥ 50%, R:R ≥ 1.3, Max DD ≤ 15%, 전환율 10~20%
+    - **진입 로직**: OR → AND (RSI AND BB AND EMA Pullback)
+    - **TP/SL**: Multi-TP (1차 1.2 ATR, 2차 3.0 ATR) + BE 이동
+    - **SL 거리**: 1.5 → 2.0 ATR (노이즈 필터링)
+    - **필터링**: 최소 ATR/Volume, 시간대, 연속 신호 방지
+    - **Regime 모드**: Trend Pullback vs Range Mean Reversion 분리
+  
+  - **Artifacts** ✅:
+    - scripts/analysis/phase29_0_strategy_dd_diagnostics.py
+    - reports/analysis/PHASE29/phase29_0_dd_diagnostics_summary.json
+    - reports/analysis/PHASE29/phase29_0_dd_diagnostics_summary.md
+    - docs/PHASE29/PHASE29_0_BTC5M_BASELINE_V2_STRATEGY_REDESIGN_KR.md
+  
+  - **판정**: ✅ **COMPLETE** - 진단 & 설계 완료, PHASE29-1로 진행
+
+- **29-1: btc5m_baseline_v3 코드 스켈레톤 + 기본 로직 구현** 🔵 **PLANNED**
+  - **Status**: 🔵 **PENDING**
+  
+  - **목표**: V3 설계를 코드로 구현 (Regime별 모드, Multi-TP, 필터링)
+  
+  - **작업 계획**:
+    1. `strategies/btc5m_baseline_v3.py` 신규 파일 생성
+    2. Regime별 진입 로직 구현 (Trend Pullback vs Range Mean Reversion)
+    3. Multi-TP 구조 구현 (1차/2차 TP, BE 이동)
+    4. 시그널 필터링 추가 (최소 ATR/Volume, 시간대, 연속 신호 방지)
+    5. Config 파라미터 정의 (V3 전용 ParamSpace)
+    6. Unit Test: `tests/test_btc5m_baseline_v3.py`
+  
+  - **산출물 예정**:
+    - strategies/btc5m_baseline_v3.py
+    - configs/strategies/btc5m_baseline_v3.yml
+    - tests/test_btc5m_baseline_v3.py
+  
+  - **기간**: 2~3 sessions
+
+- **29-2: 1주/1개월 스모크 백테스트 + 빠른 피드백** 🔵 **PLANNED**
+  - **Status**: 🔵 **PENDING**
+  
+  - **목표**: V3 로직 정상 작동 검증 (Full 3M 전 스모크 테스트)
+  
+  - **작업 계획**:
+    1. 1주일 백테스트 (Drawdown Guard OFF, 최소 20~50 trades)
+    2. 1개월 백테스트 (Drawdown Guard ON, Win Rate ≥ 45%)
+    3. Regime별 Win Rate, R:R, 홀드 타임 로그 분석
+  
+  - **판정 기준**:
+    - ✅ PASS: 1개월 전체 완료 + Win Rate ≥ 45%
+    - ❌ FAIL: Drawdown 10% 조기 종료 또는 Win Rate < 40%
+  
+  - **기간**: 1 session
+
+- **29-3: Random/Bayesian/Local Grid 튜닝** 🔵 **PLANNED**
+  - **Status**: 🔵 **PENDING**
+  
+  - **목표**: V3 ParamSpace에서 최적 파라미터 조합 탐색
+  
+  - **작업 계획**:
+    1. Random Search 50회 (1개월 백테스트)
+    2. Top 10 → Bayesian Optimization 30회
+    3. 최종 후보 3개 → 3개월 Full Backtest
+  
+  - **판정 기준**:
+    - Top 3 조합 모두 3개월 Drawdown < 15% + Win Rate ≥ 50%
+  
+  - **기간**: 3~5 sessions
+
+- **29-4: 3M Multi-Regime 백테스트 + Guard 통합 검증** 🔵 **PLANNED**
+  - **Status**: 🔵 **PENDING**
+  
+  - **목표**: V3 최종 후보를 3개월 Full Backtest로 검증
+  
+  - **작업 계획**:
+    1. 3개월 백테스트 (Drawdown Guard 10% → 15% 실험)
+    2. Regime별 성능 분석 (Trend vs Range)
+    3. Guard 통합 검증 (Daily Loss, Drawdown, Portfolio)
+  
+  - **판정 기준**:
+    - ✅ PASS: 3개월 완료 + Win Rate ≥ 50% + Max DD ≤ 15%
+    - ✅ TARGET: Sharpe ≥ 0.5, Profit Factor ≥ 1.2
+  
+  - **기간**: 2~3 sessions
+
+**진입 조건**: PHASE28-13 완료
+
+**퇴출 조건**: PHASE29-4 PASS (V3 전략 Win Rate ≥ 50%, Max DD ≤ 15%)
