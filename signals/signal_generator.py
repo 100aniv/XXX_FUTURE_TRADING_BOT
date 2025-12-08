@@ -442,6 +442,10 @@ class SignalGenerator:
         if not side:
             return False
         
+        # ⭐ PHASE28-11: Cooldown 완전 비활성화 옵션
+        if self.config.get("disable_signal_cooldown", False):
+            return True  # 쿨다운 체크 완전 스킵
+        
         key = f"{symbol}_{side}"
         prev = self.last_alert_ts.get(key)
         
