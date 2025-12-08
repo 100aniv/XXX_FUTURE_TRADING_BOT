@@ -1,0 +1,370 @@
+# ========================================
+# PHASE29-1: btc5m_baseline_v3 Parameter Space
+# ========================================
+# 대상 전략: btc5m_baseline_v3 (BTCUSDT, 5m, Trend Pullback + Multi-TP)
+# 튜닝 방법: Random Search → Bayesian Search → Local Grid
+# 목적: PHASE29-0 진단 기반 Win Rate ≥ 50%, Max DD ≤ 15% 달성
+# ========================================
+
+# ========================================
+# Run 메타데이터
+# ========================================
+run_metadata:
+  phase: "PHASE29"
+  run_name: "btc5m_baseline_v3_paramspace"
+  strategy_family: "baseline"
+  strategy_name: "btc5m_baseline_v3"
+  version: "3.0.0"
+  description: "V3 ParamSpace for Trend Pullback + Multi-TP + Enhanced Filters"
+  
+  # 튜닝 설정 (PHASE29-3에서 사용)
+  tuning_method: "random"  # random → bayesian → local_grid
+  target_metric: "sharpe_ratio"  # 최적화 목표
+  
+  # Random Search 설정
+  random_search:
+    n_trials: 50  # PHASE29-3: 50회
+    seed: 42
+  
+  # Bayesian Search 설정
+  bayesian_search:
+    n_trials: 30  # PHASE29-3: Top 10 → 30회
+    n_startup_trials: 10
+    seed: 42
+  
+  # Local Grid Search 설정
+  local_grid:
+    n_candidates: 3  # Top 3 조합
+    grid_size: 5  # 각 파라미터 ±2 step
+
+# ========================================
+# 전략 & 심볼
+# ========================================
+target:
+  symbol: BTCUSDT
+  timeframe: 5m
+  mode: backtest
+
+# ========================================
+# Base Config (공통 설정)
+# ========================================
+base_config:
+  # 베이스 config 경로 (PHASE28-13 검증된 config 사용)
+  path: "configs/backtest/phase28_13_btc5m_baseline_v2_profile_h.yml"
+  
+  # Override: V3 전략 사용
+  overrides:
+    strategies:
+      - name: btc5m_baseline_v3
+        enabled: true
+
+# ========================================
+# 시장 구간 (Market Periods)
+# ========================================
+# PHASE29-2/3에서 사용할 백테스트 구간
+market_periods:
+  recent_1m:
+    name: "Recent 1 Month"
+    description: "최근 1개월 (스모크 테스트용)"
+    start: "2024-11-01"
+    end: "2024-12-01"
+    weight: 1.0
+  
+  recent_3m:
+    name: "Recent 3 Months"
+    description: "최근 3개월 (Full 백테스트용)"
+    start: "2024-09-01"
+    end: "2024-12-01"
+    weight: 1.5
+
+# ========================================
+# 파라미터 탐색 공간 (Parameter Space)
+# ========================================
+# V3 설계 기반 파라미터 범위 정의
+# ========================================
+param_space:
+  # === Multi-TP 구조 ===
+  # SL 배수 (Trend 모드)
+  atr_mult_sl_trend:
+    type: float
+    min: 1.5
+    max: 2.5
+    default: 2.0
+    description: "Trend 모드 SL 거리 (ATR 배수)"
+    baseline: 2.0
+  
+  # SL 배수 (Range 모드)
+  atr_mult_sl_range:
+    type: float
+    min: 1.0
+    max: 2.0
+    default: 1.5
+    description: "Range 모드 SL 거리 (ATR 배수)"
+    baseline: 1.5
+  
+  # TP1 배수 (1차 TP, Win Rate 향상용)
+  tp1_mult:
+    type: float
+    min: 0.8
+    max: 1.8
+    default: 1.2
+    description: "1차 TP 배수 (SL distance 대비)"
+    baseline: 1.2
+  
+  # TP2 배수 (2차 TP, Big Winner용)
+  tp2_mult:
+    type: float
+    min: 2.0
+    max: 4.0
+    default: 3.0
+    description: "2차 TP 배수 (SL distance 대비)"
+    baseline: 3.0
+  
+  # TP1 포지션 비율
+  tp1_size_pct:
+    type: float
+    min: 0.5
+    max: 0.7
+    default: 0.6
+    description: "1차 TP 포지션 비율 (60% 권장)"
+    baseline: 0.6
+  
+  # TP2 포지션 비율
+  tp2_size_pct:
+    type: float
+    min: 0.3
+    max: 0.5
+    default: 0.4
+    description: "2차 TP 포지션 비율 (40% 권장)"
+    baseline: 0.4
+  
+  # === Regime 기준 ===
+  # ADX Trend threshold
+  adx_trend_threshold:
+    type: int
+    min: 20
+    max: 30
+    default: 25
+    description: "Trend 모드 진입 최소 ADX (≥ 이 값이면 Trend)"
+    baseline: 25
+  
+  # ADX Range threshold
+  adx_range_threshold:
+    type: int
+    min: 15
+    max: 25
+    default: 20
+    description: "Range 모드 진입 최대 ADX (< 이 값이면 Range)"
+    baseline: 20
+  
+  # === 홀드 타임 ===
+  # Trend 모드 홀드 타임
+  max_hold_minutes_trend:
+    type: categorical
+    values: [90, 120, 150, 180]
+    default: 120
+    description: "Trend 모드 최대 홀드 타임 (분)"
+    baseline: 120
+  
+  # Range 모드 홀드 타임
+  max_hold_minutes_range:
+    type: categorical
+    values: [20, 30, 45, 60]
+    default: 30
+    description: "Range 모드 최대 홀드 타임 (분)"
+    baseline: 30
+  
+  # === RSI 조건 (V2 모듈 재사용) ===
+  # NOTE: V3는 AND 로직이므로, V2보다 조금 더 완화된 범위도 시도
+  rsi_long_threshold:
+    type: int
+    min: 35
+    max: 50
+    default: 45
+    description: "LONG 진입 RSI threshold (낮을수록 공격적)"
+    baseline: 45
+  
+  rsi_short_threshold:
+    type: int
+    min: 50
+    max: 65
+    default: 55
+    description: "SHORT 진입 RSI threshold (높을수록 공격적)"
+    baseline: 55
+  
+  # === BB 조건 (V2 모듈 재사용) ===
+  bb_std_main:
+    type: float
+    min: 1.0
+    max: 1.5
+    default: 1.2
+    description: "BB Main 진입 밴드 (std 배수)"
+    baseline: 1.2
+  
+  bb_std_strong:
+    type: float
+    min: 1.5
+    max: 2.5
+    default: 2.0
+    description: "BB Strong 진입 밴드 (std 배수, 극단적 진입)"
+    baseline: 2.0
+  
+  # === Momentum 조건 (V2 모듈 재사용) ===
+  momentum_lookback:
+    type: categorical
+    values: [3, 5, 7, 10]
+    default: 5
+    description: "Momentum 계산 lookback 캔들 수"
+    baseline: 5
+  
+  momentum_threshold:
+    type: float
+    min: 0.0005
+    max: 0.002
+    default: 0.001
+    description: "Momentum 변화율 threshold (0.05%~0.2%)"
+    baseline: 0.001
+  
+  # === V3 필터 설정 ===
+  # 최소 ATR
+  v3_filters.min_atr_pct:
+    type: float
+    min: 0.001
+    max: 0.003
+    default: 0.002
+    description: "최소 ATR 필터 (0.1%~0.3%)"
+    baseline: 0.002
+  
+  # 최소 Volume 비율
+  v3_filters.min_volume_ratio:
+    type: float
+    min: 0.6
+    max: 1.0
+    default: 0.8
+    description: "최소 Volume 비율 (MA20 대비)"
+    baseline: 0.8
+  
+  # Filter 토글
+  v3_filters.enable_min_atr:
+    type: categorical
+    values: [true, false]
+    default: true
+    description: "최소 ATR 필터 활성화 여부"
+    baseline: true
+  
+  v3_filters.enable_volume_filter:
+    type: categorical
+    values: [true, false]
+    default: true
+    description: "Volume 필터 활성화 여부"
+    baseline: true
+  
+  v3_filters.enable_time_filter:
+    type: categorical
+    values: [true, false]
+    default: false
+    description: "시간대 필터 활성화 여부 (초기 OFF)"
+    baseline: false
+  
+  # === 기타 (V2 호환) ===
+  allow_short:
+    type: categorical
+    values: [true, false]
+    default: true
+    description: "SHORT 포지션 허용 여부"
+    baseline: true
+
+# ========================================
+# 메트릭 평가 기준
+# ========================================
+metrics:
+  # Primary 메트릭 (최적화 목표)
+  primary:
+    name: "sharpe_ratio"
+    description: "Sharpe Ratio (일별 수익률 기반)"
+    direction: "maximize"
+  
+  # Secondary 메트릭 (필터링/평가)
+  secondary:
+    - name: "win_rate"
+      description: "승률 (%)"
+      min_threshold: 48  # PHASE29 목표: ≥ 50%, 허용: 48%
+      direction: "maximize"
+    
+    - name: "total_trades"
+      description: "총 거래 수 (3개월 기준)"
+      min_threshold: 30  # 최소 30개 (월 10개 이상)
+      max_threshold: 300  # 최대 300개 (월 100개 이하)
+    
+    - name: "max_drawdown"
+      description: "최대 낙폭 (%)"
+      max_threshold: 15  # PHASE29 목표: ≤ 15%
+      direction: "minimize"
+    
+    - name: "avg_rr"
+      description: "평균 R:R (Multi-TP 가중 평균)"
+      min_threshold: 1.2  # PHASE29 목표: ≥ 1.3, 허용: 1.2
+      direction: "maximize"
+    
+    - name: "net_pnl"
+      description: "순수익 (USDT)"
+      direction: "maximize"
+    
+    - name: "profit_factor"
+      description: "총이익 / 총손실"
+      min_threshold: 1.0  # Break-even 이상
+      direction: "maximize"
+
+# ========================================
+# Job 실행 설정
+# ========================================
+execution:
+  # 각 Job의 백테스트 실행 설정
+  timeout_seconds: 300  # Job 타임아웃 (5분)
+  max_retries: 2  # 실패 시 재시도 횟수
+  
+  # 병렬 실행 (Optional, PHASE29-3에서 사용)
+  parallel:
+    enabled: false
+    max_workers: 1
+
+# ========================================
+# 결과 저장
+# ========================================
+output:
+  # 결과 저장 경로
+  results_dir: "reports/tuning/phase29"
+  
+  # 상위 N개 파라미터 세트 저장
+  top_n: 10
+  
+  # Markdown 리포트
+  report:
+    enabled: true
+    path: "docs/PHASE29/PHASE29_3_TUNING_REPORT.md"
+  
+  # JSON 결과
+  json:
+    enabled: true
+    path: "reports/tuning/phase29/phase29_3_tuning_results.json"
+
+# ========================================
+# Acceptance Criteria (PHASE29-3 완료 조건)
+# ========================================
+acceptance:
+  # A1. Random Search 실행
+  random_trials_min: 40  # 최소 40개 Trial 실행 (목표 50)
+  
+  # A2. Bayesian Search
+  bayesian_trials_min: 20  # 최소 20개 Trial 실행 (목표 30)
+  
+  # A3. 유효한 결과 비율
+  valid_results_ratio: 0.7  # 70% 이상 Trial이 유효한 결과
+  
+  # A4. Top 3 조합 성능
+  top3_min_win_rate: 48  # Top 3 조합 모두 Win Rate ≥ 48%
+  top3_max_drawdown: 15  # Top 3 조합 모두 Max DD ≤ 15%
+  
+  # A5. 문서
+  design_doc: "docs/PHASE29/PHASE29_3_TUNING_DESIGN.md"
+  report_doc: "docs/PHASE29/PHASE29_3_TUNING_REPORT.md"

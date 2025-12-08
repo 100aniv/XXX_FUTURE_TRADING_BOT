@@ -1863,44 +1863,42 @@ Ensemble ON 모드로 4시간 이상 연속 Paper 테스트 (인프라 안정성
 🧩 **PHASE32** – Live 연동 & Final Hardening 🟦 **PLANNED**
 {{ ... }
 
----
+**현재 Phase**: PHASE29-1 ✅ **COMPLETE** (btc5m_baseline_v3 코드 구현)
 
-## 🎯 현재 상태 (2025-12-08)
+**상태**: ✅ **STRATEGY V3 IMPLEMENTED** | ⏳ **AWAITING PHASE29-2 BACKTEST**
 
-**현재 Phase**: PHASE28-13 ✅ **COMPLETE** (Daily Loss Guard 최적화)
+**다음 Phase**: PHASE29-2 (V3 초기 검증 백테스트)
 
-**상태**: ✅ **INFRASTRUCTURE COMPLETE** | ⚠️ **DRAWDOWN GUARD LIMITATION DISCOVERED**
+**PHASE29-1 핵심 성과**:
+- ✅ V3 전략 코드 완전 구현 (524 라인, BaseStrategy 호환)
+- ✅ Regime별 진입 로직: Trend Pullback + Range Mean Reversion
+- ✅ Multi-TP 구조 구현 (TP1 1.2 RR 60%, TP2 3.0 RR 40%)
+- ✅ 시그널 필터링 추가 (ATR, Volume, 시간대)
+- ✅ Unit Test 12/12 통과
+- ✅ 1일 스모크 백테스트 정상 완료
 
-**다음 Phase**: PHASE29 (전략 Win Rate 개선 및 Drawdown 완화)
+**V3 전략 핵심 특징**:
+- 진입 로직: V2 OR → V3 AND (조건 강화)
+- SL/홀드: Trend 2.0 ATR/120분, Range 1.5 ATR/30분
+- 필터: 최소 ATR 0.2%, Volume 80%, 시간대 필터 (옵션)
 
-**PHASE28-13 핵심 성과**:
-- ✅ Daily Loss Guard OFF로 전환율 **12.6배 증가** (2.23% → 28.3%)
-- ✅ GUARD_DAILY_LOSS 차단 **100% 제거** (5,804 → 0건)
-- ✅ OFF/SOFT/HARD 3단계 모드 구현 완료
-- ⚠️ Drawdown Guard 조기 차단 발견 (10% 손실에서 시스템 정지)
-- ⚠️ 백테스트 30~40%만 실행 (전환율 극대화 vs. 생존 기간 단축)
+**산출물**:
+- strategies/btc5m_baseline_v3.py
+- configs/tuning/btc5m_baseline_v3_paramspace.yml
+- tests/test_btc5m_baseline_v3.py
+- docs/PHASE29/PHASE29_1_BTC5M_BASELINE_V3_IMPLEMENTATION_KR.md
 
-**주요 발견**:
-- Daily Loss Guard가 강력한 병목이었음 확인 (93.7% → 0% 차단)
-- Drawdown Guard가 더 근본적인 한계 (전략 Win Rate 문제)
-- Portfolio 설정은 Drawdown에 영향 없음 (H/I/J 모두 10%에서 차단)
-
-**권장사항**:
-- 운영 모드: **SOFT** 유지 (안전성 우선)
-- Drawdown Guard 한도 재검토 (10% → 15~20%)
-- 전략 개선 우선: Win Rate 향상, Risk/Reward 조정
-
-**다음 단계 (PHASE29)**:
-- 전략 Win Rate 개선 (현재 약 50%)
-- Risk/Reward Ratio 조정
-- Multi-TP 레벨 최적화
-- Mean Reversion vs Trend Following 전략 재평가
+**다음 단계 (PHASE29-2)**:
+- 1주일 백테스트 (Drawdown Guard OFF, 최소 20~50 trades)
+- 1개월 백테스트 (Drawdown Guard ON, Win Rate ≥ 45%)
+- Regime별 Win Rate, R:R, 홀드 타임 로그 분석
 
 ---
 
-## 🧪 PHASE29 – 전략 리디자인 & Win Rate 개선 🟢 **IN PROGRESS**
+## PHASE29 – 전략 리디자인 & Win Rate 개선 IN PROGRESS
 
-**목표**: btc5m_baseline_v2 전략의 근본적 리디자인 (V3)으로 Win Rate 개선 및 Drawdown 완화
+- **29-0: 전략 드로우다운 진단 & 리디자인 설계** COMPLETE (2025-12-08)
+  - Status: DIAGNOSIS & DESIGN COMPLETE
 
 **배경**:
 - PHASE28-13: Guard/Infra는 상용급, 하지만 전략 기대값<0 발견
@@ -1950,30 +1948,45 @@ Ensemble ON 모드로 4시간 이상 연속 Paper 테스트 (인프라 안정성
   
   - **판정**: ✅ **COMPLETE** - 진단 & 설계 완료, PHASE29-1로 진행
 
-- **29-1: btc5m_baseline_v3 코드 스켈레톤 + 기본 로직 구현** 🔵 **PLANNED**
-  - **Status**: 🔵 **PENDING**
+- **29-1: btc5m_baseline_v3 코드 스켈레톤 + 기본 로직 구현** ✅ **COMPLETE** (2025-12-08)
+  - **Status**: ✅ **INFRASTRUCTURE COMPLETE** | ⏳ **AWAITING PHASE29-2 BACKTEST**
   
   - **목표**: V3 설계를 코드로 구현 (Regime별 모드, Multi-TP, 필터링)
   
-  - **작업 계획**:
-    1. `strategies/btc5m_baseline_v3.py` 신규 파일 생성
-    2. Regime별 진입 로직 구현 (Trend Pullback vs Range Mean Reversion)
-    3. Multi-TP 구조 구현 (1차/2차 TP, BE 이동)
-    4. 시그널 필터링 추가 (최소 ATR/Volume, 시간대, 연속 신호 방지)
-    5. Config 파라미터 정의 (V3 전용 ParamSpace)
-    6. Unit Test: `tests/test_btc5m_baseline_v3.py`
+  - **완료 내역**:
+    1. ✅ `strategies/btc5m_baseline_v3.py` 구현 (524 라인)
+    2. ✅ Regime별 진입 로직 구현 (Trend Pullback + Range Mean Reversion)
+    3. ✅ Multi-TP 구조 구현 (TP1 60%, TP2 40%, BE 이동 로직)
+    4. ✅ 시그널 필터링 추가 (ATR, Volume, 시간대 필터)
+    5. ✅ Config 파라미터 정의 (`configs/tuning/btc5m_baseline_v3_paramspace.yml`)
+    6. ✅ Unit Test: `tests/test_btc5m_baseline_v3.py` (12/12 passed)
+    7. ✅ 1일 스모크 백테스트 정상 완료 (ERROR 0건, 진입 0건)
+    8. ✅ 전략 레지스트리 등록 (`strategies/__init__.py`)
   
-  - **산출물 예정**:
+  - **산출물** ✅:
     - strategies/btc5m_baseline_v3.py
-    - configs/strategies/btc5m_baseline_v3.yml
-    - tests/test_btc5m_baseline_v3.py
+  - **핵심 특징**:
+    - **진입 로직**: AND 조건 강화 (V2 OR → V3 AND)
+    - **Multi-TP**: TP1 1.2 RR (60%), TP2 3.0 RR (40%)
+    - **Regime별 SL/홀드**: Trend 2.0 ATR/120분, Range 1.5 ATR/30분
+    - **필터**: 최소 ATR 0.2%, Volume 80%, 시간대 필터 (옵션)
   
-  - **기간**: 2~3 sessions
+  - **판정**: ✅ **COMPLETE** - V3 코드 구현 완료, PHASE29-2로 진행
+  - **작업 계획**:
+    1. 1주일 백테스트 (Drawdown Guard OFF, 최소 20~50 trades)
+    2. 1개월 백테스트 (Drawdown Guard ON, Win Rate ≥ 45%)
+    3. Regime별 Win Rate, R:R, 홀드 타임 로그 분석
+  
+  - **판정 기준**:
+    - ✅ PASS: 1개월 전체 완료 + Win Rate ≥ 45%
+    - ❌ FAIL: Drawdown 10% 조기 종료 또는 Win Rate < 40%
+  
+  - **기간**: 1 session
 
-- **29-2: 1주/1개월 스모크 백테스트 + 빠른 피드백** 🔵 **PLANNED**
-  - **Status**: 🔵 **PENDING**
+- **29-2: btc5m_baseline_v3 초기 검증 백테스트** 🔵 **NEXT**
+  - **Status**: 🔵 **PENDING** | ⏳ **NEXT PHASE**
   
-  - **목표**: V3 로직 정상 작동 검증 (Full 3M 전 스모크 테스트)
+  - **목표**: V3 전략 초기 검증 (1주 + 1개월 백테스트)
   
   - **작업 계획**:
     1. 1주일 백테스트 (Drawdown Guard OFF, 최소 20~50 trades)
