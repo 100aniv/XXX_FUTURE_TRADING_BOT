@@ -1,0 +1,38 @@
+{
+  "run_id": "20251209_013124_btf6",
+  "duration_minutes": null,
+  "timestamp": "2025-12-09T01:31:27.477243",
+  "end_timestamp": "2025-12-09T01:31:41.117313",
+  "symbols": {
+    "BTCUSDT": {
+      "strategy_signals": {
+        "btc5m_baseline_v3": {
+          "total_calls": 477,
+          "signal_true": 0,
+          "signal_false": 477,
+          "long_signals": 0,
+          "short_signals": 0,
+          "regime_range": 88,
+          "regime_trend": 389
+        }
+      },
+      "ensemble_decisions": {},
+      "guard_blocks": {},
+      "orders_submitted": 0
+    }
+  },
+  "totals": {
+    "strategy_signals_total": 477,
+    "strategy_signals_true": 0,
+    "strategy_signals_false": 477,
+    "long_signals": 0,
+    "short_signals": 0,
+    "regime_range": 88,
+    "regime_trend": 389,
+    "ensemble_tier1": 0,
+    "ensemble_tier2": 0,
+    "ensemble_skip": 0,
+    "guard_blocks_total": 0,
+    "orders_submitted": 0
+  }
+}

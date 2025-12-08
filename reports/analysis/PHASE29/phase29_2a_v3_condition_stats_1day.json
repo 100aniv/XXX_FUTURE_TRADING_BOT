@@ -1,0 +1,67 @@
+{
+  "total_bars": 288,
+  "filters": {
+    "atr_filter_pass": 73,
+    "volume_filter_pass": 103,
+    "time_filter_pass": 188,
+    "all_filters_pass": 39
+  },
+  "regime": {
+    "trend_bull": 0,
+    "trend_bear": 0,
+    "range_sideways": 188,
+    "trend_total": 0,
+    "range_total": 188
+  },
+  "trend_mode": {
+    "adx_above_threshold": 0,
+    "bull_rsi_pullback": 0,
+    "bull_bb_lower": 0,
+    "bull_ema_pullback": 0,
+    "bull_di_confirm": 0,
+    "bull_3_conditions": 0,
+    "bear_rsi_pullback": 0,
+    "bear_bb_upper": 0,
+    "bear_ema_pullback": 0,
+    "bear_di_confirm": 0,
+    "bear_3_conditions": 0
+  },
+  "range_mode": {
+    "adx_below_threshold": 0,
+    "di_diff_small": 188,
+    "long_rsi_oversold": 30,
+    "long_bb_lower": 40,
+    "long_adx_range": 0,
+    "long_all_conditions": 0,
+    "short_rsi_overbought": 28,
+    "short_bb_upper": 30,
+    "short_adx_range": 0,
+    "short_all_conditions": 0
+  },
+  "final_signals": {
+    "long_signal": 0,
+    "short_signal": 0,
+    "no_signal": 188
+  },
+  "summary": {
+    "total_bars": 288,
+    "analyzed_bars": 188,
+    "atr_filter_pass_pct": 38.82978723404255,
+    "volume_filter_pass_pct": 54.78723404255319,
+    "time_filter_pass_pct": 100.0,
+    "all_filters_pass_pct": 20.74468085106383,
+    "trend_mode_pct": 0.0,
+    "range_mode_pct": 100.0,
+    "bull_pct": 0.0,
+    "bear_pct": 0.0,
+    "long_signal_pct": 0.0,
+    "short_signal_pct": 0.0,
+    "total_signal_pct": 0.0,
+    "trend_adx_pass_rate": 0,
+    "trend_bull_signal_rate": 0,
+    "trend_bear_signal_rate": 0,
+    "range_adx_pass_rate": 0.0,
+    "range_long_signal_rate": 0.0,
+    "range_short_signal_rate": 0.0
+  }
+}

@@ -1858,21 +1858,6 @@ Ensemble ON 모드로 4시간 이상 연속 Paper 테스트 (인프라 안정성
 
 **퇴출 조건**: Top100 심볼 24H+ Paper PASS, 운영 시나리오 검증 완료
 
----
-
-🧩 **PHASE32** – Live 연동 & Final Hardening 🟦 **PLANNED**
-{{ ... }
-
-**현재 Phase**: PHASE29-2 ❌ **CRITICAL_FAIL** (V3 백테스트 검증 실패)
-
-**상태**: ❌ **BACKTEST FAILED** | ⚠️ **SIGNAL FREQUENCY TOO LOW**
-
-**다음 Phase**: PHASE29-2A (긴급 디버깅) 또는 V3 설계 재검토
-
-**PHASE29-2 핵심 결과**:
-- ❌ 1주일 백테스트: 1건 거래 (목표: 20+)
-- ❌ 1개월 백테스트: 2건 거래 (목표: 50+)
-- ⚠️ Signal Rate: 0.05% (V2 대비 **99% 감소**)
 - ✅ Regime 분포: Trend 74.5%, Range 25.5% (정상)
 - ❌ PHASE29-3 진입 불가
 
@@ -2006,6 +1991,69 @@ Ensemble ON 모드로 4시간 이상 연속 Paper 테스트 (인프라 안정성
   - **다음 조치**: **PHASE29-2A** (긴급 디버깅) 또는 V3 설계 재검토
   
   - **기간**: 1 session (완료)
+
+- **29-2A: V3 조건 통과율 디버깅** ✅ **COMPLETE** (2025-12-09)
+  - **Status**: ✅ **DEBUGGING COMPLETE** | 📋 **병목 식별 완료**
+  
+  - **목표**: V3 전략의 각 조건/필터별 통과율을 정량적으로 분석하여 병목 지점 식별
+  
+  - **완료 내역**:
+    1. ✅ 조건 통과율 집계 유틸리티: `scripts/analysis/utils/v3_condition_stats.py`
+    2. ✅ 진단 스크립트: `scripts/analysis/phase29_2a_v3_condition_diagnostics.py`
+    3. ✅ 디버그 백테스트 Config (1일, 1주)
+    4. ✅ 백테스트 실행 및 조건 분석
+    5. ✅ 디버깅 리포트: `docs/PHASE29/PHASE29_2A_BTC5M_BASELINE_V3_DEBUG_KR.md`
+  
+  - **핵심 발견**:
+    - ✅ **Regime 탐지 정상**: Trend 75.4%, Range 24.6% (1주 기준)
+    - 🚨 **신호 생성 극소**: 1일 0건, 1주 1건 (0.045% Signal Rate)
+    - ⚠️ **Trend 모드 신호 0건**: 1,620 Trend 캔들 중 진입 0건
+    - ⚠️ **Range 모드 신호 1건**: 585 Range 캔들 중 진입 1건
+    - 🚫 **진입 조건 과도**: AND 로직 + 엄격한 Threshold로 신호 차단
+  
+  - **병목 Top 3** (코드 분석 기반):
+    1. 조건 로깅 부재: 정밀 진단 불가 (전략에 조건별 통과율 로깅 필요)
+    2. Range Mode RSI < 30: 추정 85~95% 차단 (5분봉에서 극단적 과매도 드묾)
+    3. AND 로직 과잉 결합: 추정 95~99% 차단 (독립 조건 교집합 극소)
+  
+  - **완화 Scenario 제안**:
+    - **Scenario A (보수적)**: ATR 0.9, Volume 1.3, RSI < 35, Range 2/3 조건
+    - **Scenario B (중간)**: ATR 0.8, Volume 1.2, Dynamic RSI, Trend 2/4 조건
+    - **Scenario C (공격적)**: ATR 0.7, Volume 1.0, RSI < 40 (비추천)
+  
+  - **Artifacts** ✅:
+    - scripts/analysis/utils/v3_condition_stats.py
+    - scripts/analysis/phase29_2a_v3_condition_diagnostics.py
+    - configs/backtest/phase29_2a_btc5m_baseline_v3_debug_{day,week}.yml
+    - reports/analysis/PHASE29/phase29_2a_v3_condition_stats_*.{json,md}
+    - docs/PHASE29/PHASE29_2A_BTC5M_BASELINE_V3_DEBUG_KR.md
+  
+  - **Acceptance Criteria**:
+    - ✅ 1일/1주 조건 분석 실행
+    - ✅ 병목 Top 3 식별 및 정량화
+    - ✅ 완화 Scenario 3개 제안
+    - ✅ 디버깅 리포트 작성
+  
+  - **판정**: ✅ **COMPLETE** - 병목 식별 완료, PHASE29-2B로 진행
+  
+  - **기간**: 1 session (완료)
+
+- **29-2B: V3 조건 완화 및 재검증** 🔵 **PLANNED**
+  - **Status**: 🔵 **PENDING** (다음 작업)
+  
+  - **목표**: Scenario A 적용 후 1주일 백테스트에서 최소 20~30 trades 달성
+  
+  - **작업 계획**:
+    1. Scenario A Config 작성 (ATR 0.9, Volume 1.3, RSI 35, Range 2/3)
+    2. 1주일 백테스트 (Drawdown Guard OFF)
+    3. 결과 분석 및 Scenario 조정
+    4. 1개월 백테스트 (Drawdown Guard ON)
+  
+  - **판정 기준**:
+    - ✅ 1주일: 20~30 trades, Win Rate ≥ 40%
+    - ✅ 1개월: 80~150 trades, Win Rate ≥ 45%, Max DD ≤ 15%
+  
+  - **기간**: 1~2 sessions
 
 - **29-3: Random/Bayesian/Local Grid 튜닝** 🔵 **PLANNED**
   - **Status**: 🔵 **PENDING**

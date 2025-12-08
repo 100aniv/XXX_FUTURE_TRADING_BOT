@@ -1,0 +1,7 @@
+{
+  "status": "completed",
+  "input_file": "reports/backtest/phase29_2a/btc5m_baseline_v3_debug_day_summary.json",
+  "summary_trades": 0,
+  "win_rate": 0,
+  "note": "Full condition analysis requires candle-level indicator data"
+}

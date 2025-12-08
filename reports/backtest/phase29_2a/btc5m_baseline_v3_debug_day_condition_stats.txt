@@ -1,0 +1,13 @@
+
+V3 조건 통과율 분석 완료
+========================
+입력 파일: reports/backtest/phase29_2a/btc5m_baseline_v3_debug_day_summary.json
+출력 파일: reports/backtest/phase29_2a/btc5m_baseline_v3_debug_day_condition_stats.json
+
+Note: 상세 조건 통과율 분석을 위해서는 캔들별 지표 데이터가 필요합니다.
+Summary JSON만으로는 제한적인 분석만 가능합니다.
+
+Summary 정보:
+- Total Trades: 0
+- Win Rate: 0.00%
+- 분석 기간: N/A ~ N/A
