@@ -54,6 +54,9 @@ class PortfolioManager:
         self.use_dynamic_exposure = config.get('portfolio', {}).get('use_dynamic_exposure', True)
         self.use_dynamic_budget = config.get('portfolio', {}).get('use_dynamic_budget', True)
         
+        # ⭐ PHASE28-12: 전략 예산 Guard 토글 플래그
+        self.enable_strategy_budget_cap = config.get('portfolio', {}).get('enable_strategy_budget_cap', True)
+        
         # ⭐ PHASE8-2b: 현재 상태 추적 (backtest 모드에서는 빈 상태로 시작)
         self.positions: Dict[str, List[Dict]] = defaultdict(list)  # {symbol: [positions]}
         self.strategy_positions: Dict[str, int] = defaultdict(int)  # {strategy: count}
@@ -95,7 +98,18 @@ class PortfolioManager:
         self.correlation_timestamp = time.time()
         self.correlation_ttl = 3600  # 1시간 캐시 유효기간
         
-        logger.info(f"✅ PortfolioManager 초기화: Equity=${self.equity:,.0f}, Max Positions={self.max_positions}, Max Exposure/Symbol={self.max_exposure_per_symbol*100:.0f}%, Max Total={self.max_total_exposure*100:.0f}%, Symbol Cooldown={self.cooldown_seconds}s")
+        # ⭐ PHASE28-12: 초기화 로그 강화 (Guard 설정 명시)
+        logger.info(
+            f"✅ PortfolioManager 초기화:\n"
+            f"  💰 Equity: ${self.equity:,.0f}\n"
+            f"  🔒 Max Positions: {self.max_positions}\n"
+            f"  📊 Max Symbol Exposure: {self.max_exposure_per_symbol*100:.0f}%\n"
+            f"  📈 Max Total Exposure: {self.max_total_exposure*100:.0f}%\n"
+            f"  🎯 Max Strategy Positions: {self.max_strategy_positions}\n"
+            f"  ⏱️ Symbol Cooldown: {self.cooldown_seconds}s\n"
+            f"  💵 Enable Strategy Budget Cap: {self.enable_strategy_budget_cap}\n"
+            f"  🔄 Use Dynamic Budget: {self.use_dynamic_budget}"
+        )
     
     def can_open_position(
         self,
@@ -148,20 +162,21 @@ class PortfolioManager:
         if self.strategy_positions[strategy] >= self.max_strategy_positions:
             return False, f"{strategy} 최대 포지션 도달 ({self.strategy_positions[strategy]}/{self.max_strategy_positions})"
         
-        # 6. ⭐ PR12: 전략별 예산 한도 검사
-        strategy_budget = self.calculate_strategy_budget(strategy)
-        strategy_exposure = 0.0
-        
-        # 동일 전략의 기존 포지션 가치 합계
-        for pos_list in self.positions.values():
-            for pos in pos_list:
-                if pos.get('strategy') == strategy:
-                    strategy_exposure += pos.get('value', 0)
-        
-        # 새 포지션 추가 후 전략 노출 예산
-        new_strategy_exposure = strategy_exposure + position_value
-        if new_strategy_exposure > strategy_budget:
-            return False, f"전략 예산 초과: {strategy} ${new_strategy_exposure:,.2f} > ${strategy_budget:,.2f}"
+        # 6. ⭐ PHASE28-12: 전략별 예산 한도 검사 (Config 기반 토글)
+        if self.enable_strategy_budget_cap:
+            strategy_budget = self.calculate_strategy_budget(strategy)
+            strategy_exposure = 0.0
+            
+            # 동일 전략의 기존 포지션 가치 합계
+            for pos_list in self.positions.values():
+                for pos in pos_list:
+                    if pos.get('strategy') == strategy:
+                        strategy_exposure += pos.get('value', 0)
+            
+            # 새 포지션 추가 후 전략 노출 예산
+            new_strategy_exposure = strategy_exposure + position_value
+            if new_strategy_exposure > strategy_budget:
+                return False, f"전략 예산 초과: {strategy} ${new_strategy_exposure:,.2f} > ${strategy_budget:,.2f}"
         
         # 7. ⭐ PR12: 상관관계 가드 검사
         if self.use_correlation_guard:

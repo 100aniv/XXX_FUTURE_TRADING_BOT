@@ -1766,28 +1766,25 @@ Ensemble ON 모드로 4시간 이상 연속 Paper 테스트 (인프라 안정성
 
 🧩 **PHASE32** – Live 연동 & Final Hardening 🟦 **PLANNED**
 {{ ... }
-   - 모든 Phase 완료 시 Complete Report 작성
-   - ROADMAP 업데이트 및 Git commit
 
 ---
 
 ## 🎯 현재 상태 (2025-12-08)
 
-**현재 Phase**: PHASE28-11 (Guard Optimization V1)
+**현재 Phase**: PHASE28-12 (Portfolio Guard 전략 예산 OFF)
 
-**상태**: 🔴 **FAIL** (목표 미달성)
+**상태**: ⚠️ **PARTIAL SUCCESS** (전략 예산 문제 해결, 전환율 목표 부분 달성)
 
-**다음 Phase**: PHASE28-12 (Portfolio Guard 전략 예산 로직 비활성화)
+**다음 Phase**: PHASE28-13 (Daily Loss Limit 완화 및 재실험)
 
-**PHASE28-11 결과**:
-- 4개 프로파일 실험: 모두 목표 전환율(3~5%) 미달
-- 최상 전환율: 0.24% (Profile A/B/C, 15 orders)
-- 근본 원인: 전략 예산 제한(20%)이 99.76% 신호 차단
-- Config 설정 미반영 버그 발견 (Critical)
+**PHASE28-12 핵심 성과**:
+- ✅ 전략 예산 Guard 문제 완전 해결 (Config 기반 토글)
+- ✅ 전환율 9.3배 개선 (0.24% → 2.23%)
+- ✅ 새로운 병목 발견: GUARD_DAILY_LOSS_LIMIT (93.7% 차단)
 
-**다음 단계 (PHASE28-12)**:
-- Portfolio Manager 전략 예산 체크 완전 비활성화
-- Profile E/F/G 재실험 (전략 예산 제거 후)
+**다음 단계 (PHASE28-13)**:
+- Daily Loss Limit 완화 또는 비활성화
+- Profile H/I/J 실험 (`max_daily_loss: null` 또는 10%)
 - 기대 전환율: 5~20%
 
 ---
