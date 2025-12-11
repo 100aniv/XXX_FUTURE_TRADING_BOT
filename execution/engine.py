@@ -503,12 +503,16 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict, sy
     lookback = config["lookback"]
     equity = config["equity"]
     risk_per_trade = config["risk"]["per_trade"]
-    trial_id = config.get("trial_id")  # 백테스트 trial 식별자 (선택)
     
     # ⭐ PHASE18-2: run_id & env 추출 (네임스페이스 격리)
     run_id = config.get("run_id", "unknown")
     env = config.get("env", "paper")  # backtest, paper, live
+    
+    # ⭐ PHASE29-6: trial_id는 run_id를 기본값으로 사용 (DB 성능 지표 정확도)
+    trial_id = config.get("trial_id", run_id)
+    
     logger.info(f"🆔 [PHASE18-2] Run ID: {run_id}, Env: {env}")
+    logger.info(f"🆔 [PHASE29-6] Trial ID: {trial_id}")
 
     # ⭐ PR7-4: Multi-TF 버퍼: (심볼, 타임프레임) 독립 버퍼 관리
     # - 단일 TF: buffers = {('BTCUSDT', '5m'): deque([...], maxlen=400)}

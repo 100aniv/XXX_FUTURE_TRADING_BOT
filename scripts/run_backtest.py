@@ -88,8 +88,14 @@ def main():
         config = deep_merge(base_cfg, custom_cfg)
         
         # Run ID & Mode 설정
-        run_id = generate_run_id()
-        config['run_id'] = run_id
+        # ⭐ PHASE29-6: custom config의 run_id가 있으면 그것을 우선 사용
+        if 'run_id' not in config or not config['run_id']:
+            run_id = generate_run_id()
+            config['run_id'] = run_id
+        else:
+            run_id = config['run_id']
+            logger.info(f"ℹ️  Custom config run_id 사용: {run_id}")
+        
         config['mode'] = 'backtest'
         config['env'] = 'backtest'
         
