@@ -44,6 +44,9 @@ from . import btc5m_baseline_v3
 # PHASE29-3.1: Baseline V4 전략 import
 from . import btc5m_baseline_v4
 
+# PHASE30-1: Core V1 전략 import
+from . import btc15m_core_v1
+
 logger = setup_logger('strategies', log_type='application')
 
 
@@ -81,7 +84,9 @@ def get_all_strategies() -> Dict[str, Any]:
         # PHASE29-1: Baseline V3 전략
         'btc5m_baseline_v3': btc5m_baseline_v3,
         # PHASE29-3.1: Baseline V4 전략
-        'btc5m_baseline_v4': btc5m_baseline_v4
+        'btc5m_baseline_v4': btc5m_baseline_v4,
+        # PHASE30-1: Core V1 전략
+        'btc15m_core_v1': btc15m_core_v1
     }
 
 

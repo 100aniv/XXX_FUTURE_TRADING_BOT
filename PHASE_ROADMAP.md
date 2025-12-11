@@ -2514,7 +2514,7 @@ Ensemble ON 諈刺�諢?4?𨁈� ?渥� ?域� Paper ?嵸擪??(?貲�???�
 
 ### PHASE30-1: btc15m_core_v1 구현 & 인프라 구축
 
-**상태**:  **COMPLETE** (코드 & 인프라),  **AC3 PENDING** (백테스트 데이터 대기)  
+**상태**: ✅ **COMPLETE** (구현), ❌ **AC3 FAIL** (거래 부족)  
 **기간**: 2025-12-11 (1 session)  
 **목표**: Core V1 전략 코드 구현 및 3M Baseline 백테스트 인프라 완성
 
