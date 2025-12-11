@@ -1,0 +1,293 @@
+# ========================================
+# PHASE29-4.0: BTC 5m Baseline V4 - 1개월 백테스트 (GATE - Guard OFF)
+# 목표: V4 전략 1개월 순수 성능 확인 (Guard 완전 비활성화)
+# 기간: 2024-11-01 00:00:00 ~ 2024-12-01 00:00:00 (30일)
+# ========================================
+
+# ========================================
+# 실행 모드 & 환경
+# ========================================
+mode: backtest
+env: backtest
+run_id: "phase29_4_0_btc5m_baseline_v4_month_gate"
+
+# ========================================
+# 심볼 & Timeframe
+# ========================================
+symbol: BTCUSDT
+timeframe: 5m
+lookback: 1000
+
+# ========================================
+# Backtest 설정 (1개월)
+# ========================================
+backtest:
+  symbol: BTCUSDT
+  data_dir: data
+  data_file: BTCUSDT_5m_2024-01-01_2024-12-31.csv
+  start_date: "2024-11-01 00:00:00"
+  end_date: "2024-12-01 00:00:00"
+  duration_minutes: 43200  # 30일 = 43200분
+  output_file: reports/backtest/phase29_4_0/btc5m_baseline_v4_month_gate_summary.json
+
+# ========================================
+# Ensemble 설정 (단일 전략 V4 사용)
+# ========================================
+ensemble:
+  enabled: false
+  mode: score_v2
+  
+  strategies:
+    - btc5m_baseline_v4
+  
+  strategy_weights:
+    btc5m_baseline_v4: 1.0
+
+# ========================================
+# Strategy Selector (V4 단일 전략 직접 사용)
+# ========================================
+strategy:
+  selector: btc5m_baseline_v4
+  use_ensemble: false
+
+# ========================================
+# Capital
+# ========================================
+capital:
+  initial: 50000
+
+# ========================================
+# Execution
+# ========================================
+execution:
+  order_type: MARKET
+  timeout_sec: 30
+  reject_cooldown_seconds: 0
+
+# ========================================
+# Entries (Guard 완전 비활성화)
+# ========================================
+entries:
+  cooldown_candles: 0          # ⭐ 쿨다운 OFF
+  min_rr_required: null        # ⭐ RR 필터 OFF (base.yml override)
+
+# ========================================
+# Equity
+# ========================================
+equity: 50000
+
+# ========================================
+# Portfolio 설정
+# ========================================
+portfolio:
+  initial_balance: 50000.0
+  currency: USDT
+  max_open_positions: 3
+  max_symbol_exposure_pct: 50
+  max_exposure_pct: 80
+  max_total_exposure: 0.8
+  max_strategy_positions: 2
+  use_dynamic_exposure: true
+  use_dynamic_budget: false
+  symbol_cooldown_seconds: 0
+  enable_strategy_budget_cap: false
+
+# ========================================
+# Position Sizing
+# ========================================
+position_sizing:
+  default_risk_per_trade: 0.02
+  mode: kelly_fraction
+  kelly_fraction: 0.25
+  leverage: 3.0
+  max_position_size_pct: 0.3
+  min_leverage: 1
+  max_leverage: 5
+  multi_position_scaling:
+    enabled: true
+    scale_factor: 0.05
+    min_size_ratio: 0.3
+
+# ========================================
+# Risk Management (Drawdown Guard OFF for Gate test)
+# ========================================
+risk:
+  max_positions: 3
+  max_exposure_per_symbol: 0.3
+  max_symbol_exposure_pct: 0.3
+  max_total_exposure_pct: 0.6
+  max_drawdown: 1.0  # ⭐ 100% = OFF (순수 성능 확인용)
+  consecutive_loss_limit: 5
+  max_consecutive_losses: null
+  cooldown_minutes: 0
+  
+  # PHASE28-13: Daily Loss Guard SOFT (5%)
+  daily_loss:
+    mode: soft
+    soft_limit_pct: 0.05
+    hard_limit_pct: 0.10
+  
+  enforce_daily_loss_in_backtest: true
+  
+  flash_guard:
+    enabled: false
+  cooldown:
+    enabled: false
+  min_trade_interval_seconds: 0
+
+# ========================================
+# Fees
+# ========================================
+fees:
+  maker: 0.0002
+  taker: 0.0004
+  slippage_bps: 5
+
+# ========================================
+# Flow Guardian (Gate 테스트용 - OFF)
+# ========================================
+flow_guardian:
+  enabled: false  # ⭐ Gate 테스트용 - FlowGuardian OFF
+  throttles:
+    entry_burst: 100
+    entry_sustained: 100
+    exit_burst: 100
+    exit_sustained: 100
+  blocks:
+    max_rejected_per_hour: 100
+    max_failed_per_hour: 100
+    emergency_stop: false
+
+# ========================================
+# TradeActivityTracker
+# ========================================
+trade_activity_tracker:
+  enabled: true
+  log_interval: 300
+  output_file: "reports/backtest/phase29_4_0/btc5m_baseline_v4_month_gate_summary.json"
+
+# ========================================
+# Monitoring
+# ========================================
+monitoring:
+  redis:
+    host: localhost
+    port: 6379
+    db: 0
+  metrics:
+    enabled: false
+
+# ========================================
+# Database
+# ========================================
+database:
+  url: ${DATABASE_URL}
+  host: ${DB_HOST}
+  port: ${DB_PORT}
+  name: ${DB_NAME}
+  user: ${DB_USER}
+  password: ${DB_PASSWORD}
+
+# ========================================
+# Telegram
+# ========================================
+telegram:
+  token: ${TELEGRAM_TOKEN}
+  chat_id: ${TELEGRAM_CHAT_ID}
+  enabled: false
+
+# ========================================
+# Volume Filter 설정
+# ========================================
+enable_vol_spike_filter: false
+vol_spike_mult: 2.0
+
+# ========================================
+# 전략별 파라미터 - BTC 5m Baseline V4
+# ========================================
+strategies:
+  btc5m_baseline_v4:
+    # === Regime Detection 파라미터 (V3 재사용) ===
+    adx_trend_threshold: 25      # Trend vs Range 분류
+    adx_range_threshold: 20      # Range 확인
+    
+    # === Trend Mode 파라미터 ===
+    trend_min_score: 3           # 진입 최소 Score (Baseline)
+    trend_rsi_threshold: 45      # LONG RSI < threshold
+    trend_weight_rsi: 3          # RSI 조건 가중치
+    trend_weight_bb: 2           # BB 조건 가중치
+    trend_weight_ema: 2          # EMA Pullback 가중치
+    trend_weight_di: 1           # DI+/DI- 가중치
+    
+    # === Range Mode 파라미터 ===
+    range_min_score: 3           # 진입 최소 Score (Baseline, Gate-Fit)
+    range_rsi_threshold: 40      # LONG RSI < threshold
+    range_weight_rsi: 3          # RSI 조건 가중치
+    range_weight_bb: 2           # BB 조건 가중치
+    range_weight_adx: 1          # ADX 조건 가중치
+    
+    # === Multi-TP 구조 (Trend Mode) ===
+    atr_mult_sl_trend: 2.0       # SL 거리 (ATR 배수)
+    tp1_mult_trend: 1.2          # TP1 거리 (SL 배수)
+    tp2_mult_trend: 3.0          # TP2 거리 (SL 배수)
+    max_hold_minutes_trend: 120  # 최대 홀드 타임
+    
+    # === Multi-TP 구조 (Range Mode) ===
+    atr_mult_sl_range: 1.5       # SL 거리 (ATR 배수)
+    tp1_mult_range: 1.0          # TP1 거리 (SL 배수)
+    tp2_mult_range: 2.0          # TP2 거리 (SL 배수)
+    max_hold_minutes_range: 30   # 최대 홀드 타임
+    
+    # === TP 포지션 비율 ===
+    tp1_size_pct: 0.6            # TP1 60%
+    tp2_size_pct: 0.4            # TP2 40%
+    
+    # === RSI/BB Threshold (V2 호환) ===
+    rsi_percentile_base: 25
+    bb_mult_main_base: 0.8
+    bb_mult_strong_base: 1.5
+    
+    # === Filters ===
+    filters:
+      allow_short: true
+      min_atr_pct: 0.0015        # 최소 ATR 0.15%
+      min_volume_ratio: 0.5      # 최소 Volume (MA20 대비)
+      enable_min_atr: true
+      enable_volume_filter: true
+    
+    # === Leverage ===
+    leverage:
+      min: 1
+      max: 5
+      default: 3
+    
+    # === 기타 ===
+    min_bars_for_signal: 100
+
+# ========================================
+# Indicators 설정 (V4용)
+# ========================================
+indicators:
+  ema:
+    fast: 5
+    mid: 20
+    slow: 200
+  rsi:
+    length: 14
+  macd:
+    fast: 12
+    slow: 26
+    signal: 9
+  bollinger:
+    length: 20
+    std: 2.0
+  atr:
+    length: 14
+  volume:
+    ma_length: 20
+  donchian:
+    length: 20
+  
+  # V4 필수: ADX + DI 지표
+  adx:
+    period: 14

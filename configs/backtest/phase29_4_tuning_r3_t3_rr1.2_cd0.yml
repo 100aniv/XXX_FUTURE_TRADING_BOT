@@ -1,0 +1,177 @@
+mode: backtest
+env: backtest
+run_id: phase29_4_tuning_r3_t3_rr1.2_cd0
+symbol: BTCUSDT
+timeframe: 5m
+lookback: 1000
+backtest:
+  symbol: BTCUSDT
+  data_dir: data
+  data_file: BTCUSDT_5m_2024-01-01_2024-12-31.csv
+  start_date: '2024-11-01 00:00:00'
+  end_date: '2024-12-01 00:00:00'
+  duration_minutes: 43200
+  output_file: reports/backtest/phase29_4_1/phase29_4_tuning_r3_t3_rr1.2_cd0_summary.json
+ensemble:
+  enabled: false
+  mode: score_v2
+  strategies:
+  - btc5m_baseline_v4
+  strategy_weights:
+    btc5m_baseline_v4: 1.0
+strategy:
+  selector: btc5m_baseline_v4
+  use_ensemble: false
+capital:
+  initial: 50000
+execution:
+  order_type: MARKET
+  timeout_sec: 30
+  reject_cooldown_seconds: 0
+entries:
+  cooldown_candles: 0
+  min_rr_required: 1.2
+equity: 50000
+portfolio:
+  initial_balance: 50000.0
+  currency: USDT
+  max_open_positions: 3
+  max_symbol_exposure_pct: 50
+  max_exposure_pct: 80
+  max_total_exposure: 0.8
+  max_strategy_positions: 2
+  use_dynamic_exposure: true
+  use_dynamic_budget: false
+  symbol_cooldown_seconds: 0
+  enable_strategy_budget_cap: false
+position_sizing:
+  default_risk_per_trade: 0.02
+  mode: kelly_fraction
+  kelly_fraction: 0.25
+  leverage: 3.0
+  max_position_size_pct: 0.3
+  min_leverage: 1
+  max_leverage: 5
+  multi_position_scaling:
+    enabled: true
+    scale_factor: 0.05
+    min_size_ratio: 0.3
+risk:
+  max_positions: 3
+  max_exposure_per_symbol: 0.3
+  max_symbol_exposure_pct: 0.3
+  max_total_exposure_pct: 0.6
+  max_drawdown: 1.0
+  consecutive_loss_limit: 5
+  max_consecutive_losses: null
+  cooldown_minutes: 0
+  daily_loss:
+    mode: soft
+    soft_limit_pct: 0.05
+    hard_limit_pct: 0.1
+  enforce_daily_loss_in_backtest: true
+  flash_guard:
+    enabled: false
+  cooldown:
+    enabled: false
+  min_trade_interval_seconds: 0
+fees:
+  maker: 0.0002
+  taker: 0.0004
+  slippage_bps: 5
+flow_guardian:
+  enabled: false
+  throttles:
+    entry_burst: 100
+    entry_sustained: 100
+    exit_burst: 100
+    exit_sustained: 100
+  blocks:
+    max_rejected_per_hour: 100
+    max_failed_per_hour: 100
+    emergency_stop: false
+trade_activity_tracker:
+  enabled: true
+  log_interval: 300
+  output_file: reports/backtest/phase29_4_1/phase29_4_tuning_r3_t3_rr1.2_cd0_summary.json
+monitoring:
+  redis:
+    host: localhost
+    port: 6379
+    db: 0
+  metrics:
+    enabled: false
+database:
+  url: ${DATABASE_URL}
+  host: ${DB_HOST}
+  port: ${DB_PORT}
+  name: ${DB_NAME}
+  user: ${DB_USER}
+  password: ${DB_PASSWORD}
+telegram:
+  token: ${TELEGRAM_TOKEN}
+  chat_id: ${TELEGRAM_CHAT_ID}
+  enabled: false
+enable_vol_spike_filter: false
+vol_spike_mult: 2.0
+strategies:
+  btc5m_baseline_v4:
+    adx_trend_threshold: 25
+    adx_range_threshold: 20
+    trend_min_score: 3
+    trend_rsi_threshold: 45
+    trend_weight_rsi: 3
+    trend_weight_bb: 2
+    trend_weight_ema: 2
+    trend_weight_di: 1
+    range_min_score: 3
+    range_rsi_threshold: 40
+    range_weight_rsi: 3
+    range_weight_bb: 2
+    range_weight_adx: 1
+    atr_mult_sl_trend: 2.0
+    tp1_mult_trend: 1.2
+    tp2_mult_trend: 3.0
+    max_hold_minutes_trend: 120
+    atr_mult_sl_range: 1.5
+    tp1_mult_range: 1.0
+    tp2_mult_range: 2.0
+    max_hold_minutes_range: 30
+    tp1_size_pct: 0.6
+    tp2_size_pct: 0.4
+    rsi_percentile_base: 25
+    bb_mult_main_base: 0.8
+    bb_mult_strong_base: 1.5
+    filters:
+      allow_short: true
+      min_atr_pct: 0.0015
+      min_volume_ratio: 0.5
+      enable_min_atr: true
+      enable_volume_filter: true
+    leverage:
+      min: 1
+      max: 5
+      default: 3
+    min_bars_for_signal: 100
+indicators:
+  ema:
+    fast: 5
+    mid: 20
+    slow: 200
+  rsi:
+    length: 14
+  macd:
+    fast: 12
+    slow: 26
+    signal: 9
+  bollinger:
+    length: 20
+    std: 2.0
+  atr:
+    length: 14
+  volume:
+    ma_length: 20
+  donchian:
+    length: 20
+  adx:
+    period: 14

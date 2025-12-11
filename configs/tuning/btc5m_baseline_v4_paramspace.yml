@@ -1,0 +1,87 @@
+# ========================================
+# PHASE29-3.1: btc5m_baseline_v4 Parameter Space
+# ========================================
+# 대상 전략: btc5m_baseline_v4 (BTCUSDT, 5m, Regime-Aware Hybrid OR+Score)
+# 튜닝 방법: Random Search → Bayesian Search → Local Grid
+# 목적: PHASE29-4에서 Win Rate ≥ 45%, Sharpe > 0 달성
+# ========================================
+
+# ========================================
+# Run 메타데이터
+# ========================================
+run_metadata:
+  phase: "PHASE29"
+  run_name: "btc5m_baseline_v4_paramspace"
+  strategy_family: "baseline"
+  strategy_name: "btc5m_baseline_v4"
+  version: "4.0.0-alpha"
+  description: "V4 ParamSpace for Regime-Aware Hybrid (OR + Score + Multi-TP)"
+
+# ========================================
+# ParamSpace (Random/Bayesian Search용)
+# ========================================
+paramspace:
+  # === Trend Mode Score ===
+  trend_min_score: [2, 3, 4, 5]                    # Score Threshold
+  trend_rsi_threshold: [40, 45, 50]                # RSI Threshold
+  trend_weight_rsi: [2, 3, 4]                      # RSI 가중치
+  trend_weight_bb: [1, 2, 3]                       # BB 가중치
+  trend_weight_ema: [1, 2, 3]                      # EMA 가중치
+  trend_weight_di: [0, 1, 2]                       # DI 가중치
+  
+  # === Range Mode Score ===
+  range_min_score: [1, 2, 3, 4]                    # Score Threshold
+  range_rsi_threshold: [35, 40, 45]                # RSI Threshold
+  range_weight_rsi: [2, 3, 4]                      # RSI 가중치
+  range_weight_bb: [1, 2, 3]                       # BB 가중치
+  range_weight_adx: [0, 1, 2]                      # ADX 가중치
+  
+  # === Trend Mode TP/SL ===
+  atr_mult_sl_trend: [1.5, 2.0, 2.5]              # Trend SL
+  tp1_mult_trend: [1.0, 1.2, 1.5]                 # Trend TP1
+  tp2_mult_trend: [2.0, 3.0, 4.0]                 # Trend TP2
+  
+  # === Range Mode TP/SL ===
+  atr_mult_sl_range: [1.0, 1.5, 2.0]              # Range SL
+  tp1_mult_range: [0.8, 1.0, 1.2]                 # Range TP1
+  tp2_mult_range: [1.5, 2.0, 2.5]                 # Range TP2
+  
+  # === Regime Detection ===
+  adx_trend_threshold: [20, 25, 30]               # Trend 분류 기준
+  adx_range_threshold: [15, 20, 25]               # Range 분류 기준
+  
+  # === BB/RSI Threshold (V2 호환) ===
+  bb_mult_main_base: [0.6, 0.8, 1.0]              # BB Main 배수
+  bb_mult_strong_base: [1.2, 1.5, 1.8]            # BB Strong 배수
+  rsi_percentile_base: [20, 25, 30]               # RSI percentile
+
+# ========================================
+# Grid Search용 Local ParamSpace
+# ========================================
+grid_paramspace:
+  # Trend Mode (Top 조합 주변 Grid)
+  trend_min_score: [2, 3, 4]
+  trend_weight_rsi: [2, 3, 4]
+  trend_weight_bb: [1, 2, 3]
+  
+  # Range Mode (Top 조합 주변 Grid)
+  range_min_score: [1, 2, 3]
+  range_weight_rsi: [2, 3, 4]
+  range_weight_bb: [1, 2, 3]
+  
+  # TP/SL (Top 조합 주변 Grid)
+  atr_mult_sl_trend: [1.8, 2.0, 2.2]
+  tp1_mult_trend: [1.0, 1.2, 1.4]
+
+# ========================================
+# 튜닝 목표 (Bayesian Search)
+# ========================================
+optimization:
+  primary_metric: "win_rate"              # Win Rate ≥ 45%
+  secondary_metrics:
+    - "sharpe_ratio"                      # Sharpe > 0
+    - "profit_factor"                     # PF ≥ 1.2
+  constraints:
+    - "total_trades >= 80"                # 1개월 최소 거래 수
+    - "total_trades <= 240"               # 1개월 최대 거래 수
+    - "max_drawdown <= 0.15"              # Max DD ≤ 15%

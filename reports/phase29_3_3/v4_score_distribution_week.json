@@ -1,0 +1,63 @@
+{
+  "total_candles": 2016,
+  "regime_distribution": {
+    "bear_low_vol": {
+      "count": 424,
+      "percentage": 23.35
+    },
+    "range_low_vol": {
+      "count": 421,
+      "percentage": 23.18
+    },
+    "bull_low_vol": {
+      "count": 399,
+      "percentage": 21.97
+    },
+    "bear_high_vol": {
+      "count": 289,
+      "percentage": 15.91
+    },
+    "bull_high_vol": {
+      "count": 197,
+      "percentage": 10.85
+    },
+    "range_high_vol": {
+      "count": 86,
+      "percentage": 4.74
+    }
+  },
+  "filter_stats": {
+    "total_pass": 987,
+    "total_fail": 829,
+    "fail_reasons": {
+      "[FILTER] Volume 너무 낮음": 86,
+      "[FILTER] ATR 너무 낮음": 743
+    },
+    "pass_rate": 54.35
+  },
+  "trend_score_distribution": {},
+  "range_score_distribution": {
+    "total": 987,
+    "score_gte_1": 204,
+    "score_gte_2": 96,
+    "score_gte_3": 96,
+    "mean": 0.52,
+    "std": 1.31,
+    "max": 6,
+    "score_gte_1_pct": 20.67,
+    "score_gte_2_pct": 9.73,
+    "score_gte_3_pct": 9.73
+  },
+  "signal_stats": {
+    "total_signals": 96,
+    "long_signals": 35,
+    "short_signals": 61,
+    "signal_rate": 5.29
+  },
+  "mode_distribution": {
+    "range": {
+      "count": 1816,
+      "percentage": 100.0
+    }
+  }
+}

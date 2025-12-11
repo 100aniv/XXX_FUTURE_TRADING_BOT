@@ -1,0 +1,41 @@
+{
+  "run_id": "20251210_164307_kuh1",
+  "duration_minutes": null,
+  "timestamp": "2025-12-10T16:43:09.903329",
+  "end_timestamp": "2025-12-10T16:44:29.352905",
+  "symbols": {
+    "BTCUSDT": {
+      "strategy_signals": {
+        "btc5m_baseline_v4": {
+          "total_calls": 2205,
+          "signal_true": 96,
+          "signal_false": 2109,
+          "long_signals": 35,
+          "short_signals": 61,
+          "regime_range": 585,
+          "regime_trend": 1620
+        }
+      },
+      "ensemble_decisions": {},
+      "guard_blocks": {
+        "FILTER_COOLDOWN_ACTIVE": 50,
+        "exposure_exceeded": 2
+      },
+      "orders_submitted": 35
+    }
+  },
+  "totals": {
+    "strategy_signals_total": 2205,
+    "strategy_signals_true": 96,
+    "strategy_signals_false": 2109,
+    "long_signals": 35,
+    "short_signals": 61,
+    "regime_range": 585,
+    "regime_trend": 1620,
+    "ensemble_tier1": 0,
+    "ensemble_tier2": 0,
+    "ensemble_skip": 0,
+    "guard_blocks_total": 52,
+    "orders_submitted": 35
+  }
+}

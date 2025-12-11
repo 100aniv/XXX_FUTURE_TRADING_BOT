@@ -38,6 +38,55 @@ from execution.position_tracker import PositionTracker
 logger = setup_logger(__name__, log_type="application")
 
 
+def _init_duration_state(config: dict, mode: str) -> dict:
+    """
+    PHASE29-3.2: Duration 상태 초기화 헬퍼
+    
+    Backtest 모드에서는 start/end 날짜로 범위가 정해져 있으므로
+    Duration 제약을 적용하지 않는다 (unlimited).
+    
+    Args:
+        config: 전체 설정 딕셔너리
+        mode: 실행 모드 ('backtest', 'paper', 'live')
+    
+    Returns:
+        dict: Duration 상태
+            - duration_mode: 'wall_clock' | 'market_time' | 'unlimited'
+            - duration_hours: float
+            - duration_seconds: float
+    """
+    import time
+    
+    # Backtest 모드는 기본적으로 unlimited (start/end 날짜로 범위 제어)
+    if mode == 'backtest':
+        logger.info("🔧 [PHASE29-3.2] Backtest 모드: Duration unlimited (start/end 날짜 기반)")
+        return {
+            'duration_mode': 'unlimited',
+            'duration_hours': 0,
+            'duration_seconds': 0,
+            'start_wall_time': time.time()
+        }
+    
+    # Paper/Live 모드는 기존 로직 유지
+    duration_mode = config.get('paper', {}).get('duration_mode', 'market_time')
+    duration_hours = config.get('paper', {}).get('duration_hours', 1)
+    duration_seconds = duration_hours * 3600
+    
+    # Duration 설정 검증
+    if duration_hours <= 0:
+        logger.warning(f"⚠️ Duration 설정 이상: {duration_hours}h → 무제한 실행 모드")
+        duration_mode = 'unlimited'
+        duration_hours = 0
+        duration_seconds = 0
+    
+    return {
+        'duration_mode': duration_mode,
+        'duration_hours': duration_hours,
+        'duration_seconds': duration_seconds,
+        'start_wall_time': time.time()
+    }
+
+
 def run_v2(mode: str, config: dict, clean_state: bool = False):
     """
     PHASE23-1 / PHASE26-1: Single-Engine Entry Point (Multi-Symbol 지원)
@@ -902,25 +951,24 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict, sy
     # ⭐ PHASE16+: Wall-clock Duration 모드 초기화
     # PHASE22-1-FIX: Duration 로직 명확화 및 검증 강화
     # PHASE22-2-HOTFIX: Duration 로그 간격 추적 변수 추가
+    # PHASE29-3.2: Duration 헬퍼 함수 사용 (Backtest unlimited 지원)
     import time
-    duration_mode = config.get('paper', {}).get('duration_mode', 'market_time')
-    duration_hours = config.get('paper', {}).get('duration_hours', 1)
-    start_wall_time = time.time()
-    duration_seconds = duration_hours * 3600
+    duration_state = _init_duration_state(config, mode)
+    duration_mode = duration_state['duration_mode']
+    duration_hours = duration_state['duration_hours']
+    duration_seconds = duration_state['duration_seconds']
+    start_wall_time = duration_state['start_wall_time']
     last_logged_interval = -1  # Duration 로그 출력 추적
-    
-    # Duration 설정 검증
-    if duration_hours <= 0:
-        logger.warning(f"⚠️ Duration 설정 이상: {duration_hours}h → 무제한 실행 모드")
-        duration_mode = 'unlimited'
     
     if duration_mode == 'wall_clock':
         logger.info(f"⏱️  [WALL-CLOCK] Duration 모드 시작: {duration_hours:.2f}시간 ({duration_seconds:.0f}초)")
         logger.info(f"⏱️  [WALL-CLOCK] 시작 시각: {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(start_wall_time))}")
         estimated_end = start_wall_time + duration_seconds
         logger.info(f"⏱️  [WALL-CLOCK] 종료 예정: {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(estimated_end))}")
-    else:
+    elif duration_mode == 'market_time':
         logger.info(f"⏱️  [MARKET-TIME] Duration 모드 시작: {duration_hours:.2f}시간")
+    elif duration_mode == 'unlimited':
+        logger.info(f"♾️  [UNLIMITED] Duration 제약 없음 (Backtest 모드 또는 명시적 설정)")
 
     # ⭐ PHASE18-3: Runtime Context 추출 (Graceful Shutdown)
     runtime_ctx = config.get('runtime_context', None)
@@ -1682,23 +1730,44 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict, sy
                     # Fallback 경로에서만 지표 계산 필요 (Multi-TF 경로는 이미 계산함)
                     if "ema_fast" not in df_tf.columns:
                         adx_cfg = inds.get("adx", {})
+                        rsi_len = rsi_cfg.get("length", 14)
+                        atr_len = atr_cfg.get("length", 14)
+                        adx_period = adx_cfg.get("period", 14)
+                        vol_ma_len = vol_cfg.get("ma_length", 30)
+                        ema_fast = ema_cfg.get("fast", 20)
+                        ema_mid = ema_cfg.get("mid", 50)
+                        ema_slow = ema_cfg.get("slow", 200)
+                        
                         df_tf = add_indicators(
                             df_tf,
-                            ema_cfg.get("fast", 20),
-                            ema_cfg.get("mid", 50),
-                            ema_cfg.get("slow", 200),
-                            rsi_cfg.get("length", 14),
+                            ema_fast,
+                            ema_mid,
+                            ema_slow,
+                            rsi_len,
                             macd_cfg.get("fast", 12),
                             macd_cfg.get("slow", 26),
                             macd_cfg.get("signal", 9),
                             bb_cfg.get("length", 20),
                             bb_cfg.get("std", 2.0),
-                            atr_cfg.get("length", 14),
-                            vol_cfg.get("ma_length", 30),
+                            atr_len,
+                            vol_ma_len,
                             dc_len=20,
                             use_adx=True,
-                            adx_period=adx_cfg.get("period", 14),
+                            adx_period=adx_period,
                         )
+                        
+                        # PHASE29-3.3: V4 전략 호환성 - 컬럼 별칭 추가
+                        if "rsi" in df_tf.columns and f"rsi_{rsi_len}" not in df_tf.columns:
+                            df_tf[f"rsi_{rsi_len}"] = df_tf["rsi"]
+                        if "ema_fast" in df_tf.columns:
+                            df_tf[f"ema_{ema_fast}"] = df_tf["ema_fast"]
+                            df_tf[f"ema_{ema_mid}"] = df_tf["ema_mid"]
+                            df_tf[f"ema_{ema_slow}"] = df_tf["ema_slow"]
+                        if "vol_ma" in df_tf.columns and f"volume_ma_{vol_ma_len}" not in df_tf.columns:
+                            df_tf[f"volume_ma_{vol_ma_len}"] = df_tf["vol_ma"]
+                        if f"plus_di_{adx_period}" in df_tf.columns:
+                            df_tf[f"di_plus_{adx_period}"] = df_tf[f"plus_di_{adx_period}"]
+                            df_tf[f"di_minus_{adx_period}"] = df_tf[f"minus_di_{adx_period}"]
 
                     # 전략 실행 (리샘플 DF) - PHASE23-2 / PHASE27-5A
                     from common.registry.base_strategy import BaseStrategy
@@ -2412,13 +2481,26 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict, sy
                 }
 
                 # PostgreSQL 기반 백테스트 리포트 생성
-                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                html_file = report_dir / f"backtest_{timestamp}.html"
+                # PHASE29-2C-R: Config의 output_file 경로 사용 (Summary JSON)
+                config_output_file = config.get("backtest", {}).get("output_file")
+                
+                if config_output_file:
+                    # Config에 명시적 output_file이 있으면 사용
+                    from pathlib import Path
+                    output_path = Path(config_output_file)
+                    # 디렉토리 생성
+                    output_path.parent.mkdir(parents=True, exist_ok=True)
+                    logger.info(f"📝 [PHASE29-2C-R] Config output_file 사용: {output_path}")
+                else:
+                    # fallback: 타임스탬프 기반 자동 생성
+                    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                    output_path = report_dir / f"backtest_{timestamp}.json"
+                    logger.info(f"📝 [PHASE29-2C-R] 자동 생성 경로 사용: {output_path}")
 
                 # analytics 모듈로 리포트 생성 (PostgreSQL 기반, TUNING_VIBLE 포함)
                 result = generate_backtest_report(
                     trial_id=None,  # 전체 백테스트 결과
-                    output_file=str(html_file),
+                    output_file=str(output_path),  # PHASE29-2C-R: JSON/HTML 공통 경로
                     sinks=["log", "html", "json"],
                 )
 
@@ -2434,17 +2516,35 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict, sy
                         f"⚠️  백테스트 리포트 생성 실패: {result.get('error', '데이터 없음')}"
                     )
             else:
-                # TUNING_VIBLE 100점 만점 검증만 수행 (HTML 미생성)
+                # PHASE29-2C-R: html_enabled=False여도 JSON은 생성 (Summary 필수)
                 logger.info("=" * 80)
-                logger.info("🎯 TUNING_VIBLE 100점 만점 검증 시작")
+                logger.info("🎯 TUNING_VIBLE 100점 만점 검증 시작 (JSON 저장 포함)")
                 logger.info("=" * 80)
+                
+                # PHASE29-2C-R: Config의 output_file 경로 사용
+                config_output_file = config.get("backtest", {}).get("output_file")
+                
+                if config_output_file:
+                    from pathlib import Path
+                    output_path = Path(config_output_file)
+                    output_path.parent.mkdir(parents=True, exist_ok=True)
+                    logger.info(f"📝 [PHASE29-2C-R] Config output_file 사용: {output_path}")
+                else:
+                    from pathlib import Path
+                    report_dir = Path("reports/backtest")
+                    report_dir.mkdir(parents=True, exist_ok=True)
+                    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                    output_path = report_dir / f"backtest_{timestamp}.json"
+                    logger.info(f"📝 [PHASE29-2C-R] 자동 생성 경로 사용: {output_path}")
+                
                 result = generate_backtest_report(
-                    trial_id=None, sinks=["log"]  # 로그만 출력
+                    trial_id=None,
+                    output_file=str(output_path),
+                    sinks=["log", "json"]  # PHASE29-2C-R: JSON 포함
                 )
                 if result.get("status") == "success":
-                    logger.info(
-                        f"🏆 TUNING_VIBLE 총점: {result.get('total_score', 0):.1f}/100"
-                    )
+                    logger.info(f"🏆 TUNING_VIBLE 총점: {result.get('total_score', 0):.1f}/100")
+                    logger.info(f"   - JSON: {result.get('json_path')}")
                 else:
                     logger.warning("⚠️  검증 실패: 거래 데이터 없음")
         except Exception as e:

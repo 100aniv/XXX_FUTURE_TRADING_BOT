@@ -283,10 +283,22 @@ class ReportGenerator:
                 "html_path": None
             }
             
-            # JSON 저장
+            # JSON 저장 (PHASE29-2C-R: output_file 우선 사용)
             if "json" in sinks:
-                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                json_path = self.output_dir / f"backtest_{trial_id or timestamp}.json"
+                if output_file and (str(output_file).endswith('.json') or not str(output_file).endswith('.html')):
+                    # PHASE29-2C-R: output_file이 있고 .json이거나 확장자 없으면 JSON 경로로 사용
+                    json_path = Path(output_file)
+                    if not str(json_path).endswith('.json'):
+                        json_path = json_path.parent / f"{json_path.stem}.json"
+                    # 디렉토리 생성
+                    json_path.parent.mkdir(parents=True, exist_ok=True)
+                    logger.info(f"📝 [PHASE29-2C-R] Config output_file을 JSON 경로로 사용: {json_path}")
+                else:
+                    # fallback: 자동 타임스탬프 경로
+                    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                    json_path = self.output_dir / f"backtest_{trial_id or timestamp}.json"
+                    logger.info(f"📝 [PHASE29-2C-R] 자동 JSON 경로 사용: {json_path}")
+                
                 json_data = {
                     "trial_id": trial_id,
                     "total_score": total_score,
@@ -299,22 +311,29 @@ class ReportGenerator:
                     encoding='utf-8'
                 )
                 result["json_path"] = str(json_path)
-                logger.info(f"📊 백테스트 리포트 JSON 저장: {json_path}")
+                logger.info(f"✅ [PHASE29-2C-R] 백테스트 리포트 JSON 저장: {json_path}")
             
-            # HTML 생성
-            if "html" in sinks or output_file:
-                if not output_file:
-                    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                    output_file = self.output_dir / f"backtest_{trial_id or timestamp}.html"
+            # HTML 생성 (PHASE29-2C-R: JSON과 분리된 경로 사용)
+            if "html" in sinks:
+                if output_file and str(output_file).endswith('.html'):
+                    # output_file이 .html이면 HTML 경로로 사용
+                    html_path = Path(output_file)
+                    html_path.parent.mkdir(parents=True, exist_ok=True)
+                elif output_file:
+                    # output_file이 있지만 .html이 아니면 .html 확장자로 변경
+                    html_path = Path(output_file).parent / f"{Path(output_file).stem}.html"
+                    html_path.parent.mkdir(parents=True, exist_ok=True)
                 else:
-                    output_file = Path(output_file)
+                    # output_file이 없으면 자동 경로
+                    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                    html_path = self.output_dir / f"backtest_{trial_id or timestamp}.html"
                 
                 html_content = self._generate_backtest_html(
                     total_score, score_details, trial_id
                 )
-                output_file.write_text(html_content, encoding='utf-8')
-                result["html_path"] = str(output_file)
-                logger.info(f"📊 백테스트 리포트 HTML 저장: {output_file}")
+                html_path.write_text(html_content, encoding='utf-8')
+                result["html_path"] = str(html_path)
+                logger.info(f"✅ [PHASE29-2C-R] 백테스트 리포트 HTML 저장: {html_path}")
             
             # Log 출력
             if "log" in sinks:

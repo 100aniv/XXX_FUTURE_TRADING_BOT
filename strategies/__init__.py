@@ -41,6 +41,9 @@ from . import btc5m_baseline_v2
 # PHASE29-1: Baseline V3 전략 import
 from . import btc5m_baseline_v3
 
+# PHASE29-3.1: Baseline V4 전략 import
+from . import btc5m_baseline_v4
+
 logger = setup_logger('strategies', log_type='application')
 
 
@@ -76,7 +79,9 @@ def get_all_strategies() -> Dict[str, Any]:
         # PHASE28-7: Baseline V2 전략
         'btc5m_baseline_v2': btc5m_baseline_v2,
         # PHASE29-1: Baseline V3 전략
-        'btc5m_baseline_v3': btc5m_baseline_v3
+        'btc5m_baseline_v3': btc5m_baseline_v3,
+        # PHASE29-3.1: Baseline V4 전략
+        'btc5m_baseline_v4': btc5m_baseline_v4
     }
 
 
@@ -177,8 +182,17 @@ def load_strategies(config: dict, all_strategies: dict = None) -> Dict[str, Dict
             strategies_cfg = config.get('strategies', {})
             logger.info(f"🔍 [PHASE23-2 DEBUG] strategies_cfg keys: {list(strategies_cfg.keys())}")
             strategy_config = strategies_cfg.get(selector, {})
-            strategy_params = strategy_config.get('params', {})
-            logger.info(f"🔍 [PHASE23-2 DEBUG] {selector}: strategy_config={strategy_config}, params={strategy_params}")
+            
+            # PHASE29-2C-R: params 키가 없으면 strategy_config 전체를 파라미터로 간주
+            if 'params' in strategy_config:
+                strategy_params = strategy_config['params']
+            else:
+                # 메타 키 제외한 나머지를 파라미터로 사용
+                known_meta_keys = {'enabled', 'timeframe', 'filters'}
+                strategy_params = {k: v for k, v in strategy_config.items() if k not in known_meta_keys}
+            
+            logger.info(f"🔍 [PHASE29-2C-R DEBUG] {selector}: strategy_config keys={list(strategy_config.keys())}, params keys={list(strategy_params.keys())}")
+            logger.info(f"🔍 [PHASE29-2C-R DEBUG] {selector}: sample params={dict(list(strategy_params.items())[:3])}")
             
             # 모듈에서 BaseStrategy 클래스 찾기
             strategy_module = all_strategies[selector]
@@ -189,6 +203,13 @@ def load_strategies(config: dict, all_strategies: dict = None) -> Dict[str, Dict
                 merged_config = {**config, **strategy_params}
                 instance = strategy_class(config=merged_config)
                 logger.info(f"✅ [PHASE23-2] {selector} 인스턴스 생성 성공: {type(instance).__name__}")
+                
+                # PHASE29-3: Deprecated 전략 체크
+                if hasattr(instance, 'deprecated') and instance.deprecated:
+                    logger.warning(f"⚠️  [PHASE29-3] 전략 '{selector}'는 DEPRECATED 상태입니다.")
+                    logger.warning(f"    이유: {getattr(instance, 'deprecation_reason', 'No reason provided')}")
+                    logger.warning(f"    이 전략은 로드되지 않습니다. 다른 전략을 선택하세요.")
+                    return {}  # 빈 딕셔너리 반환으로 전략 로드 중단
             else:
                 # 폴백: 모듈 그대로 사용 (legacy)
                 logger.warning(f"⚠️  [PHASE23-2] {selector}에서 BaseStrategy 클래스 찾을 수 없음, 모듈 그대로 사용")
@@ -203,7 +224,14 @@ def load_strategies(config: dict, all_strategies: dict = None) -> Dict[str, Dict
         else:
             logger.error(f"❌ 전략 '{selector}' 없음, daytrade로 fallback")
             strategies_cfg = config.get('strategies', {})
-            strategy_params = strategies_cfg.get('daytrade', {}).get('params', {})
+            daytrade_config = strategies_cfg.get('daytrade', {})
+            
+            # PHASE29-2C-R: params 키가 없으면 config 전체를 파라미터로 간주
+            if 'params' in daytrade_config:
+                strategy_params = daytrade_config['params']
+            else:
+                known_meta_keys = {'enabled', 'timeframe', 'filters'}
+                strategy_params = {k: v for k, v in daytrade_config.items() if k not in known_meta_keys}
             
             strategy_module = all_strategies.get('daytrade')
             strategy_class = _get_strategy_class(strategy_module, 'daytrade')
@@ -226,36 +254,57 @@ def load_strategies(config: dict, all_strategies: dict = None) -> Dict[str, Dict
         for name, module in all_strategies.items():
             strategy_config = strategies_cfg.get(name, {})
             enabled = strategy_config.get('enabled', True)
-            params = strategy_config.get('params', {})
-            logger.info(f"🔍 [PHASE23-2 DEBUG] {name}: strategy_config={strategy_config}, params={params}")
+            
+            # PHASE29-2C-R: params 키가 없으면 strategy_config 전체를 파라미터로 간주
+            if 'params' in strategy_config:
+                params = strategy_config['params']
+            else:
+                # 메타 키 제외한 나머지를 파라미터로 사용
+                known_meta_keys = {'enabled', 'timeframe', 'filters'}
+                params = {k: v for k, v in strategy_config.items() if k not in known_meta_keys}
+            
+            logger.info(f"🔍 [PHASE29-2C-R DEBUG] {name}: enabled={enabled}, params keys={list(params.keys())}")
             
             if enabled:
                 # PHASE23-2: BaseStrategy 인스턴스 생성
                 strategy_class = _get_strategy_class(module, name)
                 
                 if strategy_class:
-                    # Config 병합: 글로벌 config + 전략별 params
                     merged_config = {**config, **params}
                     instance = strategy_class(config=merged_config)
-                    logger.info(f"✅ [PHASE23-2] {name} 인스턴스 생성: {type(instance).__name__}")
+                    logger.info(f"✅ [PHASE23-2] {name} 인스턴스 생성 성공: {type(instance).__name__}")
+                    
+                    # PHASE29-3: Deprecated 전략 체크
+                    if hasattr(instance, 'deprecated') and instance.deprecated:
+                        logger.warning(f"⚠️  [PHASE29-3] 전략 '{name}'는 DEPRECATED 상태로 앙상블에서 제외됩니다.")
+                        logger.warning(f"    이유: {getattr(instance, 'deprecation_reason', 'No reason provided')}")
+                        continue  # 이 전략을 스킵하고 다음 전략으로
                 else:
                     # 폴백: 모듈 그대로 사용 (legacy)
                     logger.warning(f"⚠️  [PHASE23-2] {name}에서 BaseStrategy 클래스 찾을 수 없음, 모듈 그대로 사용")
                     instance = module
                 
-                strategies[name] = {
-                    "instance": instance,
-                    "params": params,
-                    "enabled": True
-                }
-                logger.info(f"✅ 전략 활성화: {name}")
+                if enabled:
+                    strategies[name] = {
+                        "instance": instance,
+                        "params": params,
+                        "enabled": True
+                    }
+                    logger.info(f"✅ 전략 활성화: {name}")
             else:
                 logger.info(f"⏸ 전략 비활성화: {name}")
     
     if not strategies:
         logger.warning("⚠️ 활성 전략 없음, daytrade를 기본으로 로드")
         strategies_cfg = config.get('strategies', {})
-        strategy_params = strategies_cfg.get('daytrade', {}).get('params', {})
+        daytrade_config = strategies_cfg.get('daytrade', {})
+        
+        # PHASE29-2C-R: params 키가 없으면 config 전체를 파라미터로 간주
+        if 'params' in daytrade_config:
+            strategy_params = daytrade_config['params']
+        else:
+            known_meta_keys = {'enabled', 'timeframe', 'filters'}
+            strategy_params = {k: v for k, v in daytrade_config.items() if k not in known_meta_keys}
         
         # PHASE23-2: BaseStrategy 인스턴스 생성
         strategy_module = all_strategies.get('daytrade')

@@ -1,9 +1,14 @@
 # ========================================
 # PHASE29-1: btc5m_baseline_v3 Parameter Space
 # ========================================
+# ⚠️ STATUS: DEPRECATED (PHASE29-3)
+# ⚠️ REASON: Strategy btc5m_baseline_v3 deprecated due to structural signal deficiency
+# ⚠️ DO NOT USE FOR TUNING
+#
 # 대상 전략: btc5m_baseline_v3 (BTCUSDT, 5m, Trend Pullback + Multi-TP)
 # 튜닝 방법: Random Search → Bayesian Search → Local Grid
 # 목적: PHASE29-0 진단 기반 Win Rate ≥ 50%, Max DD ≤ 15% 달성
+# 실제 결과: FAIL (PHASE29-2C: 17/80-240 trades, 7.1~21.3% achievement rate)
 # ========================================
 
 # ========================================
@@ -226,23 +231,23 @@ param_space:
     baseline: 0.001
   
   # === V3 필터 설정 ===
-  # 최소 ATR
+  # 최소 ATR (PHASE29-2B Scenario A+: 0.002 → 0.0015 완화)
   v3_filters.min_atr_pct:
     type: float
     min: 0.001
     max: 0.003
-    default: 0.002
-    description: "최소 ATR 필터 (0.1%~0.3%)"
-    baseline: 0.002
+    default: 0.0015
+    description: "최소 ATR 필터 (0.1%~0.3%), Scenario A+: 0.0015"
+    baseline: 0.0015
   
-  # 최소 Volume 비율
+  # 최소 Volume 비율 (PHASE29-2B Scenario A+: 0.8 → 0.5 완화)
   v3_filters.min_volume_ratio:
     type: float
-    min: 0.6
+    min: 0.5
     max: 1.0
-    default: 0.8
-    description: "최소 Volume 비율 (MA20 대비)"
-    baseline: 0.8
+    default: 0.5
+    description: "최소 Volume 비율 (MA20 대비), Scenario A+: 0.5"
+    baseline: 0.5
   
   # Filter 토글
   v3_filters.enable_min_atr:
@@ -265,6 +270,30 @@ param_space:
     default: false
     description: "시간대 필터 활성화 여부 (초기 OFF)"
     baseline: false
+  
+  # === Range 모드 전용 파라미터 (PHASE29-2B Scenario A+) ===
+  range_rsi_long_threshold:
+    type: int
+    min: 30
+    max: 45
+    default: 40
+    description: "Range 모드 LONG 진입 RSI threshold (Scenario A+: 30 → 40)"
+    baseline: 40
+  
+  range_rsi_short_threshold:
+    type: int
+    min: 55
+    max: 70
+    default: 60
+    description: "Range 모드 SHORT 진입 RSI threshold (Scenario A+: 70 → 60)"
+    baseline: 60
+  
+  range_min_conditions:
+    type: categorical
+    values: [1, 2, 3]
+    default: 2
+    description: "Range 모드 AND 조건 최소 충족 수 (Scenario A: 3 → 2)"
+    baseline: 2
   
   # === 기타 (V2 호환) ===
   allow_short:

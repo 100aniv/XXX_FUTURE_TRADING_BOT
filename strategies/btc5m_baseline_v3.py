@@ -3,9 +3,20 @@
 """
 BTCUSDT 5m Baseline Strategy V3 (PHASE29-1)
 ============================================
+⚠️ STRATEGY STATUS: DEPRECATED
+⚠️ REASON: PHASE29-2C-R — Structural signal deficiency. Unable to reach required trade frequency.
+⚠️ DO NOT USE FOR BACKTEST, PAPER, OR LIVE.
+
+Deprecation Details:
+- PHASE29-2A: 1일 0건, 1주 1건 (Signal Rate 0.045%)
+- PHASE29-2B Scenario A+: 1주 20건 (최소 목표 달성)
+- PHASE29-2C-R: 1개월 17건 (목표 80-240건, 달성률 7.1~21.3%)
+- 근본 원인: AND 로직 과잉 결합 + 엄격한 Threshold → 교집합 극소
+- Config 파라미터 전달 버그 수정 후에도 거래 건수 동일 (구조적 문제 확인)
+
 Regime-Aware Pullback + Multi-TP + Enhanced Filtering
 
-목적:
+목적 (설계 단계):
 - V2의 근본적 문제 해결 (Win Rate < 45%, Drawdown 10% 조기 종료)
 - Trend Pullback 진입 (추세 조정에서 재진입)
 - Range Mean Reversion 강화
@@ -24,6 +35,11 @@ V2 대비 주요 변경:
 3. SL 거리: 1.5 ATR → 2.0 ATR (노이즈 필터링)
 4. Filter: 최소 ATR/Volume, 시간대, 연속 신호 방지
 5. Regime: Trend Pullback vs Range Mean Reversion 명확히 분리
+
+실제 결과 (FAIL):
+- 신호 빈도 극소 (AND 로직 과잉)
+- 1개월 17건 (목표 대비 78.8~92.9% 부족)
+- 전략 폐기 결정 (PHASE29-3)
 """
 from typing import Dict, Any, List, Tuple, Optional
 import pandas as pd
@@ -100,8 +116,15 @@ def signal_logic(df: pd.DataFrame, config: dict) -> Dict[str, Any]:
             }
         }
     
-    # === STEP 3: Dynamic Threshold 계산 (V2 재사용) ===
-    rsi_long_threshold, rsi_short_threshold = get_rsi_threshold(df, config, regime)
+    # === STEP 3: Threshold 계산 ===
+    # Trend 모드: Dynamic Threshold (V2 재사용)
+    # Range 모드: 고정 Threshold (PHASE29-2B Scenario A: 30 → 35/65)
+    if mode == "trend":
+        rsi_long_threshold, rsi_short_threshold = get_rsi_threshold(df, config, regime)
+    else:  # range
+        rsi_long_threshold = config.get('range_rsi_long_threshold', 35)  # PHASE29-2B Scenario A: 30 → 35
+        rsi_short_threshold = config.get('range_rsi_short_threshold', 65)  # PHASE29-2B Scenario A: 70 → 65
+    
     bb_mult_main, bb_mult_strong = get_bb_threshold(df, config, regime)
     momentum_threshold = get_momentum_threshold(df, config, regime)
     
@@ -153,6 +176,9 @@ def signal_logic(df: pd.DataFrame, config: dict) -> Dict[str, Any]:
     adx_trend_threshold = config.get('adx_trend_threshold', 25)
     adx_range_threshold = config.get('adx_range_threshold', 20)
     
+    # Range 모드 AND 로직 최소 조건 (PHASE29-2B Scenario A: 3 → 2)
+    range_min_conditions = config.get('range_min_conditions', 2)
+    
     # === STEP 6: Regime별 신호 로직 (AND 로직 강화) ===
     signal = None
     
@@ -168,7 +194,7 @@ def signal_logic(df: pd.DataFrame, config: dict) -> Dict[str, Any]:
         signal = _generate_range_signal(
             price, rsi, bb_main, bb_strong, adx, di_plus, di_minus,
             rsi_long_threshold, rsi_short_threshold, adx_range_threshold,
-            regime_info, allow_short
+            regime_info, allow_short, range_min_conditions
         )
     
     # 신호 없음
@@ -295,7 +321,8 @@ def _apply_filters(df: pd.DataFrame, config: dict, atr: float, atr_pct: float,
     filters_config = config.get('v3_filters', {})
     
     # Filter 1: 최소 ATR (극단적 낮은 변동성 배제)
-    min_atr_pct = filters_config.get('min_atr_pct', 0.002)  # 0.2%
+    # PHASE29-2B Scenario A: baseline 0.002 * 0.9 = 0.0018 (0.18%)
+    min_atr_pct = filters_config.get('min_atr_pct', 0.0018)  # 0.18%
     if filters_config.get('enable_min_atr', True):
         if atr_pct < min_atr_pct:
             return {
@@ -308,14 +335,16 @@ def _apply_filters(df: pd.DataFrame, config: dict, atr: float, atr_pct: float,
         last = df.iloc[-1]
         volume = float(last.get('volume', 0))
         
-        if len(df) >= 20:
-            volume_ma20 = df['volume'].rolling(20).mean().iloc[-1]
-            min_volume_ratio = filters_config.get('min_volume_ratio', 0.8)  # 80%
-            
-            if volume < volume_ma20 * min_volume_ratio:
+        # Volume MA 대비 비율 확인
+        # PHASE29-2B Scenario A: baseline 1.5 → 1.3 (즉, MA의 1.3배 이상 요구 → 더 낮은 threshold인 0.77배 통과 허용)
+        volume_ma = float(last.get('volume_ma_20', volume))
+        if volume_ma > 0:
+            volume_ratio = volume / volume_ma
+            min_vol_ratio = filters_config.get('min_volume_ratio', 0.77)
+            if volume_ratio < min_vol_ratio:
                 return {
                     "passed": False,
-                    "reason": f"[FILTER] Volume 너무 낮음: {volume/volume_ma20:.2%} < {min_volume_ratio:.0%}"
+                    "reason": f"[FILTER] Volume 너무 낮음: {volume_ratio:.2f}x < {min_vol_ratio}x"
                 }
     
     # Filter 3: 시간대 필터 (비유동 시간대 제한)
@@ -438,7 +467,7 @@ def _generate_range_signal(
     price: float, rsi: float, bb_main: dict, bb_strong: dict,
     adx: float, di_plus: float, di_minus: float,
     rsi_long_thresh: float, rsi_short_thresh: float, adx_range_threshold: float,
-    regime_info: dict, allow_short: bool
+    regime_info: dict, allow_short: bool, range_min_conditions: int = 3
 ) -> Optional[Dict[str, Any]]:
     """
     Range 모드 신호 생성 (Mean Reversion + AND 로직)
@@ -446,7 +475,8 @@ def _generate_range_signal(
     V3 변경:
     - OR → AND 로직 (RSI AND BB AND ADX < 20)
     - Range 확인: ADX < 20, DI+ ≈ DI-
-    - 고정 RSI threshold (30/70)
+    - RSI threshold: config 파라미터 (PHASE29-2B Scenario A: 35/65)
+    - Min conditions: config 파라미터 (PHASE29-2B Scenario A: 2)
     """
     # ADX가 너무 높으면 Range 모드에서 진입하지 않음
     if adx > adx_range_threshold:
@@ -460,20 +490,20 @@ def _generate_range_signal(
     # LONG 신호 (하단 밴드에서 Mean Reversion)
     conditions = []
     
-    # 조건 1: RSI < 30 (고정, 과매도)
-    if rsi < 30:
+    # 조건 1: RSI < threshold (PHASE29-2B: 30 → 35 완화)
+    if rsi < rsi_long_thresh:
         conditions.append("RSI_OVERSOLD")
     
     # 조건 2: Price < BB Lower (밴드 하단)
     if price < bb_main['lower']:
         conditions.append("BB_LOWER")
     
-    # 조건 3: ADX < 20 (Range 확인)
+    # 조건 3: ADX < threshold (Range 확인)
     if adx < adx_range_threshold:
         conditions.append("ADX_RANGE")
     
-    # AND 로직: 모든 조건 충족 시 진입
-    if len(conditions) >= 3:
+    # AND 로직: 최소 N개 조건 충족 시 진입 (PHASE29-2B: 3 → 2 완화)
+    if len(conditions) >= range_min_conditions:
         return {
             "side": "LONG",
             "reason": f"[RANGE] Mean Reversion 진입: {', '.join(conditions)}",
@@ -484,20 +514,20 @@ def _generate_range_signal(
     if allow_short:
         conditions_short = []
         
-        # 조건 1: RSI > 70 (고정, 과매수)
-        if rsi > 70:
+        # 조건 1: RSI > threshold (PHASE29-2B: 70 → 65 완화)
+        if rsi > rsi_short_thresh:
             conditions_short.append("RSI_OVERBOUGHT")
         
         # 조건 2: Price > BB Upper (밴드 상단)
         if price > bb_main['upper']:
             conditions_short.append("BB_UPPER")
         
-        # 조건 3: ADX < 20 (Range 확인)
+        # 조건 3: ADX < threshold (Range 확인)
         if adx < adx_range_threshold:
             conditions_short.append("ADX_RANGE")
         
-        # AND 로직: 모든 조건 충족 시 진입
-        if len(conditions_short) >= 3:
+        # AND 로직: 최소 N개 조건 충족 시 진입 (PHASE29-2B: 3 → 2 완화)
+        if len(conditions_short) >= range_min_conditions:
             return {
                 "side": "SHORT",
                 "reason": f"[RANGE] Mean Reversion 진입: {', '.join(conditions_short)}",
@@ -515,8 +545,16 @@ class Btc5mBaselineV3(BaseStrategy):
     """
     BTCUSDT 5m Baseline V3 전략 클래스
     
-    PHASE29-1: Trend Pullback + Multi-TP + Enhanced Filters
+    DEPRECATED: PHASE29-3 - Structural signal deficiency (PHASE29-2C-R FAIL)
+    
+    PHASE27-5A: StrategyMetadata 통합
     """
+    def __init__(self, config: dict):
+        super().__init__(config)
+        
+        # PHASE29-3: Deprecated flag
+        self.deprecated = True
+        self.deprecation_reason = "PHASE29-2C-R: Structural signal deficiency. Trade count 17/80-240 (7.1~21.3% achievement rate)."
     
     @property
     def metadata(self) -> StrategyMetadata:
@@ -525,8 +563,8 @@ class Btc5mBaselineV3(BaseStrategy):
             strategy_type='regime_aware',
             supported_symbols=['BTCUSDT'],
             supported_timeframes=['5m'],
-            version='3.0.0',
-            description='BTC 5m Regime-Aware Baseline V3 (Trend Pullback + Multi-TP)'
+            version='3.0.0-deprecated',
+            description='[DEPRECATED] BTC 5m Regime-Aware Baseline V3 (Trend Pullback + Multi-TP)'
         )
     
     def compute_signal(self, df: pd.DataFrame) -> Dict[str, Any]:
