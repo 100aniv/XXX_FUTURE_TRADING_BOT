@@ -2574,10 +2574,117 @@ Ensemble ON 諈刺�諢?4?𨁈� ?渥� ?域� Paper ?嵸擪??(?貲�???�
 
  **CONDITIONAL PASS** (코드 & 인프라 100% 완료, 백테스트 데이터 준비 후 AC3 재평가)
 
-**Next**: 
-- 즉시: 15m 데이터 다운로드 또는 5m 리샘플링
-- 백테스트 실행 후 AC3 평가
-- PHASE30-2 (Light Tuning) 진행 여부 결정
+**Next**: PHASE30-1b (필터 완화)
+
+---
+
+### PHASE30-1b: Core Filter Relaxation & Trade Count Fix
+
+**상태**: ✅ **COMPLETE** (거래량 확보), ❌ **AC3 FAIL** (Win Rate 미달)  
+**기간**: 2025-12-11 (1 session)  
+**목표**: Core AND 필터 완화를 통한 거래량 확보 (5건/월 → 30~60건/월)
+
+#### 필터 완화 내용
+
+| 파라미터 | Before (30-1) | After (30-1b) | 변화 |
+|---------|---------------|---------------|------|
+| `min_confidence` | 0.3 | 0.2 | -33% |
+| `min_atr_pct` | 0.002 | 0.0015 | -25% |
+| `min_volume_ratio` | 0.7 | 0.5 | -29% |
+| `max_consecutive_losses` | 5 | 10 | +100% |
+
+#### 백테스트 결과 (3M)
+
+| 지표 | Before (30-1) | After (30-1b) | 변화 |
+|------|--------------|---------------|------|
+| **총 거래** | 15건 | 138건 | **+820%** 🚀 |
+| **월평균 거래** | 5건/월 | **46건/월** | **+820%** 🚀 |
+| **Win Rate** | N/A | 28.99% | - |
+| **Total PnL** | N/A | -1,862 USDT | - |
+| **Profit Factor** | N/A | 0.67 | - |
+
+#### Acceptance Criteria
+
+| AC | 항목 | 판정 | 실제 |
+|----|------|------|------|
+| **AC1** | 거래량 확보 (30~60건/월) | ✅ **PASS** | **46건/월** |
+| **AC2** | Win Rate 40~45% | ❌ **FAIL** | 28.99% (-11%p) |
+| **AC3** | Profit Factor >1.2 | ❌ **FAIL** | 0.67 (-0.53) |
+| **AC4** | Max DD ≤12% | ✅ **PASS** | ~3.7% |
+
+#### 판정
+
+✅ **거래량 기준 PASS** (46건/월)  
+❌ **AC3 최종 FAIL** (Win Rate 28.99%, PF 0.67)
+
+**핵심 교훈**:
+- 필터 완화 → 거래량 ↑ (9.2배), 하지만 신호 품질 ↓
+- Regime Confidence 0.2는 너무 낮음 (잘못된 Regime 진입 ↑)
+- Optional OR 시나리오가 "완화된 Core AND"에 충분하지 않음
+
+**산출물**:
+- `configs/backtest/phase30_1b_btc15m_core_v1_3m_baseline_relaxed.yml`
+- `docs/PHASE30/PHASE30_1B_CORE_V1_FILTER_RELAXATION_RESULT_KR.md`
+
+**Next**: PHASE30-1c (중간 필터)
+
+---
+
+### PHASE30-1c: Mid-Filter Calibration & Go/No-Go Decision
+
+**상태**: ✅ **COMPLETE**, ❌ **AC3 FAIL**, ⛔ **NO-GO**  
+**기간**: 2025-12-11 (1 session)  
+**목표**: 필터 중간 강도로 거래량/품질 균형점 찾기
+
+#### 필터 조정 (중간값)
+
+| 파라미터 | 30-1 (Strict) | 30-1b (Relaxed) | **30-1c (Mid)** | 변화 |
+|---------|--------------|----------------|----------------|------|
+| `min_confidence` | 0.3 | 0.2 | **0.25** | 1b 대비 +25% |
+| `min_atr_pct` | 0.002 | 0.0015 | **0.00175** | 1b 대비 +17% |
+| `min_volume_ratio` | 0.7 | 0.5 | **0.6** | 1b 대비 +20% |
+
+#### 백테스트 결과 (3M)
+
+| 지표 | 30-1 | 30-1b | **30-1c** | 판정 |
+|------|------|-------|----------|------|
+| **총 거래** | 15건 | 138건 | **48건** | ❌ 목표 80~120건 미달 |
+| **월평균** | 5건 | 46건 | **16건** | ❌ 목표 27~33건 미달 |
+| **Win Rate** | N/A | 28.99% | **31.25%** | ❌ 목표 35~40% 미달 |
+| **PF** | N/A | 0.67 | **0.77** | ❌ 목표 1.0 이상 미달 |
+| **Max DD** | N/A | 3.7% | **0.9%** | ✅ PASS |
+
+#### Acceptance Criteria
+
+| AC | 목표 | 실제 | 판정 |
+|----|------|------|------|
+| **AC1** | 거래량 80~120건 | **48건** | ❌ **FAIL** |
+| **AC2** | Win Rate 35~40% | **31.25%** | ❌ **FAIL** |
+| **AC3** | Profit Factor ≥1.0 | **0.77** | ❌ **FAIL** |
+| **AC4** | Max DD ≤12% | **0.9%** | ✅ **PASS** |
+
+#### 판정 & Go/No-Go Decision
+
+**3회 시도 요약**:
+- **30-1 (Strict)**: 15건 (5/월) → 거래 부족
+- **30-1b (Relaxed)**: 138건 (46/월) → Win Rate 28.99%, 품질 미달
+- **30-1c (Mid)**: 48건 (16/월) → 거래량/품질 **모두 미달**
+
+**최종 판정**: ⛔ **NO-GO** (Core V1 전략은 현재 구조로 AC3 달성 불가)
+
+**핵심 결론**:
+1. 중간 필터는 **최악의 선택지** (거래량↓ 65%, Win Rate↑ 2.26%p만)
+2. 필터 조정만으로는 근본적 한계 해결 불가
+3. Core V1 구조적 재설계 필요
+
+**산출물**:
+- `configs/backtest/phase30_1c_btc15m_core_v1_3m_baseline_mid_filters.yml`
+- `docs/PHASE30/PHASE30_1C_CORE_V1_MID_FILTER_RESULT_KR.md`
+
+**Next**: PHASE30-2 (Major Refactor) 또는 PHASE30-3 (30m Timeframe)
+
+---
+
 ### 다음 단계
 
 ✅ **PHASE29-7 완료** (V4 Postmortem & Retirement)
