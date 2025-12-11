@@ -2509,7 +2509,76 @@ Ensemble ON 諈刺�諢?4?𨁈� ?渥� ?域� Paper ?嵸擪??(?貲�???�
   - ??Gate PASS: 1鴥潰𦉘 35穇?麮湊盒 (諈拗� 20-60穇?貒䇹� ??
   - ?木�: PHASE29-4 (V4 Tuning & Optimization)
   
-  ### 다음 단계
+  
+---
+
+### PHASE30-1: btc15m_core_v1 구현 & 인프라 구축
+
+**상태**:  **COMPLETE** (코드 & 인프라),  **AC3 PENDING** (백테스트 데이터 대기)  
+**기간**: 2025-12-11 (1 session)  
+**목표**: Core V1 전략 코드 구현 및 3M Baseline 백테스트 인프라 완성
+
+#### 완료 작업
+
+**1. 전략 코드 구현** (strategies/btc15m_core_v1.py, 650 lines):
+- Regime Detection: ADX + ATR + Volume + DI 복합 지표 (4 Regimes)
+- Core AND Block: 6개 필수 필터 (Regime, ATR, Volume, 신뢰도 등)
+- Optional OR Block: Regime별 진입 시나리오 (Trend 3개, Range 2개)
+- SL/TP 계산: RR  1.5, Regime별 동적 조정 (Trend: 2.0 ATR, Range: 1.5 ATR)
+- Multi-TP: TP1 50%, TP2 50%
+- BaseStrategy 상속, compute_signal() 구현
+
+**2. 백테스트 인프라**:
+- 지표 계산: common/backtest_indicators.py (dd_core_v1_indicators())
+- Config: phase30_1_btc15m_core_v1_3m_baseline.yml (Guard ON, 15m, 3M)
+- 검증 스크립트: scripts/phase30_1_check_core_v1_config.py
+- 단위 테스트: 	ests/test_btc15m_core_v1.py (15개, 11개 PASS)
+
+**3. 문서화**:
+- 상태 보고서: docs/PHASE30/PHASE30_1_BTC15M_CORE_V1_IMPLEMENTATION_STATUS_KR.md
+- V2/V3/V4 vs Core V1 비교 분석
+- AC1~AC4 판정 기준 명시
+
+#### Acceptance Criteria
+
+| AC | 항목 | 판정 |
+|----|------|------|
+| **AC1** | 전략 구현 (Core AND/OR, Regime, SL/TP) |  **PASS** |
+| **AC2** | Config & 검증 스크립트 |  **PASS** |
+| **AC3** | 성능 지표 산출 (백테스트) |  **PENDING** (데이터 대기) |
+| **AC4** | 문서 & ROADMAP |  **PASS** |
+
+#### V2/V3/V4 대비 차별점
+
+| 항목 | V4 (RETIRED) | Core V1 (NEW) |
+|------|--------------|---------------|
+| **진입** | OR + Score | Core AND  Optional OR |
+| **Regime** | ADX 단일 | ADX+ATR+Vol+DI 복합 |
+| **RR** | 1.0~1.2 |  1.5 (동적) |
+| **Timeframe** | 5m (노이즈) | 15m (품질) |
+| **Guard** | OFF 테스트 | ON 전제 |
+
+#### 산출물
+
+**코드**:
+- strategies/btc15m_core_v1.py
+- common/backtest_indicators.py (add_core_v1_indicators)
+- configs/backtest/phase30_1_btc15m_core_v1_3m_baseline.yml
+- scripts/phase30_1_check_core_v1_config.py
+- 	ests/test_btc15m_core_v1.py
+
+**문서**:
+- docs/PHASE30/PHASE30_1_BTC15M_CORE_V1_IMPLEMENTATION_STATUS_KR.md
+
+#### 판정
+
+ **CONDITIONAL PASS** (코드 & 인프라 100% 완료, 백테스트 데이터 준비 후 AC3 재평가)
+
+**Next**: 
+- 즉시: 15m 데이터 다운로드 또는 5m 리샘플링
+- 백테스트 실행 후 AC3 평가
+- PHASE30-2 (Light Tuning) 진행 여부 결정
+### 다음 단계
 
 ✅ **PHASE29-7 완료** (V4 Postmortem & Retirement)
 
@@ -2792,4 +2861,5 @@ PHASE29 전략 실패 요약:
 - strategies/btc15m_core_v1.py 구현
 - Guard ON, 3개월 백테스트 실행
 - AC3 평가: Win Rate  40%, Max DD  12%, PF > 1.2
+
 

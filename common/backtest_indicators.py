@@ -90,6 +90,76 @@ def add_v4_indicators(df: pd.DataFrame, config: Dict[str, Any] = None) -> pd.Dat
     return df
 
 
+def add_core_v1_indicators(df: pd.DataFrame, config: Dict[str, Any] = None) -> pd.DataFrame:
+    """
+    Core V1 전략 필수 지표를 데이터프레임에 추가
+    
+    PHASE30-1: btc15m_core_v1 전용 지표 계산
+    
+    Args:
+        df: OHLCV 데이터프레임 (timestamp, open, high, low, close, volume)
+        config: 지표 설정 (indicators 섹션)
+    
+    Returns:
+        pd.DataFrame: 지표가 추가된 데이터프레임
+    
+    Core V1 필수 지표:
+        - rsi_14: RSI (14)
+        - adx_14, di_plus_14, di_minus_14: ADX + DI
+        - ema_20, ema_50, ema_200: EMA
+        - atr_14: ATR (14)
+        - volume_ma_20: Volume MA (20)
+        - bb_upper, bb_middle, bb_lower: Bollinger Bands
+    """
+    # Config 기본값
+    if config is None:
+        config = {}
+    
+    indicators_cfg = config.get('indicators', {})
+    
+    # 데이터프레임 복사
+    df = df.copy()
+    
+    # 1. RSI 계산
+    rsi_length = indicators_cfg.get('rsi', {}).get('length', 14)
+    df[f'rsi_{rsi_length}'] = rsi(df['close'], length=rsi_length)
+    
+    # 2. EMA 계산
+    ema_cfg = indicators_cfg.get('ema', {})
+    df['ema_20'] = ema(df['close'], length=ema_cfg.get('mid', 20))
+    df['ema_50'] = ema(df['close'], length=ema_cfg.get('mid2', 50))
+    df['ema_200'] = ema(df['close'], length=ema_cfg.get('slow', 200))
+    
+    # 3. ATR 계산
+    atr_length = indicators_cfg.get('atr', {}).get('length', 14)
+    df[f'atr_{atr_length}'] = atr(df, length=atr_length)
+    
+    # 4. Volume MA 계산
+    vol_ma_length = indicators_cfg.get('volume', {}).get('ma_length', 20)
+    df[f'volume_ma_{vol_ma_length}'] = volume_ma(df['volume'], length=vol_ma_length)
+    
+    # 5. ADX + DI 계산
+    adx_period = indicators_cfg.get('adx', {}).get('period', 14)
+    df = compute_adx(df, period=adx_period)
+    
+    # 별칭 생성 (di_plus_14, di_minus_14)
+    if f'plus_di_{adx_period}' in df.columns and f'di_plus_{adx_period}' not in df.columns:
+        df[f'di_plus_{adx_period}'] = df[f'plus_di_{adx_period}']
+        df[f'di_minus_{adx_period}'] = df[f'minus_di_{adx_period}']
+    
+    # 6. Bollinger Bands 계산
+    bb_cfg = indicators_cfg.get('bollinger', {})
+    bb_length = bb_cfg.get('length', 20)
+    bb_std = bb_cfg.get('std', 2.0)
+    
+    df['bb_middle'] = df['close'].rolling(window=bb_length).mean()
+    bb_std_val = df['close'].rolling(window=bb_length).std()
+    df['bb_upper'] = df['bb_middle'] + (bb_std_val * bb_std)
+    df['bb_lower'] = df['bb_middle'] - (bb_std_val * bb_std)
+    
+    return df
+
+
 def validate_indicators(df: pd.DataFrame) -> Dict[str, Any]:
     """
     지표 컬럼 존재 여부 및 상태 검증
@@ -99,37 +169,34 @@ def validate_indicators(df: pd.DataFrame) -> Dict[str, Any]:
     
     Returns:
         dict: 검증 결과
-            - valid: bool
-            - missing: List[str]
-            - stats: Dict[str, Dict]
+            {
+                'missing': List[str],  # 누락된 지표
+                'incomplete': List[str],  # NaN이 많은 지표
+                'complete': List[str],  # 정상 지표
+                'valid': bool  # 전체 유효성
+            }
     """
-    required = [
+    required_indicators = [
         'rsi_14', 'adx_14', 'di_plus_14', 'di_minus_14',
-        'ema_5', 'ema_20', 'ema_200',
-        'atr_14', 'volume_ma_20'
+        'ema_5', 'ema_20', 'ema_200', 'atr_14', 'volume_ma_20'
     ]
     
-    result = {
-        'valid': True,
-        'missing': [],
-        'stats': {}
+    missing = [col for col in required_indicators if col not in df.columns]
+    incomplete = []
+    complete = []
+    
+    for col in required_indicators:
+        if col in df.columns:
+            nan_pct = df[col].isna().sum() / len(df)
+            if nan_pct > 0.5:  # 50% 이상 NaN
+                incomplete.append(col)
+            else:
+                complete.append(col)
+    
+    return {
+        'missing': missing,
+        'incomplete': incomplete,
+        'complete': complete,
+        'valid': len(missing) == 0 and len(incomplete) == 0
     }
-    
-    for col in required:
-        if col not in df.columns:
-            result['valid'] = False
-            result['missing'].append(col)
-        else:
-            col_data = df[col]
-            null_count = col_data.isnull().sum()
-            null_pct = (null_count / len(col_data)) * 100
-            
-            result['stats'][col] = {
-                'exists': True,
-                'null_count': int(null_count),
-                'null_pct': round(null_pct, 2),
-                'mean': float(col_data.mean()) if null_count < len(col_data) else None,
-                'std': float(col_data.std()) if null_count < len(col_data) else None
-            }
-    
     return result
