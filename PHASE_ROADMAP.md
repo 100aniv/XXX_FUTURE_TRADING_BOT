@@ -2675,3 +2675,121 @@ PHASE29-6에서 V4 전략의 AC3 최종 판정 결과:
 - 최소 RR 1.5, 15m/30m Timeframe
 - 3개월 백테스트 + Out-of-Sample 검증
 
+
+---
+
+## PHASE30  New Core Strategy Design  IN PROGRESS
+
+> **NOTE**: 기존 하단의 "PHASE30  UI/UX v2" 블록은 향후 리넘버링 예정 (PHASE40+로 이동)
+
+### 개요
+
+PHASE29에서 V2/V3/V4 전략 모두 AC3 성능 기준(Win Rate  45%, Max DD  15%) 실패.
+PHASE30은 실패 교훈을 반영한 **새로운 코어 전략 설계 및 검증** 단계.
+
+**전략명**: btc15m_core_v1
+**Timeframe**: 15m (Primary), 30m (Secondary)
+**설계 철학**: Core AND + Optional OR (V2 OR 과잉, V3 AND 과잉 절충)
+
+---
+
+### PHASE30-0: New Core Strategy Design (btc15m_core_v1)
+
+**상태**:  **COMPLETE**  
+**기간**: 2025-12-11 (1 session)  
+**목표**: V3/V4 실패 교훈을 반영한 새로운 코어 전략 설계 (문서 전용)
+
+#### 문제 정의
+
+PHASE29 전략 실패 요약:
+- **V2**: OR 과잉  저품질 신호 과다  Win Rate < 45%
+- **V3**: AND 과잉  신호 극소 (17건/월)
+- **V4**: OR + Score 절충  Win Rate 27.86%, Max DD 23.21%, RR 1.0~1.2 (낮음), 5m 노이즈
+
+#### 완료 작업
+
+1. **전략 구조 설계**:
+   - **Timeframe**: 15m Primary (5m 대비 노이즈 70% 감소)
+   - **Regime Detection**: ADX + ATR + Volume + DI 복합 지표
+     - Trend-Up / Trend-Down / Range / High-Volatility-Chop (4가지)
+     - 확률적 신뢰도 점수, Hysteresis 적용
+   - **진입 조건**: Core AND + Optional OR
+     - Core AND: Regime, Guard, ATR, Volume, DD, 연속손실 (필수)
+     - Optional OR: Regime별 진입 시나리오 (Pullback, RSI, BB 등)
+   - **SL/TP**: 최소 RR 1.5, Regime별 동적 조정
+     - Trend: SL=2.0 ATR, TP1 RR=1.5, TP2 RR=3.0
+     - Range: SL=1.5 ATR, TP1 RR=1.5, TP2 RR=2.5
+   - **Multi-TP**: TP1 50%, TP2 50%, Trailing Stop (Trend Mode)
+
+2. **Guard 연동 설계**:
+   - Guard ON 전제 설계 (V4 Guard OFF 테스트 문제 해결)
+   - 전략 RR  1.5, Guard min_rr_required=1.5 일치
+   - Max DD 12% 이내 자연스럽게 수용
+
+3. **백테스트 & 검증 계획**:
+   - 데이터 구간: 3개월 (2024-09-01 ~ 2024-12-01)
+   - Out-of-Sample 검증 필수
+   - PHASE25 Tuning Cluster Infra 활용
+   - 검증 순서: Baseline  OOS  Light Tuning  Real-time PAPER
+
+#### 정량 목표
+
+| 지표 | 목표 | 근거 |
+|------|------|------|
+| Win Rate | 40~45% | RR 1.5 기준, EV 양수 |
+| Risk:Reward |  1.5 | Win Rate 40% 시 EV = 0.0 (Break-even), 45% 시 EV = +0.125 |
+| Max DD |  12% | V4 23.21% 대비 보수적 |
+| Profit Factor | > 1.2 | 명확한 이익 구조 |
+| 거래 건수/월 | 60~120건 | 15m 기준, V4 5m 140건보다 보수적 |
+
+#### V2/V3/V4 차별점
+
+| 항목 | V2/V3/V4 | btc15m_core_v1 |
+|------|----------|----------------|
+| 진입 조건 | V2: 모든 OR<br>V3: 모든 AND<br>V4: OR+Score | **Core AND + Optional OR** |
+| Regime | V4: ADX 단일 | **ADX+ATR+Volume+DI 복합** |
+| RR | V4: 1.0~1.2 | ** 1.5 (동적)** |
+| Timeframe | 5m (노이즈) | **15m/30m (품질)** |
+| Guard | V4: OFF 테스트 | **ON 전제 설계** |
+
+#### 산출물
+
+**문서**:
+- docs/PHASE30/PHASE30_0_BTC15M_CORE_STRATEGY_DESIGN_KR.md (26KB, 매우 상세)
+  - Regime Detection 설계 (복합 지표, 신뢰도 점수)
+  - Core AND + Optional OR 진입 조건 (Pseudo-code 포함)
+  - SL/TP 동적 계산 (Regime별 RR 차별화)
+  - Multi-TP 구조 (TP1 50%, TP2 50%, Trailing)
+  - Guard 연동 설계 (호환성 사전 검증)
+  - 백테스트 계획 (3M Baseline, OOS, Tuning, PAPER)
+
+**업데이트**:
+- PHASE_ROADMAP.md (PHASE30-0 섹션 추가)
+
+#### Acceptance Criteria
+
+| AC | 결과 |
+|----|------|
+| AC1: 설계 문서에 Core AND / Optional OR / Regime / SL/TP / Guard 연동이 구체적으로 정의됨 |  **PASS** |
+| AC2: 성능 목표(Win Rate 40~45%, Max DD  12%, PF > 1.2)가 PHASE29-7 권고와 일치 |  **PASS** |
+| AC3: 향후 PHASE30-1/2 백테스트 계획이 명시됨 |  **PASS** |
+| AC4: 기존 V2/V3/V4 설계와의 차별점 및 교훈 반영이 문서화됨 |  **PASS** |
+
+#### 판정
+
+ **COMPLETE** - 새로운 코어 전략 설계 문서 완성
+
+**핵심 설계 원칙**:
+1. Core AND (필수 조건)  Optional OR (진입 시나리오)
+2. 복합 지표 기반 Regime Detection (ADX + ATR + Volume + DI)
+3. 최소 RR 1.5, Regime별 동적 SL/TP
+4. 15m Timeframe (노이즈 감소, 신호 품질 향상)
+5. Guard ON 전제 설계 (실제 운영 가능성 보장)
+
+#### 다음 단계
+
+**PHASE30-1: 코드 구현 & 3M Baseline 백테스트**
+- strategies/btc15m_core_v1.py 구현
+- Guard ON, 3개월 백테스트 실행
+- AC3 평가: Win Rate  40%, Max DD  12%, PF > 1.2
+
