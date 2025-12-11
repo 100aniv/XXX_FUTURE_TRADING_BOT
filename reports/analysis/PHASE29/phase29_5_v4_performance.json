@@ -1,0 +1,1287 @@
+{
+  "generated_at": "2025-12-11T12:58:47.091388",
+  "summary": {
+    "total_combinations": 24,
+    "ac3_pass_count": 0,
+    "ac3_fail_count": 24
+  },
+  "month_gate_baseline": null,
+  "tuning_results": [
+    {
+      "run_id": "20251211_023512_ymh6",
+      "params": {},
+      "performance": {
+        "num_trades": 500,
+        "pnl_total": -6353.100715430506,
+        "pnl_avg_per_trade": -12.706201430861013,
+        "win_rate": 0.304,
+        "max_drawdown": 0.645579776347009,
+        "max_drawdown_abs": -6505.494496246423,
+        "sharpe_ratio": -3.545203573009678,
+        "profit_factor": 0.6048223796808917,
+        "roi": -0.6353100715430506,
+        "num_wins": 152,
+        "num_losses": 348,
+        "max_consecutive_losses": 10
+      },
+      "ac3_evaluation": {
+        "pass": false,
+        "win_rate_pass": false,
+        "max_dd_pass": false,
+        "comments": "Win Rate 30.4% < 45% | Max DD 64.6% > 15%"
+      }
+    },
+    {
+      "run_id": "20251211_023919_qayu",
+      "params": {},
+      "performance": {
+        "num_trades": 500,
+        "pnl_total": -6353.100715430506,
+        "pnl_avg_per_trade": -12.706201430861013,
+        "win_rate": 0.304,
+        "max_drawdown": 0.645579776347009,
+        "max_drawdown_abs": -6505.494496246423,
+        "sharpe_ratio": -3.545203573009678,
+        "profit_factor": 0.6048223796808917,
+        "roi": -0.6353100715430506,
+        "num_wins": 152,
+        "num_losses": 348,
+        "max_consecutive_losses": 10
+      },
+      "ac3_evaluation": {
+        "pass": false,
+        "win_rate_pass": false,
+        "max_dd_pass": false,
+        "comments": "Win Rate 30.4% < 45% | Max DD 64.6% > 15%"
+      }
+    },
+    {
+      "run_id": "20251211_024328_8ko4",
+      "params": {},
+      "performance": {
+        "num_trades": 500,
+        "pnl_total": -6353.100715430506,
+        "pnl_avg_per_trade": -12.706201430861013,
+        "win_rate": 0.304,
+        "max_drawdown": 0.645579776347009,
+        "max_drawdown_abs": -6505.494496246423,
+        "sharpe_ratio": -3.545203573009678,
+        "profit_factor": 0.6048223796808917,
+        "roi": -0.6353100715430506,
+        "num_wins": 152,
+        "num_losses": 348,
+        "max_consecutive_losses": 10
+      },
+      "ac3_evaluation": {
+        "pass": false,
+        "win_rate_pass": false,
+        "max_dd_pass": false,
+        "comments": "Win Rate 30.4% < 45% | Max DD 64.6% > 15%"
+      }
+    },
+    {
+      "run_id": "20251211_024728_0ux0",
+      "params": {},
+      "performance": {
+        "num_trades": 500,
+        "pnl_total": -6353.100715430506,
+        "pnl_avg_per_trade": -12.706201430861013,
+        "win_rate": 0.304,
+        "max_drawdown": 0.645579776347009,
+        "max_drawdown_abs": -6505.494496246423,
+        "sharpe_ratio": -3.545203573009678,
+        "profit_factor": 0.6048223796808917,
+        "roi": -0.6353100715430506,
+        "num_wins": 152,
+        "num_losses": 348,
+        "max_consecutive_losses": 10
+      },
+      "ac3_evaluation": {
+        "pass": false,
+        "win_rate_pass": false,
+        "max_dd_pass": false,
+        "comments": "Win Rate 30.4% < 45% | Max DD 64.6% > 15%"
+      }
+    },
+    {
+      "run_id": "20251211_025112_gb2y",
+      "params": {},
+      "performance": {
+        "num_trades": 500,
+        "pnl_total": -6353.100715430506,
+        "pnl_avg_per_trade": -12.706201430861013,
+        "win_rate": 0.304,
+        "max_drawdown": 0.645579776347009,
+        "max_drawdown_abs": -6505.494496246423,
+        "sharpe_ratio": -3.545203573009678,
+        "profit_factor": 0.6048223796808917,
+        "roi": -0.6353100715430506,
+        "num_wins": 152,
+        "num_losses": 348,
+        "max_consecutive_losses": 10
+      },
+      "ac3_evaluation": {
+        "pass": false,
+        "win_rate_pass": false,
+        "max_dd_pass": false,
+        "comments": "Win Rate 30.4% < 45% | Max DD 64.6% > 15%"
+      }
+    },
+    {
+      "run_id": "20251211_025514_bljn",
+      "params": {},
+      "performance": {
+        "num_trades": 500,
+        "pnl_total": -6353.100715430506,
+        "pnl_avg_per_trade": -12.706201430861013,
+        "win_rate": 0.304,
+        "max_drawdown": 0.645579776347009,
+        "max_drawdown_abs": -6505.494496246423,
+        "sharpe_ratio": -3.545203573009678,
+        "profit_factor": 0.6048223796808917,
+        "roi": -0.6353100715430506,
+        "num_wins": 152,
+        "num_losses": 348,
+        "max_consecutive_losses": 10
+      },
+      "ac3_evaluation": {
+        "pass": false,
+        "win_rate_pass": false,
+        "max_dd_pass": false,
+        "comments": "Win Rate 30.4% < 45% | Max DD 64.6% > 15%"
+      }
+    },
+    {
+      "run_id": "20251211_025914_s1cj",
+      "params": {},
+      "performance": {
+        "num_trades": 500,
+        "pnl_total": -6353.100715430506,
+        "pnl_avg_per_trade": -12.706201430861013,
+        "win_rate": 0.304,
+        "max_drawdown": 0.645579776347009,
+        "max_drawdown_abs": -6505.494496246423,
+        "sharpe_ratio": -3.545203573009678,
+        "profit_factor": 0.6048223796808917,
+        "roi": -0.6353100715430506,
+        "num_wins": 152,
+        "num_losses": 348,
+        "max_consecutive_losses": 10
+      },
+      "ac3_evaluation": {
+        "pass": false,
+        "win_rate_pass": false,
+        "max_dd_pass": false,
+        "comments": "Win Rate 30.4% < 45% | Max DD 64.6% > 15%"
+      }
+    },
+    {
+      "run_id": "20251211_030250_gu8q",
+      "params": {},
+      "performance": {
+        "num_trades": 500,
+        "pnl_total": -6353.100715430506,
+        "pnl_avg_per_trade": -12.706201430861013,
+        "win_rate": 0.304,
+        "max_drawdown": 0.645579776347009,
+        "max_drawdown_abs": -6505.494496246423,
+        "sharpe_ratio": -3.545203573009678,
+        "profit_factor": 0.6048223796808917,
+        "roi": -0.6353100715430506,
+        "num_wins": 152,
+        "num_losses": 348,
+        "max_consecutive_losses": 10
+      },
+      "ac3_evaluation": {
+        "pass": false,
+        "win_rate_pass": false,
+        "max_dd_pass": false,
+        "comments": "Win Rate 30.4% < 45% | Max DD 64.6% > 15%"
+      }
+    },
+    {
+      "run_id": "20251211_030629_crx2",
+      "params": {},
+      "performance": {
+        "num_trades": 500,
+        "pnl_total": -6353.100715430506,
+        "pnl_avg_per_trade": -12.706201430861013,
+        "win_rate": 0.304,
+        "max_drawdown": 0.645579776347009,
+        "max_drawdown_abs": -6505.494496246423,
+        "sharpe_ratio": -3.545203573009678,
+        "profit_factor": 0.6048223796808917,
+        "roi": -0.6353100715430506,
+        "num_wins": 152,
+        "num_losses": 348,
+        "max_consecutive_losses": 10
+      },
+      "ac3_evaluation": {
+        "pass": false,
+        "win_rate_pass": false,
+        "max_dd_pass": false,
+        "comments": "Win Rate 30.4% < 45% | Max DD 64.6% > 15%"
+      }
+    },
+    {
+      "run_id": "20251211_031022_d4l7",
+      "params": {},
+      "performance": {
+        "num_trades": 500,
+        "pnl_total": -6353.100715430506,
+        "pnl_avg_per_trade": -12.706201430861013,
+        "win_rate": 0.304,
+        "max_drawdown": 0.645579776347009,
+        "max_drawdown_abs": -6505.494496246423,
+        "sharpe_ratio": -3.545203573009678,
+        "profit_factor": 0.6048223796808917,
+        "roi": -0.6353100715430506,
+        "num_wins": 152,
+        "num_losses": 348,
+        "max_consecutive_losses": 10
+      },
+      "ac3_evaluation": {
+        "pass": false,
+        "win_rate_pass": false,
+        "max_dd_pass": false,
+        "comments": "Win Rate 30.4% < 45% | Max DD 64.6% > 15%"
+      }
+    },
+    {
+      "run_id": "20251211_031416_eiva",
+      "params": {},
+      "performance": {
+        "num_trades": 500,
+        "pnl_total": -6353.100715430506,
+        "pnl_avg_per_trade": -12.706201430861013,
+        "win_rate": 0.304,
+        "max_drawdown": 0.645579776347009,
+        "max_drawdown_abs": -6505.494496246423,
+        "sharpe_ratio": -3.545203573009678,
+        "profit_factor": 0.6048223796808917,
+        "roi": -0.6353100715430506,
+        "num_wins": 152,
+        "num_losses": 348,
+        "max_consecutive_losses": 10
+      },
+      "ac3_evaluation": {
+        "pass": false,
+        "win_rate_pass": false,
+        "max_dd_pass": false,
+        "comments": "Win Rate 30.4% < 45% | Max DD 64.6% > 15%"
+      }
+    },
+    {
+      "run_id": "20251211_031753_fdat",
+      "params": {},
+      "performance": {
+        "num_trades": 500,
+        "pnl_total": -6353.100715430506,
+        "pnl_avg_per_trade": -12.706201430861013,
+        "win_rate": 0.304,
+        "max_drawdown": 0.645579776347009,
+        "max_drawdown_abs": -6505.494496246423,
+        "sharpe_ratio": -3.545203573009678,
+        "profit_factor": 0.6048223796808917,
+        "roi": -0.6353100715430506,
+        "num_wins": 152,
+        "num_losses": 348,
+        "max_consecutive_losses": 10
+      },
+      "ac3_evaluation": {
+        "pass": false,
+        "win_rate_pass": false,
+        "max_dd_pass": false,
+        "comments": "Win Rate 30.4% < 45% | Max DD 64.6% > 15%"
+      }
+    },
+    {
+      "run_id": "20251211_032132_0pxw",
+      "params": {},
+      "performance": {
+        "num_trades": 500,
+        "pnl_total": -6353.100715430506,
+        "pnl_avg_per_trade": -12.706201430861013,
+        "win_rate": 0.304,
+        "max_drawdown": 0.645579776347009,
+        "max_drawdown_abs": -6505.494496246423,
+        "sharpe_ratio": -3.545203573009678,
+        "profit_factor": 0.6048223796808917,
+        "roi": -0.6353100715430506,
+        "num_wins": 152,
+        "num_losses": 348,
+        "max_consecutive_losses": 10
+      },
+      "ac3_evaluation": {
+        "pass": false,
+        "win_rate_pass": false,
+        "max_dd_pass": false,
+        "comments": "Win Rate 30.4% < 45% | Max DD 64.6% > 15%"
+      }
+    },
+    {
+      "run_id": "20251211_032528_0rxd",
+      "params": {},
+      "performance": {
+        "num_trades": 500,
+        "pnl_total": -6353.100715430506,
+        "pnl_avg_per_trade": -12.706201430861013,
+        "win_rate": 0.304,
+        "max_drawdown": 0.645579776347009,
+        "max_drawdown_abs": -6505.494496246423,
+        "sharpe_ratio": -3.545203573009678,
+        "profit_factor": 0.6048223796808917,
+        "roi": -0.6353100715430506,
+        "num_wins": 152,
+        "num_losses": 348,
+        "max_consecutive_losses": 10
+      },
+      "ac3_evaluation": {
+        "pass": false,
+        "win_rate_pass": false,
+        "max_dd_pass": false,
+        "comments": "Win Rate 30.4% < 45% | Max DD 64.6% > 15%"
+      }
+    },
+    {
+      "run_id": "20251211_032924_goqz",
+      "params": {},
+      "performance": {
+        "num_trades": 500,
+        "pnl_total": -6353.100715430506,
+        "pnl_avg_per_trade": -12.706201430861013,
+        "win_rate": 0.304,
+        "max_drawdown": 0.645579776347009,
+        "max_drawdown_abs": -6505.494496246423,
+        "sharpe_ratio": -3.545203573009678,
+        "profit_factor": 0.6048223796808917,
+        "roi": -0.6353100715430506,
+        "num_wins": 152,
+        "num_losses": 348,
+        "max_consecutive_losses": 10
+      },
+      "ac3_evaluation": {
+        "pass": false,
+        "win_rate_pass": false,
+        "max_dd_pass": false,
+        "comments": "Win Rate 30.4% < 45% | Max DD 64.6% > 15%"
+      }
+    },
+    {
+      "run_id": "20251211_033304_uqyo",
+      "params": {},
+      "performance": {
+        "num_trades": 500,
+        "pnl_total": -6353.100715430506,
+        "pnl_avg_per_trade": -12.706201430861013,
+        "win_rate": 0.304,
+        "max_drawdown": 0.645579776347009,
+        "max_drawdown_abs": -6505.494496246423,
+        "sharpe_ratio": -3.545203573009678,
+        "profit_factor": 0.6048223796808917,
+        "roi": -0.6353100715430506,
+        "num_wins": 152,
+        "num_losses": 348,
+        "max_consecutive_losses": 10
+      },
+      "ac3_evaluation": {
+        "pass": false,
+        "win_rate_pass": false,
+        "max_dd_pass": false,
+        "comments": "Win Rate 30.4% < 45% | Max DD 64.6% > 15%"
+      }
+    },
+    {
+      "run_id": "20251211_033642_6b90",
+      "params": {},
+      "performance": {
+        "num_trades": 500,
+        "pnl_total": -6353.100715430506,
+        "pnl_avg_per_trade": -12.706201430861013,
+        "win_rate": 0.304,
+        "max_drawdown": 0.645579776347009,
+        "max_drawdown_abs": -6505.494496246423,
+        "sharpe_ratio": -3.545203573009678,
+        "profit_factor": 0.6048223796808917,
+        "roi": -0.6353100715430506,
+        "num_wins": 152,
+        "num_losses": 348,
+        "max_consecutive_losses": 10
+      },
+      "ac3_evaluation": {
+        "pass": false,
+        "win_rate_pass": false,
+        "max_dd_pass": false,
+        "comments": "Win Rate 30.4% < 45% | Max DD 64.6% > 15%"
+      }
+    },
+    {
+      "run_id": "20251211_034037_5l5i",
+      "params": {},
+      "performance": {
+        "num_trades": 500,
+        "pnl_total": -6353.100715430506,
+        "pnl_avg_per_trade": -12.706201430861013,
+        "win_rate": 0.304,
+        "max_drawdown": 0.645579776347009,
+        "max_drawdown_abs": -6505.494496246423,
+        "sharpe_ratio": -3.545203573009678,
+        "profit_factor": 0.6048223796808917,
+        "roi": -0.6353100715430506,
+        "num_wins": 152,
+        "num_losses": 348,
+        "max_consecutive_losses": 10
+      },
+      "ac3_evaluation": {
+        "pass": false,
+        "win_rate_pass": false,
+        "max_dd_pass": false,
+        "comments": "Win Rate 30.4% < 45% | Max DD 64.6% > 15%"
+      }
+    },
+    {
+      "run_id": "20251211_034432_cev1",
+      "params": {},
+      "performance": {
+        "num_trades": 500,
+        "pnl_total": -6353.100715430506,
+        "pnl_avg_per_trade": -12.706201430861013,
+        "win_rate": 0.304,
+        "max_drawdown": 0.645579776347009,
+        "max_drawdown_abs": -6505.494496246423,
+        "sharpe_ratio": -3.545203573009678,
+        "profit_factor": 0.6048223796808917,
+        "roi": -0.6353100715430506,
+        "num_wins": 152,
+        "num_losses": 348,
+        "max_consecutive_losses": 10
+      },
+      "ac3_evaluation": {
+        "pass": false,
+        "win_rate_pass": false,
+        "max_dd_pass": false,
+        "comments": "Win Rate 30.4% < 45% | Max DD 64.6% > 15%"
+      }
+    },
+    {
+      "run_id": "20251211_034815_3tp4",
+      "params": {},
+      "performance": {
+        "num_trades": 500,
+        "pnl_total": -6353.100715430506,
+        "pnl_avg_per_trade": -12.706201430861013,
+        "win_rate": 0.304,
+        "max_drawdown": 0.645579776347009,
+        "max_drawdown_abs": -6505.494496246423,
+        "sharpe_ratio": -3.545203573009678,
+        "profit_factor": 0.6048223796808917,
+        "roi": -0.6353100715430506,
+        "num_wins": 152,
+        "num_losses": 348,
+        "max_consecutive_losses": 10
+      },
+      "ac3_evaluation": {
+        "pass": false,
+        "win_rate_pass": false,
+        "max_dd_pass": false,
+        "comments": "Win Rate 30.4% < 45% | Max DD 64.6% > 15%"
+      }
+    },
+    {
+      "run_id": "20251211_035158_4c9f",
+      "params": {},
+      "performance": {
+        "num_trades": 500,
+        "pnl_total": -6353.100715430506,
+        "pnl_avg_per_trade": -12.706201430861013,
+        "win_rate": 0.304,
+        "max_drawdown": 0.645579776347009,
+        "max_drawdown_abs": -6505.494496246423,
+        "sharpe_ratio": -3.545203573009678,
+        "profit_factor": 0.6048223796808917,
+        "roi": -0.6353100715430506,
+        "num_wins": 152,
+        "num_losses": 348,
+        "max_consecutive_losses": 10
+      },
+      "ac3_evaluation": {
+        "pass": false,
+        "win_rate_pass": false,
+        "max_dd_pass": false,
+        "comments": "Win Rate 30.4% < 45% | Max DD 64.6% > 15%"
+      }
+    },
+    {
+      "run_id": "20251211_035552_5fn5",
+      "params": {},
+      "performance": {
+        "num_trades": 500,
+        "pnl_total": -6353.100715430506,
+        "pnl_avg_per_trade": -12.706201430861013,
+        "win_rate": 0.304,
+        "max_drawdown": 0.645579776347009,
+        "max_drawdown_abs": -6505.494496246423,
+        "sharpe_ratio": -3.545203573009678,
+        "profit_factor": 0.6048223796808917,
+        "roi": -0.6353100715430506,
+        "num_wins": 152,
+        "num_losses": 348,
+        "max_consecutive_losses": 10
+      },
+      "ac3_evaluation": {
+        "pass": false,
+        "win_rate_pass": false,
+        "max_dd_pass": false,
+        "comments": "Win Rate 30.4% < 45% | Max DD 64.6% > 15%"
+      }
+    },
+    {
+      "run_id": "20251211_035946_hmop",
+      "params": {},
+      "performance": {
+        "num_trades": 500,
+        "pnl_total": -6353.100715430506,
+        "pnl_avg_per_trade": -12.706201430861013,
+        "win_rate": 0.304,
+        "max_drawdown": 0.645579776347009,
+        "max_drawdown_abs": -6505.494496246423,
+        "sharpe_ratio": -3.545203573009678,
+        "profit_factor": 0.6048223796808917,
+        "roi": -0.6353100715430506,
+        "num_wins": 152,
+        "num_losses": 348,
+        "max_consecutive_losses": 10
+      },
+      "ac3_evaluation": {
+        "pass": false,
+        "win_rate_pass": false,
+        "max_dd_pass": false,
+        "comments": "Win Rate 30.4% < 45% | Max DD 64.6% > 15%"
+      }
+    },
+    {
+      "run_id": "20251211_040324_5ts5",
+      "params": {},
+      "performance": {
+        "num_trades": 500,
+        "pnl_total": -6353.100715430506,
+        "pnl_avg_per_trade": -12.706201430861013,
+        "win_rate": 0.304,
+        "max_drawdown": 0.645579776347009,
+        "max_drawdown_abs": -6505.494496246423,
+        "sharpe_ratio": -3.545203573009678,
+        "profit_factor": 0.6048223796808917,
+        "roi": -0.6353100715430506,
+        "num_wins": 152,
+        "num_losses": 348,
+        "max_consecutive_losses": 10
+      },
+      "ac3_evaluation": {
+        "pass": false,
+        "win_rate_pass": false,
+        "max_dd_pass": false,
+        "comments": "Win Rate 30.4% < 45% | Max DD 64.6% > 15%"
+      }
+    }
+  ],
+  "ranked_results": [
+    {
+      "run_id": "20251211_023512_ymh6",
+      "params": {},
+      "performance": {
+        "num_trades": 500,
+        "pnl_total": -6353.100715430506,
+        "pnl_avg_per_trade": -12.706201430861013,
+        "win_rate": 0.304,
+        "max_drawdown": 0.645579776347009,
+        "max_drawdown_abs": -6505.494496246423,
+        "sharpe_ratio": -3.545203573009678,
+        "profit_factor": 0.6048223796808917,
+        "roi": -0.6353100715430506,
+        "num_wins": 152,
+        "num_losses": 348,
+        "max_consecutive_losses": 10
+      },
+      "ac3_evaluation": {
+        "pass": false,
+        "win_rate_pass": false,
+        "max_dd_pass": false,
+        "comments": "Win Rate 30.4% < 45% | Max DD 64.6% > 15%"
+      }
+    },
+    {
+      "run_id": "20251211_023919_qayu",
+      "params": {},
+      "performance": {
+        "num_trades": 500,
+        "pnl_total": -6353.100715430506,
+        "pnl_avg_per_trade": -12.706201430861013,
+        "win_rate": 0.304,
+        "max_drawdown": 0.645579776347009,
+        "max_drawdown_abs": -6505.494496246423,
+        "sharpe_ratio": -3.545203573009678,
+        "profit_factor": 0.6048223796808917,
+        "roi": -0.6353100715430506,
+        "num_wins": 152,
+        "num_losses": 348,
+        "max_consecutive_losses": 10
+      },
+      "ac3_evaluation": {
+        "pass": false,
+        "win_rate_pass": false,
+        "max_dd_pass": false,
+        "comments": "Win Rate 30.4% < 45% | Max DD 64.6% > 15%"
+      }
+    },
+    {
+      "run_id": "20251211_024328_8ko4",
+      "params": {},
+      "performance": {
+        "num_trades": 500,
+        "pnl_total": -6353.100715430506,
+        "pnl_avg_per_trade": -12.706201430861013,
+        "win_rate": 0.304,
+        "max_drawdown": 0.645579776347009,
+        "max_drawdown_abs": -6505.494496246423,
+        "sharpe_ratio": -3.545203573009678,
+        "profit_factor": 0.6048223796808917,
+        "roi": -0.6353100715430506,
+        "num_wins": 152,
+        "num_losses": 348,
+        "max_consecutive_losses": 10
+      },
+      "ac3_evaluation": {
+        "pass": false,
+        "win_rate_pass": false,
+        "max_dd_pass": false,
+        "comments": "Win Rate 30.4% < 45% | Max DD 64.6% > 15%"
+      }
+    },
+    {
+      "run_id": "20251211_024728_0ux0",
+      "params": {},
+      "performance": {
+        "num_trades": 500,
+        "pnl_total": -6353.100715430506,
+        "pnl_avg_per_trade": -12.706201430861013,
+        "win_rate": 0.304,
+        "max_drawdown": 0.645579776347009,
+        "max_drawdown_abs": -6505.494496246423,
+        "sharpe_ratio": -3.545203573009678,
+        "profit_factor": 0.6048223796808917,
+        "roi": -0.6353100715430506,
+        "num_wins": 152,
+        "num_losses": 348,
+        "max_consecutive_losses": 10
+      },
+      "ac3_evaluation": {
+        "pass": false,
+        "win_rate_pass": false,
+        "max_dd_pass": false,
+        "comments": "Win Rate 30.4% < 45% | Max DD 64.6% > 15%"
+      }
+    },
+    {
+      "run_id": "20251211_025112_gb2y",
+      "params": {},
+      "performance": {
+        "num_trades": 500,
+        "pnl_total": -6353.100715430506,
+        "pnl_avg_per_trade": -12.706201430861013,
+        "win_rate": 0.304,
+        "max_drawdown": 0.645579776347009,
+        "max_drawdown_abs": -6505.494496246423,
+        "sharpe_ratio": -3.545203573009678,
+        "profit_factor": 0.6048223796808917,
+        "roi": -0.6353100715430506,
+        "num_wins": 152,
+        "num_losses": 348,
+        "max_consecutive_losses": 10
+      },
+      "ac3_evaluation": {
+        "pass": false,
+        "win_rate_pass": false,
+        "max_dd_pass": false,
+        "comments": "Win Rate 30.4% < 45% | Max DD 64.6% > 15%"
+      }
+    },
+    {
+      "run_id": "20251211_025514_bljn",
+      "params": {},
+      "performance": {
+        "num_trades": 500,
+        "pnl_total": -6353.100715430506,
+        "pnl_avg_per_trade": -12.706201430861013,
+        "win_rate": 0.304,
+        "max_drawdown": 0.645579776347009,
+        "max_drawdown_abs": -6505.494496246423,
+        "sharpe_ratio": -3.545203573009678,
+        "profit_factor": 0.6048223796808917,
+        "roi": -0.6353100715430506,
+        "num_wins": 152,
+        "num_losses": 348,
+        "max_consecutive_losses": 10
+      },
+      "ac3_evaluation": {
+        "pass": false,
+        "win_rate_pass": false,
+        "max_dd_pass": false,
+        "comments": "Win Rate 30.4% < 45% | Max DD 64.6% > 15%"
+      }
+    },
+    {
+      "run_id": "20251211_025914_s1cj",
+      "params": {},
+      "performance": {
+        "num_trades": 500,
+        "pnl_total": -6353.100715430506,
+        "pnl_avg_per_trade": -12.706201430861013,
+        "win_rate": 0.304,
+        "max_drawdown": 0.645579776347009,
+        "max_drawdown_abs": -6505.494496246423,
+        "sharpe_ratio": -3.545203573009678,
+        "profit_factor": 0.6048223796808917,
+        "roi": -0.6353100715430506,
+        "num_wins": 152,
+        "num_losses": 348,
+        "max_consecutive_losses": 10
+      },
+      "ac3_evaluation": {
+        "pass": false,
+        "win_rate_pass": false,
+        "max_dd_pass": false,
+        "comments": "Win Rate 30.4% < 45% | Max DD 64.6% > 15%"
+      }
+    },
+    {
+      "run_id": "20251211_030250_gu8q",
+      "params": {},
+      "performance": {
+        "num_trades": 500,
+        "pnl_total": -6353.100715430506,
+        "pnl_avg_per_trade": -12.706201430861013,
+        "win_rate": 0.304,
+        "max_drawdown": 0.645579776347009,
+        "max_drawdown_abs": -6505.494496246423,
+        "sharpe_ratio": -3.545203573009678,
+        "profit_factor": 0.6048223796808917,
+        "roi": -0.6353100715430506,
+        "num_wins": 152,
+        "num_losses": 348,
+        "max_consecutive_losses": 10
+      },
+      "ac3_evaluation": {
+        "pass": false,
+        "win_rate_pass": false,
+        "max_dd_pass": false,
+        "comments": "Win Rate 30.4% < 45% | Max DD 64.6% > 15%"
+      }
+    },
+    {
+      "run_id": "20251211_030629_crx2",
+      "params": {},
+      "performance": {
+        "num_trades": 500,
+        "pnl_total": -6353.100715430506,
+        "pnl_avg_per_trade": -12.706201430861013,
+        "win_rate": 0.304,
+        "max_drawdown": 0.645579776347009,
+        "max_drawdown_abs": -6505.494496246423,
+        "sharpe_ratio": -3.545203573009678,
+        "profit_factor": 0.6048223796808917,
+        "roi": -0.6353100715430506,
+        "num_wins": 152,
+        "num_losses": 348,
+        "max_consecutive_losses": 10
+      },
+      "ac3_evaluation": {
+        "pass": false,
+        "win_rate_pass": false,
+        "max_dd_pass": false,
+        "comments": "Win Rate 30.4% < 45% | Max DD 64.6% > 15%"
+      }
+    },
+    {
+      "run_id": "20251211_031022_d4l7",
+      "params": {},
+      "performance": {
+        "num_trades": 500,
+        "pnl_total": -6353.100715430506,
+        "pnl_avg_per_trade": -12.706201430861013,
+        "win_rate": 0.304,
+        "max_drawdown": 0.645579776347009,
+        "max_drawdown_abs": -6505.494496246423,
+        "sharpe_ratio": -3.545203573009678,
+        "profit_factor": 0.6048223796808917,
+        "roi": -0.6353100715430506,
+        "num_wins": 152,
+        "num_losses": 348,
+        "max_consecutive_losses": 10
+      },
+      "ac3_evaluation": {
+        "pass": false,
+        "win_rate_pass": false,
+        "max_dd_pass": false,
+        "comments": "Win Rate 30.4% < 45% | Max DD 64.6% > 15%"
+      }
+    },
+    {
+      "run_id": "20251211_031416_eiva",
+      "params": {},
+      "performance": {
+        "num_trades": 500,
+        "pnl_total": -6353.100715430506,
+        "pnl_avg_per_trade": -12.706201430861013,
+        "win_rate": 0.304,
+        "max_drawdown": 0.645579776347009,
+        "max_drawdown_abs": -6505.494496246423,
+        "sharpe_ratio": -3.545203573009678,
+        "profit_factor": 0.6048223796808917,
+        "roi": -0.6353100715430506,
+        "num_wins": 152,
+        "num_losses": 348,
+        "max_consecutive_losses": 10
+      },
+      "ac3_evaluation": {
+        "pass": false,
+        "win_rate_pass": false,
+        "max_dd_pass": false,
+        "comments": "Win Rate 30.4% < 45% | Max DD 64.6% > 15%"
+      }
+    },
+    {
+      "run_id": "20251211_031753_fdat",
+      "params": {},
+      "performance": {
+        "num_trades": 500,
+        "pnl_total": -6353.100715430506,
+        "pnl_avg_per_trade": -12.706201430861013,
+        "win_rate": 0.304,
+        "max_drawdown": 0.645579776347009,
+        "max_drawdown_abs": -6505.494496246423,
+        "sharpe_ratio": -3.545203573009678,
+        "profit_factor": 0.6048223796808917,
+        "roi": -0.6353100715430506,
+        "num_wins": 152,
+        "num_losses": 348,
+        "max_consecutive_losses": 10
+      },
+      "ac3_evaluation": {
+        "pass": false,
+        "win_rate_pass": false,
+        "max_dd_pass": false,
+        "comments": "Win Rate 30.4% < 45% | Max DD 64.6% > 15%"
+      }
+    },
+    {
+      "run_id": "20251211_032132_0pxw",
+      "params": {},
+      "performance": {
+        "num_trades": 500,
+        "pnl_total": -6353.100715430506,
+        "pnl_avg_per_trade": -12.706201430861013,
+        "win_rate": 0.304,
+        "max_drawdown": 0.645579776347009,
+        "max_drawdown_abs": -6505.494496246423,
+        "sharpe_ratio": -3.545203573009678,
+        "profit_factor": 0.6048223796808917,
+        "roi": -0.6353100715430506,
+        "num_wins": 152,
+        "num_losses": 348,
+        "max_consecutive_losses": 10
+      },
+      "ac3_evaluation": {
+        "pass": false,
+        "win_rate_pass": false,
+        "max_dd_pass": false,
+        "comments": "Win Rate 30.4% < 45% | Max DD 64.6% > 15%"
+      }
+    },
+    {
+      "run_id": "20251211_032528_0rxd",
+      "params": {},
+      "performance": {
+        "num_trades": 500,
+        "pnl_total": -6353.100715430506,
+        "pnl_avg_per_trade": -12.706201430861013,
+        "win_rate": 0.304,
+        "max_drawdown": 0.645579776347009,
+        "max_drawdown_abs": -6505.494496246423,
+        "sharpe_ratio": -3.545203573009678,
+        "profit_factor": 0.6048223796808917,
+        "roi": -0.6353100715430506,
+        "num_wins": 152,
+        "num_losses": 348,
+        "max_consecutive_losses": 10
+      },
+      "ac3_evaluation": {
+        "pass": false,
+        "win_rate_pass": false,
+        "max_dd_pass": false,
+        "comments": "Win Rate 30.4% < 45% | Max DD 64.6% > 15%"
+      }
+    },
+    {
+      "run_id": "20251211_032924_goqz",
+      "params": {},
+      "performance": {
+        "num_trades": 500,
+        "pnl_total": -6353.100715430506,
+        "pnl_avg_per_trade": -12.706201430861013,
+        "win_rate": 0.304,
+        "max_drawdown": 0.645579776347009,
+        "max_drawdown_abs": -6505.494496246423,
+        "sharpe_ratio": -3.545203573009678,
+        "profit_factor": 0.6048223796808917,
+        "roi": -0.6353100715430506,
+        "num_wins": 152,
+        "num_losses": 348,
+        "max_consecutive_losses": 10
+      },
+      "ac3_evaluation": {
+        "pass": false,
+        "win_rate_pass": false,
+        "max_dd_pass": false,
+        "comments": "Win Rate 30.4% < 45% | Max DD 64.6% > 15%"
+      }
+    },
+    {
+      "run_id": "20251211_033304_uqyo",
+      "params": {},
+      "performance": {
+        "num_trades": 500,
+        "pnl_total": -6353.100715430506,
+        "pnl_avg_per_trade": -12.706201430861013,
+        "win_rate": 0.304,
+        "max_drawdown": 0.645579776347009,
+        "max_drawdown_abs": -6505.494496246423,
+        "sharpe_ratio": -3.545203573009678,
+        "profit_factor": 0.6048223796808917,
+        "roi": -0.6353100715430506,
+        "num_wins": 152,
+        "num_losses": 348,
+        "max_consecutive_losses": 10
+      },
+      "ac3_evaluation": {
+        "pass": false,
+        "win_rate_pass": false,
+        "max_dd_pass": false,
+        "comments": "Win Rate 30.4% < 45% | Max DD 64.6% > 15%"
+      }
+    },
+    {
+      "run_id": "20251211_033642_6b90",
+      "params": {},
+      "performance": {
+        "num_trades": 500,
+        "pnl_total": -6353.100715430506,
+        "pnl_avg_per_trade": -12.706201430861013,
+        "win_rate": 0.304,
+        "max_drawdown": 0.645579776347009,
+        "max_drawdown_abs": -6505.494496246423,
+        "sharpe_ratio": -3.545203573009678,
+        "profit_factor": 0.6048223796808917,
+        "roi": -0.6353100715430506,
+        "num_wins": 152,
+        "num_losses": 348,
+        "max_consecutive_losses": 10
+      },
+      "ac3_evaluation": {
+        "pass": false,
+        "win_rate_pass": false,
+        "max_dd_pass": false,
+        "comments": "Win Rate 30.4% < 45% | Max DD 64.6% > 15%"
+      }
+    },
+    {
+      "run_id": "20251211_034037_5l5i",
+      "params": {},
+      "performance": {
+        "num_trades": 500,
+        "pnl_total": -6353.100715430506,
+        "pnl_avg_per_trade": -12.706201430861013,
+        "win_rate": 0.304,
+        "max_drawdown": 0.645579776347009,
+        "max_drawdown_abs": -6505.494496246423,
+        "sharpe_ratio": -3.545203573009678,
+        "profit_factor": 0.6048223796808917,
+        "roi": -0.6353100715430506,
+        "num_wins": 152,
+        "num_losses": 348,
+        "max_consecutive_losses": 10
+      },
+      "ac3_evaluation": {
+        "pass": false,
+        "win_rate_pass": false,
+        "max_dd_pass": false,
+        "comments": "Win Rate 30.4% < 45% | Max DD 64.6% > 15%"
+      }
+    },
+    {
+      "run_id": "20251211_034432_cev1",
+      "params": {},
+      "performance": {
+        "num_trades": 500,
+        "pnl_total": -6353.100715430506,
+        "pnl_avg_per_trade": -12.706201430861013,
+        "win_rate": 0.304,
+        "max_drawdown": 0.645579776347009,
+        "max_drawdown_abs": -6505.494496246423,
+        "sharpe_ratio": -3.545203573009678,
+        "profit_factor": 0.6048223796808917,
+        "roi": -0.6353100715430506,
+        "num_wins": 152,
+        "num_losses": 348,
+        "max_consecutive_losses": 10
+      },
+      "ac3_evaluation": {
+        "pass": false,
+        "win_rate_pass": false,
+        "max_dd_pass": false,
+        "comments": "Win Rate 30.4% < 45% | Max DD 64.6% > 15%"
+      }
+    },
+    {
+      "run_id": "20251211_034815_3tp4",
+      "params": {},
+      "performance": {
+        "num_trades": 500,
+        "pnl_total": -6353.100715430506,
+        "pnl_avg_per_trade": -12.706201430861013,
+        "win_rate": 0.304,
+        "max_drawdown": 0.645579776347009,
+        "max_drawdown_abs": -6505.494496246423,
+        "sharpe_ratio": -3.545203573009678,
+        "profit_factor": 0.6048223796808917,
+        "roi": -0.6353100715430506,
+        "num_wins": 152,
+        "num_losses": 348,
+        "max_consecutive_losses": 10
+      },
+      "ac3_evaluation": {
+        "pass": false,
+        "win_rate_pass": false,
+        "max_dd_pass": false,
+        "comments": "Win Rate 30.4% < 45% | Max DD 64.6% > 15%"
+      }
+    },
+    {
+      "run_id": "20251211_035158_4c9f",
+      "params": {},
+      "performance": {
+        "num_trades": 500,
+        "pnl_total": -6353.100715430506,
+        "pnl_avg_per_trade": -12.706201430861013,
+        "win_rate": 0.304,
+        "max_drawdown": 0.645579776347009,
+        "max_drawdown_abs": -6505.494496246423,
+        "sharpe_ratio": -3.545203573009678,
+        "profit_factor": 0.6048223796808917,
+        "roi": -0.6353100715430506,
+        "num_wins": 152,
+        "num_losses": 348,
+        "max_consecutive_losses": 10
+      },
+      "ac3_evaluation": {
+        "pass": false,
+        "win_rate_pass": false,
+        "max_dd_pass": false,
+        "comments": "Win Rate 30.4% < 45% | Max DD 64.6% > 15%"
+      }
+    },
+    {
+      "run_id": "20251211_035552_5fn5",
+      "params": {},
+      "performance": {
+        "num_trades": 500,
+        "pnl_total": -6353.100715430506,
+        "pnl_avg_per_trade": -12.706201430861013,
+        "win_rate": 0.304,
+        "max_drawdown": 0.645579776347009,
+        "max_drawdown_abs": -6505.494496246423,
+        "sharpe_ratio": -3.545203573009678,
+        "profit_factor": 0.6048223796808917,
+        "roi": -0.6353100715430506,
+        "num_wins": 152,
+        "num_losses": 348,
+        "max_consecutive_losses": 10
+      },
+      "ac3_evaluation": {
+        "pass": false,
+        "win_rate_pass": false,
+        "max_dd_pass": false,
+        "comments": "Win Rate 30.4% < 45% | Max DD 64.6% > 15%"
+      }
+    },
+    {
+      "run_id": "20251211_035946_hmop",
+      "params": {},
+      "performance": {
+        "num_trades": 500,
+        "pnl_total": -6353.100715430506,
+        "pnl_avg_per_trade": -12.706201430861013,
+        "win_rate": 0.304,
+        "max_drawdown": 0.645579776347009,
+        "max_drawdown_abs": -6505.494496246423,
+        "sharpe_ratio": -3.545203573009678,
+        "profit_factor": 0.6048223796808917,
+        "roi": -0.6353100715430506,
+        "num_wins": 152,
+        "num_losses": 348,
+        "max_consecutive_losses": 10
+      },
+      "ac3_evaluation": {
+        "pass": false,
+        "win_rate_pass": false,
+        "max_dd_pass": false,
+        "comments": "Win Rate 30.4% < 45% | Max DD 64.6% > 15%"
+      }
+    },
+    {
+      "run_id": "20251211_040324_5ts5",
+      "params": {},
+      "performance": {
+        "num_trades": 500,
+        "pnl_total": -6353.100715430506,
+        "pnl_avg_per_trade": -12.706201430861013,
+        "win_rate": 0.304,
+        "max_drawdown": 0.645579776347009,
+        "max_drawdown_abs": -6505.494496246423,
+        "sharpe_ratio": -3.545203573009678,
+        "profit_factor": 0.6048223796808917,
+        "roi": -0.6353100715430506,
+        "num_wins": 152,
+        "num_losses": 348,
+        "max_consecutive_losses": 10
+      },
+      "ac3_evaluation": {
+        "pass": false,
+        "win_rate_pass": false,
+        "max_dd_pass": false,
+        "comments": "Win Rate 30.4% < 45% | Max DD 64.6% > 15%"
+      }
+    }
+  ],
+  "top_5": [
+    {
+      "run_id": "20251211_023512_ymh6",
+      "params": {},
+      "performance": {
+        "num_trades": 500,
+        "pnl_total": -6353.100715430506,
+        "pnl_avg_per_trade": -12.706201430861013,
+        "win_rate": 0.304,
+        "max_drawdown": 0.645579776347009,
+        "max_drawdown_abs": -6505.494496246423,
+        "sharpe_ratio": -3.545203573009678,
+        "profit_factor": 0.6048223796808917,
+        "roi": -0.6353100715430506,
+        "num_wins": 152,
+        "num_losses": 348,
+        "max_consecutive_losses": 10
+      },
+      "ac3_evaluation": {
+        "pass": false,
+        "win_rate_pass": false,
+        "max_dd_pass": false,
+        "comments": "Win Rate 30.4% < 45% | Max DD 64.6% > 15%"
+      }
+    },
+    {
+      "run_id": "20251211_023919_qayu",
+      "params": {},
+      "performance": {
+        "num_trades": 500,
+        "pnl_total": -6353.100715430506,
+        "pnl_avg_per_trade": -12.706201430861013,
+        "win_rate": 0.304,
+        "max_drawdown": 0.645579776347009,
+        "max_drawdown_abs": -6505.494496246423,
+        "sharpe_ratio": -3.545203573009678,
+        "profit_factor": 0.6048223796808917,
+        "roi": -0.6353100715430506,
+        "num_wins": 152,
+        "num_losses": 348,
+        "max_consecutive_losses": 10
+      },
+      "ac3_evaluation": {
+        "pass": false,
+        "win_rate_pass": false,
+        "max_dd_pass": false,
+        "comments": "Win Rate 30.4% < 45% | Max DD 64.6% > 15%"
+      }
+    },
+    {
+      "run_id": "20251211_024328_8ko4",
+      "params": {},
+      "performance": {
+        "num_trades": 500,
+        "pnl_total": -6353.100715430506,
+        "pnl_avg_per_trade": -12.706201430861013,
+        "win_rate": 0.304,
+        "max_drawdown": 0.645579776347009,
+        "max_drawdown_abs": -6505.494496246423,
+        "sharpe_ratio": -3.545203573009678,
+        "profit_factor": 0.6048223796808917,
+        "roi": -0.6353100715430506,
+        "num_wins": 152,
+        "num_losses": 348,
+        "max_consecutive_losses": 10
+      },
+      "ac3_evaluation": {
+        "pass": false,
+        "win_rate_pass": false,
+        "max_dd_pass": false,
+        "comments": "Win Rate 30.4% < 45% | Max DD 64.6% > 15%"
+      }
+    },
+    {
+      "run_id": "20251211_024728_0ux0",
+      "params": {},
+      "performance": {
+        "num_trades": 500,
+        "pnl_total": -6353.100715430506,
+        "pnl_avg_per_trade": -12.706201430861013,
+        "win_rate": 0.304,
+        "max_drawdown": 0.645579776347009,
+        "max_drawdown_abs": -6505.494496246423,
+        "sharpe_ratio": -3.545203573009678,
+        "profit_factor": 0.6048223796808917,
+        "roi": -0.6353100715430506,
+        "num_wins": 152,
+        "num_losses": 348,
+        "max_consecutive_losses": 10
+      },
+      "ac3_evaluation": {
+        "pass": false,
+        "win_rate_pass": false,
+        "max_dd_pass": false,
+        "comments": "Win Rate 30.4% < 45% | Max DD 64.6% > 15%"
+      }
+    },
+    {
+      "run_id": "20251211_025112_gb2y",
+      "params": {},
+      "performance": {
+        "num_trades": 500,
+        "pnl_total": -6353.100715430506,
+        "pnl_avg_per_trade": -12.706201430861013,
+        "win_rate": 0.304,
+        "max_drawdown": 0.645579776347009,
+        "max_drawdown_abs": -6505.494496246423,
+        "sharpe_ratio": -3.545203573009678,
+        "profit_factor": 0.6048223796808917,
+        "roi": -0.6353100715430506,
+        "num_wins": 152,
+        "num_losses": 348,
+        "max_consecutive_losses": 10
+      },
+      "ac3_evaluation": {
+        "pass": false,
+        "win_rate_pass": false,
+        "max_dd_pass": false,
+        "comments": "Win Rate 30.4% < 45% | Max DD 64.6% > 15%"
+      }
+    }
+  ]
+}

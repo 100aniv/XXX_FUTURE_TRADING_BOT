@@ -242,8 +242,10 @@ class TradeActivityTracker:
         """
         Get complete summary statistics
         
+        PHASE29-5: Performance 지표 추가
+        
         Returns:
-            Dictionary with all tracked metrics
+            Dictionary with all tracked metrics + performance metrics
         """
         with self._lock:
             # Convert defaultdicts to regular dicts for JSON serialization
@@ -256,7 +258,7 @@ class TradeActivityTracker:
                     "orders_submitted": data["orders_submitted"]
                 }
             
-            return {
+            summary = {
                 "run_id": self.run_id,
                 "duration_minutes": self.duration_minutes,
                 "timestamp": self.start_time.isoformat(),
@@ -264,6 +266,53 @@ class TradeActivityTracker:
                 "symbols": symbols_dict,
                 "totals": self.totals.copy()
             }
+            
+            # PHASE29-5: Performance 지표 계산 및 추가
+            try:
+                from common.performance_metrics import compute_performance_metrics_from_db
+                
+                # 전역 Performance 지표 (trial_id 기반)
+                perf_metrics = compute_performance_metrics_from_db(
+                    trial_id=self.run_id,
+                    initial_equity=10000.0
+                )
+                
+                if perf_metrics and perf_metrics.get('num_trades', 0) > 0:
+                    summary['performance'] = perf_metrics
+                else:
+                    # 거래 없음: 빈 지표
+                    summary['performance'] = self._empty_performance()
+                
+                # 심볼별 Performance 지표 (향후 멀티 심볼 지원)
+                # 현재는 전역만 계산, 필요 시 확장 가능
+                
+            except Exception as e:
+                # Performance 계산 실패 시에도 기존 Summary는 유지
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.warning(f"⚠️ Performance 지표 계산 실패: {e}")
+                summary['performance'] = self._empty_performance()
+            
+            return summary
+    
+    def _empty_performance(self) -> Dict[str, Any]:
+        """빈 Performance 지표 반환 (거래 없을 때)"""
+        return {
+            'num_trades': 0,
+            'pnl_total': 0.0,
+            'pnl_avg_per_trade': 0.0,
+            'win_rate': 0.0,
+            'max_drawdown': 0.0,
+            'max_drawdown_abs': 0.0,
+            'sharpe_ratio': None,
+            'profit_factor': 0.0,
+            'num_wins': 0,
+            'num_losses': 0,
+            'avg_win': 0.0,
+            'avg_loss': 0.0,
+            'max_consecutive_losses': 0,
+            'roi': 0.0
+        }
     
     def save_json(self, output_path: Path) -> None:
         """
