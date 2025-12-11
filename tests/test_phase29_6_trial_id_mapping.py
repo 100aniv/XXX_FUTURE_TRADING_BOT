@@ -151,6 +151,9 @@ class TestTrialIdMapping:
     
     def test_null_trial_id_isolation(self):
         """trial_id=NULL인 trade는 조회되지 않아야 함"""
+        import uuid
+        test_trade_id = f'test_null_{uuid.uuid4().hex[:8]}'
+        
         # NULL trial_id trade
         with get_db_connection() as conn:
             with conn.cursor() as cur:
@@ -165,7 +168,7 @@ class TestTrialIdMapping:
                         NOW(), NOW(), NOW(), NULL, %s
                     )
                 """, (
-                    'test_null_001',
+                    test_trade_id,
                     'BTCUSDT',
                     'LONG',
                     50000,

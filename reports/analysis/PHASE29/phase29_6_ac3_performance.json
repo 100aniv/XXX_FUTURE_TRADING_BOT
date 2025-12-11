@@ -1,0 +1,84 @@
+{
+  "analysis_date": "2025-12-11T15:02:50.147209",
+  "total_analyzed": 4,
+  "ac3_pass": 0,
+  "ac3_fail": 4,
+  "results": [
+    {
+      "name": "1M Gate Baseline",
+      "config": "baseline (no guard)",
+      "run_id": "phase29_4_0_btc5m_baseline_v4_month_gate",
+      "num_trades": 140,
+      "win_rate": 0.2785714285714286,
+      "max_drawdown": 0.23206216719632594,
+      "pnl_total": -2245.2078936151092,
+      "sharpe_ratio": -4.591430580248202,
+      "profit_factor": 0.5251077783448849,
+      "roi": -0.22452078936151093,
+      "ac3": {
+        "pass": false,
+        "win_rate_pass": false,
+        "max_dd_pass": false,
+        "win_rate_margin": -0.17142857142857143,
+        "max_dd_margin": -0.08206216719632595
+      }
+    },
+    {
+      "name": "Top 1: r2_t2_rr1.0_cd0",
+      "config": "range=2, trend=2, RR=1.0, CD=0",
+      "run_id": "20251211_023512_ymh6",
+      "num_trades": 500,
+      "win_rate": 0.304,
+      "max_drawdown": 0.645579776347009,
+      "pnl_total": -6353.100715430506,
+      "sharpe_ratio": -3.545203573009678,
+      "profit_factor": 0.6048223796808917,
+      "roi": -0.6353100715430506,
+      "ac3": {
+        "pass": false,
+        "win_rate_pass": false,
+        "max_dd_pass": false,
+        "win_rate_margin": -0.14600000000000002,
+        "max_dd_margin": -0.495579776347009
+      }
+    },
+    {
+      "name": "Top 2: r2_t2_rr1.0_cd1",
+      "config": "range=2, trend=2, RR=1.0, CD=1",
+      "run_id": "20251211_023919_qayu",
+      "num_trades": 500,
+      "win_rate": 0.304,
+      "max_drawdown": 0.645579776347009,
+      "pnl_total": -6353.100715430506,
+      "sharpe_ratio": -3.545203573009678,
+      "profit_factor": 0.6048223796808917,
+      "roi": -0.6353100715430506,
+      "ac3": {
+        "pass": false,
+        "win_rate_pass": false,
+        "max_dd_pass": false,
+        "win_rate_margin": -0.14600000000000002,
+        "max_dd_margin": -0.495579776347009
+      }
+    },
+    {
+      "name": "Top 3: r2_t3_rr1.0_cd0",
+      "config": "range=2, trend=3, RR=1.0, CD=0",
+      "run_id": "20251211_025112_gb2y",
+      "num_trades": 500,
+      "win_rate": 0.304,
+      "max_drawdown": 0.645579776347009,
+      "pnl_total": -6353.100715430506,
+      "sharpe_ratio": -3.545203573009678,
+      "profit_factor": 0.6048223796808917,
+      "roi": -0.6353100715430506,
+      "ac3": {
+        "pass": false,
+        "win_rate_pass": false,
+        "max_dd_pass": false,
+        "win_rate_margin": -0.14600000000000002,
+        "max_dd_margin": -0.495579776347009
+      }
+    }
+  ]
+}

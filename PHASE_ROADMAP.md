@@ -1,308 +1,308 @@
-📌 Future Alarm Bot – 최종 상용 버전까지 전체 로드맵
+?�� Future Alarm Bot ??최종 ?�용 버전까�? ?�체 로드�?
 
-목표 한 줄 요약
-“단일 엔진(backtest/paper/live 공용)에 기반한,
-자동 리스크 관리 + Guard + 포트폴리오 + 모니터링까지 포함된
-실제 운용 가능한 상용급 앙상블 트레이딩 시스템”
+목표 ??�??�약
+?�단???�진(backtest/paper/live 공용)??기반??
+?�동 리스??관�?+ Guard + ?�트?�리??+ 모니?�링까�? ?�함??
+?�제 ?�용 가?�한 ?�용�??�상�??�레?�딩 ?�스?��?
 
-0. 전체 구조 개요
-🔹 로드맵 큰 축
+0. ?�체 구조 개요
+?�� 로드�???�?
 
-INFRA / ENGINE 안정화 (지금 ~ PHASE20 전후)
+INFRA / ENGINE ?�정??(지�?~ PHASE20 ?�후)
 
-엔진, 포지션/포트폴리오, Budget, Guard, 데이터, 테스트 인프라
+?�진, ?��????�트?�리?? Budget, Guard, ?�이?? ?�스???�프??
 
-“수익”이 아니라 “망가지지 않는 구조”에 집중
+?�수?�”이 ?�니???�망가지지 ?�는 구조?�에 집중
 
 STRATEGY / PERFORMANCE (PHASE20~PHASE30)
 
-단일 전략(스캘핑) → 여러 전략 → 앙상블
+?�일 ?�략(?�캘?? ???�러 ?�략 ???�상�?
 
-백테스트/페이퍼 기반으로 승률·PnL·MDD 검증
+백테?�트/?�이??기반?�로 ?�률·PnL·MDD 검�?
 
 PRODUCTION / OPERATIONS (PHASE30~PHASE40)
 
-Live 구조, 실계좌 연결, 장애 대응, 모니터링, 알람, Runbook
+Live 구조, ?�계�??�결, ?�애 ?�?? 모니?�링, ?�람, Runbook
 
-“내가 안 보고 있어도 돌아가는 시스템”
+?�내가 ??보고 ?�어???�아가???�스?��?
 
-1. 공통 규칙 (모든 Phase에 공통 적용)
+1. 공통 규칙 (모든 Phase??공통 ?�용)
 
-이제부터 어떤 Phase든 무조건 아래 5개 규칙 깔고 간다.
+?�제부???�떤 Phase??무조�??�래 5�?규칙 깔고 간다.
 
-✅ 진입 조건(Entry Criteria)
+??진입 조건(Entry Criteria)
 
-“이 Phase를 시작해도 되는지”를 정의
+?�이 Phase�??�작?�도 ?�는지?��? ?�의
 
-이전 Phase에서 최소한 무엇이 완료되어야 하는지 명시
+?�전 Phase?�서 최소??무엇???�료?�어???�는지 명시
 
-✅ 퇴출 조건(Exit / Acceptance Criteria)
+???�출 조건(Exit / Acceptance Criteria)
 
-이 Phase를 “완료”라고 말하려면 반드시 충족해야 하는 구체적인 조건
+??Phase�??�완료”라�?말하?�면 반드??충족?�야 ?�는 구체?�인 조건
 
-조건 만족 못하면 다음 Phase로 못 넘어감
+조건 만족 못하�??�음 Phase�?�??�어�?
 
-✅ 산출물(Deliverables)
+???�출�?Deliverables)
 
-코드 / 설정 / 문서 / 테스트 결과 정리
+코드 / ?�정 / 문서 / ?�스??결과 ?�리
 
-최소 1개 이상 MD 문서로 남김
+최소 1�??�상 MD 문서�??��?
 
-✅ Out-of-Scope(이번 Phase에서 일부러 안 하는 것)
+??Out-of-Scope(?�번 Phase?�서 ?��??????�는 �?
 
-“중간에 욕심 내서 새로 벌릴 것들”을 미리 차단
+?�중간에 ?�심 ?�서 ?�로 벌릴 것들?�을 미리 차단
 
-예: 이 Phase는 승률 튜닝 안 함, 전략 추가 안 함 등
+?? ??Phase???�률 ?�닝 ???? ?�략 추�? ??????
 
-✅ 문제 발생 시 원칙
+??문제 발생 ???�칙
 
-Acceptance 조건 만족 못하면
-→ “버그/이슈 목록 MD + 원인/해결 계획” 작성
-→ 해결 후에만 Phase 완료 선언
+Acceptance 조건 만족 못하�?
+???�버�??�슈 목록 MD + ?�인/?�결 계획???�성
+???�결 ?�에�?Phase ?�료 ?�언
 
-2. 현재 위치 기준: PHASE17 재정의
+2. ?�재 ?�치 기�?: PHASE17 ?�정??
 
-지금은 이미 PHASE0~16 + D단계를 거쳐서,
-PHASE17 = Portfolio Budget / Position Sizing 인프라 단계에 와 있다고 보면 된다.
+지금�? ?��? PHASE0~16 + D?�계�?거쳐??
+PHASE17 = Portfolio Budget / Position Sizing ?�프???�계???� ?�다�?보면 ?�다.
 
-그래서 로드맵은 **“지금 이후”**를 중심으로 정의할게.
+그래??로드맵�? **?��?�??�후??*�?중심?�로 ?�의?�게.
 
-3. 상세 로드맵 (PHASE17 이후)
-🧩 PHASE17 – Portfolio Budget & Position Infra 안정화 ✅ **완료 (CONDITIONAL PASS, Production Ready)**
+3. ?�세 로드�?(PHASE17 ?�후)
+?�� PHASE17 ??Portfolio Budget & Position Infra ?�정????**?�료 (CONDITIONAL PASS, Production Ready)**
 
 목적
 
-Budget SSOT 구조 확립
+Budget SSOT 구조 ?�립
 
-PortfolioManager / PositionSizer / Engine 간 데이터 플로우 안정화
+PortfolioManager / PositionSizer / Engine �??�이???�로???�정??
 
-REAL PAPER 12H 기준으로도 Budget/Guard가 정상 동작하는지 검증
+REAL PAPER 12H 기�??�로??Budget/Guard가 ?�상 ?�작?�는지 검�?
 
 진입 조건
 
-엔진 단일 구조 (backtest/paper/live 공용) 이미 존재
+?�진 ?�일 구조 (backtest/paper/live 공용) ?��? 존재
 
-Redis/Postgres/FlowGuardian 기본 구조 동작
+Redis/Postgres/FlowGuardian 기본 구조 ?�작
 
-기본 스캘핑 전략으로 Paper 모드 최소 15분~1시간 실행 경험 있음
+기본 ?�캘???�략?�로 Paper 모드 최소 15�?1?�간 ?�행 경험 ?�음
 
-**완료 상태 (2025-11-19)**:
-- V6.1 기준 12H REAL PAPER 테스트 통과
-- Budget Cap 정상 작동 (111회 적용 확인)
-- Portfolio BLOCK ≈ 31.1% (목표 <30% 근접)
-- ERROR/CRITICAL 0건
+**?�료 ?�태 (2025-11-19)**:
+- V6.1 기�? 12H REAL PAPER ?�스???�과
+- Budget Cap ?�상 ?�동 (111???�용 ?�인)
+- Portfolio BLOCK ??31.1% (목표 <30% 근접)
+- ERROR/CRITICAL 0�?
 - 문서: docs/PHASE17/PHASE17_V6_1_REAL_PAPER_12H_ACCEPTANCE_REPORT.md
 
-주요 작업
+주요 ?�업
 
 PortfolioManager
 
 _get_used_budget(), get_available_budget()
 
-포지션 딕셔너리 키 통일 (position_value, status='OPEN' 등)
+?��????�셔?�리 ???�일 (position_value, status='OPEN' ??
 
 PositionSizer
 
-리스크 기반 사이징 (RPT, SL, 레버리지 고려)
+리스??기반 ?�이�?(RPT, SL, ?�버리�? 고려)
 
-available_budget 파라미터 기반 Budget Cap
+available_budget ?�라미터 기반 Budget Cap
 
-Cap 적용 시 로깅
+Cap ?�용 ??로깅
 
 Engine
 
-포지션 생성 / 추가 / Scaling 시 Budget 플로우 일관성
+?��????�성 / 추�? / Scaling ??Budget ?�로???��???
 
-Budget Cap 반영 후 다시 깨지지 않도록 값 재계산 방식 정리
+Budget Cap 반영 ???�시 깨�?지 ?�도�?�??�계??방식 ?�리
 
-테스트 인프라
+?�스???�프??
 
-단위 테스트 (Sizer / Portfolio / Budget 계산)
+?�위 ?�스??(Sizer / Portfolio / Budget 계산)
 
-통합 테스트 스크립트 (Budget 시나리오)
+?�합 ?�스???�크립트 (Budget ?�나리오)
 
-REAL PAPER 1H & 12H 실행 테스트
+REAL PAPER 1H & 12H ?�행 ?�스??
 
-퇴출(완료) 조건 – 반드시 통과해야 다음 Phase로 진행 가능
+?�출(?�료) 조건 ??반드???�과?�야 ?�음 Phase�?진행 가??
 
 Budget 기능 Acceptance
 
-통합 테스트에서 아래 시나리오 전부 통과:
+?�합 ?�스?�에???�래 ?�나리오 ?��? ?�과:
 
-Budget 내 Entry → Cap 없음
+Budget ??Entry ??Cap ?�음
 
-Budget 초과 Entry → Cap 적용
+Budget 초과 Entry ??Cap ?�용
 
-Budget 완전 소진 → Entry Block
+Budget ?�전 ?�진 ??Entry Block
 
-REAL PAPER 12H Acceptance (아까 말한 그거)
+REAL PAPER 12H Acceptance (?�까 말한 그거)
 
 모드: REAL PAPER
 
 Config: real_paper_12h_v6_1_phase17.yml
 
-최소 12시간 연속 실행 (중간 재시작 포함해 총 12H 이상)
+최소 12?�간 ?�속 ?�행 (중간 ?�시???�함??�?12H ?�상)
 
-기준:
+기�?:
 
-Entry SUCCESS ≥ 100
+Entry SUCCESS ??100
 
-Budget Cap Applied ≥ 1회 (실제로 여러 번)
+Budget Cap Applied ??1??(?�제�??�러 �?
 
 Portfolio Budget BLOCK 비율 < 30%
 
-ERROR/CRITICAL 0건
+ERROR/CRITICAL 0�?
 
-엔진 비정상 종료 0회
+?�진 비정??종료 0??
 
-문서 / 리포트
+문서 / 리포??
 
 PHASE17_PORTFOLIO_BUDGET_FINAL_REPORT.md
 
 V4/V5/V6/V6.1/V6.1 12H 비교
 
-문제 → 원인 → 해결 → 검증 결과
+문제 ???�인 ???�결 ??검�?결과
 
-“PHASE17 인프라 Acceptance: PASS/FAIL” 명기
+?�PHASE17 ?�프??Acceptance: PASS/FAIL??명기
 
 Out-of-Scope
 
-승률 튜닝 / 전략 파라미터 최적화
+?�률 ?�닝 / ?�략 ?�라미터 최적??
 
-새로운 전략 추가
+?�로???�략 추�?
 
-앙상블 구현
+?�상�?구현
 
 Live 모드
 
-🧩 PHASE18 – Strategy Correctness & Baseline Performance (단일 스캘핑 전략)
+?�� PHASE18 ??Strategy Correctness & Baseline Performance (?�일 ?�캘???�략)
 
 목적
 
-“엔진이 안 망가진다”에서 한 단계 더 나가서,
-단일 스캘핑 전략이 논리적으로 말이 되게 동작하는지 + 기본 성능이 괜찮은지 확인
+?�엔진이 ??망�?진다?�에?????�계 ???��???
+?�일 ?�캘???�략???�리?�으�?말이 ?�게 ?�작?�는지 + 기본 ?�능??괜찮?�지 ?�인
 
 진입 조건
 
-PHASE17 Acceptance 통과 (Budget/Portfolio 안정)
+PHASE17 Acceptance ?�과 (Budget/Portfolio ?�정)
 
-REAL PAPER 12H 결과 리포트 완료
+REAL PAPER 12H 결과 리포???�료
 
-주요 작업
+주요 ?�업
 
-전략 로직 검증
+?�략 로직 검�?
 
-진입 조건 / 청산 조건 / SL/TP / Trailing / Re-entry 로직을 문서화
+진입 조건 / �?�� 조건 / SL/TP / Trailing / Re-entry 로직??문서??
 
-코드와 문서의 내용이 일치하는지 점검
+코드?� 문서???�용???�치?�는지 ?��?
 
-백테스트 인프라 정리
+백테?�트 ?�프???�리
 
-동일 엔진으로 backtest/paper/live 모드 동작
+?�일 ?�진?�로 backtest/paper/live 모드 ?�작
 
-백테스트용 데이터 범위 정의 (예: 최근 6~12개월 BTC/ETH/KRW 등)
+백테?�트???�이??범위 ?�의 (?? 최근 6~12개월 BTC/ETH/KRW ??
 
-기본 성능 측정
+기본 ?�능 측정
 
-최소 3개 구간에서 backtest 실행:
+최소 3�?구간?�서 backtest ?�행:
 
-상승장, 하락장, 박스장 비슷한 구간
+?�승?? ?�락?? 박스??비슷??구간
 
 측정:
 
-Win Rate, Expectancy, PnL, MDD, Trade 수, Avg holding time 등
+Win Rate, Expectancy, PnL, MDD, Trade ?? Avg holding time ??
 
-퇴출(완료) 조건
+?�출(?�료) 조건
 
-백테스트 리포트 최소 3개
+백테?�트 리포??최소 3�?
 
-각 리포트에:
+�?리포?�에:
 
-기간, 심볼, 파라미터, 결과 지표
+기간, ?�볼, ?�라미터, 결과 지??
 
-장단점 / 비정상 구간 코멘트
+?�단??/ 비정??구간 코멘??
 
-“전략 논리 검증” 완료
+?�전???�리 검증�??�료
 
-명백히 말도 안 되는 버그(예: SL 안 걸리거나, TP가 음수인 수준)는 모두 제거
+명백??말도 ???�는 버그(?? SL ??걸리거나, TP가 ?�수???��?)??모두 ?�거
 
-전략 설명 문서와 코드가 서로 못 알아보게 다른 상황은 제거
+?�략 ?�명 문서?� 코드가 ?�로 �??�아보게 ?�른 ?�황?� ?�거
 
-REAL PAPER 단기 검증
+REAL PAPER ?�기 검�?
 
-REAL PAPER 모드 4~6시간 테스트 1회 이상
+REAL PAPER 모드 4~6?�간 ?�스??1???�상
 
-백테스트 성향과 전혀 다른 이상 행동 없을 것
+백테?�트 ?�향�??��? ?�른 ?�상 ?�동 ?�을 �?
 
 Out-of-Scope
 
-Bayesian 튜닝, Grid Search 등 본격 Optimization
+Bayesian ?�닝, Grid Search ??본격 Optimization
 
-앙상블 / 다전략
+?�상�?/ ?�전??
 
-실제 계좌 Live
+?�제 계좌 Live
 
-🧩 PHASE19 – Ensemble System Foundation ✅ **완료 (Production Ready)**
+?�� PHASE19 ??Ensemble System Foundation ??**?�료 (Production Ready)**
 
-**⚠️ Note**: 원래 계획은 "Risk & Guard 튜닝"이었으나, 실제로는 Ensemble 인프라를 우선 구축함.
+**?�️ Note**: ?�래 계획?� "Risk & Guard ?�닝"?�었?�나, ?�제로는 Ensemble ?�프?��? ?�선 구축??
 
 목적
 
 Strategy Registry, Score Engine, Ensemble Aggregator 구현
 
-여러 전략의 신호를 체계적으로 통합하는 Ensemble 인프라 구축
+?�러 ?�략???�호�?체계?�으�??�합?�는 Ensemble ?�프??구축
 
-엔진 레벨에서 Ensemble ON/OFF 모드 지원
+?�진 ?�벨?�서 Ensemble ON/OFF 모드 지??
 
 진입 조건
 
-PHASE17 완료 (Portfolio/Budget 안정화)
+PHASE17 ?�료 (Portfolio/Budget ?�정??
 
-기본 전략들이 BaseStrategy 인터페이스 준수
+기본 ?�략?�이 BaseStrategy ?�터?�이??준??
 
-**완료 상태 (2025-11-20)**:
+**?�료 ?�태 (2025-11-20)**:
 
-**PHASE19-1: Strategy Registry** ✅
-- BaseStrategy 인터페이스 정의
+**PHASE19-1: Strategy Registry** ??
+- BaseStrategy ?�터?�이???�의
 - StrategyMetadata with Ensemble fields (optimal_regime, factor_weights, base_weight)
-- StrategyRegistry 자동 스캔 기능
-- 7개 전략 등록 완료 (scalping, breakout, reversion, trend, swing, swing_bb, daytrade)
+- StrategyRegistry ?�동 ?�캔 기능
+- 7�??�략 ?�록 ?�료 (scalping, breakout, reversion, trend, swing, swing_bb, daytrade)
 - 문서: docs/PHASE19/PHASE19-1_COMPLETE_REPORT.md
 
-**PHASE19-2: Score Engine & Factors** ✅
+**PHASE19-2: Score Engine & Factors** ??
 - Factor Calculator (momentum, volatility, volume, trend_strength, overbought_oversold, breakout_probability)
 - ScoreEngine with regime multipliers (optimal=1.2x, worst=0.3x, neutral=1.0x)
-- 전략별 Factor Weights & Base Weights 정의
-- 단위 테스트 PASS
+- ?�략�?Factor Weights & Base Weights ?�의
+- ?�위 ?�스??PASS
 - 문서: docs/PHASE19/PHASE19-2_COMPLETE_REPORT.md
 
-**PHASE19-3: Ensemble Aggregator & Engine Integration** ✅
+**PHASE19-3: Ensemble Aggregator & Engine Integration** ??
 - 3-Tier Aggregation (High-Confidence, Consensus, Skip)
 - StrategyDecision & EnsembleDecision dataclasses
 - EnsembleAggregator.decide() 구현
-- execution/engine.py에 Full Integration
-- 단위 테스트: 11/13 PASS (Aggregator 7/7, ScoreEngine 기본 4/4)
-- Ensemble OFF 모드 회귀 테스트 PASS
-- Ensemble ON 모드 초기화 테스트 PASS
+- execution/engine.py??Full Integration
+- ?�위 ?�스?? 11/13 PASS (Aggregator 7/7, ScoreEngine 기본 4/4)
+- Ensemble OFF 모드 ?��? ?�스??PASS
+- Ensemble ON 모드 초기???�스??PASS
 - 문서: docs/PHASE19/PHASE19-3_ENSEMBLE_AGGREGATOR_DESIGN.md, PHASE19-3_COMPLETE_REPORT.md
 
-주요 작업
+주요 ?�업
 
 StrategyRegistry
 
-전략 자동 스캔 및 등록
+?�략 ?�동 ?�캔 �??�록
 
-메타데이터 캐싱
+메�??�이??캐싱
 
-전략 인스턴스 생성 API
+?�략 ?�스?�스 ?�성 API
 
 ScoreEngine
 
-Factor 계산 및 정규화
+Factor 계산 �??�규??
 
-전략별 가중치 기반 점수 계산
+?�략�?가중치 기반 ?�수 계산
 
-Regime multiplier 적용
+Regime multiplier ?�용
 
 EnsembleAggregator
 
@@ -316,105 +316,105 @@ Engine Integration
 
 Ensemble ON/OFF 모드 분기
 
-헬퍼 함수: _convert_ensemble_decision_to_signal()
+?�퍼 ?�수: _convert_ensemble_decision_to_signal()
 
-Config 기반 threshold 설정
+Config 기반 threshold ?�정
 
-퇴출(완료) 조건
+?�출(?�료) 조건
 
-✅ 단위 테스트: Registry, ScoreEngine, Aggregator 모두 PASS
+???�위 ?�스?? Registry, ScoreEngine, Aggregator 모두 PASS
 
-✅ Ensemble OFF 모드: 기존 기능 회귀 없음
+??Ensemble OFF 모드: 기존 기능 ?��? ?�음
 
-✅ Ensemble ON 모드: 초기화 정상 작동
+??Ensemble ON 모드: 초기???�상 ?�동
 
-✅ Config 통합: ensemble 섹션 추가 및 엔진 연동
+??Config ?�합: ensemble ?�션 추�? �??�진 ?�동
 
-✅ 문서화: 각 서브 PHASE별 Complete Report
+??문서?? �??�브 PHASE�?Complete Report
 
 Out-of-Scope
 
-Regime Classifier (PHASE19-4 예정)
+Regime Classifier (PHASE19-4 ?�정)
 
-Multi-symbol 확장
+Multi-symbol ?�장
 
-실전 Ensemble 성능 튜닝 (PHASE20 이후)
+?�전 Ensemble ?�능 ?�닝 (PHASE20 ?�후)
 
 Known Issues & Next Steps
 
-Regime은 현재 None (placeholder) → PHASE19-4에서 Regime Classifier 구현 예정
+Regime?� ?�재 None (placeholder) ??PHASE19-4?�서 Regime Classifier 구현 ?�정
 
-Ensemble ON 모드 실전 Paper 테스트 필요 (현재는 초기화만 검증)
+Ensemble ON 모드 ?�전 Paper ?�스???�요 (?�재??초기?�만 검�?
 
-전략별 Config 동적 병합 로직 개선 가능
+?�략�?Config ?�적 병합 로직 개선 가??
 
- PHASE20 – Ensemble Integration & Paper Validation 
+ PHASE20 ??Ensemble Integration & Paper Validation 
 
-**PHASE20-1: Ensemble ON Paper Smoke Test (1h, Single Symbol) – ✅ 완료**
+**PHASE20-1: Ensemble ON Paper Smoke Test (1h, Single Symbol) ?????�료**
 
 목적
 
-Ensemble 모듈(EnsembleAggregator + ScoreEngine + StrategyRegistry) 통합 검증
+Ensemble 모듈(EnsembleAggregator + ScoreEngine + StrategyRegistry) ?�합 검�?
 
-1시간 wall-clock Paper 테스트로 Ensemble 의사결정 정상 동작 확인
+1?�간 wall-clock Paper ?�스?�로 Ensemble ?�사결정 ?�상 ?�작 ?�인
 
-기존 인프라(FlowGuardian, RiskManager, PortfolioManager, Budget SSOT) 안정성 재검증
+기존 ?�프??FlowGuardian, RiskManager, PortfolioManager, Budget SSOT) ?�정???��?�?
 
 진입 조건
 
-PHASE19-3+ 완료: Ensemble 통합 + 엔진 Hook 완성
+PHASE19-3+ ?�료: Ensemble ?�합 + ?�진 Hook ?�성
 
-PHASE17 기준 Portfolio/Risk 인프라 안정
+PHASE17 기�? Portfolio/Risk ?�프???�정
 
-주요 작업
+주요 ?�업
 
- Config 준비: `configs/paper/ensemble_paper_smoke.yml` (1h, 7 strategies, BTCUSDT, 5m)
+ Config 준�? `configs/paper/ensemble_paper_smoke.yml` (1h, 7 strategies, BTCUSDT, 5m)
 
- Clean-State 초기화: Postgres/Redis 정리 (12,678 trades, 143,437 signals 삭제)
+ Clean-State 초기?? Postgres/Redis ?�리 (12,678 trades, 143,437 signals ??��)
 
- 단위 테스트: Aggregator/ScoreEngine/Registry 테스트 16/20 PASS (핵심 로직 모두 PASS)
+ ?�위 ?�스?? Aggregator/ScoreEngine/Registry ?�스??16/20 PASS (?�심 로직 모두 PASS)
 
- 1시간 Paper 실행: 5,060 캔들 처리, 31 거래 체결, 정상 종료
+ 1?�간 Paper ?�행: 5,060 캔들 처리, 31 거래 체결, ?�상 종료
 
- 결과 검증: 31 trades (LONG 13, SHORT 18), Total PnL -$107.23, Drawdown 1.07%
+ 결과 검�? 31 trades (LONG 13, SHORT 18), Total PnL -$107.23, Drawdown 1.07%
 
- 문서화: PHASE20-1_ENSEMBLE_PAPER_SMOKE_REPORT.md 작성
+ 문서?? PHASE20-1_ENSEMBLE_PAPER_SMOKE_REPORT.md ?�성
 
- ROADMAP 업데이트: 이 항목
+ ROADMAP ?�데?�트: ????��
 
- Git 커밋: PHASE20-1 완료
+ Git 커밋: PHASE20-1 ?�료
 
-퇴출 조건 (모두 충족)
+?�출 조건 (모두 충족)
 
- Ensemble 관련 pytest PASS (Aggregator/ScoreEngine/Registry)
+ Ensemble 관??pytest PASS (Aggregator/ScoreEngine/Registry)
 
- 1시간 wall-clock Paper 정상 실행 (5,060 캔들)
+ 1?�간 wall-clock Paper ?�상 ?�행 (5,060 캔들)
 
- FlowGuardian READY 통과 후 엔진 루프 진입
+ FlowGuardian READY ?�과 ???�진 루프 진입
 
- 최소 3건 이상 거래 체결 (실제: 31건)
+ 최소 3�??�상 거래 체결 (?�제: 31�?
 
- Ensemble Tier1/Tier2 결정 최소 1회 이상 발생
+ Ensemble Tier1/Tier2 결정 최소 1???�상 발생
 
- 치명적 에러 없음 (Graceful Shutdown 완료)
+ 치명???�러 ?�음 (Graceful Shutdown ?�료)
 
- 리포트 + ROADMAP + git commit 완료
+ 리포??+ ROADMAP + git commit ?�료
 
-**완료 상태 (2025-11-20)**:
+**?�료 ?�태 (2025-11-20)**:
 - Run ID: `20251120_135912_0gja`
 - Duration: 1h 1m 47s (wall-clock)
 - Total Trades: 31 (LONG 13, SHORT 18)
-- Total PnL: -$107.23 (정상 손실, 인프라 검증 목표 달성)
-- Drawdown: 1.07% (안정적)
+- Total PnL: -$107.23 (?�상 ?�실, ?�프??검�?목표 ?�성)
+- Drawdown: 1.07% (?�정??
 - 문서: docs/PHASE20/PHASE20-1_ENSEMBLE_PAPER_SMOKE_REPORT.md
 
-**PHASE20-2: Extended Infrastructure Validation (4h+ runtime) – **
+**PHASE20-2: Extended Infrastructure Validation (4h+ runtime) ??**
 
 목적
 
-Ensemble ON 모드로 4시간 이상 연속 Paper 테스트 (인프라 안정성 검증)
+Ensemble ON 모드�?4?�간 ?�상 ?�속 Paper ?�스??(?�프???�정??검�?
 
-단일 심볼 (BTCUSDT) 기준
+?�일 ?�볼 (BTCUSDT) 기�?
 
 주요 결과
 
@@ -424,26 +424,26 @@ Ensemble ON 모드로 4시간 이상 연속 Paper 테스트 (인프라 안정성
 - Infrastructure:  All systems stable
 - Strategy Distribution: Scalping-dominated (~95% signals)
 
-완료 상태 (2025-11-20)
+?�료 ?�태 (2025-11-20)
 
 - Infrastructure Validation:  PASS
 - 문서: docs/PHASE20/PHASE20-1_INFRASTRUCTURE_VALIDATION_FINAL.md
 
 ---
 
-## 전역 전략 후보군 (SSOT)
+## ?�역 ?�략 ?�보�?(SSOT)
 
 **목적**
 
 
-- 이 프로젝트에서 사용하는 **전략들의 전체 후보 풀(Strategy Pool)** 을 한 곳에 정리한다.
-- "현재 구현되어 있는 전략"과 "향후 연구/추가 예정 전략"을 구분하고,
-- PHASE22-0에서 이 Pool을 기준으로 **Ensemble v1에 들어갈 7~8개 전략**을 선정한다.
+- ???�로?�트?�서 ?�용?�는 **?�략?�의 ?�체 ?�보 ?�(Strategy Pool)** ????곳에 ?�리?�다.
+- "?�재 구현?�어 ?�는 ?�략"�?"?�후 ?�구/추�? ?�정 ?�략"??구분?�고,
+- PHASE22-0?�서 ??Pool??기�??�로 **Ensemble v1???�어�?7~8�??�략**???�정?�다.
 
 **구조**
 
-- **Implemented Strategies** (이미 엔진에 통합된 전략)
-- **Candidate / R&D Strategies** (향후 구현/검증 예정 전략)
+- **Implemented Strategies** (?��? ?�진???�합???�략)
+- **Candidate / R&D Strategies** (?�후 구현/검�??�정 ?�략)
 - **Ensemble v1 Inclusion Flag** (IN / OUT / RESERVE)
 
 | ID                | Name                     | Type                    | Timeframe Class | Status      | Ensemble v1 |
@@ -467,531 +467,531 @@ Ensemble ON 모드로 4시간 이상 연속 Paper 테스트 (인프라 안정성
 | R&D_6             | Session Bias Intraday    | Time-of-Day Bias        | (T.B.D.)        | CANDIDATE   | LATER       |
 | R&D_7             | Market-Neutral Pair      | Pair/Spread Trading     | (T.B.D.)        | CANDIDATE   | LATER       |
 
-**Ensemble v1 분류 기준** (PHASE22-0 완료, 2025-11-21):
-- **IN (8개)**: Ensemble v1 Core 전략 (4 IMPLEMENTED + 4 CANDIDATE)
-  - **IMPLEMENTED (4개)**: Scalping, Breakout, Reversion, Trend
-  - **CANDIDATE (4개)**: OBI-Momentum, CVD Reversal, Multi-TF Momentum, Relative Strength (설계만, 구현은 PHASE23+)
-- **RESERVE (3개)**: 인프라 PASS, PHASE22-2 Extended Validation 후 추가 고려
-- **LATER (7개)**: 향후 연구/구현 예정 전략
+**Ensemble v1 분류 기�?** (PHASE22-0 ?�료, 2025-11-21):
+- **IN (8�?**: Ensemble v1 Core ?�략 (4 IMPLEMENTED + 4 CANDIDATE)
+  - **IMPLEMENTED (4�?**: Scalping, Breakout, Reversion, Trend
+  - **CANDIDATE (4�?**: OBI-Momentum, CVD Reversal, Multi-TF Momentum, Relative Strength (?�계�? 구현?� PHASE23+)
+- **RESERVE (3�?**: ?�프??PASS, PHASE22-2 Extended Validation ??추�? 고려
+- **LATER (7�?**: ?�후 ?�구/구현 ?�정 ?�략
 
-**신규 Ensemble v1 전략 (4개) 개념**:
-- **OBI-Momentum**: Orderbook Imbalance 기반 1m 초단타 모멘텀
-- **CVD Reversal**: Cumulative Volume Delta 기반 5m 반전 감지
-- **Multi-TF Momentum**: 1m/5m Cross-Timeframe 모멘텀 확인
+**?�규 Ensemble v1 ?�략 (4�? 개념**:
+- **OBI-Momentum**: Orderbook Imbalance 기반 1m 초단?� 모멘?�
+- **CVD Reversal**: Cumulative Volume Delta 기반 5m 반전 감�?
+- **Multi-TF Momentum**: 1m/5m Cross-Timeframe 모멘?� ?�인
 - **Relative Strength**: Cross-Asset Relative Strength Index (15m)
 
-**R&D 전략 (7개) 개념**:
-- **R&D_1 (Orderbook Micro-Reversion)**: 호가창 불균형 기반 초단타 평균 회귀
-- **R&D_2 (Volatility Breakout v2)**: ATR + Session 기반 변동성 브레이크아웃
-- **R&D_3 (Regime Adaptive Meta)**: 시장 레짐에 따라 전략 on/off 및 weight 조정
-- **R&D_4 (Funding Rate Reversion)**: 펀딩비 과잉/역전 활용 차익거래
-- **R&D_5 (Volatility Skew Arbitrage)**: 변동성 스마일/스큐 기반 전략
-- **R&D_6 (Session Bias Intraday)**: Asia/EU/US 세션별 편향 활용
-- **R&D_7 (Market-Neutral Pair)**: 페어/스프레드 트레이딩
+**R&D ?�략 (7�? 개념**:
+- **R&D_1 (Orderbook Micro-Reversion)**: ?��?�?불균??기반 초단?� ?�균 ?��?
+- **R&D_2 (Volatility Breakout v2)**: ATR + Session 기반 변?�성 브레?�크?�웃
+- **R&D_3 (Regime Adaptive Meta)**: ?�장 ?�짐???�라 ?�략 on/off �?weight 조정
+- **R&D_4 (Funding Rate Reversion)**: ?�?�비 과잉/??�� ?�용 차익거래
+- **R&D_5 (Volatility Skew Arbitrage)**: 변?�성 ?�마???�큐 기반 ?�략
+- **R&D_6 (Session Bias Intraday)**: Asia/EU/US ?�션�??�향 ?�용
+- **R&D_7 (Market-Neutral Pair)**: ?�어/?�프?�드 ?�레?�딩
 
- CANDIDATE 전략은 설계/아이디어 수준이며, 실제 구현/검증은 PHASE23 이후 진행
+ CANDIDATE ?�략?� ?�계/?�이?�어 ?��??�며, ?�제 구현/검증�? PHASE23 ?�후 진행
 
 **참조 문서**
 
-- PHASE21 검증 결과: `docs/PHASE21/PHASE21-1C_ACTUAL_EXECUTION_REPORT.md`
+- PHASE21 검�?결과: `docs/PHASE21/PHASE21-1C_ACTUAL_EXECUTION_REPORT.md`
 - PHASE22-0 Strategy Pool 분석: `docs/PHASE22/PHASE22-0_STRATEGY_POOL.md`
 
 ---
 
- PHASE21 – Single Strategy Infrastructure & Validation 
+ PHASE21 ??Single Strategy Infrastructure & Validation 
 
-**상태**:  COMPLETE (PHASE21-1A/1B/1C 모두 완료, 2025-11-21)
+**?�태**:  COMPLETE (PHASE21-1A/1B/1C 모두 ?�료, 2025-11-21)
 
 **목적**
 
-7개 전략 각각에 대해 **단일 전략 인프라/타임프레임/FlowGuardian/Config-SSOT**가 정상 동작하는지 검증하고, ACTIVE/LOW_FREQ 특성을 구분하여 이후 Ensemble/Extended Validation의 기반을 마련
+7�??�략 각각???�??**?�일 ?�략 ?�프???�?�프?�임/FlowGuardian/Config-SSOT**가 ?�상 ?�작?�는지 검증하�? ACTIVE/LOW_FREQ ?�성??구분?�여 ?�후 Ensemble/Extended Validation??기반??마련
 
- ⚠️ **이 PHASE의 초점**:
-- **전략 성능 튜닝/선별이 아니라**, 단일 전략이 엔진/피드/가드/포트폴리오 구조 안에서 **안정적으로 동작하는지 검증**하는 것
-- 전략별 성능 비교 및 Ensemble 후보 선정은 **PHASE22-0**에서 수행
+ ?�️ **??PHASE??초점**:
+- **?�략 ?�능 ?�닝/?�별???�니??*, ?�일 ?�략???�진/?�드/가???�트?�리??구조 ?�에??**?�정?�으�??�작?�는지 검�?*?�는 �?
+- ?�략�??�능 비교 �?Ensemble ?�보 ?�정?� **PHASE22-0**?�서 ?�행
 
-**범위 (최종 확정)**
+**범위 (최종 ?�정)**
 
--  타임프레임/Feed collector 버그 식별 및 수정 (3m/5m/1h WebSocket 정상 수신 확인)
--  `run_paper.py`의 전략/심볼/타임프레임/Duration 하드코딩 제거 및 **Config 기반 SSOT 구조 확립**
--  Scalping/Reversion/Trend 단일 전략 PAPER 실행을 통한 **인프라 레벨 검증**
--  ACTIVE vs LOW_FREQ 전략 분류 (인프라 기준, 성능/수익률 튜닝은 범위 밖)
+-  ?�?�프?�임/Feed collector 버그 ?�별 �??�정 (3m/5m/1h WebSocket ?�상 ?�신 ?�인)
+-  `run_paper.py`???�략/?�볼/?�?�프?�임/Duration ?�드코딩 ?�거 �?**Config 기반 SSOT 구조 ?�립**
+-  Scalping/Reversion/Trend ?�일 ?�략 PAPER ?�행???�한 **?�프???�벨 검�?*
+-  ACTIVE vs LOW_FREQ ?�략 분류 (?�프??기�?, ?�능/?�익�??�닝?� 범위 �?
 
-**Out-of-scope (다음 PHASE로 이관)**
+**Out-of-scope (?�음 PHASE�??��?)**
 
-- 전략별 PnL/Win-rate/Max DD를 기준으로 한 **Ensemble v1 전략군 선정** → **PHASE22-0**
-- Multi-strategy/Ensemble 실행 및 튜닝 → **PHASE22-1**
-- 12~24시간 장기 PAPER 실행을 통한 성능/생존성 검증 → **PHASE22-2**
-- Flash Guard/쿨다운/슬리피지 파라미터 튜닝 (전략 성능 기준) → **PHASE22-3**
+- ?�략�?PnL/Win-rate/Max DD�?기�??�로 ??**Ensemble v1 ?�략�??�정** ??**PHASE22-0**
+- Multi-strategy/Ensemble ?�행 �??�닝 ??**PHASE22-1**
+- 12~24?�간 ?�기 PAPER ?�행???�한 ?�능/?�존??검�???**PHASE22-2**
+- Flash Guard/쿨다???�리?��? ?�라미터 ?�닝 (?�략 ?�능 기�?) ??**PHASE22-3**
 
 **진입 조건**
 
-단일 전략 스캘핑이 안정 + 리스크/데이터 인프라 정리됨
+?�일 ?�략 ?�캘?�이 ?�정 + 리스???�이???�프???�리??
 
 **문서**: docs/PHASE21/PHASE21-1A_REPORT.md, PHASE21-1B_FEED_FIX_REPORT.md, PHASE21-1C_ACTUAL_EXECUTION_REPORT.md
 
 ---
 
-## 💡 최종 TO-BE 아키텍처 (10-Layer Structure)
+## ?�� 최종 TO-BE ?�키?�처 (10-Layer Structure)
 
 ### 1) Core Engine Layer
-- **단일 엔진 원칙**: Backtest / Paper / Live 모두 같은 엔진 코드
+- **?�일 ?�진 ?�칙**: Backtest / Paper / Live 모두 같�? ?�진 코드
 - **Do-not-touch 코어**: engine.run(), position/state 머신, event 루프, duration 처리
-- **역할**: 캔들/틱 스트림 소비, 전략 호출, Risk/Portfolio/FlowGuardian 체크, Execution Adapter 위임
+- **??��**: 캔들/???�트�??�비, ?�략 ?�출, Risk/Portfolio/FlowGuardian 체크, Execution Adapter ?�임
 
 ### 2) Strategy & Ensemble Layer
-- **5개 전략 패밀리**: Trend-follow, Volatility Breakout, Mean Reversion, Pullback-in-Trend, Scalping
-- **패밀리당 대표 전략 1~2개**만 실전용 선정
-- **Ensemble Score 구조**: 공통 시그니처 (S_LONG, S_SHORT, S_RISK, S_QUALITY), 동적 가중치
+- **5�??�략 ?��?�?*: Trend-follow, Volatility Breakout, Mean Reversion, Pullback-in-Trend, Scalping
+- **?��?리당 ?�???�략 1~2�?*�??�전???�정
+- **Ensemble Score 구조**: 공통 ?�그?�처 (S_LONG, S_SHORT, S_RISK, S_QUALITY), ?�적 가중치
 
 ### 3) Risk / Portfolio / FlowGuardian Layer
-- **RiskManager**: per-trade risk, 레버리지 상한, Max DD, 일일 손실 제한
-- **PortfolioManager**: 심볼별/전략별 배분, PnL/Equity SSOT
-- **FlowGuardian**: READY 체크, 쿨다운, Flash Guard, API 상태 확인
+- **RiskManager**: per-trade risk, ?�버리�? ?�한, Max DD, ?�일 ?�실 ?�한
+- **PortfolioManager**: ?�볼�??�략�?배분, PnL/Equity SSOT
+- **FlowGuardian**: READY 체크, 쿨다?? Flash Guard, API ?�태 ?�인
 
 ### 4) Data & Exchange Layer
 - **Data Layer**: WebSocketCollector, RestCollector, Multi-TF Preload
 - **Exchange Adapter**: PaperExchange, Binance/Upbit Adapter (Market, Limit, TP/SL, OCO)
 
 ### 5) Tuning & Research Cluster Layer
-- **3단계 파이프라인**: Random → Bayesian → Local Grid
+- **3?�계 ?�이?�라??*: Random ??Bayesian ??Local Grid
 - **중앙 DB**: Postgres + TimescaleDB (runs, strategy_params, results, metrics)
-- **Worker 프로세스**: 백테스트 job 병렬 실행
+- **Worker ?�로?�스**: 백테?�트 job 병렬 ?�행
 
 ### 6) Multi-Symbol & Execution Layer
-- **Universe Provider**: TopN/필터 기반 심볼 리스트 생성
-- **Multi-Symbol Engine**: 심볼별 coroutine, per-symbol risk/portfolio
-- **Execution Router**: 심볼/전략/방향 기반 주문 라우팅
+- **Universe Provider**: TopN/?�터 기반 ?�볼 리스???�성
+- **Multi-Symbol Engine**: ?�볼�?coroutine, per-symbol risk/portfolio
+- **Execution Router**: ?�볼/?�략/방향 기반 주문 ?�우??
 
 ### 7) Infra & Performance Layer
-- **성능 목표**: Top50 심볼, 1m/5m/15m TF 동시 처리
-- **최적화**: 비동기/코루틴, 인디케이터 캐싱, 로그 튜닝, GC 최적화
-- **로드 테스트**: 단일 심볼 → Top10 → Top50 확장
+- **?�능 목표**: Top50 ?�볼, 1m/5m/15m TF ?�시 처리
+- **최적??*: 비동�?코루?? ?�디케?�터 캐싱, 로그 ?�닝, GC 최적??
+- **로드 ?�스??*: ?�일 ?�볼 ??Top10 ??Top50 ?�장
 
 ### 8) Monitoring / Observability & Alerting
-- **Metrics**: PnL, Equity, Win-rate, Sharpe, Max DD, 전략별/심볼별 성능
-- **Dashboards**: Prometheus + Grafana, Core KPI 10종
-- **Alerting**: Telegram/Slack (DD, WS 에러, 주문 실패율, trade 0건 등)
+- **Metrics**: PnL, Equity, Win-rate, Sharpe, Max DD, ?�략�??�볼�??�능
+- **Dashboards**: Prometheus + Grafana, Core KPI 10�?
+- **Alerting**: Telegram/Slack (DD, WS ?�러, 주문 ?�패?? trade 0�???
 
-### 9) UI/UX Layer 🌟
+### 9) UI/UX Layer ?��
 - **Web Dashboard**: FastAPI + React/Vue
-- **핵심 화면**: 실시간 모니터링, 전략/앙상블 패널, 리스크/포트폴리오, 백테스트 뷰어, 로그/이벤트
-- **Control 기능**: Paper/Live 전환, 전략 on/off, preset 선택, safe restart
+- **?�심 ?�면**: ?�시�?모니?�링, ?�략/?�상�??�널, 리스???�트?�리?? 백테?�트 뷰어, 로그/?�벤??
+- **Control 기능**: Paper/Live ?�환, ?�략 on/off, preset ?�택, safe restart
 
 ### 10) Ops & Deployment Layer
-- **실행 구조**: run_backtest, run_paper, run_live
-- **운영**: systemd / Docker / K8s
-- **배포/롤백**: git tag, config 버전 관리, DB/Redis backup
+- **?�행 구조**: run_backtest, run_paper, run_live
+- **?�영**: systemd / Docker / K8s
+- **배포/롤백**: git tag, config 버전 관�? DB/Redis backup
 
 ---
 
-🧩 **PHASE22 RESET** – Strategy Set Reconstruction & 5-Family Framework 🔄 **IN PROGRESS**
+?�� **PHASE22 RESET** ??Strategy Set Reconstruction & 5-Family Framework ?�� **IN PROGRESS**
 
-**상태**: 🔄 **IN PROGRESS** (2025-11-22)
+**?�태**: ?�� **IN PROGRESS** (2025-11-22)
 
 **배경**
-- PHASE22-1/2 중단 (기존 7개 전략 중 scalping 제외 correctness/튜닝/백테스트 없음)
-- 전략 품질 없이 엔진 테스트만 수행 → 의미 부족
-- PHASE22-0부터 재시작 (전략 세트 재정의)
+- PHASE22-1/2 중단 (기존 7�??�략 �?scalping ?�외 correctness/?�닝/백테?�트 ?�음)
+- ?�략 ?�질 ?�이 ?�진 ?�스?�만 ?�행 ???��? 부�?
+- PHASE22-0부???�시??(?�략 ?�트 ?�정??
 
 **목적**
-- 5개 전략 패밀리 기반 Ensemble v2 설계/구현
-- 단일 심볼 기준 12~24h PAPER로 생존성 검증
+- 5�??�략 ?��?�?기반 Ensemble v2 ?�계/구현
+- ?�일 ?�볼 기�? 12~24h PAPER�??�존??검�?
 
 **Sub-phases**
-- **22-0: ✅ Strategy Set Reconstruction (COMPLETE - 2025-11-22)**
-  - 폴더 재구조화: core/scalping_v3.py (KEEP), deprecated/ (6개 전략), research/ (신규)
-  - 5개 패밀리 정의: HF Momentum, Volatility Breakout, Mean Reversion, Trend Following, Volume-Based
-  - 산출물: `docs/PHASE22/PHASE22-0_STRATEGY_POOL.md`
-- **22-1: ✅ Strategy Implementation & Validation (COMPLETE - 2025-11-22)**
-  - 4개 신규 전략 구현: volatility_breakout_v2, mean_reversion_v2, trend_follow_v2, volume_based_v2
-  - BaseStrategy 인터페이스 완벽 준수 (metadata + compute_signal)
-  - Unit Test 17/17 PASS (100% 성공률)
-  - 산출물: `docs/PHASE22/PHASE22-1_STRATEGY_DESIGN.md`, `docs/PHASE22/PHASE22-1_COMPLETE_REPORT.md`
-  - 코드: `strategies/research/*.py` (4개 전략 + __init__.py)
-  - 테스트: `tests/test_phase22_1_new_strategies.py`
-- **22-2: ❌ Extended Validation (Quick Smoke PASS, Main Run FAIL - 2025-11-23 10:00)**
-  - Ensemble v2 장기 안정성 검증 (12~24H Paper, 5개 전략 통합)
-  - 전략별 신호 발생 빈도 확인
-  - PnL/성능 기초 분석
-  - 산출물: `docs/PHASE22/PHASE22-2_EXTENDED_VALIDATION_DESIGN.md`, `PHASE22-2_EXECUTION_GUIDE.md`, `PHASE22-2_EXTENDED_VALIDATION_REPORT.md`
+- **22-0: ??Strategy Set Reconstruction (COMPLETE - 2025-11-22)**
+  - ?�더 ?�구조화: core/scalping_v3.py (KEEP), deprecated/ (6�??�략), research/ (?�규)
+  - 5�??��?�??�의: HF Momentum, Volatility Breakout, Mean Reversion, Trend Following, Volume-Based
+  - ?�출�? `docs/PHASE22/PHASE22-0_STRATEGY_POOL.md`
+- **22-1: ??Strategy Implementation & Validation (COMPLETE - 2025-11-22)**
+  - 4�??�규 ?�략 구현: volatility_breakout_v2, mean_reversion_v2, trend_follow_v2, volume_based_v2
+  - BaseStrategy ?�터?�이???�벽 준??(metadata + compute_signal)
+  - Unit Test 17/17 PASS (100% ?�공�?
+  - ?�출�? `docs/PHASE22/PHASE22-1_STRATEGY_DESIGN.md`, `docs/PHASE22/PHASE22-1_COMPLETE_REPORT.md`
+  - 코드: `strategies/research/*.py` (4�??�략 + __init__.py)
+  - ?�스?? `tests/test_phase22_1_new_strategies.py`
+- **22-2: ??Extended Validation (Quick Smoke PASS, Main Run FAIL - 2025-11-23 10:00)**
+  - Ensemble v2 ?�기 ?�정??검�?(12~24H Paper, 5�??�략 ?�합)
+  - ?�략�??�호 발생 빈도 ?�인
+  - PnL/?�능 기초 분석
+  - ?�출�? `docs/PHASE22/PHASE22-2_EXTENDED_VALIDATION_DESIGN.md`, `PHASE22-2_EXECUTION_GUIDE.md`, `PHASE22-2_EXTENDED_VALIDATION_REPORT.md`
   - Config: `configs/paper/phase22_2_ensemble_quick.yml`, `phase22_2_ensemble_12h.yml`
   - Script: `scripts/run_phase22_2_ensemble.py`
-  - **Quick Smoke Test (30분)**: Duration 1800.1s (오차 0.006%), ERROR 0건, Trades 0건 → ✅ PASS
-  - **12H Main Run (2025-11-22 21:54:02 ~ 2025-11-23 09:55:30)**: Duration 43,328s (12.04h, 오차 +0.3%) → ✅ PASS, Infrastructure ✅ PASS, **Trading ❌ FAIL (0 trades, 0 decisions)**
-  - Duration Fix: engine.py에 진행 로그 추가 (30초마다)
+  - **Quick Smoke Test (30�?**: Duration 1800.1s (?�차 0.006%), ERROR 0�? Trades 0�?????PASS
+  - **12H Main Run (2025-11-22 21:54:02 ~ 2025-11-23 09:55:30)**: Duration 43,328s (12.04h, ?�차 +0.3%) ????PASS, Infrastructure ??PASS, **Trading ??FAIL (0 trades, 0 decisions)**
+  - Duration Fix: engine.py??진행 로그 추�? (30초마??
   - Run ID: Quick=20251122_194150_ouhr, Main=20251122_215340_au7g
-  - 상태: ❌ **FAIL (Trading Criteria 미충족, Infrastructure PASS)** → PHASE22-3 파라미터 튜닝 필요
-- **22-3: ❌ Parameter Tuning (2025-11-23) - FAIL**
-  - **Test Run (15분)**: 2025-11-23 11:04:38 ~ 11:19:38, Run ID: 20251123_110433_5lxj
-  - **Trades**: 0 (Target: ≥30 for 1H) → ❌ FAIL
-  - **Root Cause**: Config params가 전략에 전달되지 않음 (load_strategies/engine 간 인터페이스 문제)
-  - **산출물**: `docs/PHASE22/PHASE22-3_PARAM_TUNING_REPORT.md`
-  - **상태**: ❌ FAIL → PHASE22-4
-- **22-4: ⚠️ Config Integration Fix (2025-11-23) - PARTIAL, DEFERRED**
-  - **목표**: 전략별 config params가 제대로 전달되도록 수정
-  - **Code Changes**: ✅ strategies/__init__.py, execution/engine.py 수정 완료
-  - **Unit Tests**: ✅ 6/6 PASS (`test_phase22_4_config_integration.py`)
-  - **Direct Test**: ✅ params 로딩 정상 작동 확인 (Python 직접 실행)
-  - **Runtime Issue**: ❌ run_paper.py 실행 시 params 빈 dict로 전달, RSI threshold 기본값(30/70) 사용
-  - **근본 원인 (PHASE23-0 분석)**: Script-level orchestration 문제 (config 로딩/전달 경로가 script에서 중복/분산)
-  - **산출물**: `docs/PHASE22/PHASE22-4_CONFIG_INTEGRATION_INCOMPLETE.md`
+  - ?�태: ??**FAIL (Trading Criteria 미충�? Infrastructure PASS)** ??PHASE22-3 ?�라미터 ?�닝 ?�요
+- **22-3: ??Parameter Tuning (2025-11-23) - FAIL**
+  - **Test Run (15�?**: 2025-11-23 11:04:38 ~ 11:19:38, Run ID: 20251123_110433_5lxj
+  - **Trades**: 0 (Target: ??0 for 1H) ????FAIL
+  - **Root Cause**: Config params가 ?�략???�달?��? ?�음 (load_strategies/engine �??�터?�이??문제)
+  - **?�출�?*: `docs/PHASE22/PHASE22-3_PARAM_TUNING_REPORT.md`
+  - **?�태**: ??FAIL ??PHASE22-4
+- **22-4: ?�️ Config Integration Fix (2025-11-23) - PARTIAL, DEFERRED**
+  - **목표**: ?�략�?config params가 ?��?�??�달?�도�??�정
+  - **Code Changes**: ??strategies/__init__.py, execution/engine.py ?�정 ?�료
+  - **Unit Tests**: ??6/6 PASS (`test_phase22_4_config_integration.py`)
+  - **Direct Test**: ??params 로딩 ?�상 ?�동 ?�인 (Python 직접 ?�행)
+  - **Runtime Issue**: ??run_paper.py ?�행 ??params �?dict�??�달, RSI threshold 기본�?30/70) ?�용
+  - **근본 ?�인 (PHASE23-0 분석)**: Script-level orchestration 문제 (config 로딩/?�달 경로가 script?�서 중복/분산)
+  - **?�출�?*: `docs/PHASE22/PHASE22-4_CONFIG_INTEGRATION_INCOMPLETE.md`
   - **Config**: `configs/paper/phase22_4_scalping_param_smoke_30m.yml`
-  - **상태**: ⚠️ PARTIAL (Code-Level Fix OK, Runtime Integration FAIL) → **DEFERRED to PHASE23-1** (architectural refactoring required)
+  - **?�태**: ?�️ PARTIAL (Code-Level Fix OK, Runtime Integration FAIL) ??**DEFERRED to PHASE23-1** (architectural refactoring required)
 
-**진입 조건**: PHASE21 완료
+**진입 조건**: PHASE21 ?�료
 
-**퇴출 조건**: 폴더 구조 완료, 5개 패밀리 정의 완료, Ensemble v2 설계 완료, 문서 완료
+**?�출 조건**: ?�더 구조 ?�료, 5�??��?�??�의 ?�료, Ensemble v2 ?�계 ?�료, 문서 ?�료
 
 ---
 
-🧩 **PHASE23** – Ensemble & Engine Architecture V2 🔄 **IN PROGRESS**
+?�� **PHASE23** ??Ensemble & Engine Architecture V2 ?�� **IN PROGRESS**
 
-**상태**: 🔄 **IN PROGRESS** (2025-11-29 시작, 23-0/23-1 완료)
+**?�태**: ?�� **IN PROGRESS** (2025-11-29 ?�작, 23-0/23-1 ?�료)
 
 **목적**: 
-- PHASE22-2/3/4에서 드러난 구조적 문제(0-trade, 튜닝 실패, config 전파 실패)를 **엔진 중심 아키텍처 + 5-패밀리 앙상블 구조**로 해결
-- 이후 전략/튜닝/멀티심볼 확장의 "기준선"이 되는 아키텍처 V2 완성
+- PHASE22-2/3/4?�서 ?�러??구조??문제(0-trade, ?�닝 ?�패, config ?�파 ?�패)�?**?�진 중심 ?�키?�처 + 5-?��?�??�상�?구조**�??�결
+- ?�후 ?�략/?�닝/멀?�심�??�장??"기�??????�는 ?�키?�처 V2 ?�성
 
 **Sub-phases**:
 
-### 23-0: TO-BE Architecture V2 문서화 ✅
-- **상태**: ✅ **COMPLETE** (2025-11-29)
+### 23-0: TO-BE Architecture V2 문서????
+- **?�태**: ??**COMPLETE** (2025-11-29)
 - **범위**:
-  - AS-IS 아키텍처 분석 (엔진, 전략, 앙상블, config/script 레이어)
-  - PHASE22-2/3/4 Pain Point 및 Root Cause 정리
-  - Single-Engine-Centric Architecture 원칙 정의
-  - Strategy Config SSOT 원칙 정의
-  - Mode-based Adapter Pattern 설계 (backtest/paper/live 공통)
-  - 5 Strategy Families 기반 Ensemble TO-BE 구조 정리
+  - AS-IS ?�키?�처 분석 (?�진, ?�략, ?�상�? config/script ?�이??
+  - PHASE22-2/3/4 Pain Point �?Root Cause ?�리
+  - Single-Engine-Centric Architecture ?�칙 ?�의
+  - Strategy Config SSOT ?�칙 ?�의
+  - Mode-based Adapter Pattern ?�계 (backtest/paper/live 공통)
+  - 5 Strategy Families 기반 Ensemble TO-BE 구조 ?�리
 - **주요 문서**:
   - `docs/PHASE23/PHASE23-0_ARCHITECTURE_TOBE_V2.md`
   - `docs/PHASE23/ENSEMBLE_STRATEGY_TOBE_V2.md`
-- **Acceptance Criteria**: ✅ PASS
-  - AS-IS / TO-BE 비교 다이어그램 존재
-  - 5개 전략 패밀리(HF Momentum / Volatility Breakout / Mean Reversion / Trend Following / Volume-Based) 역할 명확
-  - PHASE23-1~3 실행 로드맵 정의
+- **Acceptance Criteria**: ??PASS
+  - AS-IS / TO-BE 비교 ?�이?�그??존재
+  - 5�??�략 ?��?�?HF Momentum / Volatility Breakout / Mean Reversion / Trend Following / Volume-Based) ??�� 명확
+  - PHASE23-1~3 ?�행 로드�??�의
 
-### 23-1: Single-Engine Entry Point & Config Propagation Fix ✅
-- **상태**: ✅ **COMPLETE** (2025-12-01)
-- **목표**: PHASE22-4 runtime config propagation 이슈를 엔진 진입점 구조 리팩토링으로 근본 해결
-- **주요 변경사항**:
-  - `scripts/run_v2.py` 추가 (thin script, 97 lines)
-    - 역할: config 로딩 + `engine.run_v2(...)` 호출만 수행
-    - paper / backtest / live 모드 공통 진입점
+### 23-1: Single-Engine Entry Point & Config Propagation Fix ??
+- **?�태**: ??**COMPLETE** (2025-12-01)
+- **목표**: PHASE22-4 runtime config propagation ?�슈�??�진 진입??구조 리팩?�링?�로 근본 ?�결
+- **주요 변경사??*:
+  - `scripts/run_v2.py` 추�? (thin script, 97 lines)
+    - ??��: config 로딩 + `engine.run_v2(...)` ?�출�??�행
+    - paper / backtest / live 모드 공통 진입??
   - `execution/engine.py`
-    - `run_v2(mode, config, clean_state)` 추가
-    - 내부에서 `load_strategies(config)` 직접 호출
-    - use_ensemble / selector / adapter 생성 로직을 엔진으로 이동
-  - `tests/test_phase22_4_config_integration.py` docstring 업데이트
-- **검증 결과**:
+    - `run_v2(mode, config, clean_state)` 추�?
+    - ?��??�서 `load_strategies(config)` 직접 ?�출
+    - use_ensemble / selector / adapter ?�성 로직???�진?�로 ?�동
+  - `tests/test_phase22_4_config_integration.py` docstring ?�데?�트
+- **검�?결과**:
   - Unit Tests: 6/6 PASS
-  - 30분 PAPER smoke test: ✅ PASS
-    - RSI 45/55 정상 전파 (기본값 30/70 아님)
-    - 실제 트레이드 발생: 1 SHORT entry + 1 TP1 exit (+$19.23)
+  - 30�?PAPER smoke test: ??PASS
+    - RSI 45/55 ?�상 ?�파 (기본�?30/70 ?�님)
+    - ?�제 ?�레?�드 발생: 1 SHORT entry + 1 TP1 exit (+$19.23)
   - 로그: `[PHASE23-1 DEBUG] scalping params: {'rsi_oversold': 45, 'rsi_overbought': 55, ...}`
 - **주요 문서**: `docs/PHASE23/PHASE23-1_ENGINE_ENTRYPOINT_REFACTOR.md`
-- **Acceptance Criteria**: ✅ ALL PASS
+- **Acceptance Criteria**: ??ALL PASS
   - `run_v2.py` 길이 < 100 lines (97 lines)
-  - `engine.run_v2()` 존재, 내부에서 `load_strategies(config)` 호출
-  - Config params 100% 전파 (RSI 45/55 등)
-  - 기존 `run()` 기반 코드/테스트 유지
-  - 30분 paper test에서 트레이드/청산 로그 확인
+  - `engine.run_v2()` 존재, ?��??�서 `load_strategies(config)` ?�출
+  - Config params 100% ?�파 (RSI 45/55 ??
+  - 기존 `run()` 기반 코드/?�스???��?
+  - 30�?paper test?�서 ?�레?�드/�?�� 로그 ?�인
 
-### 23-2: Strategy Interface Unification ✅
-- **상태**: ✅ **COMPLETE** (2025-12-01)
-- **목표**: scalping_v3 및 4개 research 전략을 통일된 `BaseStrategy` 인터페이스로 완전 통합 + Ensemble Score V2 필드 추가
-- **완료 작업**:
-  - `scalping_v3.signal_logic(df, cfg)` → private `_signal_logic()`, `compute_signal(df, config=None)` 통일
-  - 4개 research 전략 (volatility_breakout_v2, mean_reversion_v2, trend_follow_v2, volume_based_v2) Score 필드 추가
-  - 모든 전략 반환 dict에 `S_LONG`, `S_SHORT`, `S_RISK`, `S_QUALITY` 추가 (초기 구현)
-  - `strategies/__init__.py::load_strategies()` BaseStrategy 인스턴스 생성 로직 추가
-  - `SignalGenerator.generate_signal()` BaseStrategy.compute_signal() 호출로 변경
-- **테스트 결과**:
-  - Unit Tests: ✅ 6/6 PASS (`test_phase22_4_config_integration.py`)
-  - 모든 전략 BaseStrategy 인스턴스 생성 확인
-  - Config params 100% 전파 유지 (PHASE23-1 호환)
+### 23-2: Strategy Interface Unification ??
+- **?�태**: ??**COMPLETE** (2025-12-01)
+- **목표**: scalping_v3 �?4�?research ?�략???�일??`BaseStrategy` ?�터?�이?�로 ?�전 ?�합 + Ensemble Score V2 ?�드 추�?
+- **?�료 ?�업**:
+  - `scalping_v3.signal_logic(df, cfg)` ??private `_signal_logic()`, `compute_signal(df, config=None)` ?�일
+  - 4�?research ?�략 (volatility_breakout_v2, mean_reversion_v2, trend_follow_v2, volume_based_v2) Score ?�드 추�?
+  - 모든 ?�략 반환 dict??`S_LONG`, `S_SHORT`, `S_RISK`, `S_QUALITY` 추�? (초기 구현)
+  - `strategies/__init__.py::load_strategies()` BaseStrategy ?�스?�스 ?�성 로직 추�?
+  - `SignalGenerator.generate_signal()` BaseStrategy.compute_signal() ?�출�?변�?
+- **?�스??결과**:
+  - Unit Tests: ??6/6 PASS (`test_phase22_4_config_integration.py`)
+  - 모든 ?�략 BaseStrategy ?�스?�스 ?�성 ?�인
+  - Config params 100% ?�파 ?��? (PHASE23-1 ?�환)
 - **주요 문서**: `docs/PHASE23/PHASE23-2_STRATEGY_INTERFACE_UNIFICATION.md`
-- **Acceptance Criteria**: ✅ ALL PASS
-  - 5개 전략 모두 `BaseStrategy` 상속 + `compute_signal(df, config=None)` + `metadata` 구현
-  - 엔진/SignalGenerator에서 `compute_signal()` 호출 (legacy fallback 유지)
-  - Ensemble Score V2 필드 모든 전략에 추가 (PHASE24 정교화 기반)
+- **Acceptance Criteria**: ??ALL PASS
+  - 5�??�략 모두 `BaseStrategy` ?�속 + `compute_signal(df, config=None)` + `metadata` 구현
+  - ?�진/SignalGenerator?�서 `compute_signal()` ?�출 (legacy fallback ?��?)
+  - Ensemble Score V2 ?�드 모든 ?�략??추�? (PHASE24 ?�교??기반)
 
-### 23-3: Ensemble Orchestrator V2 ✅
-- **상태**: ✅ **COMPLETE** (2025-12-01)
-- **목표**: Score V2 기반 앙상블 의사결정 엔진 구현
-- **완료 내역**:
-  - ✅ `ScoreEngineV2`: Score V2 필드 추출 및 계산 (S_LONG, S_SHORT, S_NET, S_RISK, S_QUALITY)
-  - ✅ `EnsembleAggregatorV2`: 3-Tier 로직 구현 (High-Confidence / Consensus / Skip)
-  - ✅ Dominance Prevention: `max_strategy_weight` cap (default: 60%)
-  - ✅ Risk/Quality Filters: `max_risk`, `min_quality` thresholds
-  - ✅ Engine Integration: `engine.run_v2()` ensemble mode='score_v2' 지원
-  - ✅ Unit Tests: 12/12 PASS (ScoreEngine, Aggregator, Tier 1/2/3, Dominance, Filters)
-  - ✅ Backward Compatibility: V1 (factor-based) mode 유지
-- **구현 파일**:
+### 23-3: Ensemble Orchestrator V2 ??
+- **?�태**: ??**COMPLETE** (2025-12-01)
+- **목표**: Score V2 기반 ?�상�??�사결정 ?�진 구현
+- **?�료 ?�역**:
+  - ??`ScoreEngineV2`: Score V2 ?�드 추출 �?계산 (S_LONG, S_SHORT, S_NET, S_RISK, S_QUALITY)
+  - ??`EnsembleAggregatorV2`: 3-Tier 로직 구현 (High-Confidence / Consensus / Skip)
+  - ??Dominance Prevention: `max_strategy_weight` cap (default: 60%)
+  - ??Risk/Quality Filters: `max_risk`, `min_quality` thresholds
+  - ??Engine Integration: `engine.run_v2()` ensemble mode='score_v2' 지??
+  - ??Unit Tests: 12/12 PASS (ScoreEngine, Aggregator, Tier 1/2/3, Dominance, Filters)
+  - ??Backward Compatibility: V1 (factor-based) mode ?��?
+- **구현 ?�일**:
   - `common/ensemble/score_engine_v2.py` (347 LOC)
   - `common/ensemble/aggregator_v2.py` (528 LOC)
   - `execution/engine.py` (+150 LOC)
   - `tests/test_phase23_3_ensemble_orchestrator_v2.py` (538 LOC, 12 tests)
 - **문서**:
-  - `docs/PHASE23/PHASE23-3_ENSEMBLE_ORCHESTRATOR_V2_DESIGN.md` (설계)
-  - `docs/PHASE23/PHASE23-3_ENSEMBLE_ORCHESTRATOR_V2.md` (구현 리포트)
+  - `docs/PHASE23/PHASE23-3_ENSEMBLE_ORCHESTRATOR_V2_DESIGN.md` (?�계)
+  - `docs/PHASE23/PHASE23-3_ENSEMBLE_ORCHESTRATOR_V2.md` (구현 리포??
   - Unit Tests: 12/12 PASS (0.52s)
   - Coverage: ScoreEngine, 3-Tier logic, Dominance prevention, Risk/Quality filters
-- **판정**: PHASE23-3 COMPLETE (Unit Test Validated, PAPER Smoke Test Optional)
+- **?�정**: PHASE23-3 COMPLETE (Unit Test Validated, PAPER Smoke Test Optional)
 
-### 23-4: Validation & Cleanup ✅
-- **상태**: ✅ **COMPLETE** (2025-12-02)
-- **목표**: PHASE23-0 ~ 23-3 변경 사항 정리 및 이후 PHASE로 넘어가기 위한 "클린 기준선" 생성
-- **완료 내역**:
-  - 12분 PAPER 실행으로 Ensemble V2 로직 검증 완료
-  - 5,499회 Aggregate 평가: Tier1 25.5%, Tier2 1.0%, Skip 73.5%
-  - 50개 트레이드 발생 (LONG/SHORT 균형적)
-  - 3개 전략 활성 기여: trend_follow_v2 (62%), mean_reversion_v2 (36%), volume_based_v2 (2%)
-  - Score V2 필드 정상 계산 (S_NET, S_RISK, S_QUALITY)
-  - 3-Tier 로직 정상 작동 (High-Confidence / Consensus / Skip)
-  - Dominance prevention 정상 작동 (단일 전략 예외 처리 확인)
-  - Risk/Quality 필터 작동 확인
-  - 버그 3건 수정: V2 전략 미등록, aggregate_v2() 시그니처, 로그 가시성
-- **판정**: PASS - Ensemble V2 Production Ready
+### 23-4: Validation & Cleanup ??
+- **?�태**: ??**COMPLETE** (2025-12-02)
+- **목표**: PHASE23-0 ~ 23-3 변�??�항 ?�리 �??�후 PHASE�??�어가�??�한 "?�린 기�??? ?�성
+- **?�료 ?�역**:
+  - 12�?PAPER ?�행?�로 Ensemble V2 로직 검�??�료
+  - 5,499??Aggregate ?��?: Tier1 25.5%, Tier2 1.0%, Skip 73.5%
+  - 50�??�레?�드 발생 (LONG/SHORT 균형??
+  - 3�??�략 ?�성 기여: trend_follow_v2 (62%), mean_reversion_v2 (36%), volume_based_v2 (2%)
+  - Score V2 ?�드 ?�상 계산 (S_NET, S_RISK, S_QUALITY)
+  - 3-Tier 로직 ?�상 ?�동 (High-Confidence / Consensus / Skip)
+  - Dominance prevention ?�상 ?�동 (?�일 ?�략 ?�외 처리 ?�인)
+  - Risk/Quality ?�터 ?�동 ?�인
+  - 버그 3�??�정: V2 ?�략 미등�? aggregate_v2() ?�그?�처, 로그 가?�성
+- **?�정**: PASS - Ensemble V2 Production Ready
 
-### 23-5: Legacy Engine Decommission & Single-Engine Hardening ✅
-- **상태**: ✅ **COMPLETE** (2025-12-05)
-- **목표**: Backtest/Paper/Live 모든 모드는 `execution.engine.run_v2()` 단일 엔진만 사용하도록 강제
-- **완료 내역**:
-  - ✅ `scripts/run_backtest.py` → thin wrapper (538줄 → 132줄)
-    - Config 로딩 + `run_v2(mode='backtest')` 호출만
-  - ✅ `scripts/run_paper.py` → thin wrapper (501줄 → 152줄)
-    - Config 로딩 + `run_v2(mode='paper')` 호출만
-  - ✅ 레거시 스크립트 13개 → `scripts/legacy/` 이동
-    - run_phase*.py, run_tuner*.py, run_wfa*.py 등
-    - `scripts/legacy/README.md` 추가 (아카이브 가이드)
-  - ✅ 연구용 하네스 역할 명시
-    - phase27_4/6/7_*.py에 "엔진 아님 / 분석용" 주석 추가
-  - ✅ 단일 엔진 보장 테스트 추가
+### 23-5: Legacy Engine Decommission & Single-Engine Hardening ??
+- **?�태**: ??**COMPLETE** (2025-12-05)
+- **목표**: Backtest/Paper/Live 모든 모드??`execution.engine.run_v2()` ?�일 ?�진�??�용?�도�?강제
+- **?�료 ?�역**:
+  - ??`scripts/run_backtest.py` ??thin wrapper (538�???132�?
+    - Config 로딩 + `run_v2(mode='backtest')` ?�출�?
+  - ??`scripts/run_paper.py` ??thin wrapper (501�???152�?
+    - Config 로딩 + `run_v2(mode='paper')` ?�출�?
+  - ???�거???�크립트 13�???`scripts/legacy/` ?�동
+    - run_phase*.py, run_tuner*.py, run_wfa*.py ??
+    - `scripts/legacy/README.md` 추�? (?�카?�브 가?�드)
+  - ???�구???�네????�� 명시
+    - phase27_4/6/7_*.py??"?�진 ?�님 / 분석?? 주석 추�?
+  - ???�일 ?�진 보장 ?�스??추�?
     - `tests/test_engine_single_entrypoint.py` (8 tests, 8/8 PASS)
-- **Acceptance Criteria**: ✅ ALL PASS
-  - `run_backtest.py`, `run_paper.py`가 `run_v2` import + 호출 확인
-  - 공식 런처 3개만 scripts/ 루트에 존재 (run_v2, run_backtest, run_paper)
-  - 레거시 스크립트 13개 scripts/legacy/ 이동 완료
-  - 신규 엔진 진입점 생성 방지 테스트 추가
-- **판정**: ✅ COMPLETE - 단일 엔진 원칙 강제 완료
+- **Acceptance Criteria**: ??ALL PASS
+  - `run_backtest.py`, `run_paper.py`가 `run_v2` import + ?�출 ?�인
+  - 공식 ?�처 3개만 scripts/ 루트??존재 (run_v2, run_backtest, run_paper)
+  - ?�거???�크립트 13�?scripts/legacy/ ?�동 ?�료
+  - ?�규 ?�진 진입???�성 방�? ?�스??추�?
+- **?�정**: ??COMPLETE - ?�일 ?�진 ?�칙 강제 ?�료
 
-**진입 조건**: PHASE22-4 PARTIAL 완료 (code-level fix done, runtime integration deferred)
+**진입 조건**: PHASE22-4 PARTIAL ?�료 (code-level fix done, runtime integration deferred)
 
-**퇴출 조건**:
-- TO-BE 아키텍처 V2 문서화 (PHASE23-0)
-- Config propagation 정상 작동 (PHASE23-1)
-- 5개 전략 인터페이스 통일 + Ensemble Score V2 필드 추가 (PHASE23-2)
+**?�출 조건**:
+- TO-BE ?�키?�처 V2 문서??(PHASE23-0)
+- Config propagation ?�상 ?�동 (PHASE23-1)
+- 5�??�략 ?�터?�이???�일 + Ensemble Score V2 ?�드 추�? (PHASE23-2)
 - Ensemble Orchestrator V2 구현 (PHASE23-3)
-- Validation & Cleanup (PHASE23-4) - 12분 PAPER 검증 완료, 5,499 aggregate, 50 trades, 3 전략 활성
-- Legacy Engine Decommission (PHASE23-5) - 단일 엔진 원칙 강제, 13개 레거시 스크립트 아카이브
+- Validation & Cleanup (PHASE23-4) - 12�?PAPER 검�??�료, 5,499 aggregate, 50 trades, 3 ?�략 ?�성
+- Legacy Engine Decommission (PHASE23-5) - ?�일 ?�진 ?�칙 강제, 13�??�거???�크립트 ?�카?�브
 
-**목적**: Redis 연결/초기화 안정화 및 Ensemble V2 인프라 레벨 검증
+**목적**: Redis ?�결/초기???�정??�?Ensemble V2 ?�프???�벨 검�?
 
 **Sub-phases**
 - **24-0: Redis Hardening & Ensemble V2 Infra Validation** COMPLETE (2025-12-02)
-  - .env에 Redis 환경변수 추가 (REDIS_HOST, REDIS_PORT, REDIS_DB)
-  - Config 파일 템플릿 제거 (${REDIS_HOST} → localhost:6379)
-  - clean_state_complete.py 재시도 로직 추가 (max_retries=10)
-  - database/redis.py 로그 가시성 개선 (INFO 레벨)
-  - 2H PAPER 실행: 10,798 aggregates, 78 trades, **Redis ERROR 0건**
-  - **Acceptance**: PASS (Production Ready Baseline 확립)
+  - .env??Redis ?�경변??추�? (REDIS_HOST, REDIS_PORT, REDIS_DB)
+  - Config ?�일 ?�플�??�거 (${REDIS_HOST} ??localhost:6379)
+  - clean_state_complete.py ?�시??로직 추�? (max_retries=10)
+  - database/redis.py 로그 가?�성 개선 (INFO ?�벨)
+  - 2H PAPER ?�행: 10,798 aggregates, 78 trades, **Redis ERROR 0�?*
+  - **Acceptance**: PASS (Production Ready Baseline ?�립)
 - **24-1: Full Infra Diagnostics** COMPLETE (2025-12-02)
-  - DB cleanup 안정성 확보 (database/cleanup.py 추가, trades 재등장 0건)
-  - 통합 인프라 진단 스크립트 (phase24_1_infra_diagnostics.py: DB/Redis/Engine 점검)
-  - DB 스키마 조사 (inspect_db_schema.py: mode 컬럼 확인, run_id 없음 발견)
-  - 6분 PAPER 스모크 테스트: 24 trades, **Redis/DB/Engine ERROR 0건**
+  - DB cleanup ?�정???�보 (database/cleanup.py 추�?, trades ?�등??0�?
+  - ?�합 ?�프??진단 ?�크립트 (phase24_1_infra_diagnostics.py: DB/Redis/Engine ?��?)
+  - DB ?�키�?조사 (inspect_db_schema.py: mode 컬럼 ?�인, run_id ?�음 발견)
+  - 6�?PAPER ?�모???�스?? 24 trades, **Redis/DB/Engine ERROR 0�?*
   - Tests: test_phase24_1_db_cleanup.py (4/4 PASS), test_phase24_1_infra_diagnostics.py (5/5 PASS)
-  - **Acceptance**: PASS (DB cleanup 안정성 + 인프라 진단 체계 확립)
+  - **Acceptance**: PASS (DB cleanup ?�정??+ ?�프??진단 체계 ?�립)
 - **24-2: Env & Config Management** COMPLETE (2025-12-02)
-  - .env.example 생성 (필수 환경변수 문서화, 80 LOC)
-  - Env/Config Validator (env_config_validator.py: 환경변수 + YAML config 검증, 414 LOC)
-  - 검증 항목: 필수 키, 타입, 전략 이름, ensemble mode, duration/leverage 범위 등
+  - .env.example ?�성 (?�수 ?�경변??문서?? 80 LOC)
+  - Env/Config Validator (env_config_validator.py: ?�경변??+ YAML config 검�? 414 LOC)
+  - 검�???��: ?�수 ?? ?�?? ?�략 ?�름, ensemble mode, duration/leverage 범위 ??
   - Tests: test_phase24_2_env_config_validation.py (11/11 PASS, 100%)
-  - 6분 PAPER 회귀 테스트: 33 trades, **인프라 ERROR 0건**
-  - **Acceptance**: PASS (Env/Config 검증 레이어 확립)
+  - 6�?PAPER ?��? ?�스?? 33 trades, **?�프??ERROR 0�?*
+  - **Acceptance**: PASS (Env/Config 검�??�이???�립)
 
-**진입 조건**: PHASE23 완료
+**진입 조건**: PHASE23 ?�료
 
-**퇴출 조건**: 
-- ✅ Redis ERROR/CRITICAL 0건 (2H+ PAPER) - PHASE24-0 완료
-- ✅ 전체 INFRA 진단 완료 (PHASE24-1) - DB cleanup + 통합 진단 스크립트
-- ✅ 환경변수 관리 자동화 완료 (PHASE24-2) - Env/Config validator + .env.example
-- ✅ DB/Redis/Engine 통합 안정성 확보 - PHASE24-0~2 완료
+**?�출 조건**: 
+- ??Redis ERROR/CRITICAL 0�?(2H+ PAPER) - PHASE24-0 ?�료
+- ???�체 INFRA 진단 ?�료 (PHASE24-1) - DB cleanup + ?�합 진단 ?�크립트
+- ???�경변??관�??�동???�료 (PHASE24-2) - Env/Config validator + .env.example
+- ??DB/Redis/Engine ?�합 ?�정???�보 - PHASE24-0~2 ?�료
 
-**PHASE24 판정**: ✅ **COMPLETE** - Production Ready Infra Baseline 확립
+**PHASE24 ?�정**: ??**COMPLETE** - Production Ready Infra Baseline ?�립
 
 ---
 
-🧩 **PHASE25** – Long-run Regression & Tuning Infra ✅ **COMPLETE**
+?�� **PHASE25** ??Long-run Regression & Tuning Infra ??**COMPLETE**
 
-**상태**: ✅ **COMPLETE** (25-0/25-1/25-2/25-3/25-4 완료)
+**?�태**: ??**COMPLETE** (25-0/25-1/25-2/25-3/25-4 ?�료)
 
-**목적**: 장기 PAPER 테스트 자동화 + 전략/조합 파라미터 자동 탐색 인프라 구축
+**목적**: ?�기 PAPER ?�스???�동??+ ?�략/조합 ?�라미터 ?�동 ?�색 ?�프??구축
 
 **Sub-phases**
-- **25-0: Long-run PAPER Regression Harness** ✅ **COMPLETE** (2025-12-02)
-  - 최소 2H 이상 PAPER 자동화 하네스 구축 완료
-  - 완전 자동화: Pre-flight → Clean State → Run → Monitor → 분석 → 리포트
-  - 6분 스모크와 명확히 구분 (6분=개발/CI용, 2H+=Acceptance용)
-  - 실시간 ERROR 감지 & 즉시 중단
-  - 산출물: `phase25_0_long_run_paper.py`, 테스트, 2H Config, 리포트
-  - **Acceptance (인프라 기준)**: ✅ PASS
-    - Duration: 2.00H (목표 1.96H 이상)
-    - CRITICAL 오류: 0건
-    - 활성 포지션: 0
-    - Ensemble Aggregate: 10,564회 (목표 1,000회 이상)
-  - **전략 KPI**: ⚠️ Trade 수 39건 (목표 50건 미달, 전략 PHASE에서 튜닝 예정)
-  - **Known Issues**: Trade throughput은 전략/파라미터 튜닝 영역이며, 인프라 Acceptance 기준에서는 제외
-- **25-1: Tuning Cluster Infra** ✅ **COMPLETE** (2025-12-03)
-  - DB 스키마: `tuning.runs`, `tuning.jobs`, `tuning.results` (3개 테이블) 구축 완료
-  - Job Queue: 동시성 안전 Job 할당 (SELECT FOR UPDATE SKIP LOCKED)
-  - Worker Skeleton: Dummy 실행 + 결과 저장
+- **25-0: Long-run PAPER Regression Harness** ??**COMPLETE** (2025-12-02)
+  - 최소 2H ?�상 PAPER ?�동???�네??구축 ?�료
+  - ?�전 ?�동?? Pre-flight ??Clean State ??Run ??Monitor ??분석 ??리포??
+  - 6�??�모?��? 명확??구분 (6�?개발/CI?? 2H+=Acceptance??
+  - ?�시�?ERROR 감�? & 즉시 중단
+  - ?�출�? `phase25_0_long_run_paper.py`, ?�스?? 2H Config, 리포??
+  - **Acceptance (?�프??기�?)**: ??PASS
+    - Duration: 2.00H (목표 1.96H ?�상)
+    - CRITICAL ?�류: 0�?
+    - ?�성 ?��??? 0
+    - Ensemble Aggregate: 10,564??(목표 1,000???�상)
+  - **?�략 KPI**: ?�️ Trade ??39�?(목표 50�?미달, ?�략 PHASE?�서 ?�닝 ?�정)
+  - **Known Issues**: Trade throughput?� ?�략/?�라미터 ?�닝 ?�역?�며, ?�프??Acceptance 기�??�서???�외
+- **25-1: Tuning Cluster Infra** ??**COMPLETE** (2025-12-03)
+  - DB ?�키�? `tuning.runs`, `tuning.jobs`, `tuning.results` (3�??�이�? 구축 ?�료
+  - Job Queue: ?�시???�전 Job ?�당 (SELECT FOR UPDATE SKIP LOCKED)
+  - Worker Skeleton: Dummy ?�행 + 결과 ?�??
   - Worker CLI: `scripts/infra/phase25_1_run_worker.py` 구현
-  - 산출물: `tuning/cluster/job_queue.py`, `tuning/cluster/worker.py`
-  - 테스트: 7/7 PASS (100%)
-  - **Acceptance**: ✅ PASS
-    - DB 스키마 구축 완료
-    - Job Queue 동시성 안전 검증
-    - Worker Skeleton dummy 실행 성공
-    - 모든 테스트 PASS
-  - **Known Issues**: Worker timeout 처리 없음, 실제 엔진 호출 없음 (PHASE25-2에서 구현)
-- **25-2: Random Search 파이프라인** ✅ **COMPLETE** (2025-12-03)
-  - Random Search 알고리즘 구현 (seed 기반 재현 가능)
-  - Worker에서 실제 backtest 엔진 호출 (run_v2 통합)
-  - ParamSpace: int/float/categorical 타입 지원
+  - ?�출�? `tuning/cluster/job_queue.py`, `tuning/cluster/worker.py`
+  - ?�스?? 7/7 PASS (100%)
+  - **Acceptance**: ??PASS
+    - DB ?�키�?구축 ?�료
+    - Job Queue ?�시???�전 검�?
+    - Worker Skeleton dummy ?�행 ?�공
+    - 모든 ?�스??PASS
+  - **Known Issues**: Worker timeout 처리 ?�음, ?�제 ?�진 ?�출 ?�음 (PHASE25-2?�서 구현)
+- **25-2: Random Search ?�이?�라??* ??**COMPLETE** (2025-12-03)
+  - Random Search ?�고리즘 구현 (seed 기반 ?�현 가??
+  - Worker?�서 ?�제 backtest ?�진 ?�출 (run_v2 ?�합)
+  - ParamSpace: int/float/categorical ?�??지??
   - CLI Runner: `phase25_2_run_random_search.py` 구현
-  - 산출물: `tuning/algorithms/random_search.py` (428 LOC)
-  - 테스트: 3/3 PASS (기본), 2 SKIP (slow)
-- **25-3: Bayesian Search 파이프라인** ✅ **COMPLETE** (2025-12-03)
-  - Bayesian Optimization (Optuna TPE) 통합
-  - Sequential 튜닝 (단일 프로세스)
-  - ParamSpace → Optuna suggest API 자동 변환
+  - ?�출�? `tuning/algorithms/random_search.py` (428 LOC)
+  - ?�스?? 3/3 PASS (기본), 2 SKIP (slow)
+- **25-3: Bayesian Search ?�이?�라??* ??**COMPLETE** (2025-12-03)
+  - Bayesian Optimization (Optuna TPE) ?�합
+  - Sequential ?�닝 (?�일 ?�로?�스)
+  - ParamSpace ??Optuna suggest API ?�동 변??
   - CLI Runner: `phase25_3_run_bayesian_search.py` 구현
-  - 산출물: `tuning/algorithms/bayesian_search.py` (641 LOC)
-  - 테스트: 5/5 PASS (기본), 1 SKIP (slow)
-  - **Acceptance**: ✅ PASS
-    - Optuna Study 정상 동작
-    - ParamSpace 변환 검증
-    - Trial 실패 처리 확인
-    - 모든 기존 테스트 유지 (PHASE25-1: 7/7, PHASE25-2: 3/3)
-  - **Known Issues**: Sequential only (병렬화 미지원), 메트릭 추출 간소화, Worker timeout 없음
-- **25-4: Local Grid Search & Metrics Refinement** ✅ **COMPLETE** (2025-12-03)
-  - Local Grid Search Tuner: Best K 후보 주변 국소 그리드 탐색
-  - Metrics Refinement: 시간 기반 isolation + Sharpe/MaxDD 정확 계산
-  - Worker Timeout: Stale job 자동 실패 처리 (`mark_stale_jobs_as_failed()`)
-  - Tuner Consolidation: 레거시 튜너 deprecated 표시
-  - 산출물: `local_grid_search.py` (641 LOC), `worker.py` (수정), `job_queue.py` (수정)
-  - 테스트: 7/7 PASS (핵심 로직), 22/22 PASS (회귀 테스트 포함)
-  - **Acceptance**: ✅ PASS
-    - Local Grid Search 정상 동작 (Grid 생성, Top K 조회)
-    - Sharpe Ratio 개선 (일별 수익률 기반 근사)
+  - ?�출�? `tuning/algorithms/bayesian_search.py` (641 LOC)
+  - ?�스?? 5/5 PASS (기본), 1 SKIP (slow)
+  - **Acceptance**: ??PASS
+    - Optuna Study ?�상 ?�작
+    - ParamSpace 변??검�?
+    - Trial ?�패 처리 ?�인
+    - 모든 기존 ?�스???��? (PHASE25-1: 7/7, PHASE25-2: 3/3)
+  - **Known Issues**: Sequential only (병렬??미�???, 메트�?추출 간소?? Worker timeout ?�음
+- **25-4: Local Grid Search & Metrics Refinement** ??**COMPLETE** (2025-12-03)
+  - Local Grid Search Tuner: Best K ?�보 주�? �?�� 그리???�색
+  - Metrics Refinement: ?�간 기반 isolation + Sharpe/MaxDD ?�확 계산
+  - Worker Timeout: Stale job ?�동 ?�패 처리 (`mark_stale_jobs_as_failed()`)
+  - Tuner Consolidation: ?�거???�너 deprecated ?�시
+  - ?�출�? `local_grid_search.py` (641 LOC), `worker.py` (?�정), `job_queue.py` (?�정)
+  - ?�스?? 7/7 PASS (?�심 로직), 22/22 PASS (?��? ?�스???�함)
+  - **Acceptance**: ??PASS
+    - Local Grid Search ?�상 ?�작 (Grid ?�성, Top K 조회)
+    - Sharpe Ratio 개선 (?�별 ?�익�?기반 근사)
     - Max Drawdown 구현 (cumulative PnL 기반)
-    - Stale job timeout 처리 검증
-    - Random → Bayesian → Local Grid 3단계 파이프라인 완성
-  - **Known Issues**: 시간 기반 isolation 완벽하지 않음 (PHASE26에서 run_id 추가), Sequential only
-- Random Search 파이프라인 구축 - PHASE25-2
-- Bayesian Search 파이프라인 구축 (Optuna TPE) - PHASE25-3
-- Local Grid Search + 메트릭 정교화 - PHASE25-4 (선택)
-- 실전용 파라미터 셋 확보 - PHASE25-4/5
+    - Stale job timeout 처리 검�?
+    - Random ??Bayesian ??Local Grid 3?�계 ?�이?�라???�성
+  - **Known Issues**: ?�간 기반 isolation ?�벽?��? ?�음 (PHASE26?�서 run_id 추�?), Sequential only
+- Random Search ?�이?�라??구축 - PHASE25-2
+- Bayesian Search ?�이?�라??구축 (Optuna TPE) - PHASE25-3
+- Local Grid Search + 메트�??�교??- PHASE25-4 (?�택)
+- ?�전???�라미터 ???�보 - PHASE25-4/5
 
 ---
 
- **PHASE26** – Multi-Symbol Engine v1 ✅ **COMPLETE**
+ **PHASE26** ??Multi-Symbol Engine v1 ??**COMPLETE**
 
-**상태**: ✅ **COMPLETE** (2025-12-03)
+**?�태**: ??**COMPLETE** (2025-12-03)
 
-**목적**: TopN 심볼 확장 및 Multi-symbol 엔진 구조 확립
+**목적**: TopN ?�볼 ?�장 �?Multi-symbol ?�진 구조 ?�립
 
 **Sub-phases**
 
-- **26-0: Universe Provider 구현** ✅ **COMPLETE** (2025-12-03)
-  - TopN 심볼 선정 로직 (Binance API 기반)
-  - Protocol-based 인터페이스 (StaticUniverseProvider, TopNByVolumeUniverseProvider)
-  - Config 스키마 확장 (`universe` 섹션)
-  - 캐싱 (TTL 1시간) + Fallback 안정성
-  - **산출물**: `common/universe_provider.py` (520 LOC), `load_universe_config()` 추가
-  - **테스트**: 23/23 PASS (100%), 회귀 테스트 20/20 PASS
-  - **Acceptance**: ✅ PASS
+- **26-0: Universe Provider 구현** ??**COMPLETE** (2025-12-03)
+  - TopN ?�볼 ?�정 로직 (Binance API 기반)
+  - Protocol-based ?�터?�이??(StaticUniverseProvider, TopNByVolumeUniverseProvider)
+  - Config ?�키�??�장 (`universe` ?�션)
+  - 캐싱 (TTL 1?�간) + Fallback ?�정??
+  - **?�출�?*: `common/universe_provider.py` (520 LOC), `load_universe_config()` 추�?
+  - **?�스??*: 23/23 PASS (100%), ?��? ?�스??20/20 PASS
+  - **Acceptance**: ??PASS
 
-- **26-1: Multi-Symbol Engine Sequential Processing** ✅ **COMPLETE** (2025-12-03)
-  - per-symbol buffer 관리 (Multi-TF 지원)
-  - Universe → Engine 통합 (`symbols` 파라미터)
-  - Sequential symbol processing (코루틴 없이)
-  - **산출물**: `execution/engine.py` 수정 (DO-NOT-TOUCH 최소화)
-  - **테스트**: 회귀 테스트 100% PASS
-  - **Acceptance**: ✅ PASS
+- **26-1: Multi-Symbol Engine Sequential Processing** ??**COMPLETE** (2025-12-03)
+  - per-symbol buffer 관�?(Multi-TF 지??
+  - Universe ??Engine ?�합 (`symbols` ?�라미터)
+  - Sequential symbol processing (코루???�이)
+  - **?�출�?*: `execution/engine.py` ?�정 (DO-NOT-TOUCH 최소??
+  - **?�스??*: ?��? ?�스??100% PASS
+  - **Acceptance**: ??PASS
 
-- **26-2: Top10 Multi-Symbol PAPER Load Test** ✅ **COMPLETE** (2025-12-03)
-  - 2시간 Top10 PAPER 정상 종료
-  - Multi-Symbol 메트릭 수집 (per-symbol trades)
+- **26-2: Top10 Multi-Symbol PAPER Load Test** ??**COMPLETE** (2025-12-03)
+  - 2?�간 Top10 PAPER ?�상 종료
+  - Multi-Symbol 메트�??�집 (per-symbol trades)
   - Runner harness 구축 (`phase26_2_run_top10_paper.py`)
-  - **산출물**: `scripts/infra/phase26_2_run_top10_paper.py`, Config, Report
-  - **Acceptance**: ✅ PASS
+  - **?�출�?*: `scripts/infra/phase26_2_run_top10_paper.py`, Config, Report
+  - **Acceptance**: ??PASS
 
-- **26-3: Performance Tuning & Top100 Scalability** ✅ **COMPLETE** (2025-12-03)
+- **26-3: Performance Tuning & Top100 Scalability** ??**COMPLETE** (2025-12-03)
   - MultiSymbolProfiler 구현 (`common/perf/perf_profiler.py`)
   - IndicatorCache 구현 (`indicators/indicator_cache.py`)
-  - Scaling Test: Top10/20/50/100 (각 5분) - 4/4 성공
-  - Acceptance Run: Top100 30분 PAPER - ERROR 0건, CRITICAL 0건
-  - **산출물**: 
+  - Scaling Test: Top10/20/50/100 (�?5�? - 4/4 ?�공
+  - Acceptance Run: Top100 30�?PAPER - ERROR 0�? CRITICAL 0�?
+  - **?�출�?*: 
     - `common/perf/perf_profiler.py` (MultiSymbolProfiler)
     - `indicators/indicator_cache.py` (Incremental 계산 캐시)
     - `scripts/infra/phase26_3_run_top100_paper.py` (Runner)
     - `configs/paper/phase26_3_top100_paper_30m.yml`
-  - **테스트**: 17/17 PASS
+  - **?�스??*: 17/17 PASS
   - **Acceptance**: PASS
-    - Top100 30분 PAPER 정상 종료
-    - ERROR 0건, CRITICAL 0건
-    - 프로파일링 기본 메트릭 수집 (기본 메트릭만, Full integration은 PHASE27)
-    - Redis/DB/Env Pre-flight 진단 통과
+    - Top100 30�?PAPER ?�상 종료
+    - ERROR 0�? CRITICAL 0�?
+    - ?�로?�일�?기본 메트�??�집 (기본 메트�?��, Full integration?� PHASE27)
+    - Redis/DB/Env Pre-flight 진단 ?�과
   - **Known Limitations**:
-    - **Trade 0건 → 전략/앙상블/가드 튜닝 이슈**
-      - 30분은 실제 market signal 발생에 짧은 시간
-      - 전략 진입 조건이 보수적 (RSI, EMA 조건 엄격)
-      - PHASE26은 인프라 안정성 검증에 집중, Trade throughput은 전략 튜닝 PHASE로 이관
-    - Full profiling integration (Loop Latency, CPU, Memory)은 PHASE27로 연기
+    - **Trade 0�????�략/?�상�?가???�닝 ?�슈**
+      - 30분�? ?�제 market signal 발생??짧�? ?�간
+      - ?�략 진입 조건??보수??(RSI, EMA 조건 ?�격)
+      - PHASE26?� ?�프???�정??검증에 집중, Trade throughput?� ?�략 ?�닝 PHASE�??��?
+    - Full profiling integration (Loop Latency, CPU, Memory)?� PHASE27�??�기
 
-**진입 조건**: PHASE25 완료 
+**진입 조건**: PHASE25 ?�료 
 
-**퇴출 조건**: Top100 심볼 30분 PAPER 정상 종료, ERROR 0건 확인 
+**?�출 조건**: Top100 ?�볼 30�?PAPER ?�상 종료, ERROR 0�??�인 
 
 ---
 
- **PHASE27** – Trade Activity Diagnosis & Strategy Tuning **PARTIAL COMPLETE**
+ **PHASE27** ??Trade Activity Diagnosis & Strategy Tuning **PARTIAL COMPLETE**
 
-**상태**: **PARTIAL COMPLETE** (27-0/27-1 완료, 27-2 필요) (2025-12-04)
+**?�태**: **PARTIAL COMPLETE** (27-0/27-1 ?�료, 27-2 ?�요) (2025-12-04)
 
-**목적**: "0 트레이드" 원인 진단 및 전략/앙상블 파라미터 튜닝
+**목적**: "0 ?�레?�드" ?�인 진단 �??�략/?�상�??�라미터 ?�닝
 
 **Sub-phases**
 
 - **27-0: Trade Activity Diagnosis & Drop-off Instrumentation** **COMPLETE** (2025-12-04)
-- **27-0: Trade Activity Diagnosis & Drop-off Instrumentation** ✅ **COMPLETE** (2025-12-04)
-  - Signal → Trade 파이프라인 Drop-off 계측 인프라 구축
+- **27-0: Trade Activity Diagnosis & Drop-off Instrumentation** ??**COMPLETE** (2025-12-04)
+  - Signal ??Trade ?�이?�라??Drop-off 계측 ?�프??구축
   - TradeActivityTracker 모듈 (Thread-safe, JSON serialization)
-  - Engine/Guard Hook 6개 추가 (Optional, 오버헤드 0)
-  - Runner 스크립트: Single-Symbol 30m, Multi-Symbol Top10 30m
-  - **산출물**:
+  - Engine/Guard Hook 6�?추�? (Optional, ?�버?�드 0)
+  - Runner ?�크립트: Single-Symbol 30m, Multi-Symbol Top10 30m
+  - **?�출�?*:
     - `metrics/trade_activity_tracker.py` (285 LOC)
-    - `execution/engine.py` (+6 hooks, DO-NOT-TOUCH 준수)
+    - `execution/engine.py` (+6 hooks, DO-NOT-TOUCH 준??
     - `scripts/infra/phase27_0_run_diagnosis.py` (327 LOC)
     - `configs/paper/phase27_0_single_symbol_30m.yml`
     - `configs/paper/phase27_0_top10_30m.yml`
     - `docs/PHASE27/PHASE27-0_TRADE_ACTIVITY_DIAGNOSIS_DESIGN.md` (431 lines)
-    - `docs/PHASE27/PHASE27-0_TRADE_ACTIVITY_DIAGNOSIS_REPORT.md` (실행 리포트)
-  - **테스트**: 21/21 PASS (Unit Tests), 22/22 PASS (Regression)
-  - **Acceptance**: ✅ PASS
-    - Drop-off 계측 인프라 완성
-    - 4개 Root Cause 가설 문서화
-    - Parameter Tuning 후보 목록 작성
-    - 실행 스크립트 & Config 준비 완료
+    - `docs/PHASE27/PHASE27-0_TRADE_ACTIVITY_DIAGNOSIS_REPORT.md` (?�행 리포??
+  - **?�스??*: 21/21 PASS (Unit Tests), 22/22 PASS (Regression)
+  - **Acceptance**: ??PASS
+    - Drop-off 계측 ?�프???�성
+    - 4�?Root Cause 가??문서??
+    - Parameter Tuning ?�보 목록 ?�성
+    - ?�행 ?�크립트 & Config 준�??�료
   - **Diagnosis Runs** (2025-12-04):
-    - Single-Symbol 30m: ✅ COMPLETE (30.08 min, 1,006 candles, **0 trades**)
+    - Single-Symbol 30m: ??COMPLETE (30.08 min, 1,006 candles, **0 trades**)
       - Strategy Signals: 0/4,755 (100% dropout at strategy layer)
       - Ensemble Decisions: 951 skips, 0 Tier1, 0 Tier2
-    - Multi-Symbol Top10 30m: ✅ COMPLETE (30.09 min, 9,054 candles, **0 trades**)
+    - Multi-Symbol Top10 30m: ??COMPLETE (30.09 min, 9,054 candles, **0 trades**)
       - Strategy Signals: 0/42,795 (100% dropout across all 10 symbols)
       - Ensemble Decisions: 8,559 skips, 0 Tier1, 0 Tier2
   - **Historical Analysis**:
@@ -1004,7 +1004,7 @@ Ensemble ON 모드로 4시간 이상 연속 Paper 테스트 (인프라 안정성
     - Pipeline Intact: Feed, indicators, ensemble aggregator functioned correctly
     - **Next Step**: PHASE27-1 aggressive parameter tuning required
 
-- **27-1: Parameter Tuning** ✅ **COMPLETE** (Tuning insufficient, escalate to 27-2)
+- **27-1: Parameter Tuning** ??**COMPLETE** (Tuning insufficient, escalate to 27-2)
   - **V1 - Moderate Tuning** (2025-12-04, 08:03-08:33):
     - Config: `phase27_1_single_symbol_30m_v1.yml`
     - Changes: RSI 25/75, BB std 1.8, ensemble 0.6/0.3
@@ -1013,12 +1013,12 @@ Ensemble ON 모드로 4시간 이상 연속 Paper 테스트 (인프라 안정성
     - Config: `phase27_1_single_symbol_30m_v2.yml`
     - Changes: RSI 20/80, BB std 1.5, ensemble 0.5/0.2
     - Result: **0 trades** (Strategy Signals: 0/4,755, 100% dropout)
-  - **Verdict**: ❌ **Parameter-only tuning CANNOT solve 0-trade issue**
+  - **Verdict**: ??**Parameter-only tuning CANNOT solve 0-trade issue**
   - **Root Cause Confirmed**: Strategy algorithms fundamentally incompatible with current market conditions (low-volatility consolidation)
   - **Lesson**: Fixed-threshold indicator strategies (RSI/BB/ADX) fail in unfavorable regimes
   - **Escalation**: PHASE27-2 (Strategy Logic Redesign) required
 
-- **27-2: Strategy Logic Redesign** ✅ **COMPLETE** (2025-12-04)
+- **27-2: Strategy Logic Redesign** ??**COMPLETE** (2025-12-04)
   - **Problem**: Fixed-threshold indicator strategies fail in unfavorable market regimes
   - **Solution**: Percentile-based baseline strategy (btc5m_baseline_v1)
   - **Data Analysis**: 30 days BTCUSDT 5m profiling completed
@@ -1027,39 +1027,39 @@ Ensemble ON 모드로 4시간 이상 연속 Paper 테스트 (인프라 안정성
   - **Artifacts**: strategies/btc5m_baseline_v1.py, PHASE27-2_STRATEGY_REDESIGN_REPORT.md
   - **Next**: PHASE27-3 (ADX integration + execution validation)
 
-- **27-3: ADX Integration + Execution Validation** ⚠️ **PARTIAL COMPLETE** (2025-12-04)
+- **27-3: ADX Integration + Execution Validation** ?�️ **PARTIAL COMPLETE** (2025-12-04)
   - **Goal**: ADX regime-based strategy enhancement + Paper execution validation
-  - **Implementation** ✅:
+  - **Implementation** ??
     - ADX indicator: compute_adx() (91 LOC, Wilder smoothing)
-    - Regime: Range (ADX ≤ 25) vs Trend (ADX > 25)
+    - Regime: Range (ADX ??25) vs Trend (ADX > 25)
     - Range: Mean reversion (RSI, BB, Momentum OR)
     - Trend: Extreme conditions (BB Strong, RSI+BB combo)
-    - Strategy: v1.0 → v1.1
-  - **Tests** ✅: 25/25 PASS (ADX 8/8 + Baseline 17/17)
-  - **Artifacts** ✅:
+    - Strategy: v1.0 ??v1.1
+  - **Tests** ?? 25/25 PASS (ADX 8/8 + Baseline 17/17)
+  - **Artifacts** ??
     - indicators/core_indicators.py (ADX)
     - strategies/btc5m_baseline_v1.py (v1.1)
-  - MultiSymbolProfiler 엔진 통합
-  - Loop Latency, CPU, Memory 실시간 수집
-  - IndicatorCache 활성화
+  - MultiSymbolProfiler ?�진 ?�합
+  - Loop Latency, CPU, Memory ?�시�??�집
+  - IndicatorCache ?�성??
   - **Status**: COMPLETE
-  - **Next Steps**: PHASE27-5 완료
+  - **Next Steps**: PHASE27-5 ?�료
 
-- **27-5: Signal Parity & Engine Replay 검증** ✅ **COMPLETE** (2025-12-04)
-  - Offline Scan ↔ Engine Replay 신호 생성 복구
-  - **Status**: ✅ PRODUCTION READY
+- **27-5: Signal Parity & Engine Replay 검�?* ??**COMPLETE** (2025-12-04)
+  - Offline Scan ??Engine Replay ?�호 ?�성 복구
+  - **Status**: ??PRODUCTION READY
   - **Results**:
-    - Offline Scan: 5,741개 신호
-    - Engine Replay: 6,868개 신호 (+19.6%)
-    - 파이프라인 정상 작동 증명 (0 → 6,868개)
-    - TradeActivityTracker 통합 완료
+    - Offline Scan: 5,741�??�호
+    - Engine Replay: 6,868�??�호 (+19.6%)
+    - ?�이?�라???�상 ?�동 증명 (0 ??6,868�?
+    - TradeActivityTracker ?�합 ?�료
   - **Root Cause (Fixed)**:
-    - btc5m_baseline_v1 전략 미등록 → 등록 완료
-    - 단일 전략 모드 PHASE23-2 미적용 → 적용 완료
-    - TradeActivityTracker 미통합 → 통합 완료
-  - **Artifacts** ✅:
-    - strategies/__init__.py (btc5m_baseline_v1 등록)
-    - execution/engine.py (BaseStrategy.compute_signal() 호출)
+    - btc5m_baseline_v1 ?�략 미등�????�록 ?�료
+    - ?�일 ?�략 모드 PHASE23-2 미적?????�용 ?�료
+    - TradeActivityTracker 미통?????�합 ?�료
+  - **Artifacts** ??
+    - strategies/__init__.py (btc5m_baseline_v1 ?�록)
+    - execution/engine.py (BaseStrategy.compute_signal() ?�출)
     - scripts/research/phase27_5_btc5m_baseline_engine_replay.py
     - tests/test_phase27_5a_strategy_loading.py (7/7 PASS)
     - tests/test_phase27_5_signal_parity.py (3 PASS, 1 FAIL, 2 SKIP)
@@ -1069,224 +1069,224 @@ Ensemble ON 모드로 4시간 이상 연속 Paper 테스트 (인프라 안정성
     - docs/PHASE27/PHASE27-5_SIGNAL_PARITY_INITIAL_FINDINGS.md
     - docs/PHASE27/PHASE27-5A_SIGNAL_PARITY_FIX_REPORT.md
   - Signal Parity Analyzer 구현
-  - TradeActivityTracker LONG/SHORT/Regime 확장
-  - **Status**: ✅ COMPLETE
+  - TradeActivityTracker LONG/SHORT/Regime ?�장
+  - **Status**: ??COMPLETE
   - **Results**:
-    - Analyzer: 13/13 테스트 PASS
-    - Parity 테스트: 4/6 PASS (2개 Known Issues)
-    - LONG/SHORT 비율 Parity: 0.5%p (✅ 목표 ±5% 이내)
-  - **Artifacts** ✅:
+    - Analyzer: 13/13 ?�스??PASS
+    - Parity ?�스?? 4/6 PASS (2�?Known Issues)
+    - LONG/SHORT 비율 Parity: 0.5%p (??목표 ±5% ?�내)
+  - **Artifacts** ??
     - scripts/research/phase27_6_signal_parity_analyzer.py (343 lines)
     - tests/test_phase27_6_signal_parity_analyzer.py (13/13 PASS)
-    - metrics/trade_activity_tracker.py (LONG/SHORT/Regime 카운트 추가)
-    - execution/engine.py (Hook에 side/regime 전달)
+    - metrics/trade_activity_tracker.py (LONG/SHORT/Regime 카운??추�?)
+    - execution/engine.py (Hook??side/regime ?�달)
     - docs/PHASE27/PHASE27-6_SIGNAL_PARITY_DEEP_DIVE_REPORT.md
     - docs/PHASE27/phase27_6_signal_parity_analysis.json
-  - **Known Issues** (PHASE27-7에서 해결):
-    - Signal count 차이 19.6% → PHASE27-7에서 Regime 분류 수정
-    - Regime 100% RANGE (TREND 0%) → PHASE27-7에서 ADX 파라미터 전달 수정
+  - **Known Issues** (PHASE27-7?�서 ?�결):
+    - Signal count 차이 19.6% ??PHASE27-7?�서 Regime 분류 ?�정
+    - Regime 100% RANGE (TREND 0%) ??PHASE27-7?�서 ADX ?�라미터 ?�달 ?�정
   - **Next**: PHASE27-7 (Root Cause Fix)
 
-- **27-7: Signal Parity Root Cause & Fix** ✅ **PARTIAL SUCCESS** (2025-12-05)
-  - Regime Parity 달성, Signal Count는 Known Issue
-  - **Status**: ✅ REGIME PARITY 달성
+- **27-7: Signal Parity Root Cause & Fix** ??**PARTIAL SUCCESS** (2025-12-05)
+  - Regime Parity ?�성, Signal Count??Known Issue
+  - **Status**: ??REGIME PARITY ?�성
   - **Results**:
-    - Regime Parity: **0.11%p** (✅ 목표 ±10% 이내)
-    - LONG/SHORT Parity: **0.05%p** (✅ 목표 ±5% 이내)
-    - Signal Count: -17.79% (⚠️ 목표 ±10% 초과, Known Issue)
-    - Parity 테스트: 5/6 PASS
+    - Regime Parity: **0.11%p** (??목표 ±10% ?�내)
+    - LONG/SHORT Parity: **0.05%p** (??목표 ±5% ?�내)
+    - Signal Count: -17.79% (?�️ 목표 ±10% 초과, Known Issue)
+    - Parity ?�스?? 5/6 PASS
   - **Root Cause (Fixed)**:
-    - Engine add_indicators() 호출 시 use_adx/adx_period 누락 → 추가
-    - 단일 전략 모드 strategy_cfg 병합 누락 → 수정
-    - Offline Scan adx_trend_threshold=25 vs Replay=20 → 20으로 통일
-    - add_indicators() dropna() 강제 → drop_nan 파라미터 추가 (기본 False)
-  - **Artifacts** ✅:
-    - execution/engine.py (ADX 파라미터 전달, strategy_cfg 병합)
-    - indicators/core_indicators.py (drop_nan 파라미터)
+    - Engine add_indicators() ?�출 ??use_adx/adx_period ?�락 ??추�?
+    - ?�일 ?�략 모드 strategy_cfg 병합 ?�락 ???�정
+    - Offline Scan adx_trend_threshold=25 vs Replay=20 ??20?�로 ?�일
+    - add_indicators() dropna() 강제 ??drop_nan ?�라미터 추�? (기본 False)
+  - **Artifacts** ??
+    - execution/engine.py (ADX ?�라미터 ?�달, strategy_cfg 병합)
+    - indicators/core_indicators.py (drop_nan ?�라미터)
     - scripts/research/phase27_7_btc5m_signal_parity_diff.py (Per-bar diff harness)
     - tests/test_phase27_7_signal_parity_diff.py (9/9 PASS)
     - docs/PHASE27/PHASE27-7_SIGNAL_PARITY_ROOT_CAUSE_FIX_REPORT.md
     - docs/PHASE27/phase27_7_signal_parity_diff_report.json
   - **Known Issue**:
-    - Signal count -17.79% (데이터 범위 차이 추정, PHASE27-8에서 조사 또는 수용)
-  - **Conclusion**: Regime Parity 달성으로 주 목표 완료, Signal Count는 제한적 개선
+    - Signal count -17.79% (?�이??범위 차이 추정, PHASE27-8?�서 조사 ?�는 ?�용)
+  - **Conclusion**: Regime Parity ?�성?�로 �?목표 ?�료, Signal Count???�한??개선
 
-- **27-8: Baseline Signal SSOT & Cleanup** ✅ **COMPLETE** (2025-12-05)
-  - Offline Scan 격리 및 신호 계산 경로 단일화
-  - **Status**: ✅ SIGNAL SSOT 완료
-  - **목표**: 신호 계산은 `execution/engine.py::run_v2()` 단일 경로만 사용
-  - **완료 내역**:
-    - ✅ Offline Scan 격리: `phase27_4_btc5m_baseline_signal_scan.py` → `scripts/legacy/` 이동
-    - ✅ Diagnostic script 격리: `diagnose_scalping_signals.py` → `scripts/legacy/` 이동
-    - ✅ 경고 주석 추가: DEPRECATED, SSOT 원칙 위배 명시
-    - ✅ SSOT Guard 테스트 추가: `tests/test_phase27_8_signal_ssot_guard.py` (6/6 PASS)
-    - ✅ 회귀 테스트: `test_engine_single_entrypoint.py` (8/8 PASS)
-  - **SSOT 원칙**:
+- **27-8: Baseline Signal SSOT & Cleanup** ??**COMPLETE** (2025-12-05)
+  - Offline Scan 격리 �??�호 계산 경로 ?�일??
+  - **Status**: ??SIGNAL SSOT ?�료
+  - **목표**: ?�호 계산?� `execution/engine.py::run_v2()` ?�일 경로�??�용
+  - **?�료 ?�역**:
+    - ??Offline Scan 격리: `phase27_4_btc5m_baseline_signal_scan.py` ??`scripts/legacy/` ?�동
+    - ??Diagnostic script 격리: `diagnose_scalping_signals.py` ??`scripts/legacy/` ?�동
+    - ??경고 주석 추�?: DEPRECATED, SSOT ?�칙 ?�배 명시
+    - ??SSOT Guard ?�스??추�?: `tests/test_phase27_8_signal_ssot_guard.py` (6/6 PASS)
+    - ???��? ?�스?? `test_engine_single_entrypoint.py` (8/8 PASS)
+  - **SSOT ?�칙**:
     ```
     execution/engine.py::run_v2()
-        ↓
+        ??
     BaseStrategy.compute_signal(df, config)
-        ↓
+        ??
     metrics/trade_activity_tracker.py
     ```
-  - **허용 범위**:
-    - ✅ JSON만 읽는 분석 스크립트 (phase27_6, phase27_7)
-    - ✅ subprocess로 run_v2 호출하는 하네스 (phase27_5)
-    - ❌ 엔진 외부에서 signal_logic() 직접 호출 금지
-    - ❌ add_indicators() + 신호 계산 패턴 금지
-  - **Artifacts** ✅:
+  - **?�용 범위**:
+    - ??JSON�??�는 분석 ?�크립트 (phase27_6, phase27_7)
+    - ??subprocess�?run_v2 ?�출?�는 ?�네??(phase27_5)
+    - ???�진 ?��??�서 signal_logic() 직접 ?�출 금�?
+    - ??add_indicators() + ?�호 계산 ?�턴 금�?
+  - **Artifacts** ??
     - scripts/legacy/phase27_4_btc5m_baseline_signal_scan_legacy.py
     - scripts/legacy/diagnose_scalping_signals_legacy.py
     - tests/test_phase27_8_signal_ssot_guard.py (6 tests)
     - docs/PHASE27/PHASE27-8_BASELINE_SIGNAL_SSOT_AND_CLEANUP.md
-  - **Acceptance Criteria**: ✅ ALL PASS
-    - Offline Scan 코드 scripts/legacy/로 격리
-    - SSOT Guard 테스트 6/6 PASS
-    - scripts/에서 신호 직접 계산 코드 0건
-    - PHASE23-5 회귀 테스트 8/8 PASS
-  - **판정**: 
-  - Baseline Signal SSOT 확립
+  - **Acceptance Criteria**: ??ALL PASS
+    - Offline Scan 코드 scripts/legacy/�?격리
+    - SSOT Guard ?�스??6/6 PASS
+    - scripts/?�서 ?�호 직접 계산 코드 0�?
+    - PHASE23-5 ?��? ?�스??8/8 PASS
+  - **?�정**: 
+  - Baseline Signal SSOT ?�립
 
-- **27-9: SSOT Final Verification & Doc Sync** ✅ **COMPLETE** (2025-12-05)
-  - 엔진/신호 경로 SSOT 구조 최종 검증
-  - **Status**: ✅ SSOT 자동 검증 체계 완성
-  - **목표**: "엔진 한 벌 + 신호 경로 한 벌" 자동 보장
-  - **검증 결과**:
-    - ✅ 단일 엔진: run_v2() 단일 진입점, run_v3 없음
-    - ✅ 신호 경로 단일화: BaseStrategy.compute_signal() → TradeActivityTracker
-    - ✅ Legacy 격리: phase27_4, diagnose_scalping → scripts/legacy/
-    - ✅ SSOT 위반 0건 (Legacy 제외)
+- **27-9: SSOT Final Verification & Doc Sync** ??**COMPLETE** (2025-12-05)
+  - ?�진/?�호 경로 SSOT 구조 최종 검�?
+  - **Status**: ??SSOT ?�동 검�?체계 ?�성
+  - **목표**: "?�진 ??�?+ ?�호 경로 ??�? ?�동 보장
+  - **검�?결과**:
+    - ???�일 ?�진: run_v2() ?�일 진입?? run_v3 ?�음
+    - ???�호 경로 ?�일?? BaseStrategy.compute_signal() ??TradeActivityTracker
+    - ??Legacy 격리: phase27_4, diagnose_scalping ??scripts/legacy/
+    - ??SSOT ?�반 0�?(Legacy ?�외)
   - **pytest 결과**:
-    - ✅ 41 PASS, 1 XFAIL (Known Issue)
-    - ✅ test_phase27_8_signal_ssot_guard.py: 6/6 PASS
-    - ✅ test_engine_single_entrypoint.py: 8/8 PASS
-  - **Known Issue 명확화**:
-    - Signal count parity 17.79% (데이터 범위/warmup 차이)
-    - 엔진/SSOT 구조와 무관, Production 사용 가능
-    - Regime Parity(0.11%p), LONG/SHORT Parity(0.05%p) 목표 달성
-  - **Artifacts** ✅:
+    - ??41 PASS, 1 XFAIL (Known Issue)
+    - ??test_phase27_8_signal_ssot_guard.py: 6/6 PASS
+    - ??test_engine_single_entrypoint.py: 8/8 PASS
+  - **Known Issue 명확??*:
+    - Signal count parity 17.79% (?�이??범위/warmup 차이)
+    - ?�진/SSOT 구조?� 무�?, Production ?�용 가??
+    - Regime Parity(0.11%p), LONG/SHORT Parity(0.05%p) 목표 ?�성
+  - **Artifacts** ??
     - docs/PHASE27/PHASE27-9_SSOT_FINAL_VERIFICATION.md
-    - tests/test_phase27_5_signal_parity.py (Known Issue xfail 표시)
-    - tests/test_phase27_6_signal_parity_analyzer.py (동적 검증)
-    - docs/PHASE27/PHASE27-8_BASELINE_SIGNAL_SSOT_AND_CLEANUP.md (COMPLETE 업데이트)
-  - **자동 검증 체계**:
-    - pytest가 SSOT 위반 즉시 탐지
-    - AST 기반 신호 직접 계산 패턴 감지
-    - "엔진 한 벌 + 신호 경로 한 벌"을 깨는 순간 CI/CD 차단
-  - **판정**: ✅ COMPLETE - SSOT 자동 보장 완성
+    - tests/test_phase27_5_signal_parity.py (Known Issue xfail ?�시)
+    - tests/test_phase27_6_signal_parity_analyzer.py (?�적 검�?
+    - docs/PHASE27/PHASE27-8_BASELINE_SIGNAL_SSOT_AND_CLEANUP.md (COMPLETE ?�데?�트)
+  - **?�동 검�?체계**:
+    - pytest가 SSOT ?�반 즉시 ?��?
+    - AST 기반 ?�호 직접 계산 ?�턴 감�?
+    - "?�진 ??�?+ ?�호 경로 ??�???깨는 ?�간 CI/CD 차단
+  - **?�정**: ??COMPLETE - SSOT ?�동 보장 ?�성
 
-**진입 조건**: PHASE26 완료
+**진입 조건**: PHASE26 ?�료
 
-**퇴출 조건**: 
-- ✅ Trade Activity Diagnosis 인프라 완성 (27-0)
-- ✅ Baseline+ADX 전략 구현 및 Engine 통합 (27-2, 27-3, 27-5)
-- ✅ Signal Parity 달성: Regime 0.11%p, LONG/SHORT 0.05%p (27-6, 27-7)
-- ✅ Signal SSOT 원칙 확립 (27-8)
-- ✅ **SSOT 자동 검증 체계 완성 (27-9)**
+**?�출 조건**: 
+- ??Trade Activity Diagnosis ?�프???�성 (27-0)
+- ??Baseline+ADX ?�략 구현 �?Engine ?�합 (27-2, 27-3, 27-5)
+- ??Signal Parity ?�성: Regime 0.11%p, LONG/SHORT 0.05%p (27-6, 27-7)
+- ??Signal SSOT ?�칙 ?�립 (27-8)
+- ??**SSOT ?�동 검�?체계 ?�성 (27-9)**
 
-**PHASE27 판정**: ✅ **COMPLETE** (27-0 ~ 27-9 완료, 2025-12-05)
-- Trade Activity Diagnosis 인프라 구축
+**PHASE27 ?�정**: ??**COMPLETE** (27-0 ~ 27-9 ?�료, 2025-12-05)
+- Trade Activity Diagnosis ?�프??구축
 - Strategy Logic Redesign (Percentile-based Baseline)
 - ADX Integration & Regime-based filtering
-- Baseline+ADX 전략 Engine 통합 및 Signal Parity 달성
-- Signal 계산 경로 단일화 (SSOT 원칙 확립)
-- **SSOT 자동 검증 체계 완성 (pytest 멱살잡기 시스템)**
-- 향후 모든 전략은 `run_v2()` 단일 경로 사용
-- 향후 모든 신호는 엔진 경로에서만 생성 (자동 검증）
+- Baseline+ADX ?�략 Engine ?�합 �?Signal Parity ?�성
+- Signal 계산 경로 ?�일??(SSOT ?�칙 ?�립)
+- **SSOT ?�동 검�?체계 ?�성 (pytest 멱살?�기 ?�스??**
+- ?�후 모든 ?�략?� `run_v2()` ?�일 경로 ?�용
+- ?�후 모든 ?�호???�진 경로?�서�??�성 (?�동 검증）
 
 ---
 
-🧩 **PHASE28** – Strategy Performance & Tuning Baseline ⚠️ **IN PROGRESS**
+?�� **PHASE28** ??Strategy Performance & Tuning Baseline ?�️ **IN PROGRESS**
 
-**상태**: ⚠️ **IN PROGRESS** (28-0, 28-1 완료, 2025-12-05)
+**?�태**: ?�️ **IN PROGRESS** (28-0, 28-1 ?�료, 2025-12-05)
 
-**목적**: btc5m_baseline_v1 전략의 성능 기준선 측정 및 튜닝 (Monitoring 포함)
+**목적**: btc5m_baseline_v1 ?�략???�능 기�???측정 �??�닝 (Monitoring ?�함)
 
-**트랙 전환**: PHASE28부터 **인프라 → 전략/튜닝**으로 궤도 수정  
-- PHASE27까지: 엔진/SSOT/Guard 구조 완성
-- PHASE28: 전략 성능 측정 및 튜닝에 집중
-- Grafana/Alert는 PHASE30+ "Production Monitoring & Alerting"으로 미뤄짐
+**?�랙 ?�환**: PHASE28부??**?�프?????�략/?�닝**?�로 궤도 ?�정  
+- PHASE27까�?: ?�진/SSOT/Guard 구조 ?�성
+- PHASE28: ?�략 ?�능 측정 �??�닝??집중
+- Grafana/Alert??PHASE30+ "Production Monitoring & Alerting"?�로 미뤄�?
 
 **Sub-phases**
 
-- **28-0: Monitoring & Observability Baseline** ✅ **COMPLETE** (2025-12-05)
-  - Prometheus 메트릭 Exporter 구현 (18개 Core KPI)
-  - **Status**: ✅ Production Ready
-  - **목표**: 단일 엔진(run_v2) 위에 핵심 KPI를 Prometheus 지표로 노출
-  - **완료 내역**:
-    - ✅ Prometheus Exporter 모듈 (monitoring/prometheus_exporter.py, 520 LOC)
-    - ✅ Metrics Adapter (monitoring/metrics_adapter.py, 240 LOC)
-    - ✅ 엔진 통합 (최소 침투 +30 LOC, Config 기반)
-    - ✅ TradeActivityTracker 통합 (자동 Exporter 호출 +40 LOC)
-    - ✅ Unit Test 23/23 PASS
-    - ✅ 회귀 테스트 14/14 PASS (SSOT/Engine 무손상)
-  - **Core 메트릭 카테고리** (5개):
+- **28-0: Monitoring & Observability Baseline** ??**COMPLETE** (2025-12-05)
+  - Prometheus 메트�?Exporter 구현 (18�?Core KPI)
+  - **Status**: ??Production Ready
+  - **목표**: ?�일 ?�진(run_v2) ?�에 ?�심 KPI�?Prometheus 지?�로 ?�출
+  - **?�료 ?�역**:
+    - ??Prometheus Exporter 모듈 (monitoring/prometheus_exporter.py, 520 LOC)
+    - ??Metrics Adapter (monitoring/metrics_adapter.py, 240 LOC)
+    - ???�진 ?�합 (최소 침투 +30 LOC, Config 기반)
+    - ??TradeActivityTracker ?�합 (?�동 Exporter ?�출 +40 LOC)
+    - ??Unit Test 23/23 PASS
+    - ???��? ?�스??14/14 PASS (SSOT/Engine 무손??
+  - **Core 메트�?카테고리** (5�?:
     1. Engine Loop / System (loop_latency, candles_processed, engine_info)
     2. Trade / Execution (trades, orders, pnl, open_positions)
     3. Strategy / Ensemble (signals by strategy/side/regime, ensemble decisions)
     4. Risk / Portfolio / Guard (budget_used_ratio, guard_blocks)
     5. Infra / Error (engine_errors, cpu_usage, memory_usage)
   - **Prometheus 규칙**:
-    - Metric 명: `fab_<category>_<name>_<unit>`
+    - Metric �? `fab_<category>_<name>_<unit>`
     - Label: mode, symbol, strategy, side, regime, tier, reason
   - **HTTP Endpoint**: `http://localhost:9091/metrics`
-  - **Artifacts** ✅:
+  - **Artifacts** ??
     - monitoring/prometheus_exporter.py
     - monitoring/metrics_adapter.py
     - configs/paper/phase28_0_monitoring_smoke_6m.yml
     - tests/test_phase28_0_prometheus_exporter.py (23 tests)
     - docs/PHASE28/PHASE28-0_MONITORING_BASELINE_COMPLETE_REPORT.md
-  - **Acceptance**: ✅ ALL PASS
-    - Core 메트릭 18개 정의
-    - 엔진 통합 (DO-NOT-TOUCH 준수, Config 기반)
-    - Tracker 자동 전달 (record_* 4개 함수)
+  - **Acceptance**: ??ALL PASS
+    - Core 메트�?18�??�의
+    - ?�진 ?�합 (DO-NOT-TOUCH 준?? Config 기반)
+    - Tracker ?�동 ?�달 (record_* 4�??�수)
     - Unit Test 23/23 PASS
-    - 회귀 테스트 14/14 PASS (SSOT/Engine 무영향)
-    - 성능 오버헤드 무시 가능 (< 1ms per metric)
-  - **판정**: ✅ COMPLETE - Prometheus Monitoring Baseline 완성
+    - ?��? ?�스??14/14 PASS (SSOT/Engine 무영??
+    - ?�능 ?�버?�드 무시 가??(< 1ms per metric)
+  - **?�정**: ??COMPLETE - Prometheus Monitoring Baseline ?�성
 
-- **28-1: Single Strategy Performance Baseline (btc5m_baseline_v1)** ✅ **COMPLETE** (2025-12-05)
-  - 시장 구간별 성능 측정 인프라 구축
-  - **Status**: ✅ Infrastructure Ready (실제 실행 Pending)
-  - **목표**: 전략 성격 파악 및 튜닝 기준선 설정
-  - **완료 내역**:
-    - ✅ 백테스트 Preset Config (3 presets × 3 periods = 9 조합)
-    - ✅ Performance Runner (scripts/research/phase28_1_single_strategy_performance.py, 380 LOC)
-    - ✅ Unit Test 12/12 PASS
-    - ✅ 회귀 테스트 14/14 PASS (SSOT/Engine 무손상)
-  - **시장 구간** (3개):
+- **28-1: Single Strategy Performance Baseline (btc5m_baseline_v1)** ??**COMPLETE** (2025-12-05)
+  - ?�장 구간�??�능 측정 ?�프??구축
+  - **Status**: ??Infrastructure Ready (?�제 ?�행 Pending)
+  - **목표**: ?�략 ?�격 ?�악 �??�닝 기�????�정
+  - **?�료 ?�역**:
+    - ??백테?�트 Preset Config (3 presets × 3 periods = 9 조합)
+    - ??Performance Runner (scripts/research/phase28_1_single_strategy_performance.py, 380 LOC)
+    - ??Unit Test 12/12 PASS
+    - ???��? ?�스??14/14 PASS (SSOT/Engine 무손??
+  - **?�장 구간** (3�?:
     - Bull Trend (2024-10-01 ~ 2024-10-31)
     - Bear Trend (2024-08-01 ~ 2024-08-31)
     - Range Consolidation (2024-11-15 ~ 2024-12-15)
-  - **파라미터 Preset** (3개):
-    - Conservative: 보수적 진입 (RSI 40/60, BB 1.5/2.0)
-    - Neutral: 현재 PHASE27 기준 (RSI 45/55, BB 1.0/1.5)
-    - Aggressive: 공격적 진입 (RSI 50/50, BB 0.8/1.2)
-  - **핵심 메트릭** (10개):
+  - **?�라미터 Preset** (3�?:
+    - Conservative: 보수??진입 (RSI 40/60, BB 1.5/2.0)
+    - Neutral: ?�재 PHASE27 기�? (RSI 45/55, BB 1.0/1.5)
+    - Aggressive: 공격??진입 (RSI 50/50, BB 0.8/1.2)
+  - **?�심 메트�?* (10�?:
     - Trade 빈도: total_trades, long_count, short_count
-    - 수익성: win_rate, gross_pnl, net_pnl
-    - 리스크: max_drawdown, sharpe_like_ratio
-    - 효율성: avg_holding_minutes, long_short_ratio
-  - **Artifacts** ✅:
+    - ?�익?? win_rate, gross_pnl, net_pnl
+    - 리스?? max_drawdown, sharpe_like_ratio
+    - ?�율?? avg_holding_minutes, long_short_ratio
+  - **Artifacts** ??
     - configs/backtest/phase28_1_btc5m_baseline_presets.yml
     - scripts/research/phase28_1_single_strategy_performance.py
 
-- **28-2: Tuning Pipeline Infrastructure Validation** ✅ **COMPLETE** (2025-12-06)
-  - Tuning Pipeline 인프라 검증 및 버그 수정
-  - **Status**: ✅ Production Ready
-  - **목표**: PHASE25 Tuning Cluster를 btc5m_baseline_v1에 연결 및 검증
-  - **완료 내역**:
-    - ✅ Config SSOT 완성 (Worker validation 추가)
-    - ✅ trial_id 기반 거래 격리 (시간 기반 → trial_id 필터링)
-    - ✅ 3 trials 스모크 테스트 성공 (end-to-end 검증)
-    - ✅ Critical bug fixes (Decimal/numpy 타입, portfolio 테이블 제거)
-    - ✅ Worker 재시도 로직 추가 (DB commit 대기)
-  - **버그 수정** (4개):
-    - Decimal → float 타입 변환 (TypeError 해결)
-    - numpy → Python 기본 타입 변환 (JSON 직렬화 해결)
-    - portfolio 테이블 의존성 제거 (trades 기반 PnL 계산)
-    - DB commit 대기 + 재시도 로직 (eventual consistency)
-  - **Artifacts** ✅:
+- **28-2: Tuning Pipeline Infrastructure Validation** ??**COMPLETE** (2025-12-06)
+  - Tuning Pipeline ?�프??검�?�?버그 ?�정
+  - **Status**: ??Production Ready
+  - **목표**: PHASE25 Tuning Cluster�?btc5m_baseline_v1???�결 �?검�?
+  - **?�료 ?�역**:
+    - ??Config SSOT ?�성 (Worker validation 추�?)
+    - ??trial_id 기반 거래 격리 (?�간 기반 ??trial_id ?�터�?
+    - ??3 trials ?�모???�스???�공 (end-to-end 검�?
+    - ??Critical bug fixes (Decimal/numpy ?�?? portfolio ?�이�??�거)
+    - ??Worker ?�시??로직 추�? (DB commit ?��?
+  - **버그 ?�정** (4�?:
+    - Decimal ??float ?�??변??(TypeError ?�결)
+    - numpy ??Python 기본 ?�??변??(JSON 직렬???�결)
+    - portfolio ?�이�??�존???�거 (trades 기반 PnL 계산)
+    - DB commit ?��?+ ?�시??로직 (eventual consistency)
+  - **Artifacts** ??
     - tuning/cluster/worker.py (validation + bugfix, +80 LOC)
     - configs/backtest/phase28_2_btc5m_tuning_base.yml
     - configs/tuning/phase28_2_btc5m_baseline_paramspace.yml
@@ -1294,130 +1294,130 @@ Ensemble ON 모드로 4시간 이상 연속 Paper 테스트 (인프라 안정성
     - scripts/temp_monitor_tuning.py
     - docs/PHASE28/PHASE28-2_TUNING_ROUND1_DESIGN.md
     - docs/PHASE28/PHASE28_2_FINAL_REPORT.md
-  - **Acceptance**: ✅ ALL PASS
-    - Worker와 btc5m_baseline_v1 연결 완료
-    - Config SSOT 검증 + trial_id 격리 완료
-    - 3 trials 스모크 테스트 성공 (tuning.results ↔ trading.trades 연동)
-    - Critical bugs 전부 수정
-  - **판정**: ✅ COMPLETE - Tuning Pipeline Infrastructure Production Ready
+  - **Acceptance**: ??ALL PASS
+    - Worker?� btc5m_baseline_v1 ?�결 ?�료
+    - Config SSOT 검�?+ trial_id 격리 ?�료
+    - 3 trials ?�모???�스???�공 (tuning.results ??trading.trades ?�동)
+    - Critical bugs ?��? ?�정
+  - **?�정**: ??COMPLETE - Tuning Pipeline Infrastructure Production Ready
 
-- **28-3: Random Search Round 1 Execution** ✅ **COMPLETE** (2025-12-06)
-  - 대규모 Random Search 완전 자동화 파이프라인 구현 및 실행 완료
-  - **Status**: ✅ **EXECUTION + VALIDATION COMPLETE**
-  - **Acceptance 판정**: ✅ **PASS** (모든 기준 충족)
-  - **목표**: 완전 자동화된 Random Search 실행 및 Top-N 후보 선정
-  - **완료 내역**:
-    - ✅ 환경 검증 자동화 (Python/DB/Redis)
-    - ✅ Job 제출 자동화 (ParamSpace 샘플링 + JobQueue)
-    - ✅ Worker 실행 (run_id 필터링 포함)
-    - ✅ 진행 상황 자동 모니터링 (120s 간격)
-    - ✅ 결과 집계 및 리포트 자동 생성 (Markdown + JSON)
-    - ✅ Unit tests: 8/8 PASS
-    - ✅ Smoke test: 2 trials 성공 (DB 연동 확인)
-    - ✅ **Full execution: 40 trials 완료 (20 × 2 periods)**
+- **28-3: Random Search Round 1 Execution** ??**COMPLETE** (2025-12-06)
+  - ?�규모 Random Search ?�전 ?�동???�이?�라??구현 �??�행 ?�료
+  - **Status**: ??**EXECUTION + VALIDATION COMPLETE**
+  - **Acceptance ?�정**: ??**PASS** (모든 기�? 충족)
+  - **목표**: ?�전 ?�동?�된 Random Search ?�행 �?Top-N ?�보 ?�정
+  - **?�료 ?�역**:
+    - ???�경 검�??�동??(Python/DB/Redis)
+    - ??Job ?�출 ?�동??(ParamSpace ?�플�?+ JobQueue)
+    - ??Worker ?�행 (run_id ?�터�??�함)
+    - ??진행 ?�황 ?�동 모니?�링 (120s 간격)
+    - ??결과 집계 �?리포???�동 ?�성 (Markdown + JSON)
+    - ??Unit tests: 8/8 PASS
+    - ??Smoke test: 2 trials ?�공 (DB ?�동 ?�인)
+    - ??**Full execution: 40 trials ?�료 (20 × 2 periods)**
   - **Execution 결과** (2025-12-06 13:40~14:59, 1h 20m):
-    - 총 실행 jobs: 46 (Bull: 20, Range: 20, 이전 잔여: 6)
-    - 필터 통과: 16 trials (거래 수 ≥5)
-    - 필터 탈락: 30 trials (거래 수 <5)
-    - **양의 Sharpe Ratio**: 1개 trial 발견 (Best: +8.40 PnL, +0.7509 Sharpe, 33.33% Win Rate)
-    - 평균 거래 수: 5.1 (필터 통과 trials)
+    - �??�행 jobs: 46 (Bull: 20, Range: 20, ?�전 ?�여: 6)
+    - ?�터 ?�과: 16 trials (거래 ????)
+    - ?�터 ?�락: 30 trials (거래 ??<5)
+    - **?�의 Sharpe Ratio**: 1�?trial 발견 (Best: +8.40 PnL, +0.7509 Sharpe, 33.33% Win Rate)
+    - ?�균 거래 ?? 5.1 (?�터 ?�과 trials)
   - **Acceptance Criteria**:
-    - [x] ✅ A1_실행_커버리지: 46/40 jobs 완료 (115%)
-    - [x] ✅ A2_Period별_결과: 2/2 periods에서 필터 통과 trial 존재
-    - [x] ✅ A3_거래_수_품질: 평균 5.1 (기준: ≥5)
-    - [x] ✅ A4_유망_후보_발견: 1개 trial에서 양의 Sharpe Ratio
-  - **Artifacts** ✅:
+    - [x] ??A1_?�행_커버리�?: 46/40 jobs ?�료 (115%)
+    - [x] ??A2_Period�?결과: 2/2 periods?�서 ?�터 ?�과 trial 존재
+    - [x] ??A3_거래_???�질: ?�균 5.1 (기�?: ??)
+    - [x] ??A4_?�망_?�보_발견: 1�?trial?�서 ?�의 Sharpe Ratio
+  - **Artifacts** ??
     - scripts/tuning/phase28_3_run_random_search_round1.py (~610 LOC)
-    - scripts/tuning/phase28_3_monitor_and_finalize.py (~643 LOC, 완전 자동화 모니터링)
+    - scripts/tuning/phase28_3_monitor_and_finalize.py (~643 LOC, ?�전 ?�동??모니?�링)
     - tests/tuning/test_phase28_3_automation.py (~265 LOC)
-    - docs/PHASE28/PHASE28-3_RANDOM_SEARCH_ROUND1_DESIGN.md (설계 + 실행 결과)
-    - docs/PHASE28/PHASE28-3_RESULTS.md (상세 리포트, 한국어)
-    - reports/tuning/phase28_3/results.json (전체 결과 데이터)
-  - **판정**: ✅ COMPLETE - Random Search Round 1 완료
+    - docs/PHASE28/PHASE28-3_RANDOM_SEARCH_ROUND1_DESIGN.md (?�계 + ?�행 결과)
+    - docs/PHASE28/PHASE28-3_RESULTS.md (?�세 리포?? ?�국??
+    - reports/tuning/phase28_3/results.json (?�체 결과 ?�이??
+  - **?�정**: ??COMPLETE - Random Search Round 1 ?�료
 
-- **28-4: Bayesian Search Round 1** ✅ **PASS (Infrastructure)** (2025-12-07)
-  - Random Search 결과 기반 Bayesian Optimization 실행
-  - **Status**: ✅ **Infrastructure VERIFIED** | ⚠️ **Performance Issues (Separate)**
-  - **목표**: PHASE28-3 Top-N 후보를 시드로 효율적 파라미터 탐색
-  - **완료 내역**:
-    - ✅ 설계 문서 작성 (PHASE28-4_BAYESIAN_SEARCH_ROUND1_DESIGN.md)
-    - ✅ Top-N 후보 추출 유틸 구현 (tuning/utils/result_selection.py)
-    - ✅ Bayesian Search Config (phase28_4_btc5m_bayesian_search.yml)
-    - ✅ 실행 스크립트 (phase28_4_run_bayesian_search_round1.py)
-    - ✅ Unit tests: 8/8 PASS → **15/15 PASS** (PHASE28-4R 추가)
-    - ✅ 회귀 테스트: PHASE28-3 8/8 PASS, Engine SSOT 8/8 PASS
-    - ✅ 공통 Config Builder (~150 LOC) - TuningWorker & BayesianSearchTuner 통합
-    - ✅ DB 의존성 수정 - portfolio 테이블 제거, trial_id 기반 필터링
-    - ✅ **파라미터 전달 검증 - PHASE28-4R에서 완전 검증 완료**
-  - **PHASE28-4R: Parameter Passing Verification** ✅ (2025-12-07 19:00):
-    - **재검증 결론**: 파라미터 전달은 **처음부터 정상 작동**
-    - **DB 실증**: tuning.jobs.params_json에 모든 파라미터 정확히 저장됨
-    - **오인된 증거**: "params: {}" 로그는 misleading, 실제 전달과 무관
-    - **실제 문제**: 전략 성능 불량 (파라미터 범위/시장 조건/전략 로직)
-    - **Unit tests 추가**: 7/7 PASS (test_phase28_4r_param_passing.py)
-    - **문서화**: PHASE28-4R_PARAM_PASSING_VERIFICATION_REPORT.md
-    - 상세: docs/PHASE28/PHASE28-4_BAYESIAN_SEARCH_ROUND1_RESULTS.md (업데이트)
+- **28-4: Bayesian Search Round 1** ??**PASS (Infrastructure)** (2025-12-07)
+  - Random Search 결과 기반 Bayesian Optimization ?�행
+  - **Status**: ??**Infrastructure VERIFIED** | ?�️ **Performance Issues (Separate)**
+  - **목표**: PHASE28-3 Top-N ?�보�??�드�??�율???�라미터 ?�색
+  - **?�료 ?�역**:
+    - ???�계 문서 ?�성 (PHASE28-4_BAYESIAN_SEARCH_ROUND1_DESIGN.md)
+    - ??Top-N ?�보 추출 ?�틸 구현 (tuning/utils/result_selection.py)
+    - ??Bayesian Search Config (phase28_4_btc5m_bayesian_search.yml)
+    - ???�행 ?�크립트 (phase28_4_run_bayesian_search_round1.py)
+    - ??Unit tests: 8/8 PASS ??**15/15 PASS** (PHASE28-4R 추�?)
+    - ???��? ?�스?? PHASE28-3 8/8 PASS, Engine SSOT 8/8 PASS
+    - ??공통 Config Builder (~150 LOC) - TuningWorker & BayesianSearchTuner ?�합
+    - ??DB ?�존???�정 - portfolio ?�이�??�거, trial_id 기반 ?�터�?
+    - ??**?�라미터 ?�달 검�?- PHASE28-4R?�서 ?�전 검�??�료**
+  - **PHASE28-4R: Parameter Passing Verification** ??(2025-12-07 19:00):
+    - **?��?�?결론**: ?�라미터 ?�달?� **처음부???�상 ?�동**
+    - **DB ?�증**: tuning.jobs.params_json??모든 ?�라미터 ?�확???�?�됨
+    - **?�인??증거**: "params: {}" 로그??misleading, ?�제 ?�달�?무�?
+    - **?�제 문제**: ?�략 ?�능 불량 (?�라미터 범위/?�장 조건/?�략 로직)
+    - **Unit tests 추�?**: 7/7 PASS (test_phase28_4r_param_passing.py)
+    - **문서??*: PHASE28-4R_PARAM_PASSING_VERIFICATION_REPORT.md
+    - ?�세: docs/PHASE28/PHASE28-4_BAYESIAN_SEARCH_ROUND1_RESULTS.md (?�데?�트)
   - **Acceptance Criteria**:
-    - [x] ✅ AC1: 설계 문서 작성
-    - [x] ✅ AC2: 코드 구현 (Top-N 유틸, 실행 스크립트, Config, Common Builder)
-    - [x] ✅ AC3: Unit tests 통과 (8/8 PASS)
-    - [x] ✅ AC4: Smoke test PASS (1-trial 검증 완료, sharpe_ratio=-45.8204)
-    - [x] ✅ AC5: Full execution (13 trials 완료, 파라미터 정상 전달)
-    - [x] ✅ AC6: 결과 산출물 (JSON/Markdown 생성 완료)
-    - [x] ✅ AC7: ROADMAP 업데이트 & Git commit
-  - **Artifacts** ✅:
+    - [x] ??AC1: ?�계 문서 ?�성
+    - [x] ??AC2: 코드 구현 (Top-N ?�틸, ?�행 ?�크립트, Config, Common Builder)
+    - [x] ??AC3: Unit tests ?�과 (8/8 PASS)
+    - [x] ??AC4: Smoke test PASS (1-trial 검�??�료, sharpe_ratio=-45.8204)
+    - [x] ??AC5: Full execution (13 trials ?�료, ?�라미터 ?�상 ?�달)
+    - [x] ??AC6: 결과 ?�출�?(JSON/Markdown ?�성 ?�료)
+    - [x] ??AC7: ROADMAP ?�데?�트 & Git commit
+  - **Artifacts** ??
     - docs/PHASE28/PHASE28-4_BAYESIAN_SEARCH_ROUND1_DESIGN.md
     - docs/PHASE28/PHASE28-4_IMPLEMENTATION_BLOCKERS.md (Session 1&2 분석)
-    - docs/PHASE28/PHASE28-4_PARAM_PASSING_RESOLUTION.md (✅ 정확한 결론)
-    - docs/PHASE28/PHASE28-4R_PARAM_PASSING_VERIFICATION_REPORT.md ✨ (재검증 보고서)
-    - docs/PHASE28/PHASE28-4_BAYESIAN_SEARCH_ROUND1_RESULTS.md (업데이트: Infrastructure PASS)
+    - docs/PHASE28/PHASE28-4_PARAM_PASSING_RESOLUTION.md (???�확??결론)
+    - docs/PHASE28/PHASE28-4R_PARAM_PASSING_VERIFICATION_REPORT.md ??(?��?�?보고??
+    - docs/PHASE28/PHASE28-4_BAYESIAN_SEARCH_ROUND1_RESULTS.md (?�데?�트: Infrastructure PASS)
     - tuning/utils/result_selection.py (~180 LOC)
     - tuning/utils/config_builder.py (~150 LOC, 공통 helper, debug logging)
     - scripts/tuning/phase28_4_run_bayesian_search_round1.py (~400 LOC)
     - scripts/tuning/phase28_4_summarize_bayesian_round1.py (~490 LOC, 결과 분석)
     - scripts/temp_phase28_4_debug_test.py (1-trial smoke test)
-    - scripts/temp_check_phase28_4_progress.py (DB 진행 모니터링)
+    - scripts/temp_check_phase28_4_progress.py (DB 진행 모니?�링)
     - configs/tuning/phase28_4_btc5m_bayesian_search.yml
     - configs/tuning/phase28_4_btc5m_bayesian_search_smoke.yml
     - tests/tuning/test_phase28_4_bayesian_search_round1.py (~290 LOC)
-    - tests/tuning/test_phase28_4r_param_passing.py ✨ (7 tests, 파라미터 전달 검증)
+    - tests/tuning/test_phase28_4r_param_passing.py ??(7 tests, ?�라미터 ?�달 검�?
     - reports/tuning/phase28_4/bayesian_round1_results.json
-    - tuning/algorithms/bayesian_search.py (config builder 통합, DB fix, 파라미터 전달 ✅)
-    - tuning/cluster/worker.py (config builder 통합)
-  - **판정**: ✅ **PASS (Infrastructure)** - 튜닝 파이프라인 정상 작동 확인, 성능 개선은 후속 PHASE
-  - **Performance Issues** ⚠️ (별개 문제):
-    - 13 trials, 모든 Sharpe ≤ 0 → 파라미터 범위/시장 조건/전략 로직 검토 필요
-    - 후속 조치: PHASE28-5 (Local Grid Search) 또는 전략 로직 개선
+    - tuning/algorithms/bayesian_search.py (config builder ?�합, DB fix, ?�라미터 ?�달 ??
+    - tuning/cluster/worker.py (config builder ?�합)
+  - **?�정**: ??**PASS (Infrastructure)** - ?�닝 ?�이?�라???�상 ?�동 ?�인, ?�능 개선?� ?�속 PHASE
+  - **Performance Issues** ?�️ (별개 문제):
+    - 13 trials, 모든 Sharpe ??0 ???�라미터 범위/?�장 조건/?�략 로직 검???�요
+    - ?�속 조치: PHASE28-5 (Local Grid Search) ?�는 ?�략 로직 개선
 
-- **28-5: Local Grid Search Round 1** ✅ **COMPLETE** (Infrastructure PASS, Strategy Performance FAIL) (2025-12-07)
-  - Bayesian Round 1 상위 trials 주변 국지 Grid Search 실행 및 종합 분석
-  - **Status**: ✅ **INFRASTRUCTURE COMPLETE** | ❌ **STRATEGY PERFORMANCE FAIL**
-  - **목표**: Bayesian Best 주변 정밀 탐색으로 성능 개선 가능성 확인
-  - **완료 내역**:
-    - ✅ LocalGridSearchTuner 구현 및 Sequential 실행
-    - ✅ 8 trials 실행 완료 (충분한 샘플 확보)
-    - ✅ Random/Bayesian/Local Grid 3단계 종합 분석
-    - ✅ 결과 리포트 작성 (PHASE28-5_LOCAL_GRID_SEARCH_ROUND1_RESULTS.md)
-  - **실행 결과** (8 trials, 5 valid):
-    - **Best Sharpe**: -1.0000 (Bayesian Best: -19.4773 대비 95% 개선)
+- **28-5: Local Grid Search Round 1** ??**COMPLETE** (Infrastructure PASS, Strategy Performance FAIL) (2025-12-07)
+  - Bayesian Round 1 ?�위 trials 주�? �?? Grid Search ?�행 �?종합 분석
+  - **Status**: ??**INFRASTRUCTURE COMPLETE** | ??**STRATEGY PERFORMANCE FAIL**
+  - **목표**: Bayesian Best 주�? ?��? ?�색?�로 ?�능 개선 가?�성 ?�인
+  - **?�료 ?�역**:
+    - ??LocalGridSearchTuner 구현 �?Sequential ?�행
+    - ??8 trials ?�행 ?�료 (충분???�플 ?�보)
+    - ??Random/Bayesian/Local Grid 3?�계 종합 분석
+    - ??결과 리포???�성 (PHASE28-5_LOCAL_GRID_SEARCH_ROUND1_RESULTS.md)
+  - **?�행 결과** (8 trials, 5 valid):
+    - **Best Sharpe**: -1.0000 (Bayesian Best: -19.4773 ?��?95% 개선)
     - **PnL 범위**: -178.92 ~ -133.52 USDT
-    - **Win Rate**: 0% (모든 거래 손실)
-    - **Trade Count**: 평균 5개 (매우 적음)
+    - **Win Rate**: 0% (모든 거래 ?�실)
+    - **Trade Count**: ?�균 5�?(매우 ?�음)
   - **Random/Bayesian/Local Grid 종합 비교**:
     | Algorithm | Valid Trials | Best Sharpe | Positive Sharpe |
     |-----------|--------------|-------------|-----------------|
     | Random | 16 | **+0.7509** | 1 (6.25%) |
     | Bayesian | 4 | -19.4773 | 0 |
     | Local Grid | 5 | **-1.0000** | 0 |
-  - **핵심 결론**:
-    - ✅ **튜닝 인프라 3단계 모두 정상 작동** (Random/Bayesian/Local Grid)
-    - ❌ **전략 자체가 현재 시장에서 edge 생성 실패** (Sharpe ≤ 0)
-    - ❌ **파라미터 튜닝으로 해결 불가능한 전략 로직 문제**
-    - 🔍 Local Grid는 Bayesian 대비 대폭 개선했으나 여전히 음수
+  - **?�심 결론**:
+    - ??**?�닝 ?�프??3?�계 모두 ?�상 ?�동** (Random/Bayesian/Local Grid)
+    - ??**?�략 ?�체가 ?�재 ?�장?�서 edge ?�성 ?�패** (Sharpe ??0)
+    - ??**?�라미터 ?�닝?�로 ?�결 불�??�한 ?�략 로직 문제**
+    - ?�� Local Grid??Bayesian ?��??�??개선?�으???�전???�수
   - **Acceptance Criteria**:
-    - [x] ✅ AC1-5: Infrastructure 모두 PASS
-    - [x] ❌ AC6: Strategy Performance FAIL (Expected)
-  - **Artifacts** ✅:
+    - [x] ??AC1-5: Infrastructure 모두 PASS
+    - [x] ??AC6: Strategy Performance FAIL (Expected)
+  - **Artifacts** ??
     - tuning/algorithms/local_grid_search.py (~994 LOC)
     - scripts/tuning/phase28_5_run_local_grid_search_round1.py (~263 LOC)
     - scripts/temp_check_phase28_5_progress.py (~155 LOC)
@@ -1426,447 +1426,447 @@ Ensemble ON 모드로 4시간 이상 연속 Paper 테스트 (인프라 안정성
     - tests/tuning/test_local_grid_search.py (8/9 PASS)
     - docs/PHASE28/PHASE28-5_LOCAL_GRID_SEARCH_ROUND1_DESIGN.md
     - docs/PHASE28/PHASE28-5_LOCAL_GRID_SEARCH_ROUND1_RESULTS.md 
-  - **판정**:  **INFRASTRUCTURE COMPLETE** - 튜닝 시스템 완성, 전략 오버홀 필요
+  - **?�정**:  **INFRASTRUCTURE COMPLETE** - ?�닝 ?�스???�성, ?�략 ?�버?� ?�요
 
 - **28-6: btc5m_baseline_v2 Strategy Redesign (Postmortem + Spec)**  **COMPLETE** (2025-12-07)
-  - V1 실패 부검 및 V2 재설계 명세 작성
+  - V1 ?�패 부검 �?V2 ?�설�?명세 ?�성
   - **Status**:  **COMPLETE** - Documentation Phase
   - **목적**:
-    - PHASE28-3/4/5 실패 원인 심층 분석 (Postmortem)
-    - btc5m_baseline_v2 재설계 명세 작성 (Strategy Redesign Spec)
-    - Regime-aware + Dynamic threshold 아키텍처 설계
-  - **완료 내역**:
-    -  **Postmortem Analysis 완성**:
-      - Random/Bayesian/Local Grid 3단계 실패 메트릭 종합 분석
-      - Root Cause Analysis (5가지 근본 원인 규명)
-      - 전략 사망 진단서 (Death Certificate) 발급
-      - Lessons Learned (튜닝 인프라 성공 / 전략 설계 실패)
-      - 향후 전략 설계 6대 원칙 도출
-    -  **Strategy Redesign Spec 완성**:
-      - V1 vs V2 비교 분석 (철학/구조/성능 목표)
-      - Regime Detection 설계 (6-state: Bull/Bear/Range × High/Low Vol)
-      - Dynamic Threshold 설계 (RSI/BB Rolling Percentile + Volatility 조정)
-      - Regime별 신호 로직 상세 설계 (6개 상태별 LONG/SHORT 조건)
-      - ParamSpace V2 설계 (탐색 공간 10,000배 확장)
-      - Implementation Plan 및 Acceptance Criteria 정의
-    -  **PHASE_ROADMAP.md 업데이트** (PHASE28-6 섹션 추가)
-  - **핵심 발견** (Postmortem):
-    -  **V1 사망 원인**: Mean Reversion을 Bull Trend에서 튜닝 (구조적 오류)
-    -  **고정 Threshold**: RSI 45/55, BB 1.0/1.5 → Regime 변화 미대응
-    -  **ParamSpace 협소**: RSI 40-48/52-58 → Bull Trend(평균 RSI 60+)에서 범위 밖
-    -  **진입 기회 부족**: Trade Count 평균 5개 (30일 기준 0.01% 진입률)
-    -  **튜닝 인프라 성공**: Random/Bayesian/Local Grid 3단계 모두 정상 작동
-  - **V2 핵심 변경**:
+    - PHASE28-3/4/5 ?�패 ?�인 ?�층 분석 (Postmortem)
+    - btc5m_baseline_v2 ?�설�?명세 ?�성 (Strategy Redesign Spec)
+    - Regime-aware + Dynamic threshold ?�키?�처 ?�계
+  - **?�료 ?�역**:
+    -  **Postmortem Analysis ?�성**:
+      - Random/Bayesian/Local Grid 3?�계 ?�패 메트�?종합 분석
+      - Root Cause Analysis (5가지 근본 ?�인 규명)
+      - ?�략 ?�망 진단??(Death Certificate) 발급
+      - Lessons Learned (?�닝 ?�프???�공 / ?�략 ?�계 ?�패)
+      - ?�후 ?�략 ?�계 6?� ?�칙 ?�출
+    -  **Strategy Redesign Spec ?�성**:
+      - V1 vs V2 비교 분석 (철학/구조/?�능 목표)
+      - Regime Detection ?�계 (6-state: Bull/Bear/Range × High/Low Vol)
+      - Dynamic Threshold ?�계 (RSI/BB Rolling Percentile + Volatility 조정)
+      - Regime�??�호 로직 ?�세 ?�계 (6�??�태�?LONG/SHORT 조건)
+      - ParamSpace V2 ?�계 (?�색 공간 10,000�??�장)
+      - Implementation Plan �?Acceptance Criteria ?�의
+    -  **PHASE_ROADMAP.md ?�데?�트** (PHASE28-6 ?�션 추�?)
+  - **?�심 발견** (Postmortem):
+    -  **V1 ?�망 ?�인**: Mean Reversion??Bull Trend?�서 ?�닝 (구조???�류)
+    -  **고정 Threshold**: RSI 45/55, BB 1.0/1.5 ??Regime 변??미�???
+    -  **ParamSpace ?�소**: RSI 40-48/52-58 ??Bull Trend(?�균 RSI 60+)?�서 범위 �?
+    -  **진입 기회 부�?*: Trade Count ?�균 5�?(30??기�? 0.01% 진입�?
+    -  **?�닝 ?�프???�공**: Random/Bayesian/Local Grid 3?�계 모두 ?�상 ?�동
+  - **V2 ?�심 변�?*:
     1. **Regime Detection 강화**: ADX + DI+/DI- + ATR 기반 6-state 분류
-    2. **Dynamic Threshold**: RSI → Rolling percentile (20%/80%), BB → Volatility 조정
-    3. **Regime별 Threshold 분리**: Bull/Bear/Range 각각 다른 진입 조건
-    4. **ParamSpace 확장**: RSI 30-70, BB 0.5-2.5, RR 0.8-3.0 (2-3배 확장)
-    5. **Long/Short Balance**: Regime별 포지션 bias (Bull 65% Long, Bear 65% Short)
-  - **V2 목표 성능** (Minimum Viable):
-    - Trade Count: 20+ per month (V1 5개 → 4배 증가)
-    - Sharpe Ratio: ≥ 0.0 (모든 Period: Bull/Bear/Range)
-    - Win Rate: ≥ 40% (V1 0% → 실질적 개선)
-    - Max Drawdown: ≤ 20% (V1 200-400% → 대폭 개선)
+    2. **Dynamic Threshold**: RSI ??Rolling percentile (20%/80%), BB ??Volatility 조정
+    3. **Regime�?Threshold 분리**: Bull/Bear/Range 각각 ?�른 진입 조건
+    4. **ParamSpace ?�장**: RSI 30-70, BB 0.5-2.5, RR 0.8-3.0 (2-3�??�장)
+    5. **Long/Short Balance**: Regime�??��???bias (Bull 65% Long, Bear 65% Short)
+  - **V2 목표 ?�능** (Minimum Viable):
+    - Trade Count: 20+ per month (V1 5�???4�?증�?)
+    - Sharpe Ratio: ??0.0 (모든 Period: Bull/Bear/Range)
+    - Win Rate: ??40% (V1 0% ???�질??개선)
+    - Max Drawdown: ??20% (V1 200-400% ???�??개선)
   - **Acceptance Criteria**:
-    - [x]  AC1: Postmortem Analysis 문서 작성 (`PHASE28-6_POSTMORTEM_ANALYSIS.md`)
-    - [x]  AC2: Strategy Redesign Spec 작성 (`PHASE28-6_STRATEGY_REDESIGN_SPEC.md`)
-    - [x]  AC3: PHASE_ROADMAP.md 업데이트
-    - [x]  AC4: V1 vs V2 비교 표 작성 (철학/구조/성능)
-    - [x]  AC5: Regime Detection + Dynamic Threshold 설계 완료
+    - [x]  AC1: Postmortem Analysis 문서 ?�성 (`PHASE28-6_POSTMORTEM_ANALYSIS.md`)
+    - [x]  AC2: Strategy Redesign Spec ?�성 (`PHASE28-6_STRATEGY_REDESIGN_SPEC.md`)
+    - [x]  AC3: PHASE_ROADMAP.md ?�데?�트
+    - [x]  AC4: V1 vs V2 비교 ???�성 (철학/구조/?�능)
+    - [x]  AC5: Regime Detection + Dynamic Threshold ?�계 ?�료
   - **Artifacts** :
     - docs/PHASE28/PHASE28-6_POSTMORTEM_ANALYSIS.md (~700 LOC) 
     - docs/PHASE28/PHASE28-6_STRATEGY_REDESIGN_SPEC.md (~1,100 LOC) 
-    - PHASE_ROADMAP.md (PHASE28-6 섹션 업데이트)
-  - **판정**:  **DESIGN COMPLETE** - V1 사망 처리, V2 설계 완료, 구현 준비 완료
-  - **다음 단계**: PHASE28-7 (V2 구현 + Unit Tests + Smoke Test)
+    - PHASE_ROADMAP.md (PHASE28-6 ?�션 ?�데?�트)
+  - **?�정**:  **DESIGN COMPLETE** - V1 ?�망 처리, V2 ?�계 ?�료, 구현 준�??�료
+  - **?�음 ?�계**: PHASE28-7 (V2 구현 + Unit Tests + Smoke Test)
 
-- **28-7: btc5m_baseline_v2 Implementation & Testing** ✅ **COMPLETE** (Implementation PASS, Smoke Test PARTIAL) (2025-12-07)
-  - **Status**: ✅ **IMPLEMENTATION COMPLETE** | ⚠️ **SMOKE TEST PARTIAL**
+- **28-7: btc5m_baseline_v2 Implementation & Testing** ??**COMPLETE** (Implementation PASS, Smoke Test PARTIAL) (2025-12-07)
+  - **Status**: ??**IMPLEMENTATION COMPLETE** | ?�️ **SMOKE TEST PARTIAL**
   
-  - **완료 내역**:
-    1. ✅ Core Modules 구현 완료 (~860 LOC):
+  - **?�료 ?�역**:
+    1. ??Core Modules 구현 ?�료 (~860 LOC):
        - strategies/utils/regime_detector.py (~220 LOC)
        - strategies/utils/dynamic_threshold.py (~220 LOC)
        - strategies/btc5m_baseline_v2.py (~420 LOC)
-       - strategies/__init__.py 업데이트
+       - strategies/__init__.py ?�데?�트
     
-    2. ✅ Unit Tests 100% 통과:
+    2. ??Unit Tests 100% ?�과:
        - tests/test_strategies/test_regime_detector.py (8/8 PASS)
        - tests/test_strategies/test_dynamic_threshold.py (10/10 PASS)
        - tests/test_strategies/test_btc5m_baseline_v2.py (9/9 PASS)
-       - **Total: 27/27 PASS, 커버리지 ~80%**
+       - **Total: 27/27 PASS, 커버리�? ~80%**
     
-    3. ⚠️ Smoke Test 부분 완료:
-       - configs/backtest/phase28_7_btc5m_baseline_v2_smoke.yml 작성
-       - 백테스트 실행 완료 (2일 기간)
-       - **이슈**: Unicode 인코딩 오류로 결과 로그 출력 불가
+    3. ?�️ Smoke Test 부�??�료:
+       - configs/backtest/phase28_7_btc5m_baseline_v2_smoke.yml ?�성
+       - 백테?�트 ?�행 ?�료 (2??기간)
+       - **?�슈**: Unicode ?�코???�류�?결과 로그 출력 불�?
     
-    4. ✅ ParamSpace V2 Config 작성 완료
+    4. ??ParamSpace V2 Config ?�성 ?�료
   
-  - **핵심 성과**:
-    - ✅ Regime-Aware 전략 구현 (6-state Detection)
-    - ✅ Dynamic Threshold (RSI/BB/Momentum 적응형)
-    - ✅ 철저한 테스트 (27/27 PASS)
-    - ✅ 코드 품질 (컬럼명 통일, BaseStrategy 준수)
+  - **?�심 ?�과**:
+    - ??Regime-Aware ?�략 구현 (6-state Detection)
+    - ??Dynamic Threshold (RSI/BB/Momentum ?�응??
+    - ??철�????�스??(27/27 PASS)
+    - ??코드 ?�질 (컬럼�??�일, BaseStrategy 준??
   
   - **Acceptance Criteria**:
-    - [x] ✅ AC1: Core Modules 구현 완료
-    - [x] ✅ AC2: Unit Tests 통과 (27/27 PASS)
-    - [x] ⚠️ AC3: Smoke Test 부분 통과 (실행 완료, 결과 미확인)
-    - [x] ✅ AC4: ParamSpace V2 Config 작성 완료
-    - [x] ✅ AC5: 문서화 완료
+    - [x] ??AC1: Core Modules 구현 ?�료
+    - [x] ??AC2: Unit Tests ?�과 (27/27 PASS)
+    - [x] ?�️ AC3: Smoke Test 부�??�과 (?�행 ?�료, 결과 미확??
+    - [x] ??AC4: ParamSpace V2 Config ?�성 ?�료
+    - [x] ??AC5: 문서???�료
   
-  - **Artifacts** ✅:
-    - Total: ~1,610 LOC (코드 + 테스트)
+  - **Artifacts** ??
+    - Total: ~1,610 LOC (코드 + ?�스??
     - docs/PHASE28/PHASE28-7_IMPLEMENTATION_AND_SMOKE_TEST_REPORT.md
   
-  - **미완료 작업** (PHASE28-8):
-    - Unicode 오류 수정
-    - Smoke Backtest 결과 확인
-    - 30일 전체 백테스트
+  - **미완�??�업** (PHASE28-8):
+    - Unicode ?�류 ?�정
+    - Smoke Backtest 결과 ?�인
+    - 30???�체 백테?�트
   
-  - **판정**: ✅ **IMPLEMENTATION COMPLETE**
-  - **다음 단계**: PHASE28-8 (Multi-Period Validation)
+  - **?�정**: ??**IMPLEMENTATION COMPLETE**
+  - **?�음 ?�계**: PHASE28-8 (Multi-Period Validation)
 
-- **28-8: btc5m_baseline_v2 Multi-Period Baseline Validation** ⚠️ **PARTIAL COMPLETE** (2025-12-08)
-  - **Status**: ⚠️ **INFRASTRUCTURE COMPLETE** | ❌ **STRATEGY PERFORMANCE FAIL**
+- **28-8: btc5m_baseline_v2 Multi-Period Baseline Validation** ?�️ **PARTIAL COMPLETE** (2025-12-08)
+  - **Status**: ?�️ **INFRASTRUCTURE COMPLETE** | ??**STRATEGY PERFORMANCE FAIL**
   
-  - **완료 내역**:
-    1. ✅ Unicode 로깅 오류 완전 수정:
-       - sys.stdout UTF-8 강제 적용
-       - TimedRotatingFileHandler 제거 (PermissionError 방지)
-       - 한글/이모지 정상 출력 검증 완료
+  - **?�료 ?�역**:
+    1. ??Unicode 로깅 ?�류 ?�전 ?�정:
+       - sys.stdout UTF-8 강제 ?�용
+       - TimedRotatingFileHandler ?�거 (PermissionError 방�?)
+       - ?��?/?�모지 ?�상 출력 검�??�료
     
-    2. ✅ Multi-Period Config 생성:
+    2. ??Multi-Period Config ?�성:
        - Bull Period (2024-10)
        - Bear Period (2024-08)
-       - Range Period (2024-11~12) - 시간 제약으로 생략
+       - Range Period (2024-11~12) - ?�간 ?�약?�로 ?�략
     
-    3. ✅ 백테스트 실행:
+    3. ??백테?�트 ?�행:
        - Bull: 3 trades, Sharpe -10.96, Win Rate 0%
        - Bear: 3 trades, Sharpe -6.24, Win Rate 0%
     
-    4. ✅ 분석 인프라 구축:
+    4. ??분석 ?�프??구축:
        - scripts/analysis/phase28_8_analyze_baseline.py
-       - JSON/Markdown 리포트 생성
+       - JSON/Markdown 리포???�성
   
-  - **핵심 발견**:
-    - ❌ **Trade Count 극도로 부족** (3 vs 20 목표)
-    - ❌ **Win Rate 0%** (모든 거래가 손실)
-    - ❌ **Sharpe Ratio 매우 나쁨** (Bull: -10.96, Bear: -6.24)
-    - ❌ **Regime Detection 오작동** (Bull Trend를 Range로 분류)
-    - ⚠️ **신호는 생성되나 Guard가 대부분 차단** (2,807 signals → 3 trades)
+  - **?�심 발견**:
+    - ??**Trade Count 극도�?부�?* (3 vs 20 목표)
+    - ??**Win Rate 0%** (모든 거래가 ?�실)
+    - ??**Sharpe Ratio 매우 ?�쁨** (Bull: -10.96, Bear: -6.24)
+    - ??**Regime Detection ?�작??* (Bull Trend�?Range�?분류)
+    - ?�️ **?�호???�성?�나 Guard가 ?�부�?차단** (2,807 signals ??3 trades)
   
   - **Acceptance Criteria**:
-    - [x] ✅ AC1: Unicode 로깅 오류 수정
-    - [x] ✅ AC2: Multi-Period Config 생성
-    - [x] ✅ AC3: Bull/Bear 백테스트 실행
-    - [x] ❌ AC4: Sharpe ≥ 0 달성 (Bull: -10.96, Bear: -6.24)
-    - [x] ❌ AC5: Trade Count ≥ 20 (Bull: 3, Bear: 3)
-    - [x] ✅ AC6: 문서화 완료
+    - [x] ??AC1: Unicode 로깅 ?�류 ?�정
+    - [x] ??AC2: Multi-Period Config ?�성
+    - [x] ??AC3: Bull/Bear 백테?�트 ?�행
+    - [x] ??AC4: Sharpe ??0 ?�성 (Bull: -10.96, Bear: -6.24)
+    - [x] ??AC5: Trade Count ??20 (Bull: 3, Bear: 3)
+    - [x] ??AC6: 문서???�료
   
-  - **Artifacts** ✅:
-    - common/logger.py (Unicode 수정)
-    - configs/backtest/phase28_8_btc5m_baseline_v2_*.yml (3개)
+  - **Artifacts** ??
+    - common/logger.py (Unicode ?�정)
+    - configs/backtest/phase28_8_btc5m_baseline_v2_*.yml (3�?
     - scripts/analysis/phase28_8_analyze_baseline.py
-    - scripts/temp_*.py (분석/디버깅 스크립트들)
+    - scripts/temp_*.py (분석/?�버�??�크립트??
     - reports/backtest/phase28_8/*.json
     - docs/PHASE28/PHASE28-8_UNICODE_FIX_NOTES.md
     - docs/PHASE28/PHASE28-8_MULTI_PERIOD_BASELINE_RESULTS.md
   
-  - **근본 원인**:
-    - Regime Detection 로직 문제 (Trend를 감지 못함)
-    - Guard 시스템 과도하게 엄격 (신호 대비 거래 비율 0.1%)
-    - Dynamic Threshold가 너무 보수적
-    - V2 전략이 V1보다 나아지지 않음
+  - **근본 ?�인**:
+    - Regime Detection 로직 문제 (Trend�?감�? 못함)
+    - Guard ?�스??과도?�게 ?�격 (?�호 ?��?거래 비율 0.1%)
+    - Dynamic Threshold가 ?�무 보수??
+    - V2 ?�략??V1보다 ?�아지지 ?�음
   
-  - **판정**: ⚠️ **BASELINE NOT VIABLE** - 파라미터 튜닝 전에 구조적 수정 필요
-  - **다음 단계**: 
-    - PHASE28-8-1: Regime Detection 디버깅
-    - PHASE28-8-2: Guard 시스템 완화
-    - PHASE29: 전략 패밀리 재평가 (Mean Reversion vs Trend Following)
+  - **?�정**: ?�️ **BASELINE NOT VIABLE** - ?�라미터 ?�닝 ?�에 구조???�정 ?�요
+  - **?�음 ?�계**: 
+    - PHASE28-8-1: Regime Detection ?�버�?
+    - PHASE28-8-2: Guard ?�스???�화
+    - PHASE29: ?�략 ?��?�??�평가 (Mean Reversion vs Trend Following)
 
-- **28-8-1: btc5m_baseline_v2 3-Month Extended Baseline Deep Dive** ✅ **COMPLETE** (2025-12-08)
-  - **Status**: ✅ **INFRASTRUCTURE COMPLETE** | ❌ **STRATEGY STILL NOT VIABLE**
+- **28-8-1: btc5m_baseline_v2 3-Month Extended Baseline Deep Dive** ??**COMPLETE** (2025-12-08)
+  - **Status**: ??**INFRASTRUCTURE COMPLETE** | ??**STRATEGY STILL NOT VIABLE**
   
-  - **목표**: 3개월 연속 백테스트로 Regime/Signal/Order Funnel 정량적 진단
+  - **목표**: 3개월 ?�속 백테?�트�?Regime/Signal/Order Funnel ?�량??진단
   
-  - **완료 내역**:
-    1. ✅ 3개월 백테스트 Config 생성 (2024-08~10, 92일)
-    2. ✅ 3개월 백테스트 실행 완료 (46분 소요)
-    3. ✅ Extended Analyzer 구현 및 실행
-    4. ✅ 상세 리포트 생성 (JSON + Markdown)
+  - **?�료 ?�역**:
+    1. ??3개월 백테?�트 Config ?�성 (2024-08~10, 92??
+    2. ??3개월 백테?�트 ?�행 ?�료 (46�??�요)
+    3. ??Extended Analyzer 구현 �??�행
+    4. ???�세 리포???�성 (JSON + Markdown)
   
-  - **핵심 발견** (3개월 통합):
-    - **Trade Count**: 10건 (목표 60건 대비 83% 부족)
+  - **?�심 발견** (3개월 ?�합):
+    - **Trade Count**: 10�?(목표 60�??��?83% 부�?
     - **Win Rate**: 30% (목표 40% 미달, Bull/Bear 0%, Range 75%)
-    - **Sharpe Ratio**: -0.33 (목표 ≥0 미달)
-    - **Signal → Order 전환율**: **0.12%** (8,576 → 10)
-    - **Regime Trend**: **0건** (3개월 전체에서 Trend 미감지)
-    - **Regime Range**: 2,828건 (100% Range로 분류)
+    - **Sharpe Ratio**: -0.33 (목표 ?? 미달)
+    - **Signal ??Order ?�환??*: **0.12%** (8,576 ??10)
+    - **Regime Trend**: **0�?* (3개월 ?�체?�서 Trend 미감지)
+    - **Regime Range**: 2,828�?(100% Range�?분류)
   
-  - **근본 원인 확인**:
-    1. ❌ **Regime Detection 완전 오작동**
-       - Bull/Bear 구간 포함 3개월 전체에서 Trend Regime 0건
-       - ADX/DI 컬럼 미발견 경고 → 기본값 'range_low_vol' 사용
-       - 지표 계산 또는 컬럼명 불일치 문제
+  - **근본 ?�인 ?�인**:
+    1. ??**Regime Detection ?�전 ?�작??*
+       - Bull/Bear 구간 ?�함 3개월 ?�체?�서 Trend Regime 0�?
+       - ADX/DI 컬럼 미발�?경고 ??기본�?'range_low_vol' ?�용
+       - 지??계산 ?�는 컬럼�?불일�?문제
     
-    2. ❌ **Guard/Portfolio 과도한 차단**
-       - Signal 8,576개 → Order 10건 (99.88% 차단)
-       - Budget Cap/Cooldown/Ensemble tier skip 복합 작용
+    2. ??**Guard/Portfolio 과도??차단**
+       - Signal 8,576�???Order 10�?(99.88% 차단)
+       - Budget Cap/Cooldown/Ensemble tier skip 복합 ?�용
     
-    3. ❌ **V2 전략은 Range에서만 작동**
+    3. ??**V2 ?�략?� Range?�서�??�동**
        - Range 구간: Win Rate 75% (3/4)
        - Trend 구간: Win Rate 0% (0/6)
-       - Mean Reversion 본질이 Trend에서 실패
+       - Mean Reversion 본질??Trend?�서 ?�패
   
   - **Acceptance Criteria**:
-    - [x] ✅ AC1: 3M Config 생성
-    - [x] ✅ AC2: 3M 백테스트 실행 완료
-    - [x] ✅ AC3: Extended Analyzer 구현
-    - [x] ✅ AC4: Funnel/Regime 분석 완료
-    - [x] ✅ AC5: 리포트 생성 및 문서화
-    - [x] ❌ AC6: Sharpe ≥ 0 달성 (실제: -0.33)
+    - [x] ??AC1: 3M Config ?�성
+    - [x] ??AC2: 3M 백테?�트 ?�행 ?�료
+    - [x] ??AC3: Extended Analyzer 구현
+    - [x] ??AC4: Funnel/Regime 분석 ?�료
+    - [x] ??AC5: 리포???�성 �?문서??
+    - [x] ??AC6: Sharpe ??0 ?�성 (?�제: -0.33)
   
-  - **Artifacts** ✅:
+  - **Artifacts** ??
     - configs/backtest/phase28_8_btc5m_baseline_v2_3m_v2.yml
     - scripts/analysis/phase28_8_extended_baseline_deepdive.py
     - reports/backtest/phase28_8/baseline_3m_summary.json
     - reports/analysis/phase28_8_extended_baseline_3m_summary.json
     - docs/PHASE28/PHASE28-8_EXTENDED_BASELINE_DEEPDIVE.md
-    - docs/PHASE28/PHASE28-8_MULTI_PERIOD_BASELINE_RESULTS.md (업데이트)
+    - docs/PHASE28/PHASE28-8_MULTI_PERIOD_BASELINE_RESULTS.md (?�데?�트)
   
-  - **판정**: ✅ **DEEP DIVE COMPLETE** - 근본 원인 정량적 확인, 전략 생존 불가 최종 판정
-    - PHASE28-9: Regime Detection 컬럼명/지표 디버깅 (긴급)
-    - PHASE28-10: Guard 시스템 파라미터 완화
-    - PHASE29: 전략 패밀리 재평가 (Mean Reversion vs Trend Following)
+  - **?�정**: ??**DEEP DIVE COMPLETE** - 근본 ?�인 ?�량???�인, ?�략 ?�존 불�? 최종 ?�정
+    - PHASE28-9: Regime Detection 컬럼�?지???�버�?(긴급)
+    - PHASE28-10: Guard ?�스???�라미터 ?�화
+    - PHASE29: ?�략 ?��?�??�평가 (Mean Reversion vs Trend Following)
 
-- **28-9: Regime Detection & Guard Layer Normalization** ✅ **COMPLETE** (2025-12-08)
-  - **Status**: ✅ **INFRASTRUCTURE COMPLETE** | ⚠️ **CONVERSION RATE STILL LOW**
+- **28-9: Regime Detection & Guard Layer Normalization** ??**COMPLETE** (2025-12-08)
+  - **Status**: ??**INFRASTRUCTURE COMPLETE** | ?�️ **CONVERSION RATE STILL LOW**
   
-  - **목표**: Regime Detection ADX 컬럼 오류 수정 및 Guard Layer 완화로 전환율 개선
+  - **목표**: Regime Detection ADX 컬럼 ?�류 ?�정 �?Guard Layer ?�화�??�환??개선
   
-  - **완료 내역**:
-    1. ✅ Regime Detection ADX/DI 컬럼명 정규화 완료
-       - `adx_value` → `adx`, `di_plus_value` → `di_plus`, `di_minus_value` → `di_minus`
-       - indicators/regime.py 수정 완료
-    2. ✅ Mini Backtest (7일) 실행: Trend 1 / Range 2015 (정상 감지 확인)
-    3. ✅ Guard Layer 완화:
-       - Budget Cap: 10,000 → 50,000 USDT
-       - Consecutive Loss Cooldown: 60 → 30분
-       - Symbol Exposure: 0.2 → 0.5
-    4. ✅ Short Backtest (2시간): 전환율 0.10% → 0.13% 소폭 개선
-    5. ✅ 3개월 Full Backtest 재실행: 전환율 0.12% → **0.40%** (3.3배 개선!)
-    6. ✅ 분석 리포트 자동 생성
+  - **?�료 ?�역**:
+    1. ??Regime Detection ADX/DI 컬럼�??�규???�료
+       - `adx_value` ??`adx`, `di_plus_value` ??`di_plus`, `di_minus_value` ??`di_minus`
+       - indicators/regime.py ?�정 ?�료
+    2. ??Mini Backtest (7?? ?�행: Trend 1 / Range 2015 (?�상 감�? ?�인)
+    3. ??Guard Layer ?�화:
+       - Budget Cap: 10,000 ??50,000 USDT
+       - Consecutive Loss Cooldown: 60 ??30�?
+       - Symbol Exposure: 0.2 ??0.5
+    4. ??Short Backtest (2?�간): ?�환??0.10% ??0.13% ?�폭 개선
+    5. ??3개월 Full Backtest ?�실?? ?�환??0.12% ??**0.40%** (3.3�?개선!)
+    6. ??분석 리포???�동 ?�성
   
-  - **핵심 성과**:
-    - ✅ Regime Detection 정상화 (ADX 컬럼 정규화)
-    - ✅ Guard Layer 완화로 전환율 3.3배 개선 (0.12% → 0.40%)
-    - ⚠️ 여전히 목표 5% 미달 (99.6% 신호 차단)
+  - **?�심 ?�과**:
+    - ??Regime Detection ?�상??(ADX 컬럼 ?�규??
+    - ??Guard Layer ?�화�??�환??3.3�?개선 (0.12% ??0.40%)
+    - ?�️ ?�전??목표 5% 미달 (99.6% ?�호 차단)
   
   - **Acceptance Criteria**:
-    - [x] ✅ AC1: ADX 컬럼 정규화 완료
-    - [x] ✅ AC2: Regime Detection 정상 작동 확인
-    - [x] ✅ AC3: Guard Layer 완화 적용
-    - [x] ✅ AC4: 3M 재백테스트 실행
-    - [x] ⚠️ AC5: 전환율 5% 달성 (실제: 0.40%)
-    - [x] ✅ AC6: 문서화 완료
+    - [x] ??AC1: ADX 컬럼 ?�규???�료
+    - [x] ??AC2: Regime Detection ?�상 ?�동 ?�인
+    - [x] ??AC3: Guard Layer ?�화 ?�용
+    - [x] ??AC4: 3M ?�백?�스???�행
+    - [x] ?�️ AC5: ?�환??5% ?�성 (?�제: 0.40%)
+    - [x] ??AC6: 문서???�료
   
-  - **Artifacts** ✅:
-    - indicators/regime.py (ADX 컬럼 정규화)
-    - configs/backtest/phase28_9_*.yml (3개)
+  - **Artifacts** ??
+    - indicators/regime.py (ADX 컬럼 ?�규??
+    - configs/backtest/phase28_9_*.yml (3�?
     - scripts/analysis/phase28_9_analyze_conversion.py
     - reports/backtest/phase28_9/*.json
     - docs/PHASE28/PHASE28_9_REGIME_DETECTION_GUARD_NORMALIZATION_REPORT.md
   
-  - **판정**: ✅ **PHASE28-9 COMPLETE** | ⚠️ **전환율 개선 필요**
-  - **다음 단계**: PHASE28-10 (Guard Telemetry & Conversion Diagnosis)
+  - **?�정**: ??**PHASE28-9 COMPLETE** | ?�️ **?�환??개선 ?�요**
+  - **?�음 ?�계**: PHASE28-10 (Guard Telemetry & Conversion Diagnosis)
 
-- **28-10: Guard Telemetry & Conversion Diagnosis** ✅ **COMPLETE** (2025-12-08)
-  - **Status**: ✅ **TELEMETRY INFRASTRUCTURE COMPLETE** | 🎯 **ROOT CAUSE IDENTIFIED**
+- **28-10: Guard Telemetry & Conversion Diagnosis** ??**COMPLETE** (2025-12-08)
+  - **Status**: ??**TELEMETRY INFRASTRUCTURE COMPLETE** | ?�� **ROOT CAUSE IDENTIFIED**
   
-  - **목표**: Guard & Filter rejection 경로에 Telemetry 추가하여 전환율 저조 원인 정량 분석
+  - **목표**: Guard & Filter rejection 경로??Telemetry 추�??�여 ?�환???��??�인 ?�량 분석
   
-  - **완료 내역**:
-    1. ✅ TradeActivityTracker 확장 (Guard rejection by reason 추적)
-    2. ✅ RiskManager Telemetry 훅 추가 (7개 Guard 경로)
-    3. ✅ SignalGenerator Filter Telemetry 훅 추가 (7개 Filter 경로)
-    4. ✅ Engine에 activity_tracker 전달 체인 완성
-    5. ✅ 3개월 재백테스트 실행 (Telemetry 활성화)
-    6. ✅ Guard Breakdown 분석 스크립트 구현
-    7. ✅ JSON + Markdown 리포트 생성
+  - **?�료 ?�역**:
+    1. ??TradeActivityTracker ?�장 (Guard rejection by reason 추적)
+    2. ??RiskManager Telemetry ??추�? (7�?Guard 경로)
+    3. ??SignalGenerator Filter Telemetry ??추�? (7�?Filter 경로)
+    4. ??Engine??activity_tracker ?�달 체인 ?�성
+    5. ??3개월 ?�백?�스???�행 (Telemetry ?�성??
+    6. ??Guard Breakdown 분석 ?�크립트 구현
+    7. ??JSON + Markdown 리포???�성
   
-  - **핵심 발견** (Signal → Order Flow 100% 추적):
+  - **?�심 발견** (Signal ??Order Flow 100% 추적):
     - **Signal True**: 6,194
     - **Guard Blocks Total**: 6,169 (99.6% 차단)
-      - `FILTER_COOLDOWN_ACTIVE`: 3,263 (52.68%) 🥇 **최대 차단 요인**
-      - `GUARD_PORTFOLIO_CAN_OPEN`: 2,284 (36.87%) 🥈
-      - `FILTER_VOLUME_SPIKE`: 622 (10.04%) 🥉
+      - `FILTER_COOLDOWN_ACTIVE`: 3,263 (52.68%) ?�� **최�? 차단 ?�인**
+      - `GUARD_PORTFOLIO_CAN_OPEN`: 2,284 (36.87%) ?��
+      - `FILTER_VOLUME_SPIKE`: 622 (10.04%) ?��
     - **Orders Submitted**: 25 (0.40%)
-    - **검증**: 6,194 - 6,169 = 25 ✅ **완벽 일치!**
+    - **검�?*: 6,194 - 6,169 = 25 ??**?�벽 ?�치!**
   
-  - **근본 원인 정량화**:
-    1. **Cooldown Filter가 압도적 차단 요인** (52.68%)
-       - 신호 생성 간격이 너무 짧고 쿨다운이 너무 길다.
-       - `cooldown_minutes` 파라미터 완화 필요.
+  - **근본 ?�인 ?�량??*:
+    1. **Cooldown Filter가 ?�도??차단 ?�인** (52.68%)
+       - ?�호 ?�성 간격???�무 짧고 쿨다?�이 ?�무 길다.
+       - `cooldown_minutes` ?�라미터 ?�화 ?�요.
     
-    2. **PortfolioManager Guard가 2차 차단** (36.87%)
-       - max_positions, exposure, budget cap 복합 작용.
-       - `can_open_position()` 로직 세분화 및 파라미터 조정 필요.
+    2. **PortfolioManager Guard가 2�?차단** (36.87%)
+       - max_positions, exposure, budget cap 복합 ?�용.
+       - `can_open_position()` 로직 ?�분??�??�라미터 조정 ?�요.
     
-    3. **Volume Spike Filter가 3차 차단** (10.04%)
-       - 변동성 높은 시장에서 합리적 차단일 수 있음.
+    3. **Volume Spike Filter가 3�?차단** (10.04%)
+       - 변?�성 ?��? ?�장?�서 ?�리??차단?????�음.
        - `vol_spike_mult` 조정 고려.
   
   - **Acceptance Criteria**:
-    - [x] ✅ AC1: TradeActivityTracker 확장 완료
-    - [x] ✅ AC2: RiskManager Telemetry 완료
-    - [x] ✅ AC3: SignalGenerator Telemetry 완료
-    - [x] ✅ AC4: 3M Telemetry 백테스트 완료
-    - [x] ✅ AC5: Breakdown 분석 스크립트 구현
-    - [x] ✅ AC6: JSON + MD 리포트 생성
-    - [x] ✅ AC7: 문서화 완료
+    - [x] ??AC1: TradeActivityTracker ?�장 ?�료
+    - [x] ??AC2: RiskManager Telemetry ?�료
+    - [x] ??AC3: SignalGenerator Telemetry ?�료
+    - [x] ??AC4: 3M Telemetry 백테?�트 ?�료
+    - [x] ??AC5: Breakdown 분석 ?�크립트 구현
+    - [x] ??AC6: JSON + MD 리포???�성
+    - [x] ??AC7: 문서???�료
   
-  - **Artifacts** ✅:
-    - metrics/trade_activity_tracker.py (확장)
-    - execution/risk_manager.py (Telemetry 훅 추가)
-    - signals/signal_generator.py (Telemetry 훅 추가)
-    - execution/engine.py (activity_tracker 전달)
+  - **Artifacts** ??
+    - metrics/trade_activity_tracker.py (?�장)
+    - execution/risk_manager.py (Telemetry ??추�?)
+    - signals/signal_generator.py (Telemetry ??추�?)
+    - execution/engine.py (activity_tracker ?�달)
     - configs/backtest/phase28_10_btc5m_baseline_v2_3m_guard_diag.yml
     - scripts/analysis/phase28_10_guard_breakdown.py
     - reports/backtest/phase28_10/guard_diag_3m_summary.json
     - reports/backtest/phase28_10/guard_breakdown.json
     - docs/PHASE28/PHASE28_10_GUARD_BREAKDOWN_REPORT.md
   
-  - **판정**: ✅ **PHASE28-10 COMPLETE** - 진단 인프라 완성, 최적화 방향 명확화
-  - **다음 단계**: PHASE28-11 (Guard Optimization Based on Telemetry)
+  - **?�정**: ??**PHASE28-10 COMPLETE** - 진단 ?�프???�성, 최적??방향 명확??
+  - **?�음 ?�계**: PHASE28-11 (Guard Optimization Based on Telemetry)
 
-- **28-11: Guard Optimization V1 - Profile Comparison** 🔴 **FAIL** (2025-12-08)
-  - **Status**: 🔴 **INFRASTRUCTURE COMPLETE** | ❌ **TARGET NOT ACHIEVED**
-  - **목표**: Guard/Filter 최적화로 전환율 0.40% → 3~5% 개선
-  - **실험 결과**: Profile A/B/C: 0.24% (15 orders), Profile D: 0.13% (8 orders)
-  - **근본 원인**: 전략 예산 제한(20% = $9,941)이 99.76% 신호 차단, Config 설정 미반영 버그
-  - **Artifacts**: 설계 문서, 4개 프로파일 Config, 분석 스크립트, 한국어 리포트
-  - **판정**: 🔴 **FAIL** - 목표 미달, 상용 후보 없음
-  - **다음 단계**: PHASE28-12 (전략 예산 로직 비활성화 및 재실험)
+- **28-11: Guard Optimization V1 - Profile Comparison** ?�� **FAIL** (2025-12-08)
+  - **Status**: ?�� **INFRASTRUCTURE COMPLETE** | ??**TARGET NOT ACHIEVED**
+  - **목표**: Guard/Filter 최적?�로 ?�환??0.40% ??3~5% 개선
+  - **?�험 결과**: Profile A/B/C: 0.24% (15 orders), Profile D: 0.13% (8 orders)
+  - **근본 ?�인**: ?�략 ?�산 ?�한(20% = $9,941)??99.76% ?�호 차단, Config ?�정 미반??버그
+  - **Artifacts**: ?�계 문서, 4�??�로?�일 Config, 분석 ?�크립트, ?�국??리포??
+  - **?�정**: ?�� **FAIL** - 목표 미달, ?�용 ?�보 ?�음
+  - **?�음 ?�계**: PHASE28-12 (?�략 ?�산 로직 비활?�화 �??�실??
 
-- **28-12: Portfolio Guard Strategy Budget OFF** ✅ **PARTIAL SUCCESS** (2025-12-08)
-  - **Status**: ✅ **INFRASTRUCTURE COMPLETE** | ⚠️ **NEW BOTTLENECK IDENTIFIED**
+- **28-12: Portfolio Guard Strategy Budget OFF** ??**PARTIAL SUCCESS** (2025-12-08)
+  - **Status**: ??**INFRASTRUCTURE COMPLETE** | ?�️ **NEW BOTTLENECK IDENTIFIED**
   
-  - **목표**: 전략 예산 Guard 비활성화로 전환율 0.24% → 3~5% 개선
+  - **목표**: ?�략 ?�산 Guard 비활?�화�??�환??0.24% ??3~5% 개선
   
-  - **완료 내역**:
-    1. ✅ PortfolioManager에 Dynamic Budget 토글 구현 (Config 기반)
-    2. ✅ Profile E/F/G Config 생성 (Dynamic Budget OFF + 다양한 Portfolio 설정)
-    3. ✅ 3개월 백테스트 실행 (3개 프로파일)
-    4. ✅ 비교 분석 스크립트 구현 및 한국어 리포트 생성
+  - **?�료 ?�역**:
+    1. ??PortfolioManager??Dynamic Budget ?��? 구현 (Config 기반)
+    2. ??Profile E/F/G Config ?�성 (Dynamic Budget OFF + ?�양??Portfolio ?�정)
+    3. ??3개월 백테?�트 ?�행 (3�??�로?�일)
+    4. ??비교 분석 ?�크립트 구현 �??�국??리포???�성
   
-  - **핵심 성과**:
-    - ✅ 전략 예산 Guard 완전 해결 (Config 기반 제어)
-    - ✅ 전환율 **9.3배 개선** (0.24% → 2.23%, 138 orders)
-    - ⚠️ 새로운 병목 발견: `GUARD_DAILY_LOSS_LIMIT` (**93.7%** 차단)
-      - Profile E: 5,804건 / 6,194 signals
-      - Daily Loss Limit이 압도적 차단 요인으로 등장
+  - **?�심 ?�과**:
+    - ???�략 ?�산 Guard ?�전 ?�결 (Config 기반 ?�어)
+    - ???�환??**9.3�?개선** (0.24% ??2.23%, 138 orders)
+    - ?�️ ?�로??병목 발견: `GUARD_DAILY_LOSS_LIMIT` (**93.7%** 차단)
+      - Profile E: 5,804�?/ 6,194 signals
+      - Daily Loss Limit???�도??차단 ?�인?�로 ?�장
   
   - **Acceptance Criteria**:
-    - [x] ✅ AC1: Dynamic Budget 토글 구현
-    - [x] ✅ AC2: Profile E/F/G Config 생성
-    - [x] ✅ AC3: 3M 백테스트 실행
-    - [x] ⚠️ AC4: 전환율 3% 달성 (실제: 2.23%, 목표 74% 달성)
-    - [x] ✅ AC5: 비교 분석 및 리포트 생성
-    - [x] ✅ AC6: 문서화 완료
+    - [x] ??AC1: Dynamic Budget ?��? 구현
+    - [x] ??AC2: Profile E/F/G Config ?�성
+    - [x] ??AC3: 3M 백테?�트 ?�행
+    - [x] ?�️ AC4: ?�환??3% ?�성 (?�제: 2.23%, 목표 74% ?�성)
+    - [x] ??AC5: 비교 분석 �?리포???�성
+    - [x] ??AC6: 문서???�료
   
-  - **Artifacts** ✅:
-    - execution/portfolio_manager.py (Dynamic Budget 토글)
+  - **Artifacts** ??
+    - execution/portfolio_manager.py (Dynamic Budget ?��?)
     - configs/backtest/phase28_12_btc5m_baseline_v2_profile_{e,f,g}.yml
     - scripts/analysis/phase28_12_profile_comparison.py
     - reports/backtest/phase28_12/profile_{e,f,g}_summary.json
     - docs/PHASE28/PHASE28_12_FINAL_REPORT_KR.md
   
-  - **판정**: ✅ **PARTIAL SUCCESS** - 전략 예산 문제 해결, 새로운 최적화 대상 발견
-  - **다음 단계**: PHASE28-13 (Daily Loss Guard 최적화)
+  - **?�정**: ??**PARTIAL SUCCESS** - ?�략 ?�산 문제 ?�결, ?�로??최적???�??발견
+  - **?�음 ?�계**: PHASE28-13 (Daily Loss Guard 최적??
 
-- **28-13: Daily Loss Guard Optimization** ✅ **COMPLETE** (2025-12-08)
-  - **Status**: ✅ **INFRASTRUCTURE COMPLETE** | ⚠️ **DRAWDOWN GUARD LIMITATION DISCOVERED**
+- **28-13: Daily Loss Guard Optimization** ??**COMPLETE** (2025-12-08)
+  - **Status**: ??**INFRASTRUCTURE COMPLETE** | ?�️ **DRAWDOWN GUARD LIMITATION DISCOVERED**
   
-  - **목표**: Daily Loss Guard 개선으로 전환율 2.23% → 10~20% 극대화
+  - **목표**: Daily Loss Guard 개선?�로 ?�환??2.23% ??10~20% 극�???
   
-  - **완료 내역**:
-    1. ✅ RiskManager Daily Loss Guard 3단계 모드 구현 (OFF/SOFT/HARD)
-    2. ✅ abs() 버그 수정 (이익 신호 차단 문제 해결)
-    3. ✅ 역호환성 유지 (max_daily_loss_pct → soft_limit_pct 매핑)
-    4. ✅ YAML boolean 파싱 이슈 대응 (False → 'off' 변환)
-    5. ✅ Unit Test 8개 작성 및 통과 (OFF/SOFT/HARD 검증)
-    6. ✅ Profile H/I/J Config 생성 및 백테스트 재실행 (2회)
-    7. ✅ 비교 분석 및 한국어 리포트 생성
+  - **?�료 ?�역**:
+    1. ??RiskManager Daily Loss Guard 3?�계 모드 구현 (OFF/SOFT/HARD)
+    2. ??abs() 버그 ?�정 (?�익 ?�호 차단 문제 ?�결)
+    3. ????��?�성 ?��? (max_daily_loss_pct ??soft_limit_pct 매핑)
+    4. ??YAML boolean ?�싱 ?�슈 ?�??(False ??'off' 변??
+    5. ??Unit Test 8�??�성 �??�과 (OFF/SOFT/HARD 검�?
+    6. ??Profile H/I/J Config ?�성 �?백테?�트 ?�실??(2??
+    7. ??비교 분석 �??�국??리포???�성
   
-  - **핵심 성과**:
-    - ✅ Daily Loss Guard OFF로 **전환율 12.6배 증가** (2.23% → 28.3%)
+  - **?�심 ?�과**:
+    - ??Daily Loss Guard OFF�?**?�환??12.6�?증�?** (2.23% ??28.3%)
       - Profile E (SOFT): 138 orders (2.23%)
       - Profile H (OFF): 612 orders (28.3%)
-    - ✅ GUARD_DAILY_LOSS 차단 **100% 제거** (5,804 → 0건)
-    - ⚠️ **Drawdown Guard 조기 차단 발견** (새로운 근본적 한계)
-      - 모든 Profile (H/I/J)이 약 10% 손실에서 시스템 정지
-      - 3개월 백테스트의 30~40%만 실행 (10,305 / 26,101 candles)
-      - 전환율은 극대화되었으나 생존 기간 단축
+    - ??GUARD_DAILY_LOSS 차단 **100% ?�거** (5,804 ??0�?
+    - ?�️ **Drawdown Guard 조기 차단 발견** (?�로??근본???�계)
+      - 모든 Profile (H/I/J)????10% ?�실?�서 ?�스???��?
+      - 3개월 백테?�트??30~40%�??�행 (10,305 / 26,101 candles)
+      - ?�환?��? 극�??�되?�으???�존 기간 ?�축
   
-  - **Daily Loss Guard 3단계 모드**:
-    - **OFF**: 일일 손실 한도 비활성화 (연구용, 전환율 측정)
-    - **SOFT**: 신규 진입만 차단, 기존 포지션 유지 (운영 권장, 기본값)
-    - **HARD**: 신규 진입 차단 + 포지션 강제 청산 (비상 상황)
+  - **Daily Loss Guard 3?�계 모드**:
+    - **OFF**: ?�일 ?�실 ?�도 비활?�화 (?�구?? ?�환??측정)
+    - **SOFT**: ?�규 진입�?차단, 기존 ?��????��? (?�영 권장, 기본�?
+    - **HARD**: ?�규 진입 차단 + ?��???강제 �?�� (비상 ?�황)
   
-  - **버그 수정**:
-    - ❌ `abs(daily_pnl) >= limit` → ✅ `if daily_pnl < 0: abs(daily_pnl) >= limit`
-    - 이익 신호도 차단하던 버그 해결
+  - **버그 ?�정**:
+    - ??`abs(daily_pnl) >= limit` ????`if daily_pnl < 0: abs(daily_pnl) >= limit`
+    - ?�익 ?�호??차단?�던 버그 ?�결
   
   - **Acceptance Criteria**:
-    - [x] ✅ AC1: OFF/SOFT/HARD 모드 구현
-    - [x] ✅ AC2: abs() 버그 수정
-    - [x] ✅ AC3: 역호환성 유지
-    - [x] ✅ AC4: Unit Test 8/8 PASS
-    - [x] ✅ AC5: Profile H/I/J 백테스트 완료
-    - [x] ✅ AC6: 비교 분석 및 리포트 생성
-    - [x] ⚠️ AC7: 전환율 10% 달성 (실제: 28.3%, Drawdown 차단으로 40%만 실행)
-    - [x] ✅ AC8: 문서화 완료
+    - [x] ??AC1: OFF/SOFT/HARD 모드 구현
+    - [x] ??AC2: abs() 버그 ?�정
+    - [x] ??AC3: ??��?�성 ?��?
+    - [x] ??AC4: Unit Test 8/8 PASS
+    - [x] ??AC5: Profile H/I/J 백테?�트 ?�료
+    - [x] ??AC6: 비교 분석 �?리포???�성
+    - [x] ?�️ AC7: ?�환??10% ?�성 (?�제: 28.3%, Drawdown 차단?�로 40%�??�행)
+    - [x] ??AC8: 문서???�료
   
-  - **Artifacts** ✅:
-    - execution/risk_manager.py (Daily Loss Guard 3단계 모드, abs() 수정)
+  - **Artifacts** ??
+    - execution/risk_manager.py (Daily Loss Guard 3?�계 모드, abs() ?�정)
     - tests/test_phase28_13_daily_loss_modes.py (8 tests)
     - configs/backtest/phase28_13_btc5m_baseline_v2_profile_{h,i,j}.yml
     - reports/backtest/phase28_13/profile_{h,i,j}_summary.json
     - docs/PHASE28/PHASE28_13_DAILY_LOSS_OPTIMIZATION_REPORT_KR.md
   
-  - **판정**: ✅ **COMPLETE** - Daily Loss Guard 최적화 완료, Drawdown Guard 한계 발견
-  - **권장사항**:
-    - 운영 모드: **SOFT** (안전성 우선, 기본 설정 유지)
-    - Drawdown Guard 한도 재검토 (10% → 15~20% 상향 고려)
-    - 전략 개선 우선순위: Win Rate 향상, Risk/Reward 조정, Multi-TP 최적화
-  - **다음 단계**: 
-    - PHASE29: 전략 Win Rate 개선 및 Drawdown 완화
-    - PHASE30: 멀티 심볼 포트폴리오 분산
-    - PHASE31: 앙상블 프레임워크 복구
+  - **?�정**: ??**COMPLETE** - Daily Loss Guard 최적???�료, Drawdown Guard ?�계 발견
+  - **권장?�항**:
+    - ?�영 모드: **SOFT** (?�전???�선, 기본 ?�정 ?��?)
+    - Drawdown Guard ?�도 ?��???(10% ??15~20% ?�향 고려)
+    - ?�략 개선 ?�선?�위: Win Rate ?�상, Risk/Reward 조정, Multi-TP 최적??
+  - **?�음 ?�계**: 
+    - PHASE29: ?�략 Win Rate 개선 �?Drawdown ?�화
+    - PHASE30: 멀???�볼 ?�트?�리??분산
+    - PHASE31: ?�상�??�레?�워??복구
 
 **Sub-phases**
 - **31-0: Multi-Symbol Top50/100 Full Load Test**
-  - 대규모 심볼 동시 처리 검증
-- **31-1: 2차 최적화**
-  - 코드, 설정, 배포 구조
-- **31-2: 운영 시나리오 테스트**
-  - 24~72H PAPER, 장애 recovery, 재기동
+  - ?�규모 ?�볼 ?�시 처리 검�?
+- **31-1: 2�?최적??*
+  - 코드, ?�정, 배포 구조
+- **31-2: ?�영 ?�나리오 ?�스??*
+  - 24~72H PAPER, ?�애 recovery, ?�기??
 
-**진입 조건**: PHASE30 완료
+**진입 조건**: PHASE30 ?�료
 
-**퇴출 조건**: Top100 심볼 24H+ Paper PASS, 운영 시나리오 검증 완료
+**?�출 조건**: Top100 ?�볼 24H+ Paper PASS, ?�영 ?�나리오 검�??�료
 
-- ✅ Regime 분포: Trend 74.5%, Range 25.5% (정상)
-- ❌ PHASE29-3 진입 불가
+- ??Regime 분포: Trend 74.5%, Range 25.5% (?�상)
+- ??PHASE29-3 진입 불�?
 
 **진단**:
-- V3 진입 조건이 과도하게 엄격
-- 또는 전략 코드에 버그 존재 가능성
-- 필터 계층이 신호를 과도하게 차단
+- V3 진입 조건??과도?�게 ?�격
+- ?�는 ?�략 코드??버그 존재 가?�성
+- ?�터 계층???�호�?과도?�게 차단
 
-**산출물**:
+**?�출�?*:
 - configs/backtest/phase29_2_btc5m_baseline_v3_{week,month}.yml
 - scripts/analysis/phase29_2_v3_backtest_diagnostics.py
 - reports/backtest/phase29_2/btc5m_baseline_v3_{week,month}_summary.json
@@ -1874,154 +1874,154 @@ Ensemble ON 모드로 4시간 이상 연속 Paper 테스트 (인프라 안정성
 - docs/PHASE29/PHASE29_2_BTC5M_BASELINE_V3_BACKTEST_KR.md
 
 **권장 조치 (PHASE29-2A)**:
-1. V3 전략 코드 재검토 및 디버깅 (진입 조건 통과율 로깅)
-2. 조건 완화 테스트 (AND → OR, 필터 개별 OFF)
-3. V2 대비 차이 격리 (점진적 변경 테스트)
-4. V3 설계 재검토 또는 V2.1 Hybrid 접근 고려
+1. V3 ?�략 코드 ?��???�??�버�?(진입 조건 ?�과??로깅)
+2. 조건 ?�화 ?�스??(AND ??OR, ?�터 개별 OFF)
+3. V2 ?��?차이 격리 (?�진??변�??�스??
+4. V3 ?�계 ?��????�는 V2.1 Hybrid ?�근 고려
 
 ---
 
-## PHASE29 – 전략 리디자인 & Win Rate 개선 IN PROGRESS
+## PHASE29 ???�략 리디?�인 & Win Rate 개선 IN PROGRESS
 
-- **29-0: 전략 드로우다운 진단 & 리디자인 설계** COMPLETE (2025-12-08)
+- **29-0: ?�략 ?�로?�다??진단 & 리디?�인 ?�계** COMPLETE (2025-12-08)
   - Status: DIAGNOSIS & DESIGN COMPLETE
 
 **배경**:
-- PHASE28-13: Guard/Infra는 상용급, 하지만 전략 기대값<0 발견
-- Drawdown Guard 10%에서 조기 종료 (백테스트 35% 완료)
-- Trend Regime 95% 지배, 하지만 Trend 구간에서도 손실 발생
-- 전환율 28% 극대화되었으나, 생존 기간 단축
+- PHASE28-13: Guard/Infra???�용�? ?��?�??�략 기�?�?0 발견
+- Drawdown Guard 10%?�서 조기 종료 (백테?�트 35% ?�료)
+- Trend Regime 95% 지�? ?��?�?Trend 구간?�서???�실 발생
+- ?�환??28% 극�??�되?�으?? ?�존 기간 ?�축
 
 **Sub-phases**:
 
-- **29-0: 전략 드로우다운 진단 & 리디자인 설계** ✅ **COMPLETE** (2025-12-08)
-  - **Status**: ✅ **DIAGNOSIS & DESIGN COMPLETE**
+- **29-0: ?�략 ?�로?�다??진단 & 리디?�인 ?�계** ??**COMPLETE** (2025-12-08)
+  - **Status**: ??**DIAGNOSIS & DESIGN COMPLETE**
   
-  - **목표**: PHASE28-10~13 백테스트 결과 정량 분석 및 V3 설계 문서 작성
+  - **목표**: PHASE28-10~13 백테?�트 결과 ?�량 분석 �?V3 ?�계 문서 ?�성
   
-  - **완료 내역**:
-    1. ✅ Profile E/H/I/J 백테스트 결과 정량 분석
-    2. ✅ 분석 스크립트 작성: `scripts/analysis/phase29_0_strategy_dd_diagnostics.py`
-    3. ✅ 진단 리포트 생성 (JSON + Markdown)
-    4. ✅ 전략 리디자인 설계 문서 작성: `docs/PHASE29/PHASE29_0_BTC5M_BASELINE_V2_STRATEGY_REDESIGN_KR.md`
-    5. ✅ PHASE_ROADMAP.md 업데이트
+  - **?�료 ?�역**:
+    1. ??Profile E/H/I/J 백테?�트 결과 ?�량 분석
+    2. ??분석 ?�크립트 ?�성: `scripts/analysis/phase29_0_strategy_dd_diagnostics.py`
+    3. ??진단 리포???�성 (JSON + Markdown)
+    4. ???�략 리디?�인 ?�계 문서 ?�성: `docs/PHASE29/PHASE29_0_BTC5M_BASELINE_V2_STRATEGY_REDESIGN_KR.md`
+    5. ??PHASE_ROADMAP.md ?�데?�트
   
-  - **핵심 발견**:
-    - ❌ **Drawdown Guard 조기 차단**: 백테스트 35%만 완료, 전략 기대값<0 추정
-    - 📊 **Regime 편향**: Trend Regime 95% 지배, Range 진입 부족
-    - 🔄 **전환율 vs 생존 기간 트레이드오프**: 28% 전환율 극대화 → 빠른 손실 누적
-    - 🚫 **Cooldown Filter 59% 차단**: 전략 로직과 Guard 설정 불일치
+  - **?�심 발견**:
+    - ??**Drawdown Guard 조기 차단**: 백테?�트 35%�??�료, ?�략 기�?�?0 추정
+    - ?�� **Regime ?�향**: Trend Regime 95% 지�? Range 진입 부�?
+    - ?�� **?�환??vs ?�존 기간 ?�레?�드?�프**: 28% ?�환??극�?????빠른 ?�실 ?�적
+    - ?�� **Cooldown Filter 59% 차단**: ?�략 로직�?Guard ?�정 불일�?
   
-  - **근본 원인 가설**:
-    1. **Win Rate < 45%**: 진입 조건 너무 느슨 (RSI OR BB → 많은 False Signal)
-    2. **R:R < 1.2**: SL 너무 가까움, TP 너무 멀음 → 잦은 손절, 드문 TP
-    3. **Regime Detection 정상, 진입 로직 미흡**: Bull Trend LONG 타이밍 후행
-    4. **TP/SL 구조**: SL 1.5 ATR (노이즈), TP 2.25 ATR (미도달)
+  - **근본 ?�인 가??*:
+    1. **Win Rate < 45%**: 진입 조건 ?�무 ?�슨 (RSI OR BB ??많�? False Signal)
+    2. **R:R < 1.2**: SL ?�무 가까�?, TP ?�무 멀??????? ?�절, ?�문 TP
+    3. **Regime Detection ?�상, 진입 로직 미흡**: Bull Trend LONG ?�?�밍 ?�행
+    4. **TP/SL 구조**: SL 1.5 ATR (?�이�?, TP 2.25 ATR (미도??
   
-  - **V3 리디자인 설계 요약**:
-    - **정량 목표**: Win Rate ≥ 50%, R:R ≥ 1.3, Max DD ≤ 15%, 전환율 10~20%
-    - **진입 로직**: OR → AND (RSI AND BB AND EMA Pullback)
-    - **TP/SL**: Multi-TP (1차 1.2 ATR, 2차 3.0 ATR) + BE 이동
-    - **SL 거리**: 1.5 → 2.0 ATR (노이즈 필터링)
-    - **필터링**: 최소 ATR/Volume, 시간대, 연속 신호 방지
+  - **V3 리디?�인 ?�계 ?�약**:
+    - **?�량 목표**: Win Rate ??50%, R:R ??1.3, Max DD ??15%, ?�환??10~20%
+    - **진입 로직**: OR ??AND (RSI AND BB AND EMA Pullback)
+    - **TP/SL**: Multi-TP (1�?1.2 ATR, 2�?3.0 ATR) + BE ?�동
+    - **SL 거리**: 1.5 ??2.0 ATR (?�이�??�터�?
+    - **?�터�?*: 최소 ATR/Volume, ?�간?�, ?�속 ?�호 방�?
     - **Regime 모드**: Trend Pullback vs Range Mean Reversion 분리
   
-  - **Artifacts** ✅:
+  - **Artifacts** ??
     - scripts/analysis/phase29_0_strategy_dd_diagnostics.py
     - reports/analysis/PHASE29/phase29_0_dd_diagnostics_summary.json
     - reports/analysis/PHASE29/phase29_0_dd_diagnostics_summary.md
     - docs/PHASE29/PHASE29_0_BTC5M_BASELINE_V2_STRATEGY_REDESIGN_KR.md
   
-  - **판정**: ✅ **COMPLETE** - 진단 & 설계 완료, PHASE29-1로 진행
+  - **?�정**: ??**COMPLETE** - 진단 & ?�계 ?�료, PHASE29-1�?진행
 
-- **29-1: btc5m_baseline_v3 코드 스켈레톤 + 기본 로직 구현** ✅ **COMPLETE** (2025-12-08)
-  - **Status**: ✅ **INFRASTRUCTURE COMPLETE** | ⏳ **AWAITING PHASE29-2 BACKTEST**
+- **29-1: btc5m_baseline_v3 코드 ?�켈?�톤 + 기본 로직 구현** ??**COMPLETE** (2025-12-08)
+  - **Status**: ??**INFRASTRUCTURE COMPLETE** | ??**AWAITING PHASE29-2 BACKTEST**
   
-  - **목표**: V3 설계를 코드로 구현 (Regime별 모드, Multi-TP, 필터링)
+  - **목표**: V3 ?�계�?코드�?구현 (Regime�?모드, Multi-TP, ?�터�?
   
-  - **완료 내역**:
-    1. ✅ `strategies/btc5m_baseline_v3.py` 구현 (524 라인)
-    2. ✅ Regime별 진입 로직 구현 (Trend Pullback + Range Mean Reversion)
-    3. ✅ Multi-TP 구조 구현 (TP1 60%, TP2 40%, BE 이동 로직)
-    4. ✅ 시그널 필터링 추가 (ATR, Volume, 시간대 필터)
-    5. ✅ Config 파라미터 정의 (`configs/tuning/btc5m_baseline_v3_paramspace.yml`)
-    6. ✅ Unit Test: `tests/test_btc5m_baseline_v3.py` (12/12 passed)
-    7. ✅ 1일 스모크 백테스트 정상 완료 (ERROR 0건, 진입 0건)
-    8. ✅ 전략 레지스트리 등록 (`strategies/__init__.py`)
+  - **?�료 ?�역**:
+    1. ??`strategies/btc5m_baseline_v3.py` 구현 (524 ?�인)
+    2. ??Regime�?진입 로직 구현 (Trend Pullback + Range Mean Reversion)
+    3. ??Multi-TP 구조 구현 (TP1 60%, TP2 40%, BE ?�동 로직)
+    4. ???�그???�터�?추�? (ATR, Volume, ?�간?� ?�터)
+    5. ??Config ?�라미터 ?�의 (`configs/tuning/btc5m_baseline_v3_paramspace.yml`)
+    6. ??Unit Test: `tests/test_btc5m_baseline_v3.py` (12/12 passed)
+    7. ??1???�모??백테?�트 ?�상 ?�료 (ERROR 0�? 진입 0�?
+    8. ???�략 ?��??�트�??�록 (`strategies/__init__.py`)
   
-  - **산출물** ✅:
+  - **?�출�?* ??
     - strategies/btc5m_baseline_v3.py
-  - **핵심 특징**:
-    - **진입 로직**: AND 조건 강화 (V2 OR → V3 AND)
+  - **?�심 ?�징**:
+    - **진입 로직**: AND 조건 강화 (V2 OR ??V3 AND)
     - **Multi-TP**: TP1 1.2 RR (60%), TP2 3.0 RR (40%)
-    - **Regime별 SL/홀드**: Trend 2.0 ATR/120분, Range 1.5 ATR/30분
-    - **필터**: 최소 ATR 0.2%, Volume 80%, 시간대 필터 (옵션)
+    - **Regime�?SL/?�??*: Trend 2.0 ATR/120�? Range 1.5 ATR/30�?
+    - **?�터**: 최소 ATR 0.2%, Volume 80%, ?�간?� ?�터 (?�션)
   
-  - **판정**: ✅ **COMPLETE** - V3 코드 구현 완료, PHASE29-2로 진행
-  - **작업 계획**:
-    1. 1주일 백테스트 (Drawdown Guard OFF, 최소 20~50 trades)
-    2. 1개월 백테스트 (Drawdown Guard ON, Win Rate ≥ 45%)
-    3. Regime별 Win Rate, R:R, 홀드 타임 로그 분석
+  - **?�정**: ??**COMPLETE** - V3 코드 구현 ?�료, PHASE29-2�?진행
+  - **?�업 계획**:
+    1. 1주일 백테?�트 (Drawdown Guard OFF, 최소 20~50 trades)
+    2. 1개월 백테?�트 (Drawdown Guard ON, Win Rate ??45%)
+    3. Regime�?Win Rate, R:R, ?�???�??로그 분석
   
-  - **판정 기준**:
-    - ✅ PASS: 1개월 전체 완료 + Win Rate ≥ 45%
-    - ❌ FAIL: Drawdown 10% 조기 종료 또는 Win Rate < 40%
+  - **?�정 기�?**:
+    - ??PASS: 1개월 ?�체 ?�료 + Win Rate ??45%
+    - ??FAIL: Drawdown 10% 조기 종료 ?�는 Win Rate < 40%
   
   - **기간**: 1 session
 
-- **29-2: btc5m_baseline_v3 초기 검증 백테스트** ❌ **CRITICAL_FAIL**
-  - **Status**: ✅ **COMPLETE** | ❌ **FAILED** (신호 빈도 부족)
+- **29-2: btc5m_baseline_v3 초기 검�?백테?�트** ??**CRITICAL_FAIL**
+  - **Status**: ??**COMPLETE** | ??**FAILED** (?�호 빈도 부�?
   
-  - **목표**: V3 전략 초기 검증 (1주 + 1개월 백테스트)
+  - **목표**: V3 ?�략 초기 검�?(1�?+ 1개월 백테?�트)
   
-  - **실제 결과**:
-    - **1주일 백테스트**: 1건 거래 (목표: 20+) ❌
-    - **1개월 백테스트**: 2건 거래 (목표: 50+) ❌
-    - **Signal Rate**: 0.05% (V2 대비 99% 감소) ⚠️
-    - **Regime 분포**: Trend 74.5%, Range 25.5% ✅
+  - **?�제 결과**:
+    - **1주일 백테?�트**: 1�?거래 (목표: 20+) ??
+    - **1개월 백테?�트**: 2�?거래 (목표: 50+) ??
+    - **Signal Rate**: 0.05% (V2 ?��?99% 감소) ?�️
+    - **Regime 분포**: Trend 74.5%, Range 25.5% ??
   
-  - **Gate 평가**:
-    - 신호 빈도: ❌ FAIL (1/10, 2/30)
-    - Win Rate: N/A (거래 수 부족)
+  - **Gate ?��?**:
+    - ?�호 빈도: ??FAIL (1/10, 2/30)
+    - Win Rate: N/A (거래 ??부�?
     - Max DD: N/A
-    - **PHASE29-3 진입**: ❌ **불가**
+    - **PHASE29-3 진입**: ??**불�?**
   
-  - **판정**: ❌ **CRITICAL_FAIL** (전략 로직 재검토 필요)
+  - **?�정**: ??**CRITICAL_FAIL** (?�략 로직 ?��????�요)
   
-  - **다음 조치**: **PHASE29-2A** (긴급 디버깅) 또는 V3 설계 재검토
+  - **?�음 조치**: **PHASE29-2A** (긴급 ?�버�? ?�는 V3 ?�계 ?��???
   
-  - **기간**: 1 session (완료)
+  - **기간**: 1 session (?�료)
 
-- **29-2A: V3 조건 통과율 디버깅** ✅ **COMPLETE** (2025-12-09)
-  - **Status**: ✅ **DEBUGGING COMPLETE** | 📋 **병목 식별 완료**
+- **29-2A: V3 조건 ?�과???�버�?* ??**COMPLETE** (2025-12-09)
+  - **Status**: ??**DEBUGGING COMPLETE** | ?�� **병목 ?�별 ?�료**
   
-  - **목표**: V3 전략의 각 조건/필터별 통과율을 정량적으로 분석하여 병목 지점 식별
+  - **목표**: V3 ?�략??�?조건/?�터�??�과?�을 ?�량?�으�?분석?�여 병목 지???�별
   
-  - **완료 내역**:
-    1. ✅ 조건 통과율 집계 유틸리티: `scripts/analysis/utils/v3_condition_stats.py`
-    2. ✅ 진단 스크립트: `scripts/analysis/phase29_2a_v3_condition_diagnostics.py`
-    3. ✅ 디버그 백테스트 Config (1일, 1주)
-    4. ✅ 백테스트 실행 및 조건 분석
-    5. ✅ 디버깅 리포트: `docs/PHASE29/PHASE29_2A_BTC5M_BASELINE_V3_DEBUG_KR.md`
+  - **?�료 ?�역**:
+    1. ??조건 ?�과??집계 ?�틸리티: `scripts/analysis/utils/v3_condition_stats.py`
+    2. ??진단 ?�크립트: `scripts/analysis/phase29_2a_v3_condition_diagnostics.py`
+    3. ???�버�?백테?�트 Config (1?? 1�?
+    4. ??백테?�트 ?�행 �?조건 분석
+    5. ???�버�?리포?? `docs/PHASE29/PHASE29_2A_BTC5M_BASELINE_V3_DEBUG_KR.md`
   
-  - **핵심 발견**:
-    - ✅ **Regime 탐지 정상**: Trend 75.4%, Range 24.6% (1주 기준)
-    - 🚨 **신호 생성 극소**: 1일 0건, 1주 1건 (0.045% Signal Rate)
-    - ⚠️ **Trend 모드 신호 0건**: 1,620 Trend 캔들 중 진입 0건
-    - ⚠️ **Range 모드 신호 1건**: 585 Range 캔들 중 진입 1건
-    - 🚫 **진입 조건 과도**: AND 로직 + 엄격한 Threshold로 신호 차단
+  - **?�심 발견**:
+    - ??**Regime ?��? ?�상**: Trend 75.4%, Range 24.6% (1�?기�?)
+    - ?�� **?�호 ?�성 극소**: 1??0�? 1�?1�?(0.045% Signal Rate)
+    - ?�️ **Trend 모드 ?�호 0�?*: 1,620 Trend 캔들 �?진입 0�?
+    - ?�️ **Range 모드 ?�호 1�?*: 585 Range 캔들 �?진입 1�?
+    - ?�� **진입 조건 과도**: AND 로직 + ?�격??Threshold�??�호 차단
   
   - **병목 Top 3** (코드 분석 기반):
-    1. 조건 로깅 부재: 정밀 진단 불가 (전략에 조건별 통과율 로깅 필요)
-    2. Range Mode RSI < 30: 추정 85~95% 차단 (5분봉에서 극단적 과매도 드묾)
-    3. AND 로직 과잉 결합: 추정 95~99% 차단 (독립 조건 교집합 극소)
+    1. 조건 로깅 부?? ?��? 진단 불�? (?�략??조건�??�과??로깅 ?�요)
+    2. Range Mode RSI < 30: 추정 85~95% 차단 (5분봉?�서 극단??과매???�묾)
+    3. AND 로직 과잉 결합: 추정 95~99% 차단 (?�립 조건 교집??극소)
   
-  - **완화 Scenario 제안**:
-    - **Scenario A (보수적)**: ATR 0.9, Volume 1.3, RSI < 35, Range 2/3 조건
+  - **?�화 Scenario ?�안**:
+    - **Scenario A (보수??**: ATR 0.9, Volume 1.3, RSI < 35, Range 2/3 조건
     - **Scenario B (중간)**: ATR 0.8, Volume 1.2, Dynamic RSI, Trend 2/4 조건
-    - **Scenario C (공격적)**: ATR 0.7, Volume 1.0, RSI < 40 (비추천)
+    - **Scenario C (공격??**: ATR 0.7, Volume 1.0, RSI < 40 (비추�?
   
-  - **Artifacts** ✅:
+  - **Artifacts** ??
     - scripts/analysis/utils/v3_condition_stats.py
     - scripts/analysis/phase29_2a_v3_condition_diagnostics.py
     - configs/backtest/phase29_2a_btc5m_baseline_v3_debug_{day,week}.yml
@@ -2029,403 +2029,403 @@ Ensemble ON 모드로 4시간 이상 연속 Paper 테스트 (인프라 안정성
     - docs/PHASE29/PHASE29_2A_BTC5M_BASELINE_V3_DEBUG_KR.md
   
   - **Acceptance Criteria**:
-    - ✅ 1일/1주 조건 분석 실행
-    - ✅ 병목 Top 3 식별 및 정량화
-    - ✅ 완화 Scenario 3개 제안
-    - ✅ 디버깅 리포트 작성
+    - ??1??1�?조건 분석 ?�행
+    - ??병목 Top 3 ?�별 �??�량??
+    - ???�화 Scenario 3�??�안
+    - ???�버�?리포???�성
   
-  - **판정**: ✅ **COMPLETE** - 병목 식별 완료, PHASE29-2B로 진행
+  - **?�정**: ??**COMPLETE** - 병목 ?�별 ?�료, PHASE29-2B�?진행
   
-  - **기간**: 1 session (완료)
+  - **기간**: 1 session (?�료)
 
-- **29-2B: V3 조건 완화 및 재검증** ✅ **COMPLETE** (2025-12-09)
-  - **Status**: ✅ **COMPLETE** | 📊 **Scenario A+ 목표 달성**
+- **29-2B: V3 조건 ?�화 �??��?�?* ??**COMPLETE** (2025-12-09)
+  - **Status**: ??**COMPLETE** | ?�� **Scenario A+ 목표 ?�성**
   
-  - **목표**: Scenario A 적용 후 1주일 백테스트에서 최소 20~60 trades 달성
+  - **목표**: Scenario A ?�용 ??1주일 백테?�트?�서 최소 20~60 trades ?�성
   
-  - **완료 내역**:
-    1. ✅ Scenario A Config 작성 및 백테스트 (ATR 0.0018, Volume 0.65, RSI 35/65, Range 2/3)
-    2. ✅ Scenario A 결과 분석 → 13건 (목표 미달)
-    3. ✅ Scenario A+ Config 작성 (ATR 0.0015, Volume 0.5, RSI 40/60, Range 1/3, RR 1.5)
-    4. ✅ Scenario A+ 백테스트 실행 (1주일)
-    5. ✅ 디버깅 리포트: `docs/PHASE29/PHASE29_2B_BTC5M_BASELINE_V3_SCENARIO_A_KR.md`
+  - **?�료 ?�역**:
+    1. ??Scenario A Config ?�성 �?백테?�트 (ATR 0.0018, Volume 0.65, RSI 35/65, Range 2/3)
+    2. ??Scenario A 결과 분석 ??13�?(목표 미달)
+    3. ??Scenario A+ Config ?�성 (ATR 0.0015, Volume 0.5, RSI 40/60, Range 1/3, RR 1.5)
+    4. ??Scenario A+ 백테?�트 ?�행 (1주일)
+    5. ???�버�?리포?? `docs/PHASE29/PHASE29_2B_BTC5M_BASELINE_V3_SCENARIO_A_KR.md`
   
   - **Scenario A 결과** (1주일):
-    - **거래 건수**: 13건 ❌ (목표: 20-60건)
+    - **거래 건수**: 13�???(목표: 20-60�?
     - **Signal Rate**: 5.1% (112/2,205)
-    - **Guard 차단**: 99건
-    - **판정**: 추가 완화 필요
+    - **Guard 차단**: 99�?
+    - **?�정**: 추�? ?�화 ?�요
   
   - **Scenario A+ 결과** (1주일):
-    - **거래 건수**: 20건 ✅ **목표 정확히 달성!**
-    - **Signal Rate**: 10.0% (221/2,205) - Scenario A 대비 **2배**
-    - **Guard 차단**: 200건 (47.5%, 목표: <50% ✅)
-    - **핵심 완화**: `range_min_conditions: 1` (단일 조건 진입)
+    - **거래 건수**: 20�???**목표 ?�확???�성!**
+    - **Signal Rate**: 10.0% (221/2,205) - Scenario A ?��?**2�?*
+    - **Guard 차단**: 200�?(47.5%, 목표: <50% ??
+    - **?�심 ?�화**: `range_min_conditions: 1` (?�일 조건 진입)
   
   - **Scenario A vs A+ 비교**:
-    | 지표 | Scenario A | Scenario A+ | 변화 |
+    | 지??| Scenario A | Scenario A+ | 변??|
     |------|------------|-------------|------|
-    | Signal Rate | 5.1% | 10.0% | ✅ 2배 |
-    | 거래 건수 | 13건 | 20건 | ✅ 54% 증가 |
-    | Guard 차단 | 99건 | 200건 | ⚠️ 2배 증가 |
+    | Signal Rate | 5.1% | 10.0% | ??2�?|
+    | 거래 건수 | 13�?| 20�?| ??54% 증�? |
+    | Guard 차단 | 99�?| 200�?| ?�️ 2�?증�? |
   
-  - **Artifacts** ✅:
+  - **Artifacts** ??
     - configs/backtest/phase29_2b_btc5m_baseline_v3_week_scenario_{a,a_plus}.yml
     - reports/backtest/phase29_2b/btc5m_baseline_v3_week_scenario_{a,a_plus}_summary.json
     - docs/PHASE29/PHASE29_2B_BTC5M_BASELINE_V3_SCENARIO_A_KR.md
   
   - **Acceptance Criteria**:
-    - ✅ 1주일: 20건 거래 달성 (목표: 20-60건)
-    - ✅ Signal Rate 10.0% 달성 (목표: ≥5%)
-    - ✅ Guard 차단율 47.5% (목표: <50%)
-  - **판정**: ✅ **PASS** - Scenario A+ 목표 달성, PHASE29-2C로 진행
+    - ??1주일: 20�?거래 ?�성 (목표: 20-60�?
+    - ??Signal Rate 10.0% ?�성 (목표: ??%)
+    - ??Guard 차단??47.5% (목표: <50%)
+  - **?�정**: ??**PASS** - Scenario A+ 목표 ?�성, PHASE29-2C�?진행
   
-  - **다음 조치**: **PHASE29-2C** (1개월 백테스트 - Win Rate/Max DD 검증)
+  - **?�음 조치**: **PHASE29-2C** (1개월 백테?�트 - Win Rate/Max DD 검�?
   
-  - **기간**: 1 session (완료)
+  - **기간**: 1 session (?�료)
 
-- **29-2C: V3 Scenario A+ 1개월 백테스트 검증** ✅ **COMPLETE (INFRA)** | ❌ **FAIL (STRATEGY)** (2025-12-09)
-  - **Status**: ✅ **INFRASTRUCTURE COMPLETE** | ❌ **STRATEGY PERFORMANCE FAIL**
+- **29-2C: V3 Scenario A+ 1개월 백테?�트 검�?* ??**COMPLETE (INFRA)** | ??**FAIL (STRATEGY)** (2025-12-09)
+  - **Status**: ??**INFRASTRUCTURE COMPLETE** | ??**STRATEGY PERFORMANCE FAIL**
   
-  - **목표**: Scenario A+ 설정을 1개월 구간에 적용하여 장기 성능 검증
+  - **목표**: Scenario A+ ?�정??1개월 구간???�용?�여 ?�기 ?�능 검�?
   
-  - **PHASE29-2C-R 재검증 완료 내역**:
-    1. ✅ Config 파라미터 전달 버그 수정:
-       - `strategies/__init__.py`: `params` 키 없을 시 strategy_config 직접 사용
-       - 3개 경로 수정 (단일 전략, 앙상블, fallback)
-    2. ✅ Summary JSON 저장 로직 수정:
-       - `execution/engine.py`: html_enabled=False여도 JSON 저장
-       - `analytics/report_generator.py`: Config output_file 경로 우선 사용
-    3. ✅ Unit Test 추가:
+  - **PHASE29-2C-R ?��?�??�료 ?�역**:
+    1. ??Config ?�라미터 ?�달 버그 ?�정:
+       - `strategies/__init__.py`: `params` ???�을 ??strategy_config 직접 ?�용
+       - 3�?경로 ?�정 (?�일 ?�략, ?�상�? fallback)
+    2. ??Summary JSON ?�??로직 ?�정:
+       - `execution/engine.py`: html_enabled=False?�도 JSON ?�??
+       - `analytics/report_generator.py`: Config output_file 경로 ?�선 ?�용
+    3. ??Unit Test 추�?:
        - `tests/test_phase29_2c_config_params.py` (3/3 PASS)
-       - Config → 전략 파라미터 전달 검증
-       - Scenario A+ 핵심 파라미터 값 검증
-    4. ✅ 재백테스트 실행 및 검증:
-       - 파라미터 전달 정상 확인 (로그: `params: {'range_min_conditions': 1, ...}`)
-       - Summary JSON 생성 확인
+       - Config ???�략 ?�라미터 ?�달 검�?
+       - Scenario A+ ?�심 ?�라미터 �?검�?
+    4. ???�백?�스???�행 �?검�?
+       - ?�라미터 ?�달 ?�상 ?�인 (로그: `params: {'range_min_conditions': 1, ...}`)
+       - Summary JSON ?�성 ?�인
   
-  - **최종 실행 결과** (2025-12-09 23:52:11):
-    - **총 캔들**: 8,928개 (30일)
-    - **진입 거래**: 17건 ❌ (목표: 80-240건, 달성률 7.1% ~ 21.3%)
-    - **종료 거래**: 17건 (정상 청산)
-    - **활성 포지션**: 0개
-    - **TUNING_VIBLE 점수**: 28.3/100
-    - **Summary JSON**: ✅ 생성됨
+  - **최종 ?�행 결과** (2025-12-09 23:52:11):
+    - **�?캔들**: 8,928�?(30??
+    - **진입 거래**: 17�???(목표: 80-240�? ?�성�?7.1% ~ 21.3%)
+    - **종료 거래**: 17�?(?�상 �?��)
+    - **?�성 ?��???*: 0�?
+    - **TUNING_VIBLE ?�수**: 28.3/100
+    - **Summary JSON**: ???�성??
   
-  - **핵심 발견**:
-    - ✅ **인프라 검증 완료**: Config 파라미터 전달, Summary JSON 생성 모두 정상
-    - ❌ **전략 성능 미달**: 파라미터 버그 수정 전후 거래 건수 동일 (17건)
-    - 🔍 **근본 원인**: Config 전달 버그가 아닌 **V3 전략 자체의 구조적 신호 부족**
+  - **?�심 발견**:
+    - ??**?�프??검�??�료**: Config ?�라미터 ?�달, Summary JSON ?�성 모두 ?�상
+    - ??**?�략 ?�능 미달**: ?�라미터 버그 ?�정 ?�후 거래 건수 ?�일 (17�?
+    - ?�� **근본 ?�인**: Config ?�달 버그가 ?�닌 **V3 ?�략 ?�체??구조???�호 부�?*
   
   - **Acceptance Criteria**:
-    - [x] ✅ AC1: pytest 통과 (12/12 PASS + 3/3 PASS)
-    - [x] ✅ AC2: 1개월 백테스트 재실행 완료
-    - [x] ❌ AC3: 거래 건수 80-240건 달성 (실제: 17건)
-    - [x] ✅ AC4: Summary JSON 생성 (수정 완료)
-    - [x] ❌ AC5: Win Rate ≥ 45% (거래 수 부족으로 평가 불가)
-    - [x] ❌ AC6: Max DD ≤ 15% (거래 수 부족으로 평가 불가)
-    - [x] ✅ AC7: 리포트 작성 및 업데이트 완료
+    - [x] ??AC1: pytest ?�과 (12/12 PASS + 3/3 PASS)
+    - [x] ??AC2: 1개월 백테?�트 ?�실???�료
+    - [x] ??AC3: 거래 건수 80-240�??�성 (?�제: 17�?
+    - [x] ??AC4: Summary JSON ?�성 (?�정 ?�료)
+    - [x] ??AC5: Win Rate ??45% (거래 ??부족으�??��? 불�?)
+    - [x] ??AC6: Max DD ??15% (거래 ??부족으�??��? 불�?)
+    - [x] ??AC7: 리포???�성 �??�데?�트 ?�료
   
-  - **Artifacts** ✅:
-    - strategies/__init__.py (Config 파라미터 전달 수정)
-    - execution/engine.py (Summary JSON 저장 수정)
-    - analytics/report_generator.py (output_file 경로 사용)
-    - tests/test_phase29_2c_config_params.py (Config 전달 검증)
+  - **Artifacts** ??
+    - strategies/__init__.py (Config ?�라미터 ?�달 ?�정)
+    - execution/engine.py (Summary JSON ?�???�정)
+    - analytics/report_generator.py (output_file 경로 ?�용)
+    - tests/test_phase29_2c_config_params.py (Config ?�달 검�?
     - configs/backtest/phase29_2c_btc5m_baseline_v3_month_scenario_a_plus.yml
-    - reports/backtest/phase29_2c/btc5m_baseline_v3_month_scenario_a_plus_summary.json ✅
-    - docs/PHASE29/PHASE29_2C_BTC5M_BASELINE_V3_MONTH_BACKTEST_KR.md (재검증 결과 반영)
+    - reports/backtest/phase29_2c/btc5m_baseline_v3_month_scenario_a_plus_summary.json ??
+    - docs/PHASE29/PHASE29_2C_BTC5M_BASELINE_V3_MONTH_BACKTEST_KR.md (?��?�?결과 반영)
   
-  - **판정**: ✅ **INFRASTRUCTURE COMPLETE** | ❌ **STRATEGY FAIL**
-  - **이유**:
-    - 인프라: Config 전달, Summary 생성 모두 정상 작동 검증 완료
-    - 전략: 거래 건수 기준 미달 (17건/80-240건, 목표 대비 78.8% ~ 92.9% 부족)
+  - **?�정**: ??**INFRASTRUCTURE COMPLETE** | ??**STRATEGY FAIL**
+  - **?�유**:
+    - ?�프?? Config ?�달, Summary ?�성 모두 ?�상 ?�동 검�??�료
+    - ?�략: 거래 건수 기�? 미달 (17�?80-240�? 목표 ?��?78.8% ~ 92.9% 부�?
   
   - **권장 조치**:
-    1. V3 전략 재평가 (Scenario A+로도 신호 부족)
-    2. 추가 완화 vs 전략 로직 재설계 선택 필요
-    3. 대안: V2 복귀 or V4 새로운 접근
+    1. V3 ?�략 ?�평가 (Scenario A+로도 ?�호 부�?
+    2. 추�? ?�화 vs ?�략 로직 ?�설�??�택 ?�요
+    3. ?�?? V2 복�? or V4 ?�로???�근
   
-  - **다음 단계**: **PHASE29-3 전략 폐기 결정 완료**
+  - **?�음 ?�계**: **PHASE29-3 ?�략 ?�기 결정 ?�료**
   
-  - **기간**: 2 sessions (초기 실행 + PHASE29-2C-R 재검증)
+  - **기간**: 2 sessions (초기 ?�행 + PHASE29-2C-R ?��?�?
 
-- **29-3: btc5m_baseline_v3 전략 폐기 처리** ✅ **COMPLETE** (2025-12-10)
-  - **Status**: ✅ **STRATEGY DEPRECATED**
+- **29-3: btc5m_baseline_v3 ?�략 ?�기 처리** ??**COMPLETE** (2025-12-10)
+  - **Status**: ??**STRATEGY DEPRECATED**
   
-  - **목표**: V3 전략을 공식적으로 DEPRECATED 상태로 전환 및 자동 로딩에서 제외
+  - **목표**: V3 ?�략??공식?�으�?DEPRECATED ?�태�??�환 �??�동 로딩?�서 ?�외
   
-  - **폐기 근거**:
-    - PHASE29-2C-R: 1개월 백테스트 17건/80-240건 (달성률 7.1~21.3%)
-    - AND 로직 과잉 결합 + 엄격한 Threshold → 교집합 극소
-    - Scenario A+ (최대 완화)로도 목표 미달
-    - Config 파라미터 전달 버그와 무관 (수정 전후 거래 건수 동일)
-    3. 최종 후보 3개 → 3개월 Full Backtest
+  - **?�기 근거**:
+    - PHASE29-2C-R: 1개월 백테?�트 17�?80-240�?(?�성�?7.1~21.3%)
+    - AND 로직 과잉 결합 + ?�격??Threshold ??교집??극소
+    - Scenario A+ (최�? ?�화)로도 목표 미달
+    - Config ?�라미터 ?�달 버그?� 무�? (?�정 ?�후 거래 건수 ?�일)
+    3. 최종 ?�보 3�???3개월 Full Backtest
   
-  - **판정 기준**:
-    - Top 3 조합 모두 3개월 Drawdown < 15% + Win Rate ≥ 50%
+  - **?�정 기�?**:
+    - Top 3 조합 모두 3개월 Drawdown < 15% + Win Rate ??50%
   
   - **기간**: 3~5 sessions
 
-- **29-3.1: btc5m_baseline_v4 Hybrid 전략 설계 및 구현** ✅ **IMPLEMENTATION COMPLETE** (2025-12-10)
-  - **Status**: ✅ **CODE + TEST + CONFIG COMPLETE** | ⏳ **BACKTEST PENDING**
+- **29-3.1: btc5m_baseline_v4 Hybrid ?�략 ?�계 �?구현** ??**IMPLEMENTATION COMPLETE** (2025-12-10)
+  - **Status**: ??**CODE + TEST + CONFIG COMPLETE** | ??**BACKTEST PENDING**
   
-  - **목표**: V4 Hybrid 전략 (OR + Score + Multi-TP) 설계 및 구현
+  - **목표**: V4 Hybrid ?�략 (OR + Score + Multi-TP) ?�계 �?구현
   
-  - **설계 컨셉**:
+  - **?�계 컨셉**:
     - **Regime-Aware Hybrid**: Trend Pullback + Range Mean Reversion
-    - **OR + Score**: AND 과잉(V3) + OR 과잉(V2) 문제 해결
-    - **Multi-TP**: V3 재사용 (TP1 60%, TP2 40%)
-    - **Regime Detection**: V3 재사용 (ADX/DI 기반)
+    - **OR + Score**: AND 과잉(V3) + OR 과잉(V2) 문제 ?�결
+    - **Multi-TP**: V3 ?�사??(TP1 60%, TP2 40%)
+    - **Regime Detection**: V3 ?�사??(ADX/DI 기반)
   
-  - **완료 내역**:
-    1. ✅ 설계 문서: `docs/PHASE29/PHASE29_3_1_BTC5M_BASELINE_V4_DESIGN_KR.md`
-    2. ✅ 전략 코드: `strategies/btc5m_baseline_v4.py` (OR + Score 로직)
-    3. ✅ Unit Test: `tests/test_btc5m_baseline_v4.py` (6/6 PASS)
-    4. ✅ Config 파일: 1일/1주일 백테스트 Config
-    5. ✅ ParamSpace: `configs/tuning/btc5m_baseline_v4_paramspace.yml`
+  - **?�료 ?�역**:
+    1. ???�계 문서: `docs/PHASE29/PHASE29_3_1_BTC5M_BASELINE_V4_DESIGN_KR.md`
+    2. ???�략 코드: `strategies/btc5m_baseline_v4.py` (OR + Score 로직)
+    3. ??Unit Test: `tests/test_btc5m_baseline_v4.py` (6/6 PASS)
+    4. ??Config ?�일: 1??1주일 백테?�트 Config
+    5. ??ParamSpace: `configs/tuning/btc5m_baseline_v4_paramspace.yml`
   
-  - **V4 핵심 로직**:
-    - Trend Mode: RSI(3점) + BB(2점) + EMA(2점) + DI(1점) → score >= 3
-    - Range Mode: RSI(3점) + BB(2점) + ADX(1점) → score >= 2
-    - Threshold 튜닝으로 신호 빈도 조절 가능
+  - **V4 ?�심 로직**:
+    - Trend Mode: RSI(3?? + BB(2?? + EMA(2?? + DI(1?? ??score >= 3
+    - Range Mode: RSI(3?? + BB(2?? + ADX(1?? ??score >= 2
+    - Threshold ?�닝?�로 ?�호 빈도 조절 가??
   
-  - **테스트 결과**:
-    - ✅ V4 클래스 인스턴스 생성 확인
-    - ✅ Config 파라미터 로드 확인
-    - ✅ Trend Mode Score 계산 (Score: 6, Conditions: 3개)
-    - ✅ Range Mode Score 계산 (Score: 6, Conditions: 3개)
-    - ✅ signal_logic 전체 실행
-    - ✅ Regime Detection 통합
+  - **?�스??결과**:
+    - ??V4 ?�래???�스?�스 ?�성 ?�인
+    - ??Config ?�라미터 로드 ?�인
+    - ??Trend Mode Score 계산 (Score: 6, Conditions: 3�?
+    - ??Range Mode Score 계산 (Score: 6, Conditions: 3�?
+    - ??signal_logic ?�체 ?�행
+    - ??Regime Detection ?�합
   
-  - **Artifacts** ✅:
+  - **Artifacts** ??
     - strategies/btc5m_baseline_v4.py (530 lines)
     - tests/test_btc5m_baseline_v4.py (6/6 PASS)
     - configs/backtest/phase29_3_1_btc5m_baseline_v4_{day,week}.yml
     - configs/tuning/btc5m_baseline_v4_paramspace.yml
     - docs/PHASE29/PHASE29_3_1_BTC5M_BASELINE_V4_DESIGN_KR.md
-    - docs/PHASE29/PHASE29_3_1_BACKTEST_ISSUE_NOTE.md (백테스트 이슈)
+    - docs/PHASE29/PHASE29_3_1_BACKTEST_ISSUE_NOTE.md (백테?�트 ?�슈)
   
-  - **판정**: ✅ **CODE/TEST/CONFIG COMPLETE** | ⏳ **BACKTEST 다음 세션**
-  - **백테스트 이슈**: Duration 모드 1시간 제한 문제 (별도 해결 필요)
+  - **?�정**: ??**CODE/TEST/CONFIG COMPLETE** | ??**BACKTEST ?�음 ?�션**
+  - **백테?�트 ?�슈**: Duration 모드 1?�간 ?�한 문제 (별도 ?�결 ?�요)
   
-  - **다음 단계**: PHASE29-3.2 (백테스트 실행 및 Gate 체크: 1주 20~60건)
+  - **?�음 ?�계**: PHASE29-3.2 (백테?�트 ?�행 �?Gate 체크: 1�?20~60�?
   
-  - **기간**: 1 session (설계/구현), 백테스트는 별도 세션
+  - **기간**: 1 session (?�계/구현), 백테?�트??별도 ?�션
 
-- **29-3.2: Duration Fix & V4 Backtest 실행** ⚠️ **PARTIAL SUCCESS** (2025-12-10)
-  - **Status**: ✅ **DURATION FIX COMPLETE** | ❌ **V4 SIGNAL FAIL**
+- **29-3.2: Duration Fix & V4 Backtest ?�행** ?�️ **PARTIAL SUCCESS** (2025-12-10)
+  - **Status**: ??**DURATION FIX COMPLETE** | ??**V4 SIGNAL FAIL**
   
-  - **목표**: Duration 버그 수정 + V4 1일/1주 백테스트 실행
+  - **목표**: Duration 버그 ?�정 + V4 1??1�?백테?�트 ?�행
   
-  - **Duration 수정 완료**:
-    1. ✅ Duration 헬퍼 함수 구현 (`_init_duration_state()`)
-    2. ✅ Backtest 모드 → unlimited 자동 설정
-    3. ✅ Paper/Live Duration 로직 유지 (하위 호환성)
-    4. ✅ Duration Unit Test 8/8 PASS
-    5. ✅ 1일/1주 백테스트 Duration 정상 작동 확인
+  - **Duration ?�정 ?�료**:
+    1. ??Duration ?�퍼 ?�수 구현 (`_init_duration_state()`)
+    2. ??Backtest 모드 ??unlimited ?�동 ?�정
+    3. ??Paper/Live Duration 로직 ?��? (?�위 ?�환??
+    4. ??Duration Unit Test 8/8 PASS
+    5. ??1??1�?백테?�트 Duration ?�상 ?�동 ?�인
   
-  - **V4 백테스트 결과** (❌ 신호 생성 실패):
-    - 1일 (576 캔들): **0건 거래** ❌
-    - 1주 (2,304 캔들): **0건 거래** ❌
-    - Duration unlimited 정상 작동 확인 ✅
-    - 신호 생성 로직 문제 추정 (지표/조건/필터)
+  - **V4 백테?�트 결과** (???�호 ?�성 ?�패):
+    - 1??(576 캔들): **0�?거래** ??
+    - 1�?(2,304 캔들): **0�?거래** ??
+    - Duration unlimited ?�상 ?�동 ?�인 ??
+    - ?�호 ?�성 로직 문제 추정 (지??조건/?�터)
   
-  - **추정 원인**:
-    - 지표 컬럼 누락 가능성 (rsi_14, adx_14, di_plus_14, di_minus_14 등)
-    - 조건 너무 엄격 (trend_min_score=3, range_min_score=2)
-    - 필터 차단 가능성 (ATR/Volume)
+  - **추정 ?�인**:
+    - 지??컬럼 ?�락 가?�성 (rsi_14, adx_14, di_plus_14, di_minus_14 ??
+    - 조건 ?�무 ?�격 (trend_min_score=3, range_min_score=2)
+    - ?�터 차단 가?�성 (ATR/Volume)
   
-  - **Artifacts** ✅:
-    - execution/engine.py: Duration 헬퍼 함수 추가
-    - strategies/__init__.py: V4 전략 등록
-    - strategies/btc5m_baseline_v4.py: 디버깅 로그 추가
-    - tests/test_phase29_3_2_duration_backtest.py: Duration 테스트 (8/8 PASS)
+  - **Artifacts** ??
+    - execution/engine.py: Duration ?�퍼 ?�수 추�?
+    - strategies/__init__.py: V4 ?�략 ?�록
+    - strategies/btc5m_baseline_v4.py: ?�버�?로그 추�?
+    - tests/test_phase29_3_2_duration_backtest.py: Duration ?�스??(8/8 PASS)
     - docs/PHASE29/PHASE29_3_2_BTC5M_BASELINE_V4_BACKTEST_KR.md
   
-  - **판정**: ⚠️ **PARTIAL SUCCESS**
-    - ✅ Duration 수정 성공 (핵심 목표 달성)
-    - ❌ V4 신호 생성 실패 (추가 디버깅 필요)
+  - **?�정**: ?�️ **PARTIAL SUCCESS**
+    - ??Duration ?�정 ?�공 (?�심 목표 ?�성)
+    - ??V4 ?�호 ?�성 ?�패 (추�? ?�버�??�요)
   
-  - **다음 단계**: PHASE29-3.3 (V4 신호 생성 디버깅)
+  - **?�음 ?�계**: PHASE29-3.3 (V4 ?�호 ?�성 ?�버�?
   
   - **기간**: 1 session
 
-- **29-3.3: V4 Signal Debug & Gate Fit** ⚠️ **PARTIAL SUCCESS** (2025-12-10)
-  - **Status**: ⚠️ **ANALYSIS COMPLETE** | ❌ **BACKTEST INTEGRATION FAIL**
+- **29-3.3: V4 Signal Debug & Gate Fit** ?�️ **PARTIAL SUCCESS** (2025-12-10)
+  - **Status**: ?�️ **ANALYSIS COMPLETE** | ??**BACKTEST INTEGRATION FAIL**
   
-  - **목표**: V4 전략 0건 신호 문제 분석 및 1주 Gate(20-60건) 달성
+  - **목표**: V4 ?�략 0�??�호 문제 분석 �?1�?Gate(20-60�? ?�성
   
-  - **완료 내역**:
-    1. ✅ 데이터 지표 컬럼 검사 (9/13 누락 확인)
-    2. ✅ Score & 필터 분포 정량 분석 (96건 신호 예상)
-    3. ✅ 지표 자동 계산 로직 구현 (3개 파일 수정)
-    4. ✅ Gate-Fit Config 제안 (V1: range_min_score=3)
+  - **?�료 ?�역**:
+    1. ???�이??지??컬럼 검??(9/13 ?�락 ?�인)
+    2. ??Score & ?�터 분포 ?�량 분석 (96�??�호 ?�상)
+    3. ??지???�동 계산 로직 구현 (3�??�일 ?�정)
+    4. ??Gate-Fit Config ?�안 (V1: range_min_score=3)
   
-  - **핵심 발견**:
-    - 데이터 파일에 9/13 지표 컬럼 누락 (rsi_14, adx_14, ema_5 등)
-    - Score 분포 분석: **96건 신호 예상** (Baseline Config)
+  - **?�심 발견**:
+    - ?�이???�일??9/13 지??컬럼 ?�락 (rsi_14, adx_14, ema_5 ??
+    - Score 분포 분석: **96�??�호 ?�상** (Baseline Config)
     - Regime: 100% Range 모드 (Trend 0%)
-    - 필터 통과율: 54.35% (ATR 차단 89.63%)
-    - **Gate-Fit V1**: range_min_score=3 → 예상 50-60건
+    - ?�터 ?�과?? 54.35% (ATR 차단 89.63%)
+    - **Gate-Fit V1**: range_min_score=3 ???�상 50-60�?
   
-  - **미해결 문제**:
-    - ❌ 백테스트 엔진-V4 전략 통합 실패 (0건)
-    - 분석 스크립트는 96건 예상, 실제 백테스트는 0건
-    - 엔진 데이터 전달 문제 추정 (PHASE29-3.4로 이월)
+  - **미해�?문제**:
+    - ??백테?�트 ?�진-V4 ?�략 ?�합 ?�패 (0�?
+    - 분석 ?�크립트??96�??�상, ?�제 백테?�트??0�?
+    - ?�진 ?�이???�달 문제 추정 (PHASE29-3.4�??�월)
   
-  - **Artifacts** ✅:
-    - scripts/phase29_3_3_v4_data_probe.py: 데이터 지표 검사
+  - **Artifacts** ??
+    - scripts/phase29_3_3_v4_data_probe.py: ?�이??지??검??
     - scripts/phase29_3_3_v4_score_distribution.py: Score 분포 분석
-    - common/backtest_indicators.py: V4 지표 자동 계산
-    - execution/engine.py: 지표 별칭 추가
-    - strategies/btc5m_baseline_v4.py: 지표 누락 처리
+    - common/backtest_indicators.py: V4 지???�동 계산
+    - execution/engine.py: 지??별칭 추�?
+    - strategies/btc5m_baseline_v4.py: 지???�락 처리
     - docs/PHASE29/PHASE29_3_3_V4_DEBUG_PLAN.md
     - reports/phase29_3_3/v4_score_distribution_week.json
   
   - **Acceptance Criteria**:
-    - ✅ AC1: 데이터 지표 확인 (9/13 누락, 자동 계산 구현)
-    - ✅ AC2: Score 분포 분석 (96건 예상, 병목 Top 3)
-    - ⚠️ AC3: LOOSE 시나리오 (미실행, 분석 기반 제안으로 대체)
-    - ✅ AC4: Gate-Fit Config 선정 (V1 권장)
-    - ❌ AC5: 1주 20-60건 달성 (미검증, 엔진 통합 문제)
+    - ??AC1: ?�이??지???�인 (9/13 ?�락, ?�동 계산 구현)
+    - ??AC2: Score 분포 분석 (96�??�상, 병목 Top 3)
+    - ?�️ AC3: LOOSE ?�나리오 (미실?? 분석 기반 ?�안?�로 ?��?
+    - ??AC4: Gate-Fit Config ?�정 (V1 권장)
+    - ??AC5: 1�?20-60�??�성 (미�?�? ?�진 ?�합 문제)
   
-  - **판정**: ⚠️ **PARTIAL SUCCESS (3/5 PASS)**
-    - 분석 완료, Gate-Fit Config 제안 완료
-    - 백테스트 통합 문제로 실제 검증 미완료
+  - **?�정**: ?�️ **PARTIAL SUCCESS (3/5 PASS)**
+    - 분석 ?�료, Gate-Fit Config ?�안 ?�료
+    - 백테?�트 ?�합 문제�??�제 검�?미완�?
   
-  - **다음 단계**: PHASE29-3.4 (백테스트 통합 디버깅 + Gate 검증)
+  - **?�음 ?�계**: PHASE29-3.4 (백테?�트 ?�합 ?�버�?+ Gate 검�?
   
   - **기간**: 1 session (6H)
 
-- **29-3.4: V4 Engine Integration & Gate Verification** ✅ **COMPLETE** (2025-12-10)
-  - **Status**: ✅ **COMPLETE** | ✅ **GATE PASS (35건)**
+- **29-3.4: V4 Engine Integration & Gate Verification** ??**COMPLETE** (2025-12-10)
+  - **Status**: ??**COMPLETE** | ??**GATE PASS (35�?**
   
-  - **목표**: 백테스트 엔진-V4 전략 통합 버그 수정 및 1주일 Gate(20-60건) 검증
+  - **목표**: 백테?�트 ?�진-V4 ?�략 ?�합 버그 ?�정 �?1주일 Gate(20-60�? 검�?
   
-  - **완료 내역**:
-    1. ✅ Probe 스크립트 작성: V4 신호 발생 독립 검증 (96건 확인)
-    2. ✅ 엔진 통합 문제 진단: Guard가 96건 100% 차단 (base.yml 기본 설정)
-    3. ✅ Gate Config 생성: Guard 완화 (entries.min_rr_required=null, cooldown_candles=0)
-    4. ✅ Gate 백테스트 실행: **35건 체결** (목표 20-60건 범위 내)
-    5. ✅ 문서화 완료: PROGRESS.md, RESULT.md
+  - **?�료 ?�역**:
+    1. ??Probe ?�크립트 ?�성: V4 ?�호 발생 ?�립 검�?(96�??�인)
+    2. ???�진 ?�합 문제 진단: Guard가 96�?100% 차단 (base.yml 기본 ?�정)
+    3. ??Gate Config ?�성: Guard ?�화 (entries.min_rr_required=null, cooldown_candles=0)
+    4. ??Gate 백테?�트 ?�행: **35�?체결** (목표 20-60�?범위 ??
+    5. ??문서???�료: PROGRESS.md, RESULT.md
   
-  - **핵심 발견**:
-    - V4 전략 자체는 정상 작동 (Probe: 96건, 백테스트: 96건 신호)
-    - 문제는 Guard 설정 (base.yml의 min_rr_required: 1.2, cooldown_candles: 1)
-    - Guard 완화로 35건 체결 성공 (LONG 35, SHORT 0)
+  - **?�심 발견**:
+    - V4 ?�략 ?�체???�상 ?�동 (Probe: 96�? 백테?�트: 96�??�호)
+    - 문제??Guard ?�정 (base.yml??min_rr_required: 1.2, cooldown_candles: 1)
+    - Guard ?�화�?35�?체결 ?�공 (LONG 35, SHORT 0)
   
-  - **Artifacts** ✅:
-    - scripts/phase29_3_4_v4_engine_probe.py: V4 신호 발생 검증
-    - scripts/phase29_3_4_check_v4_config.py: Config 파싱 검증
+  - **Artifacts** ??
+    - scripts/phase29_3_4_v4_engine_probe.py: V4 ?�호 발생 검�?
+    - scripts/phase29_3_4_check_v4_config.py: Config ?�싱 검�?
     - configs/backtest/phase29_3_4_btc5m_baseline_v4_week_gate.yml: Gate Config
     - reports/backtest/phase29_3_4/btc5m_baseline_v4_week_gate_summary.json
     - docs/PHASE29/PHASE29_3_4_V4_ENGINE_INTEGRATION_PROGRESS.md
     - docs/PHASE29/PHASE29_3_4_V4_ENGINE_INTEGRATION_RESULT.md
   
   - **Acceptance Criteria**:
-    - ✅ AC1: V4 신호 발생 확인 (96건)
-    - ✅ AC2: 엔진 통합 버그 수정 (Guard 차단 원인 해결)
-    - ✅ AC3: 1주 20-60건 Gate 달성 (35건)
-    - ✅ AC4: 문서화 & ROADMAP 업데이트
-    - ✅ AC5: Git 커밋 완료
+    - ??AC1: V4 ?�호 발생 ?�인 (96�?
+    - ??AC2: ?�진 ?�합 버그 ?�정 (Guard 차단 ?�인 ?�결)
+    - ??AC3: 1�?20-60�?Gate ?�성 (35�?
+    - ??AC4: 문서??& ROADMAP ?�데?�트
+    - ??AC5: Git 커밋 ?�료
   
-  - **판정**: ✅ **COMPLETE (Gate PASS)**
-    - V4 전략 정상 작동 확인
-    - Guard 완화로 Gate 달성
-    - 다음: PHASE29-4 (V4 Tuning & Optimization)
+  - **?�정**: ??**COMPLETE (Gate PASS)**
+    - V4 ?�략 ?�상 ?�동 ?�인
+    - Guard ?�화�?Gate ?�성
+    - ?�음: PHASE29-4 (V4 Tuning & Optimization)
   
   - **기간**: 1 session (3H)
 
-- **29-4: V4 Parameter Tuning & 1M Backtest** ✅ **COMPLETE** (2025-12-11)
-  - **Status**: ✅ **COMPLETE** | ✅ **AC3 CONDITIONAL PASS (12/24 조합)**
+- **29-4: V4 Parameter Tuning & 1M Backtest** ??**COMPLETE** (2025-12-11)
+  - **Status**: ??**COMPLETE** | ??**AC3 CONDITIONAL PASS (12/24 조합)**
   
-  - **목표**: V4 전략 경량 파라미터 튜닝 및 1개월 백테스트 검증
+  - **목표**: V4 ?�략 경량 ?�라미터 ?�닝 �?1개월 백테?�트 검�?
   
-  - **완료 내역**:
-    1. ✅ 1개월 Gate 백테스트: 140건 체결 (Gate_1M 80-240건 범위 내)
-    2. ✅ Light Tuning 실행: 24개 파라미터 조합 (range/trend score, RR, cooldown)
-    3. ✅ 결과 분석: 12개 조합이 Gate_1M 범위 내 (80-240건)
-    4. ✅ 문서화 완료: 튜닝 결과 리포트 (JSON/MD)
-    5. ✅ 스크립트 작성: Runner, Analyzer, Completion Checker
+  - **?�료 ?�역**:
+    1. ??1개월 Gate 백테?�트: 140�?체결 (Gate_1M 80-240�?범위 ??
+    2. ??Light Tuning ?�행: 24�??�라미터 조합 (range/trend score, RR, cooldown)
+    3. ??결과 분석: 12�?조합??Gate_1M 범위 ??(80-240�?
+    4. ??문서???�료: ?�닝 결과 리포??(JSON/MD)
+    5. ???�크립트 ?�성: Runner, Analyzer, Completion Checker
   
-  - **핵심 발견**:
-    - **AC1 (1M 백테스트)**: ✅ PASS (140건 체결)
-    - **AC2 (Gate_1M)**: ✅ PASS (80-240건 범위 내)
-    - **AC3 (Win Rate/Max DD)**: ⚠️ CONDITIONAL PASS (Summary JSON에 정보 없음, 거래 건수로만 평가)
-    - **AC4 (Light Tuning)**: ✅ PASS (24개 조합 완료, 상위 3개 선정)
-    - **AC5 (테스트/ROADMAP/Git)**: ✅ PASS
+  - **?�심 발견**:
+    - **AC1 (1M 백테?�트)**: ??PASS (140�?체결)
+    - **AC2 (Gate_1M)**: ??PASS (80-240�?범위 ??
+    - **AC3 (Win Rate/Max DD)**: ??**FAIL** (PHASE29-6 ?��?�?결과: Win Rate 27.86%, Max DD 23.21%)
+    - **AC4 (Light Tuning)**: ??PASS (24�?조합 ?�료, ?�위 3�??�정)
+    - **AC5 (?�스??ROADMAP/Git)**: ??PASS
   
-  - **튜닝 결과**:
-    - 총 24개 조합 (range_min_score: 2/3/4, trend_min_score: 2/3, min_rr: 1.0/1.2, cooldown: 0/1)
-    - Gate_1M 통과: 12개 조합 (모두 min_rr=1.0 조합)
-    - 상위 3개: range=2/trend=2/RR=1.0 조합들 (140건 체결)
-    - min_rr=1.2 조합은 모두 80건 미만 (Guard 과도)
+  - **?�닝 결과**:
+    - �?24�?조합 (range_min_score: 2/3/4, trend_min_score: 2/3, min_rr: 1.0/1.2, cooldown: 0/1)
+    - Gate_1M ?�과: 12�?조합 (모두 min_rr=1.0 조합)
+    - ?�위 3�? range=2/trend=2/RR=1.0 조합??(140�?체결)
+    - min_rr=1.2 조합?� 모두 80�?미만 (Guard 과도)
   
-  - **Artifacts** ✅:
+  - **Artifacts** ??
     - configs/backtest/phase29_4_0_btc5m_baseline_v4_month_gate.yml: 1M Gate Config
-    - configs/backtest/phase29_4_tuning_*.yml: 24개 튜닝 Config
-    - scripts/phase29_4_run_light_tuning.py: 튜닝 Runner
-    - scripts/phase29_4_analyze_light_tuning.py: 결과 분석기
-    - scripts/phase29_4_check_tuning_completion.py: 완료 확인
-    - reports/backtest/phase29_4_1/*.json: 24개 백테스트 결과
+    - configs/backtest/phase29_4_tuning_*.yml: 24�??�닝 Config
+    - scripts/phase29_4_run_light_tuning.py: ?�닝 Runner
+    - scripts/phase29_4_analyze_light_tuning.py: 결과 분석�?
+    - scripts/phase29_4_check_tuning_completion.py: ?�료 ?�인
+    - reports/backtest/phase29_4_1/*.json: 24�?백테?�트 결과
     - reports/analysis/PHASE29/phase29_4_2_v4_light_tuning.json
     - docs/PHASE29/PHASE29_4_2_V4_LIGHT_TUNING_RESULT_KR.md
     - docs/PHASE29/PHASE29_4_1_V4_MONTH_BASELINE_RESULT_KR.md
     - docs/PHASE29/PHASE29_4_BTC5M_BASELINE_V4_PLAN_KR.md
   
   - **Acceptance Criteria**:
-    - ✅ AC1: 1개월 백테스트 성공 (140건)
-    - ✅ AC2: Gate_1M (80-240건) 통과
-    - ⚠️ AC3: Win Rate ≥ 45%, Max DD ≤ 15% (Summary JSON에 정보 없어 거래 건수로만 평가)
-    - ✅ AC4: Light Tuning 결과 리포트 (24개 조합, 상위 3개 선정)
-    - ✅ AC5: 테스트/ROADMAP/Git 정리 완료
+    - ??AC1: 1개월 백테?�트 ?�공 (140�?
+    - ??AC2: Gate_1M (80-240�? ?�과
+    - ?�️ AC3: Win Rate ??45%, Max DD ??15% (Summary JSON???�보 ?�어 거래 건수로만 ?��?)
+    - ??AC4: Light Tuning 결과 리포??(24�?조합, ?�위 3�??�정)
+    - ??AC5: ?�스??ROADMAP/Git ?�리 ?�료
   
-  - **판정**: ✅ **COMPLETE (CONDITIONAL PASS)**
-    - V4 전략 1개월 성능 탐색 완료
-    - 12개 조합이 거래 건수 기준 통과
-    - Win Rate/Max DD는 Engine 수정 후 재평가 필요
-    - 다음: PHASE29-5 (Engine Win Rate/Max DD 추가) 또는 PHASE30 (Ensemble 복구)
+  - **?�정**: ??**COMPLETE (CONDITIONAL PASS)**
+    - V4 ?�략 1개월 ?�능 ?�색 ?�료
+    - 12�?조합??거래 건수 기�? ?�과
+    - Win Rate/Max DD??Engine ?�정 ???�평가 ?�요
+    - ?�음: PHASE29-5 (Engine Win Rate/Max DD 추�?) ?�는 PHASE30 (Ensemble 복구)
   
   - **Known Issues**:
-    - Summary JSON에 Win Rate, Max DD 정보 없음 → Engine/Reporter 수정 필요
-    - AC3 완전 평가를 위해 후속 작업 필요
+    - Summary JSON??Win Rate, Max DD ?�보 ?�음 ??Engine/Reporter ?�정 ?�요
+    - AC3 ?�전 ?��?�??�해 ?�속 ?�업 ?�요
   
-  - **기간**: 1 session (8H, 백테스트 자동 실행 포함）
+  - **기간**: 1 session (8H, 백테?�트 ?�동 ?�행 ?�함�?
 
 ---
 
-## PHASE29-5: Backtest Summary 성능 지표 엔진화
+## PHASE29-5: Backtest Summary ?�능 지???�진??
 
-**상태**: ✅ **COMPLETE (Conditional)**  
+**?�태**: ??**COMPLETE (Conditional)**  
 **기간**: 2025-12-11 (1 session, 4H)  
-**목표**: Summary JSON에 Win Rate / Max DD / PnL / Sharpe 등 상용급 성능 지표 추가
+**목표**: Summary JSON??Win Rate / Max DD / PnL / Sharpe ???�용�??�능 지??추�?
 
-### 완료 작업
+### ?�료 ?�업
 
-1. **성능 지표 계산 모듈 구현**:
-   - `common/performance_metrics.py` 생성
-   - Win Rate, Max DD, PnL, Sharpe Ratio, Profit Factor 등 계산
-   - DB 조회 및 Trade 리스트 기반 계산 모두 지원
+1. **?�능 지??계산 모듈 구현**:
+   - `common/performance_metrics.py` ?�성
+   - Win Rate, Max DD, PnL, Sharpe Ratio, Profit Factor ??계산
+   - DB 조회 �?Trade 리스??기반 계산 모두 지??
 
-2. **TradeActivityTracker 통합**:
-   - `metrics/trade_activity_tracker.py`의 `get_summary()` 확장
-   - 백테스트 종료 시 자동으로 performance 블록 생성
-   - 기존 필드와 100% 호환 (추가만 됨)
+2. **TradeActivityTracker ?�합**:
+   - `metrics/trade_activity_tracker.py`??`get_summary()` ?�장
+   - 백테?�트 종료 ???�동?�로 performance 블록 ?�성
+   - 기존 ?�드?� 100% ?�환 (추�?�???
 
-3. **단위 테스트**:
-   - `tests/test_phase29_5_performance_metrics.py` 작성
-   - 18개 테스트 케이스 모두 PASS ✅
-   - Edge Cases (Breakeven, 단일 거래 등) 커버
+3. **?�위 ?�스??*:
+   - `tests/test_phase29_5_performance_metrics.py` ?�성
+   - 18�??�스??케?�스 모두 PASS ??
+   - Edge Cases (Breakeven, ?�일 거래 ?? 커버
 
-4. **유틸리티 스크립트**:
-   - `scripts/phase29_5_update_existing_summaries.py`: 기존 Summary 업데이트
-   - `scripts/phase29_5_analyze_v4_performance.py`: 성능 기반 분석 및 랭킹
+4. **?�틸리티 ?�크립트**:
+   - `scripts/phase29_5_update_existing_summaries.py`: 기존 Summary ?�데?�트
+   - `scripts/phase29_5_analyze_v4_performance.py`: ?�능 기반 분석 �???��
 
-5. **기존 결과 업데이트**:
-   - PHASE29-4 Summary JSON 26개에 performance 블록 추가
-   - 분석 리포트 생성 (Markdown + JSON)
+5. **기존 결과 ?�데?�트**:
+   - PHASE29-4 Summary JSON 26개에 performance 블록 추�?
+   - 분석 리포???�성 (Markdown + JSON)
 
-### Performance 스키마
+### Performance ?�키�?
 
 ```json
 {
@@ -2450,61 +2450,126 @@ Ensemble ON 모드로 4시간 이상 연속 Paper 테스트 (인프라 안정성
 
 ### Acceptance Criteria
 
-| AC | 항목 | 상태 | 결과 |
+| AC | ??�� | ?�태 | 결과 |
 |---|------|------|------|
-| **AC1** | Summary 확장 | ✅ **PASS** | performance 블록 생성 확인 |
-| **AC2** | 튜닝 결과 반영 | ⚠️ **CONDITIONAL** | 26개 업데이트 (trial_id 매칭 이슈) |
-| **AC3** | 분석 리포트 | ✅ **PASS** | Markdown + JSON 생성 |
-| **AC4** | 테스트 | ✅ **PASS** | 18/18 + 기존 6/6 PASS |
-| **AC5** | 문서 & Roadmap | ✅ **PASS** | 문서화 + 커밋 완료 |
+| **AC1** | Summary ?�장 | ??**PASS** | performance 블록 ?�성 ?�인 |
+| **AC2** | ?�닝 결과 반영 | ?�️ **CONDITIONAL** | 26�??�데?�트 (trial_id 매칭 ?�슈) |
+| **AC3** | 분석 리포??| ??**PASS** | Markdown + JSON ?�성 |
+| **AC4** | ?�스??| ??**PASS** | 18/18 + 기존 6/6 PASS |
+| **AC5** | 문서 & Roadmap | ??**PASS** | 문서??+ 커밋 ?�료 |
 
 ### Known Issues
 
 **trial_id 매칭 문제**:
-- 백테스트 실행 시 run_id와 DB trial_id 불일치
-- Performance 계산 시 최근 500건 거래 조회 → 모든 Summary가 동일한 지표
-- **영향**: 현재는 인프라 구축 단계로 간주, 실제 성능 평가는 백테스트 재실행 필요
-- **해결 방안**: `execution/engine.py`의 trial_id 저장 로직 강화
+- 백테?�트 ?�행 ??run_id?� DB trial_id 불일�?
+- Performance 계산 ??최근 500�?거래 조회 ??모든 Summary가 ?�일??지??
+- **?�향**: ?�재???�프??구축 ?�계�?간주, ?�제 ?�능 ?��???백테?�트 ?�실???�요
+- **?�결 방안**: `execution/engine.py`??trial_id ?�??로직 강화
 
-### 산출물
+### ?�출�?
 
-**신규 파일**:
+**?�규 ?�일**:
 - `common/performance_metrics.py`
 - `tests/test_phase29_5_performance_metrics.py`
 - `scripts/phase29_5_analyze_v4_performance.py`
 - `scripts/phase29_5_update_existing_summaries.py`
 - `docs/PHASE29/PHASE29_5_PERFORMANCE_METRICS_INTEGRATION_KR.md`
 
-**수정 파일**:
+**?�정 ?�일**:
 - `metrics/trade_activity_tracker.py`
 
-**생성 리포트**:
+**?�성 리포??*:
 - `reports/analysis/PHASE29/phase29_5_v4_performance.{md,json}`
 
-### 판정
+### ?�정
 
-✅ **COMPLETE (Conditional)**
-- 인프라 구축 완료, Production Ready Baseline 확립
-- 데이터 정확도는 향후 백테스트 재실행으로 개선 필요
-- 다음 PHASE에서 정상적으로 사용 가능
+??**COMPLETE (Conditional)**
+- ?�프??구축 ?�료, Production Ready Baseline ?�립
+- ?�이???�확?�는 ?�후 백테?�트 ?�실?�으�?개선 ?�요
+- ?�음 PHASE?�서 ?�상?�으�??�용 가??
 
-### 다음 단계
+### ?�음 ?�계
 
-**Option A**: trial_id 문제 해결 후 재실행
-- V4 1M + 24개 튜닝 백테스트 재실행
-- 정확한 성능 지표로 AC3 (Win Rate >= 45%, Max DD <= 15%) 재평가
+**Option A**: trial_id 문제 ?�결 ???�실??
+- V4 1M + 24�??�닝 백테?�트 ?�실??
+- ?�확???�능 지?�로 AC3 (Win Rate >= 45%, Max DD <= 15%) ?�평가
 
-**Option B**: PHASE30 진행 (현재 인프라로도 가능)
-- V4 전략을 Ensemble 프레임워크에 통합
-- 멀티 전략 테스트 시 성능 지표 자동 수집
+**Option B**: PHASE30 진행 (?�재 ?�프?�로??가??
+- V4 ?�략??Ensemble ?�레?�워?�에 ?�합
+- 멀???�략 ?�스?????�능 지???�동 ?�집
 
-**진입 조건**: PHASE28-13 완료
+**진입 조건**: PHASE28-13 ?�료
 
-**퇴출 조건**: PHASE29-4 PASS (V4 전략 Win Rate ≥ 45%, Max DD ≤ 15%, 1개월 백테스트 완료)
+**?�출 조건**: PHASE29-4 PASS (V4 ?�략 Win Rate >= 45%, Max DD <= 15%, 1개월 백테?�트 ?�료)
 
-**PHASE29-3 최종 상태**: ✅ **COMPLETE**
-  - V3 전략 공식 폐기 (AND 로직 과잉, 신호 극소)
-  - V4 전략 재설계 및 구현 완료 (OR + Score, Regime별 Multi-TP)
-  - V4 엔진 통합 완료 (Guard 차단 문제 해결)
-  - ✅ Gate PASS: 1주일 35건 체결 (목표 20-60건 범위 내)
-  - 다음: PHASE29-4 (V4 Tuning & 1M Backtest)
+**PHASE29-3 최종 ?�태**: ??**COMPLETE**
+  - V3 ?�략 공식 ?�기 (AND 로직 과잉, ?�호 극소)
+  - V4 ?�략 ?�설�?�?구현 ?�료 (OR + Score, Regime�?Multi-TP)
+  - V4 ?�진 ?�합 ?�료 (Guard 차단 문제 ?�결)
+  - ??Gate PASS: 1주일 35�?체결 (목표 20-60�?범위 ??
+  - ?�음: PHASE29-4 (V4 Tuning & 1M Backtest)
+---
+
+## PHASE29-6: V4 Performance Metrics Accuracy & AC3 ���� ����
+
+**����**:  **COMPLETE**  
+**�Ⱓ**: 2025-12-11 (1 session)  
+**��ǥ**: trial_id/run_id ���ռ� ���� �� V4 AC3 ���� ����
+
+### ���� ����
+
+PHASE29-5���� �߰ߵ� trial_id/run_id ����ġ�� ����:
+- DB trades.trial_id ��κ� NULL (6,090�� �� 738�Ǹ� ����)
+- Performance ��� �� �ֱ� 500�� ���� trade ���  ����Ȯ
+- AC3 (Win Rate/Max DD) �� �ŷڵ� 0%
+
+### �Ϸ� �۾�
+
+1. **engine.py ����**: trial_id = config.get("trial_id") or run_id
+2. **run_backtest.py ����**: custom config�� run_id ����
+3. **���� �׽�Ʈ ����**: 3/3 PASS (trial_id ���� ��Ȯ�� ����)
+4. **V4 ���׽�Ʈ �����**: 1M Gate 140��, trial_id ���� ���� 
+5. **AC3 �м� & ����**: 4/4 ���� ��� AC3 FAIL
+
+### AC3 ���� ���
+
+**1M Gate Baseline**:
+- Win Rate: 27.86% (��ǥ: 45%) 
+- Max DD: 23.21% (��ǥ: 15%) 
+- PnL: -2,245 USDT, Profit Factor: 0.525
+
+**����**: �ս� ���� 72.14%, Win Rate 17.14%p ����, R:R ���� �Ҹ�
+
+**Top 3 Ʃ��**: ��� AC3 FAIL (Win Rate 30.4%, Max DD 64.6%)
+
+### PHASE29-4 ���� ����
+
+**AC3:  FAIL** - V4 ������ 2024�� 11�� BTC ���忡�� ���� ���� �̴�
+
+### Acceptance Criteria
+
+| AC | ��� |
+|----|------|
+| AC1: trial_id/run_id ���ռ� |  PASS |
+| AC2: Performance ��� ��Ȯ�� |  PASS |
+| AC3: ���׽�Ʈ ����� |  PASS (140��) |
+| AC4: AC3 ���� |  PASS (FAIL ����) |
+| AC5: ���� & Roadmap |  PASS |
+
+### ���⹰
+
+**�ھ� ����**: execution/engine.py, scripts/run_backtest.py  
+**�ű� ����**: tests/test_phase29_6_trial_id_mapping.py, scripts/phase29_6_*.py  
+**����**: docs/PHASE29/PHASE29_6_V4_PERFORMANCE_ACCURACY_KR.md  
+**����Ʈ**: reports/analysis/PHASE29/phase29_6_ac3_performance.{md,json}
+
+### ����
+
+ **COMPLETE** - Infrastructure 100% �Ϸ�, V4 ���� �� �Ϸ� (AC3 FAIL ���� ����)
+
+### ���� �ܰ�
+
+**PHASE30**: ���� ���� �Ǵ� �ӻ�� ����
+- Option A: V4 �Ķ���� ������
+- Option B: �ٸ� �Ⱓ/���� ���� �����
+- Option C: �ӻ�� �����ӿ�ũ ����
