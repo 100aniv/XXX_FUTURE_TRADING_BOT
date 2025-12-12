@@ -262,6 +262,9 @@ def run_v2(mode: str, config: dict, clean_state: bool = False):
     # 6. 기존 run() 호출 (단일 엔진 원칙, PHASE26-1: symbols 전달)
     logger.info("🚀 [PHASE23-1/26-1] Core engine.run() 호출")
     
+    # ⭐ PHASE31: MTF 데이터 전달 (backtest 모드인 경우)
+    mtf_dfs = adapters.get('mtf_dfs', None)
+    
     try:
         run(
             feed=adapters['feed'],
@@ -271,29 +274,10 @@ def run_v2(mode: str, config: dict, clean_state: bool = False):
             ensemble_module=ensemble_module,
             config=config,
             symbols=symbols,  # ⭐ PHASE26-1: symbols 전달
-            activity_tracker=activity_tracker  # ⭐ PHASE27-5A: TradeActivityTracker 전달
+            activity_tracker=activity_tracker,  # ⭐ PHASE27-5A: TradeActivityTracker 전달
+            mtf_dfs=mtf_dfs  # ⭐ PHASE31: MTF 데이터 전달
         )
         logger.info("✅ [PHASE23-1/26-1] Engine V2 정상 종료")
-        
-        # PHASE28-0: Metrics 최종 동기화 (CPU/Memory)
-        if prometheus_exporter:
-            logger.info("📊 [PHASE28-0] Prometheus Metrics 최종 동기화...")
-            from monitoring.metrics_adapter import MetricsAdapter
-            from common.perf.perf_profiler import multi_symbol_profiler
-            
-            adapter = MetricsAdapter(
-                exporter=prometheus_exporter,
-                tracker=activity_tracker,
-                profiler=multi_symbol_profiler
-            )
-            adapter.sync_all()
-            logger.info("✅ Prometheus Metrics 최종 동기화 완료")
-        
-        # TradeActivityTracker Summary 저장 (PHASE27-5A)
-        if activity_tracker and hasattr(activity_tracker, '_output_file') and activity_tracker._output_file:
-            logger.info("📊 [PHASE27-5A] TradeActivityTracker Summary 저장 중...")
-            activity_tracker.save_json(activity_tracker._output_file)
-            logger.info(f"✅ TradeActivityTracker Summary 저장 완료: {activity_tracker._output_file}")
         
     finally:
         # 7. Cleanup
@@ -349,7 +333,25 @@ def _create_backtest_adapters(config: dict, symbols: list) -> dict:
         logger=logger
     )
     
-    return {'feed': feed, 'broker': broker, 'clock': clock}
+    # ⭐ PHASE31: MTF 데이터 준비 (HistoricalFeed에서 15m 데이터 추출 후 1H/4H 생성)
+    mtf_dfs = None
+    if hasattr(feed, 'df') and config.get('timeframe') == '15m':
+        logger.info("🔧 [PHASE31] MTF 데이터 인프라 구축 시작...")
+        try:
+            from common.mtf_resampler import create_mtf_dataframes
+            
+            df_15m = feed.df.copy()
+            mtf_dfs = create_mtf_dataframes(df_15m, timestamp_col='time')
+            
+            logger.info(f"✅ [PHASE31] MTF 데이터 생성 완료:")
+            logger.info(f"   - 15m: {len(mtf_dfs['15m']):,}개 캔들")
+            logger.info(f"   - 1H: {len(mtf_dfs['1h']):,}개 캔들")
+            logger.info(f"   - 4H: {len(mtf_dfs['4h']):,}개 캔들")
+        except Exception as e:
+            logger.warning(f"⚠️ [PHASE31] MTF 데이터 생성 실패 (무시하고 계속): {e}")
+            mtf_dfs = None
+    
+    return {'feed': feed, 'broker': broker, 'clock': clock, 'mtf_dfs': mtf_dfs}
 
 
 def _create_live_adapters(config: dict, clean_state: bool, symbols: list) -> dict:
@@ -435,7 +437,7 @@ def _convert_ensemble_decision_v2_to_signal(ensemble_decision_v2) -> dict:
     return signal
 
 
-def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict, symbols: list = None, activity_tracker=None):
+def run(feed, broker, clock, strategies: dict, ensemble_module, config: dict, symbols: list = None, activity_tracker=None, mtf_dfs: dict = None):
     """
     공통 트레이딩 루프 (PHASE26-1: Multi-Symbol 지원)
 
@@ -978,6 +980,9 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict, sy
     # ⭐ PHASE18-3: Runtime Context 추출 (Graceful Shutdown)
     runtime_ctx = config.get('runtime_context', None)
     
+    # PHASE32-1: 전략 호출 카운터 (하드와이어링)
+    strategy_call_counters = {}  # {strategy_name: {'attempts': int, 'success': int, 'exceptions': int, 'exception_top': dict}}
+    
     # ⭐ 메인 루프
     for candle in feed.stream():
         # ⭐ PHASE18-3: Shutdown 체크 (최우선)
@@ -1370,25 +1375,9 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict, sy
                 tg(msg, config)
 
         # ⭐⭐⭐ 실밥 리팩토링 시작: 기존 전략 호출 로직 → SignalGenerator 활용 ⭐⭐⭐
-        # =============================================================================
-        # [기존 코드 - 주석 처리]
-        # 전략별 신호 생성
-        # signals = []
-        # for strategy_id, strategy_module in strategies.items():
-        #     try:
-        #         from common.strategy_config import load_strategy_params
-        #         strategy_params = load_strategy_params()
-        #         cfg = strategy_params.get(strategy_id, {})
-        #
-        #         signal = strategy_module.signal_logic(df, cfg)
-        #
-        #         if signal and signal.get('side'):
-        #             signal['strategy_id'] = strategy_id
-        #             signals.append(signal)
-        #     except Exception as e:
-        #         logger.error(f"❌ [{strategy_id}] 전략 오류: {e}")
-        # =============================================================================
-
+        # ============================================================================
+        # 메인 루프: 캔들 순회
+        # ============================================================================
         # ⭐ PR11: Drawdown Guard 체크 (메인 루프 종료)
         if drawdown_guard_triggered:
             logger.error(f"🔴 Drawdown Guard 트리거됨 - 메인 루프 종료")
@@ -1445,6 +1434,9 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict, sy
                                 continue
                             
                             # Compute signal
+                            # PHASE32-1: 전략 호출 카운터 증가 (ensemble)
+                            strategy_call_counters[strategy_name] = strategy_call_counters.get(strategy_name, 0) + 1
+                            
                             raw_signal = strategy_instance.compute_signal(df_with_indicators)
                             
                             # ⭐ PHASE27-0 / PHASE27-6: Strategy Signal Hook
@@ -1717,8 +1709,6 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict, sy
                                 else:
                                     # unsupported tf → use base
                                     df_tf = df.copy()
-                            else:
-                                df_tf = df.copy()
                         except Exception:
                             df_tf = df.copy()
                         logger.debug(
@@ -1781,7 +1771,66 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict, sy
                         # PHASE23-2: BaseStrategy.compute_signal() 호출
                         # Config 병합: instance에 이미 config가 있지만, 런타임 cfg 우선
                         strategy_instance.config = cfg
-                        signal = strategy_instance.compute_signal(df_tf)
+                        
+                        # PHASE32-1: 전략 호출 카운터 초기화
+                        if strategy_id not in strategy_call_counters:
+                            strategy_call_counters[strategy_id] = {
+                                'attempts': 0,
+                                'success': 0,
+                                'exceptions': 0,
+                                'exception_top': {}
+                            }
+                        
+                        # PHASE32-1: attempts 카운트
+                        strategy_call_counters[strategy_id]['attempts'] += 1
+                        
+                        try:
+                            # PHASE31: MTF context 주입 (btc15m_core_v2 등 MTF 전략용)
+                            if mtf_dfs is not None and strategy_id in ['btc15m_core_v2']:
+                                from common.mtf_resampler import prepare_mtf_context_for_strategy
+                                 
+                                # 현재 시점 추출 (df_tf의 마지막 타임스탬프)
+                                if len(df_tf) > 0 and 'time' in df_tf.columns:
+                                    current_ts = df_tf['time'].iloc[-1]
+                                    if not isinstance(current_ts, pd.Timestamp):
+                                        current_ts = pd.to_datetime(current_ts)
+                                     
+                                    # MTF context 준비
+                                    _, df_1h, df_4h = prepare_mtf_context_for_strategy(
+                                        buffer_15m=df_tf,
+                                        mtf_dfs=mtf_dfs,
+                                        current_ts=current_ts,
+                                        lookback=cfg.get('lookback', 1000),
+                                        timestamp_col='time'
+                                    )
+                                     
+                                    strategy_instance.config['df_1h'] = df_1h
+                                    strategy_instance.config['df_4h'] = df_4h
+                                    strategy_instance.config['portfolio_state'] = portfolio.get_stats()
+                                    logger.debug(
+                                        f" [PHASE31] MTF : 1H={len(df_1h) if df_1h is not None else 0}, "
+                                        f"4H={len(df_4h) if df_4h is not None else 0}"
+                                    )
+                             
+                            signal = strategy_instance.compute_signal(df_tf)
+                             
+                            # PHASE32-1: success 
+                            strategy_call_counters[strategy_id]['success'] += 1
+                             
+                        except Exception as e:
+                            # PHASE32-1: exceptions 
+                            strategy_call_counters[strategy_id]['exceptions'] += 1
+                             
+                            exc_msg = f"{type(e).__name__}: {str(e)[:100]}"
+                            if exc_msg not in strategy_call_counters[strategy_id]['exception_top']:
+                                strategy_call_counters[strategy_id]['exception_top'][exc_msg] = 0
+                            strategy_call_counters[strategy_id]['exception_top'][exc_msg] += 1
+                             
+                            logger.exception(
+                                f"❌ [ENGINE] {strategy_id} compute_signal 예외: {exc_msg}"
+                            )
+                            
+                            signal = None
                     else:
                         # Legacy: signal_logic() 함수 호출 (폴백)
                         if hasattr(strategy_instance, 'signal_logic'):
@@ -2383,10 +2432,15 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict, sy
             total_exposure_before = max(0.0, total_exposure_after - position_value)
             cash_before = max(0.0, current_equity - total_exposure_before)
             cash_after = max(0.0, current_equity - total_exposure_after)
-            active_pos_count = len(active_positions)
+            active_pos_count = len(
+                active_positions
+            )  # 청산 후 포지션 수 (pop 이후 길이 사용)
             max_pos = config.get("risk", {}).get("max_positions", 20)
 
-            # format_signal_alert 사용 (P2 최종 포맷)
+            # 포지션 번호 (청산되는 포지션)
+            position_number = position.get("position_number", 1)
+
+            # 청산 알람 생성 (P2 최종 확정 포맷)
             msg = format_signal_alert(
                 symbol=candle_symbol,
                 I=signal_info,
@@ -2454,6 +2508,98 @@ def run(feed, broker, clock, strategies: Dict, ensemble_module, config: Dict, sy
         f"✅ Trading Engine 종료: 총 캔들={candle_count:,}개, 진입 거래={trade_count}건, 종료 거래={closed_count}건, 활성 포지션={len(active_positions)}개"
     )
     logger.info("=" * 80)
+
+    # PHASE32-1: 전략 호출 횟수 출력 (배선 검증)
+    logger.info("")
+    logger.info("="*80)
+    logger.info("📊 [PHASE32-1] Engine-Level Strategy Call Counters")
+    logger.info("="*80)
+    
+    # 전략 호출 카운터 출력 (attempts/success/exceptions)
+    for strategy_name, counters in strategy_call_counters.items():
+        attempts = counters.get('attempts', 0)
+        success = counters.get('success', 0)
+        exceptions = counters.get('exceptions', 0)
+        success_rate = (success / attempts * 100) if attempts > 0 else 0.0
+        
+        logger.info(f"   {strategy_name}:")
+        logger.info(f"      - Attempts: {attempts:,}")
+        logger.info(f"      - Success: {success:,} ({success_rate:.1f}%)")
+        logger.info(f"      - Exceptions: {exceptions:,}")
+        
+        if exceptions > 0 and counters.get('exception_top'):
+            logger.info(f"      - Top Exceptions:")
+            top_exc = sorted(
+                counters['exception_top'].items(),
+                key=lambda x: x[1],
+                reverse=True
+            )[:3]
+            for exc_msg, count in top_exc:
+                logger.info(f"         • {exc_msg}: {count}회")
+    
+    logger.info("="*80)
+    logger.info("📊 [PHASE32-1] DecisionTrace Telemetry Report")
+    logger.info("="*80)
+    
+    if strategies:
+        diagnostics_found = False
+        for strategy_name, strategy_info in strategies.items():
+            try:
+                strategy_instance = strategy_info.get('instance')
+                if strategy_instance is None:
+                    logger.warning(f"⚠️  [{strategy_name}] instance=None, 스킵")
+                    continue
+                
+                # hasattr + callable 체크
+                if not hasattr(strategy_instance, 'get_diagnostics'):
+                    logger.debug(f"[{strategy_name}] get_diagnostics() 메서드 없음")
+                    continue
+                
+                get_diag = getattr(strategy_instance, 'get_diagnostics', None)
+                if not callable(get_diag):
+                    logger.warning(f"⚠️  [{strategy_name}] get_diagnostics는 callable이 아님")
+                    continue
+                
+                # 호출
+                diag = get_diag()
+                if not diag:
+                    logger.info(f"[{strategy_name}] DecisionTrace 비활성화 (diag_enabled=False)")
+                    continue
+                
+                diagnostics_found = True
+                
+                # 출력
+                logger.info("")
+                logger.info(f"🔍 Strategy: {strategy_name}")
+                logger.info(f"   총 신호 체크: {diag.get('total_signals_checked', 0):,}회")
+                logger.info(f"   총 차단 횟수: {diag.get('total_blocks', 0):,}회")
+                logger.info(f"   차단 비율: {diag.get('block_rate', 0):.1%}")
+                logger.info("")
+                logger.info("   🔝 Top 10 차단 사유:")
+                
+                top_blockers = diag.get('top_blockers', [])
+                total_blocks = diag.get('total_blocks', 0)
+                
+                for i, (reason, count) in enumerate(top_blockers[:10], 1):
+                    pct = count / total_blocks * 100 if total_blocks > 0 else 0
+                    logger.info(f"      {i:2d}. {reason:45s}: {count:6,}회 ({pct:5.1f}%)")
+                
+                if not top_blockers:
+                    logger.info("      (차단 사유 없음 - 모든 신호가 통과했거나 신호 체크 없음)")
+                
+            except Exception as e:
+                logger.error(f"❌ [{strategy_name}] DecisionTrace 출력 실패: {e}")
+                import traceback
+                logger.error(traceback.format_exc())
+        
+        if not diagnostics_found:
+            logger.warning("⚠️  DecisionTrace 데이터를 가진 전략이 없습니다.")
+            logger.warning("   - diag_enabled: true 설정 확인")
+            logger.warning("   - 전략 인스턴스가 정상 로드되었는지 확인")
+    else:
+        logger.warning("⚠️  strategies dict가 비어있습니다!")
+    
+    logger.info("="*80)
 
     # ⭐ 백테스트 모드일 경우 HTML 리포트 생성 또는 TUNING_VIBLE 검증
     mode = config.get("mode", "paper")

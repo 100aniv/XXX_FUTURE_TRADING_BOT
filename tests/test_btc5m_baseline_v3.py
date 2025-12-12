@@ -44,12 +44,12 @@ def base_config():
         'momentum_lookback': 5,
         'momentum_threshold': 0.001,
         
-        # V3 Filters
+        # V3 Filters (PHASE29-2B Scenario A+)
         'v3_filters': {
             'enable_min_atr': True,
-            'min_atr_pct': 0.002,
+            'min_atr_pct': 0.0015,  # Scenario A+: 0.002 → 0.0015
             'enable_volume_filter': True,
-            'min_volume_ratio': 0.8,
+            'min_volume_ratio': 0.5,  # Scenario A+: 0.8 → 0.5
             'enable_time_filter': False,
         },
         
@@ -166,10 +166,11 @@ def test_filter_low_atr(base_config, mock_df_bull_trend):
 
 
 def test_filter_low_volume(base_config, mock_df_bull_trend):
-    """Test 3: Volume 필터 (너무 낮은 거래량 차단)"""
+    """Test 3: Volume 필터 (Volume < MA20 * 0.5, Scenario A+)"""
     df = mock_df_bull_trend.copy()
     df['volume'] = 10.0
-    df.iloc[-1, df.columns.get_loc('volume')] = 2.0  # Last bar volume too low
+    df['volume_ma_20'] = 10.0  # Volume MA
+    df.iloc[-1, df.columns.get_loc('volume')] = 4.0  # Last bar volume = 0.4x MA (< 0.5 threshold)
     
     signal = signal_logic(df, base_config)
     

@@ -92,9 +92,9 @@ def add_v4_indicators(df: pd.DataFrame, config: Dict[str, Any] = None) -> pd.Dat
 
 def add_core_v1_indicators(df: pd.DataFrame, config: Dict[str, Any] = None) -> pd.DataFrame:
     """
-    Core V1 전략 필수 지표를 데이터프레임에 추가
+    Core V1/V2 전략 필수 지표를 데이터프레임에 추가 (V4 + Bollinger Bands)
     
-    PHASE30-1: btc15m_core_v1 전용 지표 계산
+    PHASE30-1/PHASE30-3: btc15m_core_v1/v2 공통 지표 계산
     
     Args:
         df: OHLCV 데이터프레임 (timestamp, open, high, low, close, volume)
@@ -103,52 +103,24 @@ def add_core_v1_indicators(df: pd.DataFrame, config: Dict[str, Any] = None) -> p
     Returns:
         pd.DataFrame: 지표가 추가된 데이터프레임
     
-    Core V1 필수 지표:
+    Core V1/V2 필수 지표:
         - rsi_14: RSI (14)
         - adx_14, di_plus_14, di_minus_14: ADX + DI
-        - ema_20, ema_50, ema_200: EMA
+        - ema_20, ema_50, ema_200: EMA (20/50/200)
         - atr_14: ATR (14)
         - volume_ma_20: Volume MA (20)
-        - bb_upper, bb_middle, bb_lower: Bollinger Bands
+        - bb_upper, bb_middle, bb_lower: Bollinger Bands (20, 2.0)
     """
     # Config 기본값
     if config is None:
         config = {}
     
-    indicators_cfg = config.get('indicators', {})
+    # 기본 V4 지표 먼저 추가 (RSI, EMA, ATR, ADX, Volume MA)
+    df = add_v4_indicators(df, config)
     
-    # 데이터프레임 복사
-    df = df.copy()
-    
-    # 1. RSI 계산
-    rsi_length = indicators_cfg.get('rsi', {}).get('length', 14)
-    df[f'rsi_{rsi_length}'] = rsi(df['close'], length=rsi_length)
-    
-    # 2. EMA 계산
-    ema_cfg = indicators_cfg.get('ema', {})
-    df['ema_20'] = ema(df['close'], length=ema_cfg.get('mid', 20))
-    df['ema_50'] = ema(df['close'], length=ema_cfg.get('mid2', 50))
-    df['ema_200'] = ema(df['close'], length=ema_cfg.get('slow', 200))
-    
-    # 3. ATR 계산
-    atr_length = indicators_cfg.get('atr', {}).get('length', 14)
-    df[f'atr_{atr_length}'] = atr(df, length=atr_length)
-    
-    # 4. Volume MA 계산
-    vol_ma_length = indicators_cfg.get('volume', {}).get('ma_length', 20)
-    df[f'volume_ma_{vol_ma_length}'] = volume_ma(df['volume'], length=vol_ma_length)
-    
-    # 5. ADX + DI 계산
-    adx_period = indicators_cfg.get('adx', {}).get('period', 14)
-    df = compute_adx(df, period=adx_period)
-    
-    # 별칭 생성 (di_plus_14, di_minus_14)
-    if f'plus_di_{adx_period}' in df.columns and f'di_plus_{adx_period}' not in df.columns:
-        df[f'di_plus_{adx_period}'] = df[f'plus_di_{adx_period}']
-        df[f'di_minus_{adx_period}'] = df[f'minus_di_{adx_period}']
-    
-    # 6. Bollinger Bands 계산
-    bb_cfg = indicators_cfg.get('bollinger', {})
+    # Bollinger Bands 추가 (Core V1/V2 전용)
+    indicators_cfg = config.get('indicators', {}) if config else {}
+    bb_cfg = indicators_cfg.get('bollinger_bands', {})
     bb_length = bb_cfg.get('length', 20)
     bb_std = bb_cfg.get('std', 2.0)
     
@@ -156,6 +128,10 @@ def add_core_v1_indicators(df: pd.DataFrame, config: Dict[str, Any] = None) -> p
     bb_std_val = df['close'].rolling(window=bb_length).std()
     df['bb_upper'] = df['bb_middle'] + (bb_std_val * bb_std)
     df['bb_lower'] = df['bb_middle'] - (bb_std_val * bb_std)
+    
+    # Also add ema_50 if not present (Core V1 specific)
+    if 'ema_50' not in df.columns:
+        df['ema_50'] = ema(df['close'], length=50)
     
     return df
 
@@ -199,4 +175,3 @@ def validate_indicators(df: pd.DataFrame) -> Dict[str, Any]:
         'complete': complete,
         'valid': len(missing) == 0 and len(incomplete) == 0
     }
-    return result

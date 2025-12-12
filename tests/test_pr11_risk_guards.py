@@ -1,12 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-PR11 Risk Guards Property Tests
-===============================
-RiskManager 강화 가드들의 프로퍼티 테스트
-
-테스트 대상:
-- Drawdown Guard
+PR11 Risk Guards 테스트
 - Slippage Guard  
 - Extreme Loss Guard
 - Paper/Live 파리티

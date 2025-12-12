@@ -1,8 +1,8 @@
 {
-  "run_id": "20251210_173325_6ac4",
+  "run_id": "phase29_4_0_btc5m_baseline_v4_month_gate",
   "duration_minutes": null,
-  "timestamp": "2025-12-10T17:33:28.237215",
-  "end_timestamp": "2025-12-10T17:38:14.419649",
+  "timestamp": "2025-12-11T14:56:10.485177",
+  "end_timestamp": "2025-12-11T15:01:50.759341",
   "symbols": {
     "BTCUSDT": {
       "strategy_signals": {
@@ -37,5 +37,21 @@
     "ensemble_skip": 0,
     "guard_blocks_total": 222,
     "orders_submitted": 140
+  },
+  "performance": {
+    "num_trades": 140,
+    "pnl_total": -2245.2078936151092,
+    "pnl_avg_per_trade": -16.03719924010792,
+    "win_rate": 0.2785714285714286,
+    "max_drawdown": 0.23206216719632594,
+    "max_drawdown_abs": -2320.6216719632594,
+    "sharpe_ratio": -4.591430580248202,
+    "profit_factor": 0.5251077783448849,
+    "num_wins": 39,
+    "num_losses": 101,
+    "avg_win": 63.65687996933927,
+    "avg_loss": -46.810160519003375,
+    "max_consecutive_losses": 10,
+    "roi": -0.22452078936151093
   }
 }

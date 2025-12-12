@@ -1,0 +1,41 @@
+{
+  "run_id": "20251210_015730_arof",
+  "duration_minutes": null,
+  "timestamp": "2025-12-10T01:57:33.040301",
+  "end_timestamp": "2025-12-10T01:57:43.178267",
+  "symbols": {
+    "BTCUSDT": {
+      "strategy_signals": {
+        "btc5m_baseline_v4": {
+          "total_calls": 477,
+          "signal_true": 11,
+          "signal_false": 466,
+          "long_signals": 5,
+          "short_signals": 6,
+          "regime_range": 88,
+          "regime_trend": 389
+        }
+      },
+      "ensemble_decisions": {},
+      "guard_blocks": {
+        "FILTER_RR_BELOW_MIN": 6,
+        "FILTER_COOLDOWN_ACTIVE": 5
+      },
+      "orders_submitted": 0
+    }
+  },
+  "totals": {
+    "strategy_signals_total": 477,
+    "strategy_signals_true": 11,
+    "strategy_signals_false": 466,
+    "long_signals": 5,
+    "short_signals": 6,
+    "regime_range": 88,
+    "regime_trend": 389,
+    "ensemble_tier1": 0,
+    "ensemble_tier2": 0,
+    "ensemble_skip": 0,
+    "guard_blocks_total": 11,
+    "orders_submitted": 0
+  }
+}

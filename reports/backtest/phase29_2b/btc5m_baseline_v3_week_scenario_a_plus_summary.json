@@ -1,0 +1,43 @@
+{
+  "run_id": "20251209_083547_zvja",
+  "duration_minutes": null,
+  "timestamp": "2025-12-09T08:35:49.741844",
+  "end_timestamp": "2025-12-09T08:36:45.486300",
+  "symbols": {
+    "BTCUSDT": {
+      "strategy_signals": {
+        "btc5m_baseline_v3": {
+          "total_calls": 2205,
+          "signal_true": 221,
+          "signal_false": 1984,
+          "long_signals": 221,
+          "short_signals": 0,
+          "regime_range": 585,
+          "regime_trend": 1620
+        }
+      },
+      "ensemble_decisions": {},
+      "guard_blocks": {
+        "FILTER_RR_BELOW_MIN": 31,
+        "FILTER_COOLDOWN_ACTIVE": 149,
+        "GUARD_CONSECUTIVE_LOSS_COOLDOWN": 10,
+        "GUARD_RISK_CHECK_ORDER": 10
+      },
+      "orders_submitted": 20
+    }
+  },
+  "totals": {
+    "strategy_signals_total": 2205,
+    "strategy_signals_true": 221,
+    "strategy_signals_false": 1984,
+    "long_signals": 221,
+    "short_signals": 0,
+    "regime_range": 585,
+    "regime_trend": 1620,
+    "ensemble_tier1": 0,
+    "ensemble_tier2": 0,
+    "ensemble_skip": 0,
+    "guard_blocks_total": 200,
+    "orders_submitted": 20
+  }
+}

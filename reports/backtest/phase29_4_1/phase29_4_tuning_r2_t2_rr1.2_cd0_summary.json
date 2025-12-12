@@ -37,5 +37,21 @@
     "ensemble_skip": 0,
     "guard_blocks_total": 406,
     "orders_submitted": 0
+  },
+  "performance": {
+    "num_trades": 500,
+    "pnl_total": -6353.100715430506,
+    "pnl_avg_per_trade": -12.706201430861013,
+    "win_rate": 0.304,
+    "max_drawdown": 0.645579776347009,
+    "max_drawdown_abs": -6505.494496246423,
+    "sharpe_ratio": -3.545203573009678,
+    "profit_factor": 0.6048223796808917,
+    "num_wins": 152,
+    "num_losses": 348,
+    "avg_win": 63.97019332651463,
+    "avg_loss": -46.197040520289455,
+    "max_consecutive_losses": 10,
+    "roi": -0.6353100715430506
   }
 }
