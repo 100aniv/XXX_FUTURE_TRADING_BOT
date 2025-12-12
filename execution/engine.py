@@ -341,6 +341,14 @@ def _create_backtest_adapters(config: dict, symbols: list) -> dict:
             from common.mtf_resampler import create_mtf_dataframes
             
             df_15m = feed.df.copy()
+            
+            # PHASE34-2 FIX: Convert timestamps BEFORE creating MTF dataframes
+            if 'time' in df_15m.columns and not df_15m.empty:
+                sample_ts = df_15m['time'].iloc[0]
+                if isinstance(sample_ts, (int, float)) and sample_ts > 10_000_000_000:
+                    df_15m['time'] = pd.to_datetime(df_15m['time'], unit='ms', utc=True)
+                    logger.info(f"✅ [PHASE34-2] MTF source timestamps converted: {df_15m['time'].iloc[0]}")
+            
             mtf_dfs = create_mtf_dataframes(df_15m, timestamp_col='time')
             
             logger.info(f"✅ [PHASE31] MTF 데이터 생성 완료:")
@@ -1128,6 +1136,13 @@ def run(feed, broker, clock, strategies: dict, ensemble_module, config: dict, sy
 
         # DataFrame 생성 + 지표 계산 ((심볼, TF)별)
         df_raw = pd.DataFrame(list(buffers[buffer_key]))
+        
+        # PHASE34-2 FIX: Ensure 'time' column is proper datetime
+        if 'time' in df_raw.columns and not df_raw.empty:
+            sample_ts = df_raw['time'].iloc[0]
+            if isinstance(sample_ts, (int, float)) and sample_ts > 10_000_000_000:
+                df_raw['time'] = pd.to_datetime(df_raw['time'], unit='ms', utc=True)
+        
         df = df_raw.copy()
         # ✅ 지표 파라미터 주입 (config.yml → indicators.*)
         inds = config.get("indicators", {})
@@ -1623,6 +1638,16 @@ def run(feed, broker, clock, strategies: dict, ensemble_module, config: dict, sy
                     ):
                         # Multi-TF 버퍼 직접 사용 (PR7-4 primary path)
                         df_tf_raw = pd.DataFrame(list(buffers[strategy_buffer_key]))
+                        
+                        # PHASE34-2 FIX: Convert timestamps from buffer BEFORE add_indicators
+                        if 'time' in df_tf_raw.columns and not df_tf_raw.empty:
+                            sample_ts = df_tf_raw['time'].iloc[0]
+                            logger.info(f"🔍 [PHASE34-2 BUFFER] pre-convert: sample_ts={sample_ts}, type={type(sample_ts).__name__}, dtype={df_tf_raw['time'].dtype}")
+                            # Check for numeric types (including numpy types) with epoch milliseconds
+                            if pd.api.types.is_numeric_dtype(df_tf_raw['time']) and sample_ts > 10_000_000_000:
+                                df_tf_raw['time'] = pd.to_datetime(df_tf_raw['time'], unit='ms', utc=True)
+                                logger.info(f"✅ [PHASE34-2 BUFFER] post-convert: {df_tf_raw['time'].iloc[0]}")
+                        
                         df_tf = df_tf_raw.copy()
                         # 지표 계산
                         adx_cfg = inds.get("adx", {})
@@ -1791,9 +1816,30 @@ def run(feed, broker, clock, strategies: dict, ensemble_module, config: dict, sy
                                  
                                 # 현재 시점 추출 (df_tf의 마지막 타임스탬프)
                                 if len(df_tf) > 0 and 'time' in df_tf.columns:
-                                    current_ts = df_tf['time'].iloc[-1]
-                                    if not isinstance(current_ts, pd.Timestamp):
-                                        current_ts = pd.to_datetime(current_ts)
+                                    current_ts_raw = df_tf['time'].iloc[-1]
+                                    
+                                    # PHASE34-2 FIX: Final timestamp checkpoint - convert any format to proper datetime
+                                    if isinstance(current_ts_raw, pd.Timestamp):
+                                        # Check if it's 1970 (epoch ms misinterpreted as ns)
+                                        if current_ts_raw.year == 1970:
+                                            # Extract nanosecond value and convert to millisecond epoch
+                                            current_ts = pd.to_datetime(current_ts_raw.value // 1_000_000, unit='ms', utc=True)
+                                            logger.info(f"✅ [PHASE34-2] Converted 1970 current_ts → {current_ts}")
+                                        else:
+                                            current_ts = current_ts_raw
+                                    elif isinstance(current_ts_raw, (int, float)):
+                                        if current_ts_raw > 10_000_000_000:
+                                            current_ts = pd.to_datetime(current_ts_raw, unit='ms', utc=True)
+                                        else:
+                                            current_ts = pd.to_datetime(current_ts_raw, unit='s', utc=True)
+                                    else:
+                                        current_ts = pd.to_datetime(current_ts_raw, utc=True)
+                                    
+                                    # PHASE34-2: Debug timestamp values
+                                    logger.info(f"🔍 [PHASE34-2 MTF] current_ts={current_ts} (type={type(current_ts).__name__})")
+                                    if mtf_dfs and '1h' in mtf_dfs and '4h' in mtf_dfs:
+                                        logger.info(f"🔍 [PHASE34-2 MTF] mtf_dfs['1h'] len={len(mtf_dfs['1h'])}, first={mtf_dfs['1h']['time'].iloc[0] if len(mtf_dfs['1h']) > 0 else 'N/A'}")
+                                        logger.info(f"🔍 [PHASE34-2 MTF] mtf_dfs['4h'] len={len(mtf_dfs['4h'])}, first={mtf_dfs['4h']['time'].iloc[0] if len(mtf_dfs['4h']) > 0 else 'N/A'}")
                                      
                                     # MTF context 준비
                                     _, df_1h, df_4h = prepare_mtf_context_for_strategy(
@@ -1807,8 +1853,8 @@ def run(feed, broker, clock, strategies: dict, ensemble_module, config: dict, sy
                                     strategy_instance.config['df_1h'] = df_1h
                                     strategy_instance.config['df_4h'] = df_4h
                                     strategy_instance.config['portfolio_state'] = portfolio.get_stats()
-                                    logger.debug(
-                                        f" [PHASE31] MTF : 1H={len(df_1h) if df_1h is not None else 0}, "
+                                    logger.info(
+                                        f"✅ [PHASE31] MTF 주입: 1H={len(df_1h) if df_1h is not None else 0}, "
                                         f"4H={len(df_4h) if df_4h is not None else 0}"
                                     )
                              
