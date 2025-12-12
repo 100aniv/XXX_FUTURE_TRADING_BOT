@@ -1,0 +1,238 @@
+{
+  "generated_at": "2025-12-12T19:34:05.168724",
+  "total_experiments": 18,
+  "axes": {
+    "confidence": [
+      0.2,
+      0.25,
+      0.3
+    ],
+    "hysteresis": [
+      2,
+      3,
+      5
+    ],
+    "mtf_weight": [
+      "w60",
+      "w50"
+    ]
+  },
+  "experiments": [
+    {
+      "id": "p34_c20_h2_w60",
+      "params": {
+        "confidence_trend": 0.2,
+        "confidence_range": 0.25,
+        "hysteresis": 2,
+        "higher_tf_weight": 0.6,
+        "local_tf_weight": 0.4
+      },
+      "config_file": "configs/backtest/phase34_sweep/p34_c20_h2_w60.yml",
+      "summary_file": "reports/backtest/phase34/sweep/p34_c20_h2_w60_summary.json"
+    },
+    {
+      "id": "p34_c20_h2_w50",
+      "params": {
+        "confidence_trend": 0.2,
+        "confidence_range": 0.25,
+        "hysteresis": 2,
+        "higher_tf_weight": 0.5,
+        "local_tf_weight": 0.5
+      },
+      "config_file": "configs/backtest/phase34_sweep/p34_c20_h2_w50.yml",
+      "summary_file": "reports/backtest/phase34/sweep/p34_c20_h2_w50_summary.json"
+    },
+    {
+      "id": "p34_c20_h3_w60",
+      "params": {
+        "confidence_trend": 0.2,
+        "confidence_range": 0.25,
+        "hysteresis": 3,
+        "higher_tf_weight": 0.6,
+        "local_tf_weight": 0.4
+      },
+      "config_file": "configs/backtest/phase34_sweep/p34_c20_h3_w60.yml",
+      "summary_file": "reports/backtest/phase34/sweep/p34_c20_h3_w60_summary.json"
+    },
+    {
+      "id": "p34_c20_h3_w50",
+      "params": {
+        "confidence_trend": 0.2,
+        "confidence_range": 0.25,
+        "hysteresis": 3,
+        "higher_tf_weight": 0.5,
+        "local_tf_weight": 0.5
+      },
+      "config_file": "configs/backtest/phase34_sweep/p34_c20_h3_w50.yml",
+      "summary_file": "reports/backtest/phase34/sweep/p34_c20_h3_w50_summary.json"
+    },
+    {
+      "id": "p34_c20_h5_w60",
+      "params": {
+        "confidence_trend": 0.2,
+        "confidence_range": 0.25,
+        "hysteresis": 5,
+        "higher_tf_weight": 0.6,
+        "local_tf_weight": 0.4
+      },
+      "config_file": "configs/backtest/phase34_sweep/p34_c20_h5_w60.yml",
+      "summary_file": "reports/backtest/phase34/sweep/p34_c20_h5_w60_summary.json"
+    },
+    {
+      "id": "p34_c20_h5_w50",
+      "params": {
+        "confidence_trend": 0.2,
+        "confidence_range": 0.25,
+        "hysteresis": 5,
+        "higher_tf_weight": 0.5,
+        "local_tf_weight": 0.5
+      },
+      "config_file": "configs/backtest/phase34_sweep/p34_c20_h5_w50.yml",
+      "summary_file": "reports/backtest/phase34/sweep/p34_c20_h5_w50_summary.json"
+    },
+    {
+      "id": "p34_c25_h2_w60",
+      "params": {
+        "confidence_trend": 0.25,
+        "confidence_range": 0.3,
+        "hysteresis": 2,
+        "higher_tf_weight": 0.6,
+        "local_tf_weight": 0.4
+      },
+      "config_file": "configs/backtest/phase34_sweep/p34_c25_h2_w60.yml",
+      "summary_file": "reports/backtest/phase34/sweep/p34_c25_h2_w60_summary.json"
+    },
+    {
+      "id": "p34_c25_h2_w50",
+      "params": {
+        "confidence_trend": 0.25,
+        "confidence_range": 0.3,
+        "hysteresis": 2,
+        "higher_tf_weight": 0.5,
+        "local_tf_weight": 0.5
+      },
+      "config_file": "configs/backtest/phase34_sweep/p34_c25_h2_w50.yml",
+      "summary_file": "reports/backtest/phase34/sweep/p34_c25_h2_w50_summary.json"
+    },
+    {
+      "id": "p34_c25_h3_w60",
+      "params": {
+        "confidence_trend": 0.25,
+        "confidence_range": 0.3,
+        "hysteresis": 3,
+        "higher_tf_weight": 0.6,
+        "local_tf_weight": 0.4
+      },
+      "config_file": "configs/backtest/phase34_sweep/p34_c25_h3_w60.yml",
+      "summary_file": "reports/backtest/phase34/sweep/p34_c25_h3_w60_summary.json"
+    },
+    {
+      "id": "p34_c25_h3_w50",
+      "params": {
+        "confidence_trend": 0.25,
+        "confidence_range": 0.3,
+        "hysteresis": 3,
+        "higher_tf_weight": 0.5,
+        "local_tf_weight": 0.5
+      },
+      "config_file": "configs/backtest/phase34_sweep/p34_c25_h3_w50.yml",
+      "summary_file": "reports/backtest/phase34/sweep/p34_c25_h3_w50_summary.json"
+    },
+    {
+      "id": "p34_c25_h5_w60",
+      "params": {
+        "confidence_trend": 0.25,
+        "confidence_range": 0.3,
+        "hysteresis": 5,
+        "higher_tf_weight": 0.6,
+        "local_tf_weight": 0.4
+      },
+      "config_file": "configs/backtest/phase34_sweep/p34_c25_h5_w60.yml",
+      "summary_file": "reports/backtest/phase34/sweep/p34_c25_h5_w60_summary.json"
+    },
+    {
+      "id": "p34_c25_h5_w50",
+      "params": {
+        "confidence_trend": 0.25,
+        "confidence_range": 0.3,
+        "hysteresis": 5,
+        "higher_tf_weight": 0.5,
+        "local_tf_weight": 0.5
+      },
+      "config_file": "configs/backtest/phase34_sweep/p34_c25_h5_w50.yml",
+      "summary_file": "reports/backtest/phase34/sweep/p34_c25_h5_w50_summary.json"
+    },
+    {
+      "id": "p34_c30_h2_w60",
+      "params": {
+        "confidence_trend": 0.3,
+        "confidence_range": 0.35,
+        "hysteresis": 2,
+        "higher_tf_weight": 0.6,
+        "local_tf_weight": 0.4
+      },
+      "config_file": "configs/backtest/phase34_sweep/p34_c30_h2_w60.yml",
+      "summary_file": "reports/backtest/phase34/sweep/p34_c30_h2_w60_summary.json"
+    },
+    {
+      "id": "p34_c30_h2_w50",
+      "params": {
+        "confidence_trend": 0.3,
+        "confidence_range": 0.35,
+        "hysteresis": 2,
+        "higher_tf_weight": 0.5,
+        "local_tf_weight": 0.5
+      },
+      "config_file": "configs/backtest/phase34_sweep/p34_c30_h2_w50.yml",
+      "summary_file": "reports/backtest/phase34/sweep/p34_c30_h2_w50_summary.json"
+    },
+    {
+      "id": "p34_c30_h3_w60",
+      "params": {
+        "confidence_trend": 0.3,
+        "confidence_range": 0.35,
+        "hysteresis": 3,
+        "higher_tf_weight": 0.6,
+        "local_tf_weight": 0.4
+      },
+      "config_file": "configs/backtest/phase34_sweep/p34_c30_h3_w60.yml",
+      "summary_file": "reports/backtest/phase34/sweep/p34_c30_h3_w60_summary.json"
+    },
+    {
+      "id": "p34_c30_h3_w50",
+      "params": {
+        "confidence_trend": 0.3,
+        "confidence_range": 0.35,
+        "hysteresis": 3,
+        "higher_tf_weight": 0.5,
+        "local_tf_weight": 0.5
+      },
+      "config_file": "configs/backtest/phase34_sweep/p34_c30_h3_w50.yml",
+      "summary_file": "reports/backtest/phase34/sweep/p34_c30_h3_w50_summary.json"
+    },
+    {
+      "id": "p34_c30_h5_w60",
+      "params": {
+        "confidence_trend": 0.3,
+        "confidence_range": 0.35,
+        "hysteresis": 5,
+        "higher_tf_weight": 0.6,
+        "local_tf_weight": 0.4
+      },
+      "config_file": "configs/backtest/phase34_sweep/p34_c30_h5_w60.yml",
+      "summary_file": "reports/backtest/phase34/sweep/p34_c30_h5_w60_summary.json"
+    },
+    {
+      "id": "p34_c30_h5_w50",
+      "params": {
+        "confidence_trend": 0.3,
+        "confidence_range": 0.35,
+        "hysteresis": 5,
+        "higher_tf_weight": 0.5,
+        "local_tf_weight": 0.5
+      },
+      "config_file": "configs/backtest/phase34_sweep/p34_c30_h5_w50.yml",
+      "summary_file": "reports/backtest/phase34/sweep/p34_c30_h5_w50_summary.json"
+    }
+  ]
+}

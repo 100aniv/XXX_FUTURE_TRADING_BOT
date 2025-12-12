@@ -3089,6 +3089,170 @@ PHASE29-5縑憮 嫦唯脹 trial_id/run_id 碳橾纂煎 檣ボ:
 
 ---
 
+## PHASE34-1 — Parameter Sweep Infrastructure & Execution (BLOCKED) 🟡
+
+**Status**: 🟡 **INFRASTRUCTURE COMPLETE, EXECUTION BLOCKED** (2024-12-12)  
+**목표**: 18개 파라미터 조합 자동 생성/실행/분석 인프라 구축  
+**세션**: 1 session  
+**커밋**: `[PENDING]`
+
+### 목표
+
+PHASE34-0에서 정의한 3축 18개 파라미터 조합을 자동 생성하고, 순차 실행 후 Pareto 분석으로 최적 후보 선정.
+
+### 달성 사항
+
+| 항목 | 상태 | 비고 |
+|------|------|------|
+| Watchdog 중복 검증 | ✅ | `common/monitoring/watchdog.py` vs `scripts/utils/run_watchdog.py`: 책임 분리, 중복 없음 |
+| DB 근본 수정 | ✅ | PostgreSQL desktop.ini 파일 28개 제거 → 재시작 루프 해결 |
+| Summary JSON 생성 | ✅ | 7D smoke test 통과, 3건 trades |
+| 18개 Config 자동 생성 | ✅ | `configs/backtest/phase34_sweep/*.yml` + `sweep_meta.json` |
+| 배치 실행 인프라 | ✅ | `scripts/phase34/run_batch_sweep.py` (182 lines) |
+| 집계/분석 인프라 | ✅ | `scripts/phase34/aggregate_sweep_results.py` (250+ lines) |
+| 배치 실행 완료 | 🔴 | **BLOCKED**: Backtest exit code 1 |
+| Pareto Top 후보 선정 | ⏸️ | 실행 완료 후 가능 |
+
+### Blocking Issue 상세
+
+**증상**: 
+```bash
+python scripts/run_backtest.py --config configs/backtest/phase34_sweep/p34_c20_h2_w60.yml
+# → Exit code 1
+```
+
+**로그 패턴**:
+```
+[INFO] [btc15m_core_v2] Missing indicators: [...] → auto-calculating
+[INFO] [btc15m_core_v2] Indicators added
+[WARNING] [V2 Regime] No Higher TF data, using 15m only (V1 fallback)
+# → 이 패턴 여러 번 반복 후 종료
+```
+
+**추정 원인**:
+1. MTF 데이터 부재 ("No Higher TF data" 경고 반복)
+2. Config 구조 문제 (PHASE34 template에 `mtf` 섹션 누락 가능성)
+3. 전략 초기화 실패 (Indicator 추가 반복)
+
+### 생성된 인프라
+
+**신규 파일 (5개)**:
+1. `scripts/phase34/generate_sweep_configs.py` (150 lines) - 18개 config 자동 생성
+2. `scripts/phase34/run_batch_sweep.py` (182 lines) - Watchdog 기반 순차 실행
+3. `scripts/phase34/aggregate_sweep_results.py` (250+ lines) - 결과 집계 + Pareto 분석
+4. `configs/backtest/phase34_sweep/*.yml` (18개) - 3축 조합 configs
+5. `configs/backtest/phase34_sweep/sweep_meta.json` (238 lines) - 실험 메타데이터
+
+**실험 조합 (3 × 3 × 2 = 18개)**:
+- Confidence: 0.20 / 0.25 / 0.30
+- Hysteresis: 2 / 3 / 5
+- MTF Weight: (0.6/0.4 AS-IS) / (0.5/0.5 Relaxed)
+
+### DB 근본 수정 (CRITICAL FIX)
+
+**문제**: PostgreSQL 재시작 루프
+```
+FATAL: could not open directory "pg_tblspc/desktop.ini/PG_16_202307071": Not a directory
+```
+
+**해결**: Windows `desktop.ini` 파일 28개 전체 제거
+```bash
+docker exec trading_db_postgres find /var/lib/postgresql/data -name "desktop.ini" -type f
+# → 28개 파일 제거
+docker ps --filter "name=trading_db_postgres"
+# → Up XX seconds (healthy) ✅
+```
+
+**검증**: Summary JSON 생성 확인 (`phase34_0_smoke_7d.yml` → 3 trades, 99.3% blocked)
+
+### 분석 인프라 상세
+
+**집계 스크립트**: `aggregate_sweep_results.py`
+- 입력: `batch_manifest.json` + 18개 `*_summary.json`
+- 출력:
+  - `sweep_results.csv` - 전체 결과 테이블
+  - `sweep_results.json` - JSON 형식
+  - `pareto_frontier.csv` - Top 5 후보
+
+**Pareto 점수 공식**:
+```python
+pareto_score = (
+    -blocked_rate * 2.0 +      # 차단율 감소 (가중치 2배)
+    win_rate * 0.5 +            # 승률 유지
+    profit_factor * 10.0        # PF 유지
+)
+```
+
+**AC 필터링**:
+- AC1: `exceptions == 0`
+- AC2: `trades >= 7000` (3M 기준)
+- AC3: `win_rate >= 25%` AND `profit_factor >= 0.8`
+
+### 산출물
+
+**문서**:
+- `docs/PHASE34/PHASE34_1_SWEEP_REPORT_KR.md` - 인프라 완성 및 블로킹 이슈 상세 보고서
+
+**스크립트**:
+- `scripts/phase34/generate_sweep_configs.py`
+- `scripts/phase34/run_batch_sweep.py`
+- `scripts/phase34/aggregate_sweep_results.py`
+
+**Configs**:
+- `configs/backtest/phase34_sweep/` (18개 + meta.json)
+
+### Acceptance Criteria
+
+| AC | 결과 | 비고 |
+|----|------|------|
+| AC1: Watchdog 중복 검증 | ✅ PASS | 책임 분리 확인 |
+| AC2: DB/Summary JSON 수정 | ✅ PASS | desktop.ini 제거, PostgreSQL healthy |
+| AC3: 18개 Config 자동 생성 | ✅ PASS | 3축 조합 완료 |
+| AC4: 배치 실행 인프라 | ✅ PASS | `run_batch_sweep.py` 완성 |
+| AC5: 집계/분석 인프라 | ✅ PASS | `aggregate_sweep_results.py` 완성 |
+| AC6: 배치 실행 완료 | 🔴 FAIL | Exit code 1 블로킹 |
+| AC7: Pareto Top 후보 선정 | ⏸️ PENDING | 실행 완료 후 가능 |
+
+### 판정
+
+🟡 **INFRASTRUCTURE COMPLETE, EXECUTION BLOCKED**
+
+**인프라는 100% 완성**되었으나, 백테스트 실행 레벨에서 블로킹 발생.  
+다음 세션(PHASE34-2)에서 Config 수정 후 18개 실험 완료 예정.
+
+### 다음 단계
+
+**PHASE34-2: Execution Unblocking & Full Sweep**
+
+**Step 1**: Config 검증 및 수정
+- PHASE33 정상 config와 PHASE34 template diff 분석
+- MTF 섹션 추가 (`mtf.enabled: true`, `higher_timeframes: [1h, 4h]`)
+- 단일 실험으로 최소 재현 (30분)
+
+**Step 2**: Template 업데이트 및 재생성 (필요 시)
+- 수정된 설정으로 18개 config 재생성 (5분)
+
+**Step 3**: 배치 실행
+- `run_batch_sweep.py` 재실행 (4.5시간 예상)
+- Watchdog 기반 자동 종료 보장
+
+**Step 4**: 결과 집계 및 Pareto 분석
+- `aggregate_sweep_results.py` 실행
+- Top 3-5 후보 확정 (1시간)
+
+**Step 5**: 최종 판정
+- AC 기준 충족 여부
+- 다음 PHASE로 진행 여부 결정
+
+### 관련 문서
+
+- `docs/PHASE34/PHASE34_0_EXPERIMENT_PLAN_KR.md` - 실험 계획 (18조합 정의)
+- `docs/PHASE34/PHASE34_1_SWEEP_REPORT_KR.md` - 인프라 완성 및 블로킹 이슈 보고서
+- `configs/backtest/phase34_template.yml` - Config 템플릿 (수정 필요)
+- `configs/backtest/phase34_sweep/sweep_meta.json` - 실험 메타데이터
+
+---
+
 ## PHASE30  New Core Strategy Design  IN PROGRESS
 
 > **NOTE**: 기존 하단의 "PHASE30  UI/UX v2" 블록은 향후 리넘버링 예정 (PHASE40+로 이동)
