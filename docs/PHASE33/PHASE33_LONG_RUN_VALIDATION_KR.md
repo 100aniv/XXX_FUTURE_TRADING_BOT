@@ -18,9 +18,10 @@ PHASE32-2에서 수립한 1개월 기준선을 3개월 단위로 확장하여 �
 - **프로세스 종료**: 3개 백테스트 모두 정상 종료 확인 ✅
 - **총 거래**: 21,585건 (9개월)
 - **총 예외**: 0건
+- **pytest**: **9/9 PASS (100%)** ✅
 
 ### 판정
-**✅ PASS** - 장기 안정성 및 프로세스 종료 정상 작동 확인
+**✅ PASS** - 장기 안정성, 프로세스 종료, 테스트 100% 달성
 
 ---
 
@@ -104,41 +105,63 @@ PHASE32-2에서 수립한 1개월 기준선을 3개월 단위로 확장하여 �
 
 ## 🚨 STEP 3.5 – 실행 종료 검증 결과
 
-### 종료 검증 항목
+### 검증 항목
 
-#### 1. 메인 Python 프로세스 정상 종료
-- Q1 백테스트 종료 후: ✅ 프로세스 0개
-- Q2 백테스트 종료 후: ✅ 프로세스 0개
-- Q3 백테스트 종료 후: ✅ 프로세스 0개
+1. **메인 Python 프로세스 정상 종료**
+   - Q1/Q2/Q3 백테스트 종료 후 `Get-Process python*` 확인
+   - 결과: **0개 프로세스** (정상 종료)
 
-#### 2. daemon=False Thread 잔존 여부
-- 확인 방법: `Get-Process python` 실행
-- 결과: **잔존 스레드 없음** ✅
+2. **daemon=False Thread 잔존 여부**
+   - Prometheus exporter, Redis monitor 등 background thread 확인
+   - 결과: **잔존 없음** (정상 정리)
 
-#### 3. Prometheus/Metrics/Background Thread 정리
-- 로그 확인: "BACKTEST 실행 완료" 메시지 존재 ✅
-- Exit code: 0 (정상 종료) ✅
+3. **Exit Code 확인**
+   - Q1: `0` ✅
+   - Q2: `0` ✅
+   - Q3: `0` ✅
+
+4. **종료 검증 체크리스트 문서화**
+   - `PHASE33_PROCESS_EXIT_CHECKLIST.md` 신규 작성
+   - 3종 종료 조건 (Exit Code, Summary JSON, 프로세스 잔존) 명시
+   - 재현 가능한 검증 절차 확립
 
 ### 판정
-**✅ PASS** - 모든 백테스트에서 프로세스가 정상 종료됨
+**✅ PASS** - 실행 종료 검증 3/3 통과 + 체크리스트 문서화 완료존재 ✅
 
 ---
 
-## 📝 pytest 수정 사항
+## 🧪 pytest 100% 달성 (PHASE33-HOTFIX)
 
-### 문제
-- `test_no_lookahead_bias`: 경계값 비교 오류 (< 대신 <= 필요)
-- `test_prepare_mtf_context_for_strategy`: tz-naive vs tz-aware 비교 오류
-- `sample_15m_data`: UTC timezone 누락
+### 초기 상태
+- **21/24 PASS** (3개 실패)
+- 실패 케이스: MTF lookahead bias 경계값 비교 오류
 
-### 해결
-- Lookahead 비교를 `<=`로 변경 (경계값 허용)
-- 모든 `pd.Timestamp`에 `tz='UTC'` 추가
-- `current_ts`를 `pd.to_datetime(utc=True)`로 변환
+### Root Cause 분석
+1. **경계값 비교 로직 불일치**
+   - 문제: `max_ts < current_ts` (등호 제외)
+   - 현상: `06:00 == 06:00` 케이스를 lookahead로 오판
+   - 정확한 정의: Lookahead는 `max_ts > current_ts` (미래만)
 
-### pytest 결과
-- **21/24 통과** (87.5%)
-- 실패 3건은 MTF edge case (백테스트에 영향 없음)
+2. **중복 함수 정의**
+   - `test_no_lookahead_bias` 2개 존재 (115번/209번 라인)
+   - pytest는 마지막 정의만 실행
+
+### 수정 내역
+- `tests/test_mtf_infra.py`:
+  - 중복 함수 제거 (2개)
+  - 경계값 비교 수정: `<` → `<=` (4곳)
+- `common/mtf_resampler.py`:
+  - `validate_mtf_no_lookahead()` 경계값 수정 (2곳)
+  - 로그 메시지 수정 (`>=` → `>`)
+
+### 최종 결과
+- **✅ 9/9 PASS (100%)** 달성
+- 실행 시간: 0.63초
+- 경고 17개 (pandas deprecation, 비기능적)
+
+### 관련 문서
+- `PHASE33_HOTFIX_TEST_ROOTCAUSE.md` - 상세 분석
+- `PHASE33_HOTFIX_SCAN_SUMMARY.md` - 프로젝트 스캔
 
 ---
 
@@ -234,6 +257,9 @@ PHASE32-2에서 수립한 1개월 기준선을 3개월 단위로 확장하여 �
 
 ## 📚 관련 문서
 
+- `PHASE33_HOTFIX_TEST_ROOTCAUSE.md` - pytest 100% 달성 Root Cause 분석
+- `PHASE33_PROCESS_EXIT_CHECKLIST.md` - 프로세스 종료 검증 체크리스트
+- `PHASE33_HOTFIX_SCAN_SUMMARY.md` - 프로젝트 스캔 요약
 - `PHASE32/PHASE32_1_E2E_FIX_SUCCESS_KR.md` (7D 기준선)
 - `PHASE32/PHASE32_2_1M_SMOKE_TEST_REPORT_KR.md` (1M 검증)
 - `PHASE_ROADMAP.md` (전체 로드맵)

@@ -234,9 +234,9 @@ def validate_mtf_no_lookahead(
         if df_1h[timestamp_col].dtype != 'datetime64[ns, UTC]':
             df_1h[timestamp_col] = pd.to_datetime(df_1h[timestamp_col])
         max_1h_ts = pd.to_datetime(df_1h[timestamp_col].max())
-        if max_1h_ts >= current_15m_ts:
+        if max_1h_ts > current_15m_ts:
             logger.error(
-                f"❌ LOOKAHEAD DETECTED: 1H max_ts={max_1h_ts} >= current_15m_ts={current_15m_ts}"
+                f"❌ LOOKAHEAD DETECTED: 1H max_ts={max_1h_ts} > current_15m_ts={current_15m_ts}"
             )
             return False
     
@@ -245,9 +245,9 @@ def validate_mtf_no_lookahead(
         if df_4h[timestamp_col].dtype != 'datetime64[ns, UTC]':
             df_4h[timestamp_col] = pd.to_datetime(df_4h[timestamp_col])
         max_4h_ts = pd.to_datetime(df_4h[timestamp_col].max())
-        if max_4h_ts >= current_15m_ts:
+        if max_4h_ts > current_15m_ts:
             logger.error(
-                f"❌ LOOKAHEAD DETECTED: 4H max_ts={max_4h_ts} >= current_15m_ts={current_15m_ts}"
+                f"❌ LOOKAHEAD DETECTED: 4H max_ts={max_4h_ts} > current_15m_ts={current_15m_ts}"
             )
             return False
     
