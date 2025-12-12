@@ -2573,20 +2573,6 @@ Ensemble ON 諈刺�諢?4?𨁈� ?渥� ?域� Paper ?嵸擪??(?貲�???�
 #### 판정
 
  **CONDITIONAL PASS** (코드 & 인프라 100% 완료, 백테스트 데이터 준비 후 AC3 재평가)
-
-**Next**: PHASE30-1b (필터 완화)
-
----
-
-### PHASE30-1b: Core Filter Relaxation & Trade Count Fix
-
-**상태**: ✅ **COMPLETE** (거래량 확보), ❌ **AC3 FAIL** (Win Rate 미달)  
-**기간**: 2025-12-11 (1 session)  
-**목표**: Core AND 필터 완화를 통한 거래량 확보 (5건/월 → 30~60건/월)
-
-#### 필터 완화 내용
-
-| 파라미터 | Before (30-1) | After (30-1b) | 변화 |
 |---------|---------------|---------------|------|
 | `min_confidence` | 0.3 | 0.2 | -33% |
 | `min_atr_pct` | 0.002 | 0.0015 | -25% |
@@ -3010,16 +2996,12 @@ PHASE29-5縑憮 嫦唯脹 trial_id/run_id 碳橾纂煎 檣ボ:
 
 ---
 
-## PHASE29-7: V4 Strategy Postmortem & Retirement
+## PHASE33: Long-Run Validation + Process Exit Hardening + pytest 100%
 
-**상태**:  **COMPLETE**  
-**기간**: 2025-12-11 (1 session)  
-**목표**: V4 전략 실패 원인 분석 및 Research Graveyard 이관
+**Status**: ✅ **PASS** (2024-12-12)  
+**목표**: 9개월 장기 검증 (Q1/Q2/Q3), 프로세스 종료 안정화, MTF pytest 100% 달성  
+**기간**: PHASE33 본체 + PHASE33-HOTFIX
 
-### 문제 정의
-
-PHASE29-6에서 V4 전략의 AC3 최종 판정 결과:
-- **1M Gate Baseline**: Win Rate 27.86% (목표: 45%), Max DD 23.21% (목표: 15%)
 - **Top 3 튜닝**: 모두 AC3 FAIL
 - **종합**: 4/4 조합 모두 성능 기준 미달
 

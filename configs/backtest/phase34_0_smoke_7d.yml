@@ -1,0 +1,276 @@
+# ========================================
+# PHASE34-0: Watchdog Validation Smoke Test
+# Purpose: Exit stability verification (7 days)
+# Period: 2024-07-01 ~ 2024-07-08 (7 days)
+# Expected: Exit code 0, Summary exists, No remnants
+# ========================================
+
+mode: backtest
+env: backtest
+run_id: "phase34_0_smoke_7d"
+
+# ========================================
+# Symbol & Timeframe
+# ========================================
+symbol: BTCUSDT
+timeframe: 15m
+lookback: 1000
+
+# ========================================
+# Backtest Settings (7 Days)
+# ========================================
+backtest:
+  symbol: BTCUSDT
+  data_dir: data
+  data_file: BTCUSDT_15m_2024-01-01_2024-12-31.csv
+  start_date: "2024-07-01 00:00:00"
+  end_date: "2024-07-08 00:00:00"
+  duration_minutes: 10080  # 7 days
+  output_file: reports/backtest/phase34/smoke_7d_summary.json
+
+# ========================================
+# Ensemble (Single Strategy V2)
+# ========================================
+ensemble:
+  enabled: false
+  mode: score_v2
+  strategies:
+    - btc15m_core_v2
+  strategy_weights:
+    btc15m_core_v2: 1.0
+
+# ========================================
+# Strategy Selector
+# ========================================
+strategy:
+  selector: btc15m_core_v2
+  use_ensemble: false
+
+# ========================================
+# Capital
+# ========================================
+capital:
+  initial: 50000
+
+# ========================================
+# Execution
+# ========================================
+execution:
+  order_type: MARKET
+  timeout_sec: 30
+  reject_cooldown_seconds: 0
+
+# ========================================
+# Entries (Guard ON)
+# ========================================
+entries:
+  cooldown_candles: 1
+  min_rr_required: 2.0
+
+# ========================================
+# Equity
+# ========================================
+equity: 50000
+
+# ========================================
+# Portfolio
+# ========================================
+portfolio:
+  initial_balance: 50000.0
+  currency: USDT
+  max_open_positions: 1
+  max_symbol_exposure_pct: 50
+  max_exposure_pct: 80
+  max_total_exposure: 0.8
+  max_strategy_positions: 1
+  use_dynamic_exposure: true
+  use_dynamic_budget: false
+  symbol_cooldown_seconds: 0
+  enable_strategy_budget_cap: false
+
+# ========================================
+# Position Sizing
+# ========================================
+position_sizing:
+  default_risk_per_trade: 0.02
+  mode: kelly_fraction
+  kelly_fraction: 0.25
+  leverage: 3.0
+  max_position_size_pct: 0.3
+  min_leverage: 1
+  max_leverage: 5
+  multi_position_scaling:
+    enabled: false
+    scale_factor: 0.05
+    min_size_ratio: 0.3
+
+# ========================================
+# Risk Management (Guard ON)
+# ========================================
+risk:
+  max_positions: 1
+  max_exposure_per_symbol: 0.3
+  max_symbol_exposure_pct: 0.3
+  max_total_exposure_pct: 0.6
+  max_drawdown: 0.12
+  consecutive_loss_limit: 11
+  max_consecutive_losses: 11
+  cooldown_minutes: 0
+  
+  daily_loss:
+    mode: soft
+    soft_limit_pct: 0.05
+    hard_limit_pct: 0.10
+  
+  enforce_daily_loss_in_backtest: true
+  
+  flash_guard:
+    enabled: false
+  cooldown:
+    enabled: false
+  min_trade_interval_seconds: 0
+
+# ========================================
+# Fees
+# ========================================
+fees:
+  maker: 0.0002
+  taker: 0.0004
+  slippage_bps: 5
+
+# ========================================
+# Flow Guardian (Guard ON)
+# ========================================
+flow_guardian:
+  enabled: true
+  
+  volatility:
+    enabled: true
+    min_atr_pct: 0.0015
+    lookback_candles: 20
+  
+  volume:
+    enabled: true
+    min_volume_ratio: 0.5
+    lookback_candles: 20
+  
+  drawdown:
+    enabled: true
+    max_drawdown_pct: 0.12
+    check_interval_seconds: 60
+  
+  consecutive_loss:
+    enabled: true
+    max_consecutive_losses: 11
+    cooldown_minutes: 15
+
+# ========================================
+# Logging
+# ========================================
+logging:
+  level: INFO
+  log_trades: true
+  log_signals: true
+  log_regime: true
+
+# ========================================
+# Database
+# ========================================
+database:
+  enabled: true
+  connection_string: "postgresql://trading_user:trading_pass@localhost:5432/trading"
+  pool_size: 5
+  max_overflow: 10
+  pool_timeout: 30
+  pool_recycle: 3600
+  echo: false
+
+# ========================================
+# Redis
+# ========================================
+redis:
+  enabled: true
+  host: localhost
+  port: 6379
+  db: 0
+  decode_responses: true
+  socket_timeout: 5
+  socket_connect_timeout: 5
+  retry_on_timeout: true
+  health_check_interval: 30
+
+# ========================================
+# Strategy Parameters - BTC 15m Core V2 LIGHT
+# ========================================
+strategies:
+  btc15m_core_v2:
+    diag_enabled: true
+    v2_light: true
+    
+    # === Regime Detection V2 (Multi-TF) ===
+    regime_detection:
+      higher_tf_weight: 0.6
+      local_tf_weight: 0.4
+      
+      adx_trend_threshold: 25
+      adx_range_threshold: 20
+      atr_high_vol_mult: 1.5
+      volume_high_vol_mult: 2.0
+      
+      min_confidence_trend: 0.25
+      min_confidence_range: 0.30
+      
+      hysteresis_candles: 3
+    
+    # === Core AND Filters (2-Tier) ===
+    filters:
+      min_atr_pct: 0.0015
+      min_volume_ratio: 0.5
+      
+      max_dd_threshold: 0.096
+      consecutive_loss_limit: 8
+    
+    # === SL/TP V2 (Dynamic RR 2.0~2.5) ===
+    sl_tp:
+      sl_mult_trend: 1.8
+      tp1_rr_trend: 2.0
+      tp2_rr_trend: 3.5
+      
+      sl_mult_range: 1.5
+      tp1_rr_range: 2.0
+      tp2_rr_range: 3.0
+      
+      tp1_qty_pct: 0.7
+      tp2_qty_pct: 0.3
+    
+    # === Guard Integration ===
+    guard:
+      max_drawdown: 0.12
+      max_consecutive_losses: 11
+    
+    # === Misc ===
+    min_bars_for_signal: 100
+    leverage:
+      min: 1
+      max: 5
+      default: 3
+
+# ========================================
+# Indicators
+# ========================================
+indicators:
+  rsi:
+    length: 14
+  ema:
+    fast: 5
+    mid: 20
+    slow: 200
+  atr:
+    length: 14
+  adx:
+    period: 14
+  volume:
+    ma_length: 20
+  bollinger_bands:
+    length: 20
+    std: 2

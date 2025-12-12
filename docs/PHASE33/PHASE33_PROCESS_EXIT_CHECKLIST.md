@@ -182,9 +182,106 @@ Select-String -Path logs/phase33_Q1_3m.log -Pattern "ERROR|CRITICAL"
 
 ---
 
+## PHASE34-0: Watchdog 기반 자동 종료 보장
+
+**도입 배경**:
+- 수동 체크는 사람의 실수 가능
+- "명령은 끝났는데 Windsurf가 계속 도는 문제" 자동 감지 필요
+- 종료 검증 3종을 **기계적으로** 강제
+
+**구현**: `scripts/utils/run_watchdog.py`
+
+### 기능
+
+1. **대상 커맨드 실행 + Timeout**
+   - subprocess로 백테스트/PAPER 실행
+   - 지정된 시간 초과 시 프로세스 트리 강제 종료
+   - 기본 timeout: 7200초 (2시간)
+
+2. **3종 종료 체크 자동화**
+   ```python
+   checks = {
+       "exit_code": exit_code == 0,
+       "summary_json": Path(summary_path).exists(),
+       "process_remnants": len(find_python_procs()) == 0
+   }
+   ```
+
+3. **실패 시 자동 조치**
+   - 프로세스 트리 kill (부모 + 자식)
+   - 로그 마지막 50줄 덤프
+   - Watchdog 리포트 JSON 저장
+
+### 사용법
+
+```powershell
+# 기본 사용
+python scripts/utils/run_watchdog.py \
+    --command "python scripts/run_backtest.py --config configs/backtest/phase33_1_v2_Q1_3m.yml" \
+    --timeout 3600 \
+    --summary-path "reports/backtest/phase33/btc15m_v2_Q1_3m_summary.json" \
+    --run-id "phase33_1_v2_Q1_3m" \
+    --log-file "logs/watchdog_phase33_Q1.log" \
+    --report-file "reports/watchdog/phase33_Q1_report.json"
+```
+
+**Timeout 설정 가이드**:
+- 7D 백테스트: 300초 (5분)
+- 1M 백테스트: 600초 (10분)
+- 3M 백테스트: 900초 (15분)
+- 9M 백테스트: 1800초 (30분)
+
+### Watchdog 리포트 예시
+
+```json
+{
+  "success": true,
+  "exit_code": 0,
+  "duration_seconds": 487.3,
+  "timeout_triggered": false,
+  "checks": {
+    "exit_code": {"passed": true, "value": 0},
+    "summary_json": {"passed": true, "value": "reports/..."},
+    "process_remnants": {"passed": true, "count": 0}
+  }
+}
+```
+
+### 행 걸림 원인 4분류 (자동 감지)
+
+| 원인 | 증상 | Watchdog 동작 |
+|------|------|---------------|
+| **1. 서브프로세스 미종료** | timeout 후에도 프로세스 잔존 | kill 후 remnants > 0 리포트 |
+| **2. 파일 tailing 무한 루프** | exit_code=0이지만 반환 안됨 | timeout kill |
+| **3. Summary 대기 루프** | exit_code=0, summary 없음 | summary_json=False |
+| **4. UI 상태 갱신 버그** | 실제 종료됨, remnants=0 | success=True (오탐 아님) |
+
+### Acceptance Criteria (Watchdog 기준)
+
+**PASS 조건**:
+```python
+watchdog_result["success"] == True
+# AND
+all([
+    checks["exit_code"]["passed"],
+    checks["summary_json"]["passed"],
+    checks["process_remnants"]["passed"]
+])
+# AND
+timeout_triggered == False
+```
+
+**FAIL 케이스**:
+- Timeout 발생
+- Exit code != 0
+- Summary JSON 없음
+- 프로세스 잔존 (remnants > 0)
+
+---
+
 ## 트러블슈팅
 
-### 문제 1: Summary JSON 생성되지 않음
+### 문제: Exit Code 0이지만 Summary JSON이 없음생성되지 않음
 
 **원인**:
 - 백테스트 중간 오류 (exception)
