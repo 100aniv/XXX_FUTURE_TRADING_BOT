@@ -3400,18 +3400,19 @@ PHASE29 전략 실패 요약:
 
 ## PHASE34-3/4: 2-Stage Sweep (Parameter Tuning Validation + Batch Hardening)
 
-**Status**: ⚠️ IN PROGRESS (2025-12-13, 15/18 Stage-2)
+**Status**: ✅ COMPLETE (2025-12-13, 18/18 Stage-2)
 
 **Objective**: Validate parameter tuning (confidence/hysteresis/MTF weight) to reduce over-blocking + harden batch runner
 
 **Execution**:
-- Stage-2 (3M): 15/18 completed (83.3%, 3 remaining)
+- Stage-2 (3M): 18/18 completed (100%)
 - Stage-1 (7D): 18/18 completed (100%)
-- Total: 33/36 configs executed (91.7%)
+- Total: 36/36 configs executed (100%)
 
 **Key Findings**:
-- ✅ Over-blocking mitigation: SUCCESS (Trades 10K+, up from ~8K)
+- ✅ Over-blocking mitigation: SUCCESS (Trades 10K+, up from ~8K in 15/18 configs)
 - ✅ Parameter application: CONFIRMED (3 configs show different values in logs)
+- ✅ Manifest generated: phase34_batch_results.json (18/18 success)
 - ❌ Quality improvement: FAIL (WR 28.4%, PF 0.57 - all configs identical)
 - ❌ Parameter effectiveness: NONE (confidence/hysteresis/MTF weight → no effect on WR/PF)
 
@@ -3429,10 +3430,11 @@ PHASE29 전략 실패 요약:
 - `scripts/phase34/run_batch_sweep.py` (v2: hardened with summary-based validation)
 - `scripts/phase34/run_stage1_batch.py` (18/18 complete)
 - `scripts/phase34/generate_stage1_configs.py`
+- `scripts/phase34/generate_manifest.py` (manifest generator)
 - `docs/PHASE34/PHASE34_3_SWEEP_REPORT.md` (14+18 analysis)
-- `docs/PHASE34/PHASE34_4_SWEEP_REPORT.md` (15+18 analysis + AC3 evidence)
-- `docs/PHASE34/PHASE34_3_EXECUTION_STATUS.md` (updated 2025-12-13)
-- `reports/backtest/phase34/sweep/` (15 results, 3 in progress)
+- `docs/PHASE34/PHASE34_4_SWEEP_REPORT.md` (18+18 analysis + AC3 evidence)
+- `docs/PHASE34/PHASE34_3_EXECUTION_STATUS.md` (updated 2025-12-13 03:38)
+- `reports/backtest/phase34/sweep/` (18 results + manifest)
 - `reports/backtest/phase34/stage1/` (18 results)
 
 **Next Phase**: PHASE35 (Strategy Logic Redesign)

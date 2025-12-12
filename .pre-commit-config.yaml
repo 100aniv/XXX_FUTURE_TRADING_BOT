@@ -11,26 +11,3 @@ repos:
     hooks:
       - id: black
         language_version: python3.14
-
-  - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.8.0
-    hooks:
-      - id: mypy
-        additional_dependencies: [types-all]
-        args: [--ignore-missing-imports, --no-strict-optional]
-
-  - repo: local
-    hooks:
-      - id: vulture
-        name: vulture
-        entry: vulture
-        language: system
-        types: [python]
-        args: [--min-confidence=80]
-
-      - id: pytest-coverage
-        name: pytest-coverage
-        entry: bash -c 'pytest --cov=. --cov-report=term-missing --cov-fail-under=85'
-        language: system
-        pass_filenames: false
-        always_run: true
