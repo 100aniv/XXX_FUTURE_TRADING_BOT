@@ -3369,3 +3369,67 @@ PHASE29 전략 실패 요약:
 - AC3 평가: Win Rate  40%, Max DD  12%, PF > 1.2
 
 
+## PHASE34: Parameter Sweep & Candidate Selection (2-Stage Validation)
+
+**Status**:  CONDITIONAL FAIL (2025-12-13)
+
+**Objective**: Fix over-blocking issue via parameter tuning (confidence/hysteresis/MTF weight)
+
+**Execution**:
+- Stage-2 (3M): 14/18 completed (batch failure)
+- Stage-1 (7D): 18/18 completed (100%)
+
+**Key Findings**:
+- Over-blocking mitigation:  SUCCESS (Trades 10K+)
+- Quality:  FAIL (WR 28.4%, PF 0.57 - loss pattern)
+- Parameter sweep:  INEFFECTIVE (confidence/hysteresis/MTF weight changes  no effect)
+
+**Conclusion**: Parameter tuning alone cannot achieve profitability. Strategy logic improvement needed.
+
+**Next Phase**: PHASE35 (Strategy Logic Enhancement)
+
+**Deliverables**:
+- scripts/phase34/monitor_and_complete.py
+- scripts/phase34/run_stage1_batch.py
+- scripts/phase34/generate_stage1_configs.py
+- reports/backtest/phase34/sweep/ (14 results)
+- reports/backtest/phase34/stage1/ (18 results)
+- docs/PHASE34/PHASE34_3_EXECUTION_STATUS.md
+
+---
+
+## PHASE34-3: 2-Stage Sweep (Parameter Tuning Validation)
+
+**Status**: ⚠️ PARTIAL COMPLETION (2025-12-13)
+
+**Objective**: Validate parameter tuning (confidence/hysteresis/MTF weight) to reduce over-blocking
+
+**Execution**:
+- Stage-2 (3M): 14/18 completed (77.8%, 4 timeouts)
+- Stage-1 (7D): 18/18 completed (100%)
+- Total: 32/36 configs executed
+
+**Key Findings**:
+- ✅ Over-blocking mitigation: SUCCESS (Trades 10K+, up from ~8K)
+- ❌ Quality improvement: FAIL (WR 28.4%, PF 0.57 - all configs identical)
+- ❌ Parameter effectiveness: NONE (confidence/hysteresis/MTF weight → no effect on WR/PF)
+
+**Root Cause**: Parameter tuning only affects **entry frequency**, not **entry quality**. Strategy signal logic is fundamentally flawed.
+
+**Verdict**: ❌ **CONDITIONAL FAIL** - Parameter tuning has reached its limit. Strategy logic redesign required.
+
+**Deliverables**:
+- `scripts/phase34/run_batch_sweep.py` (hardened with try/except + resume + manifest)
+- `scripts/phase34/run_stage1_batch.py` (18/18 complete)
+- `scripts/phase34/generate_stage1_configs.py`
+- `docs/PHASE34/PHASE34_3_SWEEP_REPORT.md` (comprehensive analysis)
+- `reports/backtest/phase34/sweep/` (14 results + manifest)
+- `reports/backtest/phase34/stage1/` (18 results + manifest)
+
+**Next Phase**: PHASE35 (Strategy Logic Redesign)
+- Strengthen entry conditions (reduce false positives)
+- Implement early loss-cutting
+- Optimize position sizing
+- Improve regime detection
+
+---
