@@ -1,0 +1,152 @@
+{
+  "analyzed_configs": [
+    "p34_c20_h2_w50",
+    "p34_c20_h3_w50",
+    "p34_c20_h5_w60",
+    "p34_c25_h2_w50",
+    "p34_c25_h3_w50",
+    "p34_c25_h5_w60",
+    "p34_c30_h2_w50",
+    "p34_c30_h3_w50",
+    "p34_c30_h5_w60"
+  ],
+  "comparative_stats": [
+    {
+      "config": "p34_c20_h2_w50",
+      "confidence": 0.2,
+      "hysteresis": 2,
+      "mtf_weight": 0.5,
+      "trades": 10278,
+      "winrate": 28.351819420120645,
+      "pf": 0.5676766581675308,
+      "roi": -1477.9738943505026,
+      "mdd": -1486.9750950718249,
+      "total_score": 33.31905574815235
+    },
+    {
+      "config": "p34_c20_h3_w50",
+      "confidence": 0.2,
+      "hysteresis": 3,
+      "mtf_weight": 0.5,
+      "trades": 10339,
+      "winrate": 28.3876583808879,
+      "pf": 0.5682230790634316,
+      "roi": -1483.7028374423076,
+      "mdd": -1492.725273884349,
+      "total_score": 33.32533464488621
+    },
+    {
+      "config": "p34_c20_h5_w60",
+      "confidence": 0.2,
+      "hysteresis": 5,
+      "mtf_weight": 0.6,
+      "trades": 10420,
+      "winrate": 28.435700575815737,
+      "pf": 0.5688375254104555,
+      "roi": -1491.7881724622114,
+      "mdd": -1498.4754526968732,
+      "total_score": 33.3286206604331
+    },
+    {
+      "config": "p34_c25_h2_w50",
+      "confidence": 0.25,
+      "hysteresis": 2,
+      "mtf_weight": 0.5,
+      "trades": 10429,
+      "winrate": 28.439927126282484,
+      "pf": 0.5687564047216914,
+      "roi": -1493.2199574812269,
+      "mdd": -1498.4754526968732,
+      "total_score": 33.323019180676475
+    },
+    {
+      "config": "p34_c25_h3_w50",
+      "confidence": 0.25,
+      "hysteresis": 3,
+      "mtf_weight": 0.5,
+      "trades": 10438,
+      "winrate": 28.444146388196973,
+      "pf": 0.5686754090074382,
+      "roi": -1494.6517425002428,
+      "mdd": -1499.821358331362,
+      "total_score": 33.317428539723025
+    },
+    {
+      "config": "p34_c25_h5_w60",
+      "confidence": 0.25,
+      "hysteresis": 5,
+      "mtf_weight": 0.6,
+      "trades": 10447,
+      "winrate": 28.44835838039629,
+      "pf": 0.5685945379791144,
+      "roi": -1496.0835275192585,
+      "mdd": -1501.2584506097282,
+      "total_score": 33.31184870583138
+    },
+    {
+      "config": "p34_c30_h2_w50",
+      "confidence": 0.3,
+      "hysteresis": 2,
+      "mtf_weight": 0.5,
+      "trades": 10456,
+      "winrate": 28.45256312165264,
+      "pf": 0.5685137913490267,
+      "roi": -1497.5153125382744,
+      "mdd": -1502.695542888095,
+      "total_score": 33.306279647384976
+    },
+    {
+      "config": "p34_c30_h3_w50",
+      "confidence": 0.3,
+      "hysteresis": 3,
+      "mtf_weight": 0.5,
+      "trades": 10489,
+      "winrate": 28.410715988178094,
+      "pf": 0.5668122948111091,
+      "roi": -1509.4947168357935,
+      "mdd": -1514.7193517607625,
+      "total_score": 33.252490921548855
+    },
+    {
+      "config": "p34_c30_h5_w60",
+      "confidence": 0.3,
+      "hysteresis": 5,
+      "mtf_weight": 0.6,
+      "trades": 10498,
+      "winrate": 28.414936178319678,
+      "pf": 0.5667332988512346,
+      "roi": -1510.9265018548092,
+      "mdd": -1516.156444039129,
+      "total_score": 33.24698906976205
+    }
+  ],
+  "sensitivity_matrix": {
+    "confidence_effect": {
+      "trades_variance": 34.115899798329245,
+      "winrate_variance": 0.023114304872544466,
+      "pf_variance": 0.0005558794940800002,
+      "trades_range": 135.33333333333394,
+      "winrate_range": 0.05241783935049327,
+      "pf_range": 0.0013223222322911177
+    },
+    "hysteresis_effect": {
+      "trades_variance": 70.60288584643203,
+      "winrate_variance": 0.0333860110562059,
+      "pf_variance": 0.0008964779877741242,
+      "trades_range": 67.33333333333394,
+      "winrate_range": 0.018824792422911685,
+      "pf_range": 0.0004120237854233766
+    },
+    "mtf_weight_effect": {
+      "trades_variance": 59.684390407538515,
+      "winrate_variance": 0.027979201406946014,
+      "pf_variance": 0.0009487547355112853,
+      "trades_range": 50.16666666666606,
+      "winrate_range": 0.018526640624109803,
+      "pf_range": 5.448543976971365e-05
+    }
+  },
+  "conclusion": {
+    "avg_wr_variance": 0.02815983911189879,
+    "avg_pf_variance": 0.0008003707391218033,
+    "tuning_effective": 
