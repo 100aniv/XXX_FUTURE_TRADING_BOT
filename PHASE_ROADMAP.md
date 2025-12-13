@@ -3437,10 +3437,358 @@ PHASE29 전략 실패 요약:
 - `reports/backtest/phase34/sweep/` (18 results + manifest)
 - `reports/backtest/phase34/stage1/` (18 results)
 
-**Next Phase**: PHASE35 (Strategy Logic Redesign)
-- Strengthen entry conditions (reduce false positives)
-- Implement early loss-cutting
-- Optimize position sizing
-- Improve regime detection
+**Next Phase**: PHASE35 (Ensemble Strategy Architecture Redesign)
+
+---
+
+## PHASE35: Ensemble Strategy Architecture Redesign
+
+**Status**: 🟦 IN PROGRESS
+
+**Objective**: 앙상블 기반 트레이딩 전략 구조로의 전면 리디자인을 통해 WinRate 38%+, Profit Factor 1.10+ 달성
+
+**Background**: PHASE34 결과, 파라미터 튜닝은 진입 **빈도**에만 영향을 주고 진입 **품질**(WR/PF)에는 무효함이 정량적으로 확인됨. 전략 시그널 로직의 구조적 결함으로 인해 근본적인 재설계 필요.
+
+**Core Design Principles** (PHASE35_STRATEGY_ARCHITECTURE.md 기반):
+1. **Multi-Module Ensemble**: 3개 독립 전략 모듈 (Trend-Following, Mean-Reversion, Breakout) + Meta-Model 결합
+2. **Meta Model**: LightGBM/XGBoost (비선형 메타) 또는 Logistic Regression (선형 메타) 활용
+3. **Regime Filter**: HMM (은닉 마코프 모델) + ATR 변동성 필터 병행
+4. **Ensemble Method**: 가중치 투표 (정적 + 동적) + 신뢰도 기반 결합 (CWMV)
+5. **Signal Design**: 지표 복합 조합 (RSI+CMF, Trend+Momentum) + MTF 확인
+6. **Infrastructure Reuse**: 기존 엔진/포트폴리오/리스크 모듈 100% 재사용 (DO-NOT-TOUCH 원칙)
+
+**Gating Rule**: ⚠️ **각 Sub-Phase의 목표를 달성하기 전까지 다음 단계로 진행 불가**. PHASE35 전체 완료 전까지 PHASE36 시작 금지.
+
+---
+
+### PHASE35-0: Root Cause Analysis & Specification
+
+**Status**: ✅ COMPLETE (2025-12-13)
+
+**Objective**: PHASE34 결과 정량 분석 및 PHASE35 재설계 스펙 문서화
+
+**Deliverables**:
+- `docs/PHASE35/PHASE35_0_STRATEGY_LOGIC_REDESIGN_SPEC.md` (근본 원인, 재설계 후보, 검증 계획)
+- `docs/PHASE35_STRATEGY_ARCHITECTURE.md` (앙상블 구조 상세 설계, 문헌 근거)
+- `scripts/phase34/analyze_gate_statistics.py` (파라미터 무효성 계측 분석)
+- `reports/backtest/phase34/sweep/gate_statistics_analysis.json` (정량적 증거)
+
+**Key Findings**:
+- WinRate variance: 0.028% (목표 >0.1%의 1/36)
+- PF variance: 0.0008 (목표 >0.01의 1/12.5)
+- **결론**: 파라미터는 진입 빈도에만 영향, 진입 품질에는 무효 → 전략 로직 재설계 필수
+
+---
+
+### PHASE35-1: Candidate Strategy Implementation
+
+**Status**: 🟦 PLANNED
+
+**Objective**: 앙상블 전략 후보 구현 (Candidate A, B, Optional C)
+
+**Acceptance Criteria**:
+- [ ] 새 전략 모듈 생성 (`strategies/btc15m_core_v3.py` 또는 유사)
+- [ ] 3개 Sub-Model 구현 (Trend-Following, Mean-Reversion, Breakout)
+- [ ] 2-out-of-3 Majority Vote 앙상블 로직 구현
+- [ ] Config-driven 파라미터 설정 (코드 하드코딩 금지)
+- [ ] 기존 인프라 재사용 확인 (engine, portfolio, risk 무수정)
+- [ ] Unit Test 작성 및 Pass (신호 생성, 앙상블 로직)
+
+**Implementation Details**:
+- **Trend-Following Model**: EMA(20/50) cross, ADX > 25, SuperTrend 활용
+- **Mean-Reversion Model**: RSI(14) 과매수/과매도, Bollinger Bands, Volume 확인
+- **Breakout Model**: Support/Resistance 돌파, ATR 기반 변동성, Volume 급증
+- **Ensemble Logic**: `if sum([model_A, model_B, model_C]) >= 2 → LONG/SHORT else NEUTRAL`
+- **Config Structure**: 
+  ```yaml
+  strategies:
+    - name: trend_follower
+      indicators: [EMA(20), EMA(50), ADX(14)]
+      logic: "ema_cross_with_adx"
+      timeframe: "1h"
+    - name: mean_reversion
+      indicators: [RSI(14), BB(20,2)]
+      logic: "rsi_bb_oversold"
+      timeframe: "15m"
+  ensemble:
+    type: "majority_vote"
+    threshold: 2  # 2-out-of-3
+  ```
+
+**Deliverables**:
+- 신규 전략 파일 (btc15m_core_v3.py)
+- 유닛 테스트 (tests/test_ensemble_strategy.py)
+- Config 샘플 (configs/ensemble_strategy_v1.yaml)
+
+**Exit Criteria**: 
+- 모든 Unit Test Pass
+- Lint/Type Check Pass
+- 코드 리뷰 완료 및 커밋
+
+---
+
+### PHASE35-2: 7-Day Smoke Test (Initial Validation)
+
+**Status**: 🟦 PLANNED
+
+**Objective**: 7일 단기 백테스트로 후보 전략 신속 검증 및 필터링
+
+**Test Period**: 최근 7일 (또는 대표성 있는 7일)
+
+**Acceptance Criteria**:
+| Metric | Target | Description |
+|--------|--------|-------------|
+| **Total Trades** | ≥ 10 | 충분한 거래 발생 확인 |
+| **Win Rate** | > 32% | 기존 28.4% 대비 개선 |
+| **Profit Factor** | > 0.70 | 기존 0.57 대비 개선 |
+| **Max Drawdown** | < 5% | 단기 리스크 관리 |
+
+**Procedure**:
+1. Candidate A, B, (C) 병렬 백테스트 실행
+2. 동일 데이터 (BTCUSDT 15m, 최근 7일)
+3. 메트릭 수집 및 비교 분석
+
+**Pass/Fail Decision**:
+- **PASS**: AC 모두 충족 → PHASE35-3 진행
+- **FAIL**: 
+  - 디버깅 시도 (1회 iteration)
+  - 여전히 FAIL → 해당 Candidate Drop
+  - 모든 Candidate FAIL → PHASE35-1로 복귀 (설계 재검토)
+
+**Deliverables**:
+- `reports/backtest/phase35/smoke_test_7d_results.json`
+- `docs/PHASE35/PHASE35_2_SMOKE_TEST_REPORT.md`
+
+**Exit Criteria**: 최소 1개 Candidate가 PASS
+
+---
+
+### PHASE35-3: 1-Month Baseline Backtest
+
+**Status**: 🟦 PLANNED
+
+**Objective**: 1개월 백테스트로 성능 베이스라인 확립 및 개선 확인
+
+**Test Period**: 최근 1개월 (또는 대표성 있는 30일)
+
+**Acceptance Criteria**:
+| Metric | Target | Description |
+|--------|--------|-------------|
+| **Total Trades** | ≥ 30 | 월간 충분한 거래량 |
+| **Win Rate** | > 35% | 7D 32% → 1M 35% 상향 |
+| **Profit Factor** | > 0.90 | 7D 0.70 → 1M 0.90 상향 |
+| **Max Drawdown** | < 8% | 리스크 관리 |
+| **Sharpe Ratio** | > 0.3 | (참고 지표) |
+
+**Procedure**:
+1. PHASE35-2 통과 Candidate(s) 대상 백테스트
+2. 1개월 시계열 데이터 (다양한 시장 조건 포함)
+3. Equity Curve, Trade 분포 분석
+
+**Pass/Fail Decision**:
+- **PASS**: AC 충족 → PHASE35-4 진행 (top 1-2 candidates)
+- **FAIL**: 
+  - 파라미터 미세 조정 (1-2회 iteration)
+  - 여전히 FAIL → Candidate Drop 또는 PHASE35-1 복귀
+
+**Deliverables**:
+- `reports/backtest/phase35/baseline_1m_results.json`
+- `docs/PHASE35/PHASE35_3_BASELINE_REPORT.md`
+- Equity Curve 시각화
+
+**Exit Criteria**: 1-2개 Candidate가 PASS (최종 후보 선정)
+
+---
+
+### PHASE35-4: 3-Month Validation Backtest (Critical Gate)
+
+**Status**: 🟦 PLANNED
+
+**Objective**: 3개월 장기 백테스트로 전략 강건성 및 Production Ready 검증
+
+**Test Period**: 최근 3개월 (다양한 시장 레짐 포함: Trending/Ranging/Volatile)
+
+**Acceptance Criteria** (⚠️ **MUST PASS - 최종 관문**):
+| Metric | Target | Description |
+|--------|--------|-------------|
+| **Total Trades** | ≥ 80 | 분기별 충분한 거래량 |
+| **Win Rate** | **≥ 38%** | **목표 승률** (기존 28.4% → 38%) |
+| **Profit Factor** | **≥ 1.10** | **목표 PF** (기존 0.57 → 1.10+) |
+| **Max Drawdown** | < 12% | 분기 MDD 관리 |
+| **Sharpe Ratio** | > 0.5 | 위험 대비 수익 |
+| **Positive Expectancy** | Profit > 0 | 기대값 양수 |
+
+**Procedure**:
+1. Top 1-2 Candidate 대상 3개월 백테스트
+2. 2020년 3월 급락기 등 위기 상황 포함 데이터 활용
+3. 레짐별 성능 분해 분석 (Bull/Bear/Volatile/Calm)
+4. 개별 모듈 기여도 분석 (Trend/Reversion/Breakout)
+
+**Pass/Fail Decision**:
+- **PASS**: 모든 AC 충족 → **PHASE35-5 진행** (Paper Trading)
+- **FAIL**: 
+  - **1차 Iteration**: 전략 로직 재조정 (모듈 가중치, 필터 임계값 등)
+  - **2차 Iteration**: 대안 Candidate 투입 또는 모듈 재설계
+  - **3차 Iteration 실패 시**: 
+    - PHASE35 일시 중단
+    - 설계 근본 재검토 (HMM 레짐 필터 추가, Meta-Model 교체 등)
+    - 또는 PHASE36 대안 접근법 검토 (Exit Criteria)
+
+**Deliverables**:
+- `reports/backtest/phase35/validation_3m_results.json`
+- `docs/PHASE35/PHASE35_4_VALIDATION_REPORT.md`
+- 레짐별 성능 분해 분석 리포트
+- 모듈 기여도 분석 (Contribution Analysis)
+
+**Exit Criteria**: 최소 1개 Candidate가 모든 AC 통과 → **Production Ready Candidate 확정**
+
+---
+
+### PHASE35-5: Paper Trading (Live Simulation)
+
+**Status**: 🟦 PLANNED
+
+**Objective**: 실시간 환경에서 전략 안정성 및 백테스트-라이브 일치성 검증
+
+**Test Stages** (점진적 확장):
+1. **20분 실행**: 시스템 안정성, 초기 버그 검출
+2. **1시간 실행**: 데이터 핸들링, 주문 흐름 검증
+3. **3시간 실행**: 장기 메모리/연결 안정성
+4. **12시간 실행**: 일중 다양한 시장 조건 대응
+5. **(Optional) 24시간+ 실행**: 최종 안정성 확인
+
+**Acceptance Criteria**:
+- [ ] **No Critical Errors**: 모든 실행 단계에서 크래시/오류 0건
+- [ ] **Performance Alignment**: Paper 결과가 백테스트 예측과 유사 (±10% 허용)
+- [ ] **Order Execution**: 모의 주문 정상 제출/추적 (지연 < 1초)
+- [ ] **Risk Limit Enforcement**: 포지션 사이즈, MDD 제한 실시간 적용
+- [ ] **Monitoring**: 로그, 메트릭 정상 기록
+
+**Performance Targets** (Paper Trading 기간 중):
+- Win Rate ≈ 38% (백테스트 대비 유사)
+- Profit Factor ≈ 1.10
+- No unexpected behavior (예: 무한 주문, 포지션 폭주 등)
+
+**Pass/Fail Decision**:
+- **PASS**: 모든 AC 충족 → **PHASE35 완료** ✅
+- **FAIL**: 
+  - 인프라 이슈 (실시간 데이터, API 연결 등) → 디버깅 후 재실행
+  - 성능 불일치 (백테스트 vs Live) → 로직 재검토 (look-ahead bias 등)
+  - 반복 실패 시 → PHASE35-4 복귀 (백테스트 재검증)
+
+**Deliverables**:
+- `logs/phase35/paper_trading_YYYYMMDD_HHmm.log`
+- `docs/PHASE35/PHASE35_5_PAPER_TRADING_REPORT.md`
+- 백테스트-Paper 비교 분석
+
+**Exit Criteria**: 
+- 12시간 Paper Trading 성공적 완료
+- 모든 AC 충족
+- **PHASE35 전체 완료 선언** → PHASE36 진입 허가
+
+---
+
+## PHASE36: Production Launch & Live Testing
+
+**Status**: 🟦 PLANNED (PHASE35 완료 후 시작 가능)
+
+**Objective**: 검증된 앙상블 전략을 실제 자본으로 라이브 배포 및 운영 검증
+
+**Entry Criteria** (Gating):
+- ✅ PHASE35-5 Paper Trading 완료
+- ✅ 모든 PHASE35 AC 충족
+- ✅ Strategy Performance: WR ≥ 38%, PF ≥ 1.10 (3M Backtest + Paper)
+- ✅ Infrastructure: 크래시 0건, 안정성 확인
+
+**Objectives**:
+1. **Limited Capital Deployment**: 소액 실전 자본 투입 (예: 초기 $100-$500)
+2. **Live Performance Monitoring**: 실시간 성과 추적 (1주 → 1개월 → 3개월)
+3. **Backtest-Live Alignment**: 백테스트 예측과 실전 결과 일치성 검증
+4. **Operational Stability**: 24/7 무중단 운영, 자동 재시작, 장애 복구
+
+**Acceptance Criteria**:
+| Metric | Target | Period | Description |
+|--------|--------|--------|-------------|
+| **Win Rate** | ≥ 35% | 1개월 Live | 백테스트 38% 대비 -3%p 허용 |
+| **Profit Factor** | ≥ 1.00 | 1개월 Live | 백테스트 1.10 대비 -0.10 허용 |
+| **Uptime** | > 99.5% | 1개월 | 크래시/다운타임 < 4시간/월 |
+| **Max Drawdown** | < 15% | 1개월 | 실전 MDD 관리 |
+| **No Critical Bugs** | 0건 | 전체 기간 | 자금 손실 유발 버그 없음 |
+| **Slippage** | < 0.1% | 평균 | 백테스트 vs 실전 슬리피지 |
+
+**Monitoring & Operations**:
+- 실시간 대시보드 (PnL, Positions, Alerts)
+- 일간 성과 리포트 자동 생성
+- 주간 리뷰 및 파라미터 조정 검토
+- 월간 종합 성과 분석
+
+**Risk Management**:
+- 초기 자본 제한 ($100-$500)
+- 일간 손실 한도 (Daily Loss Limit: -5%)
+- 누적 손실 한도 (Total Loss Limit: -20% → 자동 중단)
+- 긴급 중단 스위치 (Emergency Stop)
+
+**Pass/Fail Decision**:
+- **PASS (1개월 후)**: 
+  - 모든 AC 충족
+  - 백테스트-실전 일치성 확인
+  - → **프로젝트 Production Ready 선언** ✅
+  - → 자본 확대 또는 다음 최적화 단계 진행
+  
+- **FAIL**:
+  - 성과 미달 (WR < 35% or PF < 1.00)
+  - 시스템 불안정 (Uptime < 99%)
+  - → PHASE35 재검토 (백테스트 과적합 의심)
+  - → 또는 전략 일시 중단 및 Post-Mortem
+
+**Deliverables**:
+- `docs/PHASE36/PHASE36_LIVE_DEPLOYMENT_PLAN.md`
+- `docs/PHASE36/PHASE36_LIVE_PERFORMANCE_REPORT.md` (주간/월간)
+- 운영 Runbook (`docs/OPERATIONS/RUNBOOK.md`)
+- 장애 대응 매뉴얼 (`docs/OPERATIONS/INCIDENT_RESPONSE.md`)
+
+**Exit Criteria**: 
+- 1개월 Live Trading 성공
+- 모든 AC 충족
+- **최종 프로젝트 완료** 또는 **PHASE37 (Scaling/Optimization) 진입**
+
+---
+
+## PHASE37+: Future Roadmap (Optional)
+
+**Status**: 🟦 PLANNED (PHASE36 완료 후 검토)
+
+**Potential Future Phases**:
+- **PHASE37: Multi-Asset Expansion** (다중 심볼: BTC, ETH, SOL 등)
+- **PHASE38: Advanced ML Meta-Model** (XGBoost → LSTM/Transformer)
+- **PHASE39: HMM Regime Filter Integration** (전략 적응형 가중치)
+- **PHASE40: Capital Scaling & Portfolio Optimization** (자본 확대, 포트폴리오 분산)
+
+**Note**: PHASE37 이후 계획은 PHASE36 결과 및 시장 상황에 따라 유동적으로 조정 가능. 단, **PHASE35-36 완료 전까지는 어떠한 추가 Phase도 시작하지 않음** (Gating Rule 엄수).
+
+---
+
+## 🔒 ROADMAP LOCK & GATING POLICY
+
+**Effective Date**: 2025-12-13
+
+**Policy Statement**: 
+- ⚠️ **PHASE35-36 Roadmap은 고정되며 변경 불가**
+- ⚠️ **각 Sub-Phase의 Exit Criteria 충족 전까지 다음 단계 진행 절대 금지**
+- ⚠️ **Gating Rule 위반 시 모든 작업 중단 및 이전 단계 복귀**
+
+**Rationale**:
+- PHASE34 분석을 통해 근본 원인 확인 완료
+- 앙상블 전략 재설계는 검증된 방법론 기반 (학술 연구 + 실전 사례)
+- 단계별 검증을 통해 과적합 방지 및 실전 성과 보장
+- 기존 인프라 100% 재사용으로 개발 효율성 최대화
+
+**Enforcement**:
+- 모든 코드 변경은 해당 Phase의 AC와 연결되어야 함
+- AC 미충족 시 다음 Phase 진입 시도는 자동 거부
+- 문서화 누락 시 해당 Phase 미완료로 간주
+
+**Commitment**:
+이 Roadmap은 1조급 상용(Enterprise-Grade) 트레이딩 시스템 달성을 위한 최종 계획이며, 모든 팀원과 AI Assistant는 이를 준수해야 함.
 
 ---
