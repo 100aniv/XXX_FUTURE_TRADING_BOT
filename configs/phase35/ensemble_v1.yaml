@@ -1,0 +1,143 @@
+# PHASE35-1: Ensemble Strategy V1 Configuration
+# ==============================================
+# Design: 3 Sub-Models + 2-out-of-3 Majority Vote + ATR Regime Filter
+
+strategy:
+  name: "phase35_ensemble_v1"
+  type: "ensemble"
+  
+  # Decision Trace (품질 원인 추적)
+  decision_trace:
+    enabled: true
+    log_level: "INFO"
+  
+  # Sub-Models Configuration
+  sub_models:
+    # Sub-Model 1: Trend-Following
+    trend:
+      weight: 0.4  # 참고용 (현재는 동등 투표)
+      ema_fast: 20
+      ema_slow: 50
+      adx_threshold: 25  # ADX > 25 → Trend
+    
+    # Sub-Model 2: Mean-Reversion
+    reversion:
+      weight: 0.3
+      rsi_period: 14
+      rsi_oversold: 30
+      rsi_overbought: 70
+      bb_period: 20
+      bb_std: 2.0
+    
+    # Sub-Model 3: Breakout
+    breakout:
+      weight: 0.3
+      lookback: 20  # 20 bars for high/low
+      volume_threshold: 1.5  # Volume > 1.5 × MA
+      volume_ma_period: 20
+  
+  # Ensemble Method
+  ensemble:
+    method: "majority_vote"  # 2-out-of-3
+    confidence_threshold: 0.5  # 최소 신뢰도
+  
+  # Regime Filter (ATR 기반 간이)
+  regime_filter:
+    enabled: true
+    type: "atr_simple"
+    atr_period: 14
+    thresholds:
+      trend_min: 0.015  # ATR% >= 1.5% → TREND
+      range_max: 0.008  # ATR% <= 0.8% → RANGE
+      # 그 외 → CHOP (진입 금지)
+  
+  # Exit Logic
+  exit:
+    # Time-based Exit
+    time_based:
+      enabled: true
+      holding_max_bars: 48  # 15m × 48 = 12 hours
+    
+    # Adverse Move Exit (ATR 기반)
+    adverse_move:
+      enabled: true
+      atr_multiplier: 1.5  # 1.5 × ATR 역행 시 청산
+    
+    # Regime Switch Exit
+    regime_switch:
+      enabled: false  # PHASE35-2 이후 활성화
+    
+    # SL/TP Multipliers
+    sl_atr_multiplier: 1.5  # SL = Entry ± 1.5 × ATR
+    tp_atr_multiplier: 3.0  # TP = Entry ± 3.0 × ATR (RR 2.0)
+
+# Indicators (자동 계산될 지표 목록)
+indicators:
+  - name: "ema_20"
+    type: "ema"
+    period: 20
+  
+  - name: "ema_50"
+    type: "ema"
+    period: 50
+  
+  - name: "rsi"
+    type: "rsi"
+    period: 14
+  
+  - name: "atr"
+    type: "atr"
+    period: 14
+  
+  - name: "adx"
+    type: "adx"
+    period: 14
+  
+  - name: "bbands"
+    type: "bollinger_bands"
+    period: 20
+    std: 2.0
+  
+  - name: "volume_ma"
+    type: "sma"
+    source: "volume"
+    period: 20
+
+# Symbol & Timeframe
+symbol: "BTCUSDT"
+timeframe: "15m"
+
+# Backtest Settings (PHASE35-2~4에서 사용)
+backtest:
+  # 7-Day Smoke Test
+  smoke_test:
+    start_date: "2024-12-01"
+    end_date: "2024-12-08"
+    initial_capital: 10000
+  
+  # 1-Month Baseline
+  baseline:
+    start_date: "2024-11-01"
+    end_date: "2024-12-01"
+    initial_capital: 10000
+  
+  # 3-Month Validation
+  validation:
+    start_date: "2024-09-01"
+    end_date: "2024-12-01"
+    initial_capital: 10000
+
+# Risk Management (기존 RiskManager 재사용)
+risk:
+  max_position_size: 0.1  # 10% of equity
+  max_leverage: 3
+  cooldown_seconds: 300  # 5분 쿨다운
+
+# Portfolio (기존 PortfolioManager 재사용)
+portfolio:
+  initial_capital: 10000
+  budget_cap_enabled: true
+  budget_cap_pct: 0.3  # 30% max allocation
+
+# Mode
+mode: "backtest"  # backtest | paper | live
