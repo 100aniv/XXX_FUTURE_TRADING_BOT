@@ -50,6 +50,9 @@ from . import btc15m_core_v1
 # PHASE30-3: Core V2 전략 import
 from . import btc15m_core_v2
 
+# PHASE35-1: Ensemble V1 전략 import
+from . import phase35_ensemble_v1
+
 logger = setup_logger('strategies', log_type='application')
 
 
@@ -91,7 +94,9 @@ def get_all_strategies() -> Dict[str, Any]:
         # PHASE30-1: Core V1 전략
         'btc15m_core_v1': btc15m_core_v1,
         # PHASE30-3: Core V2 전략 (PHASE32-1: 등록)
-        'btc15m_core_v2': btc15m_core_v2
+        'btc15m_core_v2': btc15m_core_v2,
+        # PHASE35-1: Ensemble V1 전략
+        'phase35_ensemble_v1': phase35_ensemble_v1
     }
 
 
@@ -261,6 +266,11 @@ def load_strategies(config: dict, all_strategies: dict = None) -> Dict[str, Dict
     else:
         strategies_cfg = config.get('strategies', {})
         logger.info(f"🔍 [PHASE23-2 DEBUG] strategies_cfg keys: {list(strategies_cfg.keys())}")
+        
+        # ⭐ PHASE35-1-FIX: Strict Mode - 요청된 전략 목록 추적
+        requested_strategies = [name for name, cfg in strategies_cfg.items() if cfg.get('enabled', False)]
+        loaded_strategies_names = []
+        
         for name, module in all_strategies.items():
             strategy_config = strategies_cfg.get(name, {})
             enabled = strategy_config.get('enabled', True)
@@ -300,9 +310,25 @@ def load_strategies(config: dict, all_strategies: dict = None) -> Dict[str, Dict
                         "params": params,
                         "enabled": True
                     }
+                    loaded_strategies_names.append(name)
                     logger.info(f"✅ 전략 활성화: {name}")
             else:
                 logger.info(f"⏸ 전략 비활성화: {name}")
+        
+        # ⭐ PHASE35-1-FIX: Strict Mode - 요청된 전략이 모두 로드되었는지 검증
+        if requested_strategies:
+            missing_strategies = set(requested_strategies) - set(loaded_strategies_names)
+            if missing_strategies:
+                error_msg = (
+                    f"❌ [PHASE35 STRICT MODE] 요청된 전략이 로드되지 않음: {missing_strategies}\n"
+                    f"   요청: {requested_strategies}\n"
+                    f"   로드: {loaded_strategies_names}\n"
+                    f"   사용 가능: {list(all_strategies.keys())}\n"
+                    f"   → Config에 enabled=true로 설정된 전략이 all_strategies에 등록되지 않았습니다."
+                )
+                logger.error(error_msg)
+                raise ValueError(error_msg)
+            logger.info(f"✅ [STRICT MODE] All {len(requested_strategies)} requested strategies loaded")
     
     if not strategies:
         logger.warning("⚠️ 활성 전략 없음, daytrade를 기본으로 로드")

@@ -1600,6 +1600,16 @@ def run(feed, broker, clock, strategies: dict, ensemble_module, config: dict, sy
                     # PHASE22-4 DEBUG: params 확인
                     logger.info(f"🔍 [PHASE22-4 DEBUG] {strategy_id} params: {strategy_params}")
                     
+                    # Check nested params structure for ensemble strategies
+                    if 'sub_models' in strategy_params:
+                        reversion_cfg = strategy_params.get('sub_models', {}).get('reversion', {})
+                        rsi_oversold = reversion_cfg.get('rsi_oversold', 'MISSING')
+                        rsi_overbought = reversion_cfg.get('rsi_overbought', 'MISSING')
+                    else:
+                        rsi_oversold = strategy_params.get('rsi_oversold', 'MISSING')
+                        rsi_overbought = strategy_params.get('rsi_overbought', 'MISSING')
+                    logger.info(f"🔍 [PHASE22-4 DEBUG] {strategy_id} cfg rsi_oversold={rsi_oversold}, rsi_overbought={rsi_overbought}")
+                    
                     # ⭐ 전략별 설정 + 전체 config 병합 (PHASE22-4: params 우선순위)
                     strategy_cfg = config.get("strategies", {}).get(strategy_id, {})
                     cfg = {
@@ -1607,9 +1617,6 @@ def run(feed, broker, clock, strategies: dict, ensemble_module, config: dict, sy
                         **strategy_cfg,  # PHASE27-7: strategies.{strategy_id} 설정 (use_adx, adx_period 등)
                         **strategy_params,  # PHASE22-4: 전략별 params (rsi_oversold 등) - 최우선
                     }
-                    
-                    # PHASE22-4 DEBUG: 병합된 cfg의 RSI 값 확인
-                    logger.info(f"🔍 [PHASE22-4 DEBUG] {strategy_id} cfg rsi_oversold={cfg.get('rsi_oversold', 'MISSING')}, rsi_overbought={cfg.get('rsi_overbought', 'MISSING')}")
 
                     # ⭐ 전략별 필터 설정 병합 (MTF, regime, volume)
                     strategy_filters = strategy_cfg.get("filters", {})

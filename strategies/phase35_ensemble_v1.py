@@ -396,7 +396,13 @@ class Phase35EnsembleV1(BaseStrategy):
                 'vote_counts': dict
             }
         """
-        ensemble_cfg = self.config.get('ensemble', {})
+        # Load ensemble config (with fallback)
+        strategy_cfg = self.config.get('strategy', {})
+        if isinstance(strategy_cfg, dict):
+            ensemble_cfg = strategy_cfg.get('ensemble', {})
+        else:
+            ensemble_cfg = {}
+        
         confidence_threshold = ensemble_cfg.get('confidence_threshold', 0.5)
         
         # Count votes
@@ -474,13 +480,15 @@ class Phase35EnsembleV1(BaseStrategy):
                 'reason': str
             }
         """
-        exit_cfg = self.config.get('exit', {})
+        # Access regime config (engine merges params at top level via **strategy_params)
+        regime_cfg = self.config.get('regime', {})
         
         entry = df['close'].iloc[-1]
         atr = df['atr'].iloc[-1] if 'atr' in df.columns else entry * 0.02  # 2% fallback
         
         # SL/TP Distance (ATR 기반)
-        sl_atr_mult = exit_cfg.get('sl_atr_multiplier', 1.5)
+        sl_atr_mult = regime_cfg.get('sl_atr_multiplier', 1.5)
+        tp_atr_mult = regime_cfg.get('tp_atr_multiplier', 3.0)  # RR 2.0
         tp_atr_mult = exit_cfg.get('tp_atr_multiplier', 3.0)  # RR 2.0
         
         sl_distance = atr * sl_atr_mult

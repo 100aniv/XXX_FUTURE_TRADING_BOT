@@ -71,41 +71,48 @@ strategy:
     sl_atr_multiplier: 1.5  # SL = Entry ± 1.5 × ATR
     tp_atr_multiplier: 3.0  # TP = Entry ± 3.0 × ATR (RR 2.0)
 
-# Indicators (자동 계산될 지표 목록)
+# Indicators (자동 계산될 지표 - dict 형식)
 indicators:
-  - name: "ema_20"
-    type: "ema"
-    period: 20
-  
-  - name: "ema_50"
-    type: "ema"
-    period: 50
-  
-  - name: "rsi"
-    type: "rsi"
-    period: 14
-  
-  - name: "atr"
-    type: "atr"
-    period: 14
-  
-  - name: "adx"
-    type: "adx"
-    period: 14
-  
-  - name: "bbands"
-    type: "bollinger_bands"
-    period: 20
+  ema:
+    fast: 20
+    mid: 35
+    slow: 50
+  rsi:
+    length: 14
+  atr:
+    length: 14
+  adx:
+    length: 14
+  bollinger:
+    length: 20
     std: 2.0
-  
-  - name: "volume_ma"
-    type: "sma"
-    source: "volume"
-    period: 20
+  volume:
+    ma_length: 20
 
 # Symbol & Timeframe
 symbol: "BTCUSDT"
 timeframe: "15m"
+
+# Strategies (phase35_ensemble_v1만 활성화)
+strategies:
+  phase35_ensemble_v1:
+    enabled: true
+  scalping:
+    enabled: false
+  swing_bb:
+    enabled: false
+  daytrade:
+    enabled: false
+  swing:
+    enabled: false
+  trend:
+    enabled: false
+  reversion:
+    enabled: false
+  breakout:
+    enabled: false
+  ensemble:
+    enabled: false
 
 # Backtest Settings (PHASE35-2~4에서 사용)
 backtest:
@@ -132,6 +139,7 @@ risk:
   max_position_size: 0.1  # 10% of equity
   max_leverage: 3
   cooldown_seconds: 300  # 5분 쿨다운
+  per_trade: 0.02  # 2% risk per trade
 
 # Portfolio (기존 PortfolioManager 재사용)
 portfolio:
@@ -141,3 +149,51 @@ portfolio:
 
 # Mode
 mode: "backtest"  # backtest | paper | live
+
+# Required Keys (엔진 검증용)
+lookback: 1000
+equity: 10000
+capital: 10000
+
+# System
+system:
+  timezone: Asia/Seoul
+  candle_queue_size: 600000
+
+# Database
+database:
+  url: ${DATABASE_URL}
+  host: ${DB_HOST}
+  port: ${DB_PORT}
+  name: ${DB_NAME}
+  user: ${DB_USER}
+  password: ${DB_PASSWORD}
+
+# Fees
+fees:
+  taker: 0.0004
+  maker: 0.0002
+  slippage: 0.0005
+
+# Leverage
+leverage:
+  default: 2
+  min: 2
+  max: 50
+  cap: 50
+
+# Strategy config
+strategy:
+  use_ensemble: false
+  selector: phase35_ensemble_v1
+
+# Filters
+filters:
+  regime_filter: false
+  mtf_confirm: false
+  volume_spike: false
+  require_trend_align: false
+  session_whitelist: []
+  news_blackout_min: 0
+  atr_window: 14
+  htf: 1h
