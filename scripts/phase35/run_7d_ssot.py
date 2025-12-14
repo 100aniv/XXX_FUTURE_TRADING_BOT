@@ -1,13 +1,20 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-PHASE35-2 ITER3: 7D Smoke Test SSOT Runner (Run1/Run2)
+PHASE35-2 ITER4: 7D Smoke Test SSOT Runner (Run1/Run2)
 =======================================================
 
-phase35_2_iter3_ssot.yaml를 사용한 7D Smoke Test 실행
+phase35_2_iter3_ssot.yaml를 사용한 7D Smoke Test 실행 (ITER4 표준)
 - Run1: 초기 실행
 - Run2: 재현성 검증
 - Summary JSON 생성 (AC-2/AC-3 판정용)
+- Effective Config 덤프 (data_file 검증용)
+
+ITER4 개선사항:
+- base.yml 영향 제거 (ITER3 SSOT만 사용)
+- data_file 강제 덮어쓰기 (base.yml 충돌 방지)
+- effective config YAML 저장 (최종 설정 검증)
+- 명시적 로깅 (어느 파일을 썼는지 표시)
 
 Usage:
     python scripts/phase35/run_7d_ssot.py [run_number]
@@ -25,7 +32,7 @@ from typing import Dict, Any
 project_root = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(project_root))
 
-from common.logger import setup_logger
+from common.logger import setup_logger  # noqa: E402
 
 logger = setup_logger("run_7d_ssot")
 
@@ -85,7 +92,7 @@ def compute_config_hash(config: Dict[str, Any]) -> str:
 def run_backtest(run_number: int = 1) -> int:
     """7D Smoke Test 실행"""
     logger.info("=" * 80)
-    logger.info(f"PHASE35-2 ITER3: 7D Smoke Test - Run #{run_number}")
+    logger.info(f"PHASE35-2 ITER4: 7D Smoke Test - Run #{run_number}")
     logger.info("=" * 80)
     logger.info(f"Start Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
 
@@ -95,7 +102,7 @@ def run_backtest(run_number: int = 1) -> int:
             project_root / "configs" / "phase35" / "phase35_2_iter3_ssot.yaml"
         )
 
-        logger.info(f"📂 Loading ITER3 SSOT config (no base.yml): {ssot_config_path}")
+        logger.info(f"📂 Loading ITER4 SSOT config (no base.yml): {ssot_config_path}")
         if not ssot_config_path.exists():
             logger.error(f"❌ SSOT Config not found: {ssot_config_path}")
             return 1
@@ -105,7 +112,7 @@ def run_backtest(run_number: int = 1) -> int:
 
         # Run ID 생성 (run_number 포함)
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        run_id = f"phase35_2_iter3_run{run_number}_{timestamp}"
+        run_id = f"phase35_2_iter4_run{run_number}_{timestamp}"
         config["run_id"] = run_id
         config["mode"] = "backtest"
         config["env"] = "backtest"
@@ -149,6 +156,16 @@ def run_backtest(run_number: int = 1) -> int:
         logger.info(f"📦 Git Commit: {git_commit}")
         logger.info(f"🎲 Seed: {seed}")
 
+        # Effective Config 덤프 (AC-1 검증용)
+        effective_config_dir = project_root / "artifacts" / "phase35" / "iter4"
+        effective_config_dir.mkdir(parents=True, exist_ok=True)
+        effective_config_path = effective_config_dir / f"effective_config_run{run_number}.yaml"
+        
+        with open(effective_config_path, "w", encoding="utf-8") as f:
+            yaml.dump(config, f, default_flow_style=False, allow_unicode=True, sort_keys=False)
+        
+        logger.info(f"💾 Effective config saved: {effective_config_path}")
+
     except Exception as e:
         logger.error(f"❌ Config 로딩 실패: {e}")
         import traceback
@@ -166,12 +183,18 @@ def run_backtest(run_number: int = 1) -> int:
             config=config,
             clean_state=False
         )  # Summary 생성
-        summary_dir = project_root / "reports" / "backtest" / "phase35"
+        summary_dir = project_root / "artifacts" / "phase35" / "iter4"
         summary_dir.mkdir(parents=True, exist_ok=True)
-        summary_path = summary_dir / f"iter3_run{run_number}_summary.json"
+        summary_path = summary_dir / f"iter4_run{run_number}_summary.json"
 
-        # 백테스트 결과 파일 찾기
-        report_files = sorted((project_root / "reports" / "backtest").glob("*.json"))
+        # 백테스트 결과 파일 찾기 (ITER4: 생성 시각 기준 필터링)
+        import time
+        backtest_start_time = time.time() - 600  # 10분 이내 생성된 파일만
+        report_files = [
+            f for f in (project_root / "reports" / "backtest").glob("*.json")
+            if f.stat().st_mtime > backtest_start_time
+        ]
+        report_files = sorted(report_files, key=lambda x: x.stat().st_mtime)
         latest_report = report_files[-1] if report_files else None
 
         summary = {
@@ -190,11 +213,14 @@ def run_backtest(run_number: int = 1) -> int:
             "max_drawdown": 0.0,
             "pnl": 0.0,
             "roi": 0.0,
+            "report_found": False,
+            "report_path": None,
         }
 
         # 결과 추출
         if latest_report and latest_report.exists():
             try:
+                logger.info(f"📊 리포트 읽기: {latest_report}")
                 with open(latest_report, "r", encoding="utf-8") as f:
                     report_data = json.load(f)
                 metrics = report_data.get("metrics", {})
@@ -206,10 +232,16 @@ def run_backtest(run_number: int = 1) -> int:
                         "max_drawdown": metrics.get("mdd", 0.0),
                         "pnl": metrics.get("net_pnl", 0.0),
                         "roi": metrics.get("roi", 0.0),
+                        "report_found": True,
+                        "report_path": str(latest_report),
                     }
                 )
+                logger.info(f"✅ 메트릭 추출 성공: trades={summary['trades']}")
             except Exception as e:
                 logger.warning(f"⚠️  메트릭 추출 실패: {e}")
+                logger.warning("   → 기본값 0 사용 (거래 없음)")
+        else:
+            logger.warning("⚠️  최근 리포트 없음 → 기본값 0 사용 (거래 없음)")
 
         # Summary 저장
         with open(summary_path, "w", encoding="utf-8") as f:

@@ -357,7 +357,7 @@ class Phase35EnsembleV1(BaseStrategy):
             reasons.extend(["rsi_oversold", "bb_lower_breach"])
 
         # SHORT: Overbought
-        elif rsi > rsi_overbought and current_close > bb_upper:
+        elif rsi > rsi_overbought and close > bb_upper:
             direction = "SHORT"
             confidence = (rsi - rsi_overbought) / (100 - rsi_overbought)
             reasons.extend(["rsi_overbought", "bb_upper_breach"])
@@ -537,9 +537,8 @@ class Phase35EnsembleV1(BaseStrategy):
         atr = df["atr"].iloc[-1] if "atr" in df.columns else entry * 0.02  # 2% fallback
 
         # SL/TP Distance (ATR 기반)
-        sl_atr_mult = regime_cfg.get("sl_atr_multiplier", 1.5)
-        tp_atr_mult = regime_cfg.get("tp_atr_multiplier", 3.0)  # RR 2.0
-        tp_atr_mult = exit_cfg.get("tp_atr_multiplier", 3.0)  # RR 2.0
+        sl_atr_mult = regime_cfg.get('sl_atr_multiplier', 1.5)
+        tp_atr_mult = regime_cfg.get('tp_atr_multiplier', 3.0)  # RR 2.0
 
         sl_distance = atr * sl_atr_mult
         tp_distance = atr * tp_atr_mult
