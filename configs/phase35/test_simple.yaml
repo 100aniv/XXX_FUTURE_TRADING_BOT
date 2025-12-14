@@ -1,0 +1,112 @@
+# PHASE35-2: Minimal 7D Smoke Test Config
+symbol: BTCUSDT
+timeframe: 15m
+mode: backtest
+
+# Backtest settings
+backtest:
+  period: custom
+  custom:
+    start_date: "2024-12-01"
+    end_date: "2024-12-08"
+  data_file: BTCUSDT_15m_2024-01-01_2024-12-31.csv
+  data_dir: data
+
+# Required keys
+lookback: 1000
+equity: 10000
+capital:
+  initial: 10000
+
+# Strategy selector
+strategy:
+  use_ensemble: false
+  selector: phase35_ensemble_v1
+
+# Strategies config
+strategies:
+  phase35_ensemble_v1:
+    enabled: true
+    params:
+      ensemble:
+        method: "majority_vote"
+        confidence_threshold: 0.5
+      sub_models:
+        trend:
+          enabled: true
+          ema_fast: 20
+          ema_slow: 50
+          adx_threshold: 25
+        reversion:
+          enabled: true
+          rsi_period: 14
+          rsi_oversold: 30
+          rsi_overbought: 70
+          bb_period: 20
+          bb_std: 2.0
+        breakout:
+          enabled: true
+          lookback: 20
+          volume_threshold: 1.5
+          volume_ma_period: 20
+      regime:
+        enabled: true
+        atr_period: 14
+        trend_threshold_pct: 2.0
+        range_threshold_pct: 1.0
+      exit:
+        sl_atr_multiplier: 1.5
+        tp_atr_multiplier: 3.0
+        trailing_stop_atr_mult: 2.0
+
+# System
+system:
+  timezone: Asia/Seoul
+
+# Risk
+risk:
+  per_trade: 0.02
+  max_position_size: 0.1
+  max_leverage: 3
+  cooldown_seconds: 300
+
+# Portfolio
+portfolio:
+  initial_capital: 10000
+  budget_cap_enabled: true
+  budget_cap_pct: 0.3
+
+# Fees
+fees:
+  taker: 0.0004
+  maker: 0.0002
+  slippage: 0.0005
+
+# Leverage
+leverage:
+  default: 2
+  min: 2
+  max: 50
+
+# Indicators (from ensemble_v1.yaml)
+indicators:
+  ema:
+    fast: 9
+    slow: 21
+  rsi:
+    length: 14
+    oversold: 30
+    overbought: 70
+  atr:
+    length: 14
+  volume:
+    ma_length: 20
+
+# Database
+database:
+  url: ${DATABASE_URL}
+  host: ${DB_HOST}
+  port: ${DB_PORT}
+  name: ${DB_NAME}
+  user: ${DB_USER}
+  password: ${DB_PASSWORD}

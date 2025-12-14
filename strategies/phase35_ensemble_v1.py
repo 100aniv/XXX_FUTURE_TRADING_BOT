@@ -396,12 +396,17 @@ class Phase35EnsembleV1(BaseStrategy):
                 'vote_counts': dict
             }
         """
-        # Load ensemble config (with fallback)
+        # Load ensemble config (support both root-level and strategy-nested paths)
+        # Path 1: strategy.ensemble (original YAML structure)
         strategy_cfg = self.config.get('strategy', {})
         if isinstance(strategy_cfg, dict):
             ensemble_cfg = strategy_cfg.get('ensemble', {})
         else:
             ensemble_cfg = {}
+        
+        # Path 2: root-level ensemble (engine-merged structure)
+        if not ensemble_cfg:
+            ensemble_cfg = self.config.get('ensemble', {})
         
         confidence_threshold = ensemble_cfg.get('confidence_threshold', 0.5)
         

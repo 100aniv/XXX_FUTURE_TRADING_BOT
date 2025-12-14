@@ -206,6 +206,11 @@ def load_strategies(config: dict, all_strategies: dict = None) -> Dict[str, Dict
                 known_meta_keys = {'enabled', 'timeframe', 'filters'}
                 strategy_params = {k: v for k, v in strategy_config.items() if k not in known_meta_keys}
             
+            # PHASE35-2: Ensemble strategies need full strategy config preserved for nested access
+            if selector == 'phase35_ensemble_v1':
+                # Preserve entire strategy section from config for ensemble to access nested configs
+                strategy_params['strategy'] = config.get('strategy', {})
+            
             logger.info(f"🔍 [PHASE29-2C-R DEBUG] {selector}: strategy_config keys={list(strategy_config.keys())}, params keys={list(strategy_params.keys())}")
             logger.info(f"🔍 [PHASE29-2C-R DEBUG] {selector}: sample params={dict(list(strategy_params.items())[:3])}")
             

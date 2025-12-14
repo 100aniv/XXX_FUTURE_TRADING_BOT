@@ -153,7 +153,9 @@ mode: "backtest"  # backtest | paper | live
 # Required Keys (엔진 검증용)
 lookback: 1000
 equity: 10000
-capital: 10000
+capital:
+  initial: 10000
+  per_trade: 0.02
 
 # System
 system:
@@ -182,10 +184,7 @@ leverage:
   max: 50
   cap: 50
 
-# Strategy config
-strategy:
-  use_ensemble: false
-  selector: phase35_ensemble_v1
+# Strategy config (PHASE35-2: STRICT MODE) - MOVED TO TOP-LEVEL strategy SECTION
 
 # Filters
 filters:

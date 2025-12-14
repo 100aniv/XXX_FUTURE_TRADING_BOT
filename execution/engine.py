@@ -1617,6 +1617,20 @@ def run(feed, broker, clock, strategies: dict, ensemble_module, config: dict, sy
                         **strategy_cfg,  # PHASE27-7: strategies.{strategy_id} 설정 (use_adx, adx_period 등)
                         **strategy_params,  # PHASE22-4: 전략별 params (rsi_oversold 등) - 최우선
                     }
+                    
+                    # PHASE35-2: Ensemble config 검증 로그
+                    if strategy_id == 'phase35_ensemble_v1':
+                        logger.info(f"🔍 [PHASE35-2 CONFIG] {strategy_id} cfg keys: {list(cfg.keys())[:10]}")
+                        logger.info(f"🔍 [PHASE35-2 CONFIG] {strategy_id} strategy keys: {list(cfg.get('strategy', {}).keys())}")
+                        ensemble_cfg_root = cfg.get('ensemble', {})
+                        ensemble_cfg_strategy = cfg.get('strategy', {}).get('ensemble', {})
+                        sub_models_root = cfg.get('sub_models', {})
+                        sub_models_strategy = cfg.get('strategy', {}).get('sub_models', {})
+                        logger.info(f"🔍 [PHASE35-2 CONFIG] ensemble config paths:")
+                        logger.info(f"   - ensemble (root): {bool(ensemble_cfg_root)}, confidence_threshold={ensemble_cfg_root.get('confidence_threshold', 'MISSING')}")
+                        logger.info(f"   - strategy.ensemble: {bool(ensemble_cfg_strategy)}, confidence_threshold={ensemble_cfg_strategy.get('confidence_threshold', 'MISSING')}")
+                        logger.info(f"   - sub_models (root): {bool(sub_models_root)}")
+                        logger.info(f"   - strategy.sub_models: {bool(sub_models_strategy)}")
 
                     # ⭐ 전략별 필터 설정 병합 (MTF, regime, volume)
                     strategy_filters = strategy_cfg.get("filters", {})
