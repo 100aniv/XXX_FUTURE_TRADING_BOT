@@ -1,0 +1,134 @@
+# PHASE35-2 ITER3 SSOT Configuration
+# ====================================
+# Purpose: 7D Smoke Test with adjusted ensemble parameters
+# Date: 2024-12-14
+# Changes from ITER2:
+#   - min_votes: 3 -> 2 (prevent 0 signals)
+#   - confidence_threshold: 0.75 -> 0.70 (relax strictness)
+#   - cooldown_bars: 5 -> 3 (45min instead of 75min)
+
+# Strategy Selection
+strategy:
+  selector: "phase35_ensemble_v1"
+
+# Strategy-specific parameters (for engine merge)
+strategies:
+  phase35_ensemble_v1:
+    params:
+      # Ensemble Parameters (ITER3 Tuned)
+      ensemble:
+        min_votes: 2  # 2/3 majority (less strict than ITER2's 3/3)
+        confidence_threshold: 0.70  # Relaxed from 0.75
+        cooldown_bars: 3  # 45 minutes (15m * 3)
+      
+      # Sub-Model Configurations
+      sub_models:
+        trend:
+          ema_fast: 20
+          ema_slow: 50
+          adx_period: 14
+          adx_threshold: 20
+          full_conf_pct: 0.01  # 1% EMA diff = 1.0 confidence
+        
+        reversion:
+          rsi_period: 14
+          rsi_oversold: 30
+          rsi_overbought: 70
+          bb_period: 20
+          bb_std: 2.0
+        
+        breakout:
+          lookback: 20
+          atr_period: 14
+          atr_multiplier: 1.5
+          volume_ma_period: 20
+          volume_threshold: 1.2
+      
+      # Regime Filter
+      regime:
+        atr_period: 14
+        atr_trend_threshold: 0.015  # 1.5% = TREND
+        atr_chop_threshold: 0.005   # 0.5% = CHOP
+        # 0.5% < x < 1.5% = RANGE
+      
+      # Exit Configuration
+      exit:
+        time_bars: 96  # 24 hours (15m * 96)
+        adverse_move_pct: 0.03  # 3% adverse move
+
+# Ensemble Parameters (ITER3 Tuned) - Also at root for compatibility
+ensemble:
+  min_votes: 2  # 2/3 majority (less strict than ITER2's 3/3)
+  confidence_threshold: 0.70  # Relaxed from 0.75
+  cooldown_bars: 3  # 45 minutes (15m * 3)
+
+# Sub-Model Configurations
+sub_models:
+  trend:
+    ema_fast: 20
+    ema_slow: 50
+    adx_period: 14
+    adx_threshold: 20
+    full_conf_pct: 0.01  # 1% EMA diff = 1.0 confidence
+  
+  reversion:
+    rsi_period: 14
+    rsi_oversold: 30
+    rsi_overbought: 70
+    bb_period: 20
+    bb_std: 2.0
+  
+  breakout:
+    lookback: 20
+    atr_period: 14
+    atr_multiplier: 1.5
+    volume_ma_period: 20
+    volume_threshold: 1.2
+
+# Regime Filter
+regime:
+  atr_period: 14
+  atr_trend_threshold: 0.015  # 1.5% = TREND
+  atr_chop_threshold: 0.005   # 0.5% = CHOP
+  # 0.5% < x < 1.5% = RANGE
+
+# Exit Configuration
+exit:
+  time_bars: 96  # 24 hours (15m * 96)
+  adverse_move_pct: 0.03  # 3% adverse move
+
+# Risk Management
+risk:
+  max_position_value_pct: 0.95
+  max_trades_per_day: 10
+  cooldown_after_loss: 4
+
+# Portfolio
+portfolio:
+  initial_capital: 10000
+  max_budget_per_trade_pct: 0.30
+
+# Fees & Slippage
+fees:
+  taker_fee: 0.0004
+  slippage_bps: 5
+
+# Leverage
+leverage:
+  mode: "fixed"
+  value: 1
+
+# Database (Placeholder)
+database:
+  enabled: false
+
+# Decision Trace
+decision_trace:
+  enabled: true
+
+# Backtest Settings (will be overridden by runner)
+start_date: "2024-12-01"
+end_date: "2024-12-08"
+symbol: "BTCUSDT"
+timeframe: "15m"
+initial_capital: 10000
