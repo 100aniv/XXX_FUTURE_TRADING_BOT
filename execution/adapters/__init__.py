@@ -251,12 +251,24 @@ def create_adapters(mode: str, symbols: List[str], config: dict, logger: Any) ->
         backtest_cfg = config.get('backtest', {})
         data_dir = backtest_cfg.get('data_dir', 'data')
         
-        # 기간 설정
-        period = backtest_cfg.get('period', 'ten_years')
-        periods_cfg = backtest_cfg.get('periods', {})
-        period_cfg = periods_cfg.get(period, {})
-        start_date = period_cfg.get('start_date')
-        end_date = period_cfg.get('end_date')
+        # ITER9 CRITICAL FIX: backtest.start_date 직접 사용 (period_cfg 우선순위 제거)
+        # Runner에서 config['backtest']['start_date']를 설정하므로 이를 최우선으로 사용
+        start_date = backtest_cfg.get('start_date')
+        end_date = backtest_cfg.get('end_date')
+        days = backtest_cfg.get('days')
+        
+        # period_cfg는 start_date/end_date가 모두 None일 때만 fallback
+        if not start_date or not end_date:
+            period = backtest_cfg.get('period', 'ten_years')
+            periods_cfg = backtest_cfg.get('periods', {})
+            period_cfg = periods_cfg.get(period, {})
+            if not start_date:
+                start_date = period_cfg.get('start_date')
+            if not end_date:
+                end_date = period_cfg.get('end_date')
+            logger.info(f"📅 [ITER9] period_cfg fallback: {start_date} ~ {end_date}")
+        else:
+            logger.info(f"📅 [ITER9] backtest.start_date SSOT: {start_date} ~ {end_date}")
         
         # 단일/멀티 심볼 판단
         single_symbol = backtest_cfg.get('symbol')
@@ -285,11 +297,7 @@ def create_adapters(mode: str, symbols: List[str], config: dict, logger: Any) ->
                     csv_path = sorted(csv_files)[-1]
                     logger.warning(f"⚠️ 정확한 파일 없음, fallback: {csv_path}")
             
-            # ⭐ PHASE8-4/5: days, start_date, end_date 파라미터 전달 (config에서 읽기)
-            backtest_cfg = config.get('backtest', {})
-            days = backtest_cfg.get('days')
-            start_date = backtest_cfg.get('start_date')
-            end_date = backtest_cfg.get('end_date')
+            # ITER9: 날짜 파라미터 전달 (이미 위에서 설정됨)
             
             feed = HistoricalFeed(
                 str(csv_path), 

@@ -146,64 +146,88 @@ def ensure_required_keys(config: Dict[str, Any]) -> None:
 
 def apply_date_range(config: Dict[str, Any], range_override: str = None) -> None:
     """
-    ITER8: 날짜 범위 적용 (YAML 존중 원칙)
+    ITER9: 날짜 범위 적용 + backtest 섹션 동기화 (CRITICAL FIX)
     
     규칙:
     1. YAML에 start_date, end_date가 모두 있으면 절대 덮어쓰지 않음
     2. YAML에 없고 --range가 지정되면 그 범위로 설정
     3. YAML에도 없고 --range도 없으면 디폴트 7d
+    4. **루트와 backtest 섹션 양쪽에 동일 값 주입 (adapters 호환)**
     """
     yaml_has_dates = "start_date" in config and "end_date" in config
     
     if yaml_has_dates:
         logger.info(f"📅 [DATE SSOT] YAML 날짜 사용: {config['start_date']} ~ {config['end_date']}")
-        return
-    
-    # YAML에 날짜가 없으면 range_override 또는 디폴트 적용
-    if range_override == '1d':
-        config['start_date'] = '2024-12-01'
-        config['end_date'] = '2024-12-02'
-        logger.warning(f"⚠️  [DATE OVERRIDE] --range 1d 적용: {config['start_date']} ~ {config['end_date']}")
-    elif range_override == '7d':
-        config['start_date'] = '2024-12-01'
-        config['end_date'] = '2024-12-08'
-        logger.warning(f"⚠️  [DATE OVERRIDE] --range 7d 적용: {config['start_date']} ~ {config['end_date']}")
     else:
-        # 디폴트: 7d
-        config['start_date'] = '2024-12-01'
-        config['end_date'] = '2024-12-08'
-        logger.warning(f"⚠️  [DATE DEFAULT] 7d 디폴트 적용: {config['start_date']} ~ {config['end_date']}")
+        # YAML에 날짜가 없으면 range_override 또는 디폴트 적용
+        if range_override == '1d':
+            config['start_date'] = '2024-12-01'
+            config['end_date'] = '2024-12-02'
+            logger.warning(f"⚠️  [DATE OVERRIDE] --range 1d 적용: {config['start_date']} ~ {config['end_date']}")
+        elif range_override == '7d':
+            config['start_date'] = '2024-12-01'
+            config['end_date'] = '2024-12-08'
+            logger.warning(f"⚠️  [DATE OVERRIDE] --range 7d 적용: {config['start_date']} ~ {config['end_date']}")
+        else:
+            # 디폴트: 7d
+            config['start_date'] = '2024-12-01'
+            config['end_date'] = '2024-12-08'
+            logger.warning(f"⚠️  [DATE DEFAULT] 7d 디폴트 적용: {config['start_date']} ~ {config['end_date']}")
+    
+    # ITER9 CRITICAL FIX: backtest 섹션에도 동일 값 주입
+    # adapters/__init__.py:291에서 config['backtest']['start_date'] 참조
+    if 'backtest' not in config:
+        config['backtest'] = {}
+    config['backtest']['start_date'] = config['start_date']
+    config['backtest']['end_date'] = config['end_date']
+    
+    logger.info(f"✅ [DATE NORMALIZE] backtest 섹션 동기화: {config['backtest']['start_date']} ~ {config['backtest']['end_date']}")
 
 
 def main():
-    """메인 실행 함수 (ITER8: --range 파라미터 지원)"""
+    """메인 실행 함수 (ITER9: --range + --profile + timing)"""
     import argparse
     
     parser = argparse.ArgumentParser(description='PHASE35-2 Runner')
     parser.add_argument('run_number', type=int, nargs='?', default=1, help='Run number')
     parser.add_argument('--range', type=str, choices=['1d', '7d'], default=None, help='Date range override (1d or 7d)')
+    parser.add_argument('--profile', action='store_true', help='Enable cProfile profiling')
+    parser.add_argument('--daily-cap', type=int, default=None, help='Override risk.max_trades_per_day for testing')
     args = parser.parse_args()
     
     run_number = args.run_number
     range_override = args.range
+    enable_profile = args.profile
+    daily_cap_override = args.daily_cap
     
     # Timestamp
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     
-    # Run ID (ITER8)
-    run_id = f"phase35_2_iter8_run{run_number}_{timestamp}"
+    # Run ID (ITER9)
+    run_id = f"phase35_2_iter9_run{run_number}_{timestamp}"
     
     logger.info("=" * 80)
-    logger.info(f"🚀 PHASE35-2 ITER8 - Risk Guard Validation Run #{run_number}")
+    logger.info(f"🚀 PHASE35-2 ITER9 - 1D Speed Fix + Risk Guard Proof Run #{run_number}")
     logger.info(f"📋 Run ID: {run_id}")
     if range_override:
         logger.info(f"📅 Range Override: {range_override}")
+    if enable_profile:
+        logger.info(f"📊 Profiling: ENABLED")
+    if daily_cap_override:
+        logger.info(f"🔒 Daily Cap Override: {daily_cap_override}")
     logger.info(f"🕐 Start Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     logger.info("=" * 80)
+    
+    # Timing tracker (ITER9)
+    import time
+    timing = {}
+    t_start_total = time.perf_counter()
     
     # =====================================
     # 1. Config 로드 + Preflight 검증
     # =====================================
+    t_config_start = time.perf_counter()
+    
     # Usage tracker 초기화 (이전 실행 영향 제거)
     reset_usage_tracker()
     
@@ -215,6 +239,8 @@ def main():
     # Config hash
     config_hash = calculate_hash(config)
     
+    timing['config_load'] = (time.perf_counter() - t_config_start) * 1000
+    
     # =====================================
     # 1.5. Preflight: 필수 키 보장 + 검증
     # =====================================
@@ -223,8 +249,13 @@ def main():
     # 필수 키 자동 보장 (backtest.output_file 제외)
     ensure_required_keys(config)
     
-    # ITER8: 날짜 범위 적용 (YAML 존중)
+    # ITER9: 날짜 범위 적용 + backtest 섹션 동기화
     apply_date_range(config, range_override)
+    
+    # ITER9: Daily cap override (테스트용)
+    if daily_cap_override:
+        config['risk']['max_trades_per_day'] = daily_cap_override
+        logger.warning(f"⚠️  [DAILY CAP OVERRIDE] {daily_cap_override} trades/day")
     
     # Git commit & Seed
     git_commit = get_git_commit()
@@ -263,6 +294,8 @@ def main():
         logger.error(str(e))
         sys.exit(1)
     
+    timing['config_preflight'] = (time.perf_counter() - t_config_start) * 1000
+    
     # =====================================
     # 4. Effective Config 저장 + 2중 검증
     # =====================================
@@ -289,19 +322,54 @@ def main():
         sys.exit(1)
     
     # =====================================
-    # 5. Engine 실행
+    # 5. Engine 실행 (ITER9: profiling 지원)
     # =====================================
     logger.info("🔄 Engine 실행 중...")
+    
+    t_engine_start = time.perf_counter()
     
     try:
         from execution.engine import run_v2
         
-        run_v2(
-            mode='backtest',
-            config=config,
-            clean_state=True  # ITER5: FlowGuardian 우회
-        )
+        if enable_profile:
+            import cProfile
+            import pstats
+            from io import StringIO
+            
+            profiler = cProfile.Profile()
+            profiler.enable()
+            
+            run_v2(
+                mode='backtest',
+                config=config,
+                clean_state=True
+            )
+            
+            profiler.disable()
+            
+            # pstats 출력
+            profile_path = run_dir / "profile.pstats"
+            profiler.dump_stats(str(profile_path))
+            
+            # Top 30 함수 텍스트 출력
+            s = StringIO()
+            ps = pstats.Stats(profiler, stream=s).sort_stats('cumulative')
+            ps.print_stats(30)
+            
+            profile_top_path = run_dir / "profile_top.txt"
+            with open(profile_top_path, 'w', encoding='utf-8') as f:
+                f.write(s.getvalue())
+            
+            logger.info(f"📊 Profiling 완료: {profile_path}")
+            logger.info(f"📊 Top 30 함수: {profile_top_path}")
+        else:
+            run_v2(
+                mode='backtest',
+                config=config,
+                clean_state=True
+            )
         
+        timing['engine_run'] = (time.perf_counter() - t_engine_start) * 1000
         logger.info("✅ Engine 실행 완료")
         
     except Exception as e:
@@ -327,10 +395,31 @@ def main():
         logger.error(f"❌ 리포트 읽기 실패: {e}")
         sys.exit(1)
     
+    # ITER9 STEP 4: KPI SSOT 연결
+    from common.metrics_kpi import compute_kpis
+    
+    trades_list = report_data.get("trades", [])
+    initial_capital = config.get("initial_capital", 10000)
+    
+    # KPI SSOT 계산 (실제 트레이드 리스트 기반)
+    kpi_ssot = compute_kpis(
+        trades=trades_list,
+        initial_capital=initial_capital
+    )
+    
+    logger.info(f"📊 [KPI SSOT] 실제 Trades: {kpi_ssot.get('total_trades', 0)}")
+    
+    # 기존 metrics와 비교 (불일치 감지)
     metrics = report_data.get("metrics", {})
+    metrics_trades = metrics.get("total_trades", 0)
+    
+    if metrics_trades != kpi_ssot.get('total_trades', 0):
+        logger.error(f"❌ [KPI MISMATCH] metrics.total_trades={metrics_trades} != KPI SSOT={kpi_ssot.get('total_trades', 0)}")
+        logger.warning("⚠️  KPI SSOT 사용 (기존 metrics 무시)")
+        metrics = kpi_ssot  # SSOT 우선
     
     # =====================================
-    # 7. Summary 생성
+    # 7. Summary 생성 (ITER9: KPI SSOT 사용)
     # =====================================
     summary = {
         "run_number": run_number,
@@ -342,14 +431,15 @@ def main():
         "start_date": config.get("start_date", "unknown"),
         "end_date": config.get("end_date", "unknown"),
         "initial_capital": config.get("initial_capital", 10000),
-        "trades": metrics.get("total_trades", 0),
-        "win_rate": metrics.get("winrate", 0.0),
-        "profit_factor": metrics.get("pf", 0.0),
-        "max_drawdown": metrics.get("mdd", 0.0),
-        "pnl": metrics.get("net_pnl", 0.0),
-        "roi": metrics.get("roi", 0.0),
+        "trades": kpi_ssot.get("total_trades", 0),  # ITER9: KPI SSOT
+        "win_rate": kpi_ssot.get("winrate", 0.0),
+        "profit_factor": kpi_ssot.get("profit_factor", 0.0),
+        "max_drawdown": kpi_ssot.get("max_drawdown", 0.0),
+        "pnl": kpi_ssot.get("net_pnl", 0.0),
+        "roi": kpi_ssot.get("roi", 0.0),
         "report_path": str(report_path),
         "effective_config_path": str(effective_config_path),
+        "kpi_source": "SSOT",  # ITER9: 출처 명시
     }
     
     # Summary 저장
@@ -387,8 +477,42 @@ def main():
     print_usage_report(usage_report)
     
     # =====================================
-    # 10. 정상 종료
+    # 10. Timing 저장 + 정상 종료
     # =====================================
+    timing['total'] = (time.perf_counter() - t_start_total) * 1000
+    
+    timing_path = run_dir / "timing.json"
+    with open(timing_path, 'w', encoding='utf-8') as f:
+        json.dump(timing, f, indent=2, ensure_ascii=False)
+    
+    logger.info(f"⏱️  Timing Summary (ms):")
+    logger.info(f"   Config Load: {timing.get('config_load', 0):.1f}")
+    logger.info(f"   Preflight: {timing.get('config_preflight', 0):.1f}")
+    logger.info(f"   Engine Run: {timing.get('engine_run', 0):.1f}")
+    logger.info(f"   Total: {timing.get('total', 0):.1f} ({timing.get('total', 0)/1000:.1f}s)")
+    logger.info(f"📊 Timing 저장: {timing_path}")
+    
+    # ITER9: 1D 백테스트 속도 검증
+    if range_override == '1d':
+        total_seconds = timing.get('total', 0) / 1000
+        if total_seconds > 180:  # 3분 = 180초
+            logger.error(f"❌ EC1 FAIL: 1D 백테스트 {total_seconds:.1f}s > 180s (3분 목표)")
+            sys.exit(1)
+        else:
+            logger.info(f"✅ EC1 PASS: 1D 백테스트 {total_seconds:.1f}s < 180s")
+    
+    # ITER9: RiskGuard 자동 검증
+    if daily_cap_override:
+        trades_count = summary.get('trades', 0)
+        expected_days = 1 if range_override == '1d' else 7
+        max_expected = daily_cap_override * expected_days
+        
+        if trades_count > max_expected:
+            logger.error(f"❌ EC2 FAIL: Trades {trades_count} > {max_expected} (daily_cap={daily_cap_override}, days={expected_days})")
+            sys.exit(1)
+        else:
+            logger.info(f"✅ EC2 PASS: Trades {trades_count} <= {max_expected} (RiskGuard 동작 확인)")
+    
     sys.exit(0)
 
 

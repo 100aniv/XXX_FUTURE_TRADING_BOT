@@ -21,7 +21,7 @@ from scripts.phase35.run_iter5_isolated_v2 import apply_date_range
 
 
 def test_yaml_dates_respected():
-    """YAML에 날짜가 있으면 보존"""
+    """YAML에 날짜가 있으면 보존 + backtest 섹션 동기화"""
     config = {
         'start_date': '2024-11-01',
         'end_date': '2024-11-15'
@@ -32,6 +32,11 @@ def test_yaml_dates_respected():
     
     assert config['start_date'] == '2024-11-01', "YAML start_date가 변경됨!"
     assert config['end_date'] == '2024-11-15', "YAML end_date가 변경됨!"
+    
+    # ITER9: backtest 섹션 동기화 검증
+    assert 'backtest' in config, "backtest 섹션 미생성!"
+    assert config['backtest']['start_date'] == '2024-11-01', "backtest.start_date 불일치!"
+    assert config['backtest']['end_date'] == '2024-11-15', "backtest.end_date 불일치!"
 
 
 def test_range_1d_override():
