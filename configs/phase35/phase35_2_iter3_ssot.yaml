@@ -122,6 +122,8 @@ position_sizing:
 portfolio:
   initial_capital: 10000
   max_budget_per_trade_pct: 0.30
+  max_total_exposure: 0.95  # 95% total exposure limit
+  max_strategy_positions: 3  # Max positions per strategy
 
 # Fees & Slippage
 fees:
