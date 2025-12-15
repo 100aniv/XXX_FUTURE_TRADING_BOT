@@ -2684,11 +2684,14 @@ def run(feed, broker, clock, strategies: dict, ensemble_module, config: dict, sy
                 report_dir = Path("reports/backtest")
                 report_dir.mkdir(parents=True, exist_ok=True)
 
+                # symbol 추출 (symbols 리스트 또는 config에서)
+                report_symbol = symbols[0] if symbols and len(symbols) > 0 else config.get("symbol", "UNKNOWN")
+
                 # 결과 데이터 준비 (간단 버전)
                 results = {
                     "metadata": {
                         "mode": "backtest",
-                        "symbol": symbol,
+                        "symbol": report_symbol,
                         "timeframe": config.get("timeframe", "5m"),
                         "strategies": list(strategies.keys()) if strategies else [],
                         "total_candles": candle_count,

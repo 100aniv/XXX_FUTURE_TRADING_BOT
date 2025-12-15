@@ -7,6 +7,14 @@
 #   - confidence_threshold: 0.75 -> 0.70 (relax strictness)
 #   - cooldown_bars: 5 -> 3 (45min instead of 75min)
 
+# Basic Settings (required by engine)
+mode: backtest
+timeframe: 15m
+symbol: BTCUSDT
+lookback: 100
+equity: 10000
+initial_capital: 10000
+
 # Strategy Selection
 strategy:
   selector: "phase35_ensemble_v1"
@@ -100,6 +108,8 @@ exit:
 # Risk Management
 risk:
   per_trade: 0.01  # 1% risk per trade
+  max_positions: 3  # Maximum concurrent positions
+  max_exposure_per_symbol: 0.3  # 30% max exposure per symbol
   max_position_value_pct: 0.95
   max_trades_per_day: 10
   cooldown_after_loss: 4
@@ -134,6 +144,7 @@ fees:
 leverage:
   mode: "fixed"
   value: 1
+  max: 1  # Maximum leverage (required by position_sizer)
 
 # Database (Placeholder)
 database:

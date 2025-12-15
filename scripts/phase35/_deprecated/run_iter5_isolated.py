@@ -123,6 +123,8 @@ def main():
         config["risk"] = {}
     if "per_trade" not in config["risk"]:
         config["risk"]["per_trade"] = 0.01
+    if "max_positions" not in config["risk"]:
+        config["risk"]["max_positions"] = 3
     
     # symbols 필수 키 (단일 심볼 모드)
     if "symbols" not in config:

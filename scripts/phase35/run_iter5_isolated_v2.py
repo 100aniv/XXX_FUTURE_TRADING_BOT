@@ -102,6 +102,8 @@ def ensure_required_keys(config: Dict[str, Any]) -> None:
         config["risk"]["per_trade"] = 0.01
     if "max_positions" not in config["risk"]:
         config["risk"]["max_positions"] = 3
+    if "max_exposure_per_symbol" not in config["risk"]:
+        config["risk"]["max_exposure_per_symbol"] = 0.3
     
     # symbols (단일 심볼 모드)
     if "symbols" not in config:
@@ -160,9 +162,9 @@ def main():
     # 1. Config 로드 + Preflight 검증
     # =====================================
     config_path = project_root / "configs" / "phase35" / "phase35_2_iter3_ssot.yaml"
-    logger.info(f"📁 Config: {config_path}")
+    logger.info(f"📁 Config Source: {config_path.absolute()}")
     
-    config = load_config(config_path)
+    config = load_config(config_path)  # Fingerprint printed inside
     
     # Config hash
     config_hash = calculate_hash(config)

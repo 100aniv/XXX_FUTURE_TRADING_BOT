@@ -25,6 +25,7 @@ REQUIRED_DOTPATHS = [
     # === 리스크 관리 ===
     "risk.per_trade",               # position_sizer.py: 거래당 리스크 비율
     "risk.max_positions",           # portfolio_manager.py: 최대 동시 포지션 수
+    "risk.max_exposure_per_symbol", # risk_manager.py: 심볼당 최대 노출
     
     # === 자본 관리 ===
     "capital.initial",              # position_sizer.py: 초기 자본
