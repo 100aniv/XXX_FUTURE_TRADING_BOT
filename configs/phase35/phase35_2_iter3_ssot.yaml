@@ -99,9 +99,24 @@ exit:
 
 # Risk Management
 risk:
+  per_trade: 0.01  # 1% risk per trade
   max_position_value_pct: 0.95
   max_trades_per_day: 10
   cooldown_after_loss: 4
+
+# Capital Management
+capital:
+  initial: 10000
+
+# Position Sizing
+position_sizing:
+  method: "fixed_pct"
+  quality_weight_min: 0.5
+  quality_weight_max: 1.5
+  min_position_value: 10  # Minimum $10
+  max_position_value: 3000  # 30% of 10000
+  default_leverage: 1
+  max_leverage: 1
 
 # Portfolio
 portfolio:
@@ -132,3 +147,5 @@ end_date: "2024-12-08"
 symbol: "BTCUSDT"
 timeframe: "15m"
 initial_capital: 10000
+lookback: 100  # 캔들 lookback for indicators
+equity: 10000  # Initial equity (same as initial_capital)

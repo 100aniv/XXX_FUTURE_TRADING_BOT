@@ -2766,7 +2766,11 @@ def run(feed, broker, clock, strategies: dict, ensemble_module, config: dict, sy
                 else:
                     logger.warning("⚠️  검증 실패: 거래 데이터 없음")
         except Exception as e:
-            logger.warning(f"⚠️  백테스트 리포트 생성 실패: {e}")
+            import traceback
+            logger.error(f"❌ 백테스트 리포트 생성 실패: {e}")
+            logger.error(f"스택 트레이스:\n{traceback.format_exc()}")
+            # PHASE35-2 ITER5: 리포트 생성 실패는 치명적 오류로 처리
+            raise RuntimeError(f"백테스트 리포트 생성 실패: {e}") from e
 
 
 def calculate_pnl(position: Dict, exit_price: float, fee_rate: float = 0.0004) -> float:
