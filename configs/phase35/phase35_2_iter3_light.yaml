@@ -1,0 +1,159 @@
+# PHASE35-2 ITER6 LIGHT Configuration
+# ====================================
+# Purpose: 7D Smoke Test with LIGHT filters (increased trade generation)
+# Date: 2024-12-15
+# Changes from BASE (iter3_ssot):
+#   - confidence_threshold: 0.70 -> 0.30 (major relaxation)
+#   - cooldown_bars: 3 -> 1 (15min instead of 45min)
+#   - regime thresholds: slightly relaxed
+# Risk/Position/Loss limits: UNCHANGED (safety preserved)
+
+# Basic Settings (required by engine)
+mode: backtest
+timeframe: 15m
+symbol: BTCUSDT
+lookback: 100
+equity: 10000
+initial_capital: 10000
+
+# Strategy Selection
+strategy:
+  selector: "phase35_ensemble_v1"
+
+# Strategy-specific parameters (for engine merge)
+strategies:
+  phase35_ensemble_v1:
+    params:
+      # Ensemble Parameters (LIGHT: More permissive)
+      ensemble:
+        min_votes: 2  # Keep 2/3 majority
+        confidence_threshold: 0.30  # LIGHT: 0.70 -> 0.30 (major relaxation)
+        cooldown_bars: 1  # LIGHT: 15 minutes (15m * 1)
+      
+      # Sub-Model Configurations (same as BASE)
+      sub_models:
+        trend:
+          ema_fast: 20
+          ema_slow: 50
+          adx_period: 14
+          adx_threshold: 20
+          full_conf_pct: 0.01  # 1% EMA diff = 1.0 confidence
+        
+        reversion:
+          rsi_period: 14
+          rsi_oversold: 30
+          rsi_overbought: 70
+          bb_period: 20
+          bb_std: 2.0
+        
+        breakout:
+          lookback: 20
+          atr_period: 14
+          atr_multiplier: 1.5
+          volume_ma_period: 20
+          volume_threshold: 1.2
+      
+      # Regime Filter (LIGHT: Slightly relaxed)
+      regime:
+        atr_period: 14
+        atr_trend_threshold: 0.018  # LIGHT: 1.8% (was 1.5%)
+        atr_chop_threshold: 0.003   # LIGHT: 0.3% (was 0.5%)
+      
+      # Exit Configuration (same as BASE)
+      exit:
+        time_bars: 96  # 24 hours (15m * 96)
+        adverse_move_pct: 0.03  # 3% adverse move
+
+# Ensemble Parameters (LIGHT) - Also at root for compatibility
+ensemble:
+  min_votes: 2
+  confidence_threshold: 0.30  # LIGHT: 0.70 -> 0.30
+  cooldown_bars: 1  # LIGHT: 15 minutes
+
+# Sub-Model Configurations (same as BASE)
+sub_models:
+  trend:
+    ema_fast: 20
+    ema_slow: 50
+    adx_period: 14
+    adx_threshold: 20
+    full_conf_pct: 0.01
+  
+  reversion:
+    rsi_period: 14
+    rsi_oversold: 30
+    rsi_overbought: 70
+    bb_period: 20
+    bb_std: 2.0
+  
+  breakout:
+    lookback: 20
+    atr_period: 14
+    atr_multiplier: 1.5
+    volume_ma_period: 20
+    volume_threshold: 1.2
+
+# Regime Filter (LIGHT)
+regime:
+  atr_period: 14
+  atr_trend_threshold: 0.018  # LIGHT
+  atr_chop_threshold: 0.003   # LIGHT
+
+# Exit Configuration
+exit:
+  time_bars: 96
+  adverse_move_pct: 0.03
+
+# Risk Management (UNCHANGED - safety preserved)
+risk:
+  per_trade: 0.01  # 1% risk per trade
+  max_positions: 3  # Maximum concurrent positions
+  max_exposure_per_symbol: 0.3  # 30% max exposure per symbol
+  max_position_value_pct: 0.95
+  max_trades_per_day: 10
+  cooldown_after_loss: 4
+
+# Capital Management (UNCHANGED)
+capital:
+  initial: 10000
+
+# Position Sizing (UNCHANGED)
+position_sizing:
+  min_position_value: 10
+  max_position_value: 3000
+  quality_weight_min: 0.5
+  quality_weight_max: 1.5
+
+# Portfolio (UNCHANGED)
+portfolio:
+  initial_capital: 10000
+  max_budget_per_trade_pct: 0.30
+  max_total_exposure: 0.95  # 95% total exposure limit
+  max_strategy_positions: 3  # Max positions per strategy
+
+# Leverage (UNCHANGED)
+leverage:
+  mode: "fixed"
+  value: 1
+  max: 1  # Maximum leverage (required by position_sizer)
+
+# Execution Settings (UNCHANGED)
+execution:
+  fees_bps: 4
+  slippage:
+    bps: 2
+    model: "fixed"
+
+# Backtest Configuration
+backtest:
+  start_date: "2024-05-01"
+  end_date: "2024-05-07"  # 7 days
+  output_file: "artifacts/phase35/iter6/backtest_report_light.json"  # Will be overridden by runner
+
+# Database Configuration (UNCHANGED)
+database:
+  host: "localhost"
+  port: 5432
+  name: "trading_bot"
+  user: "postgres"
+  password: "your_password"

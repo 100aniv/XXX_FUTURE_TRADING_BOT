@@ -31,7 +31,10 @@ from common.logger import setup_logger
 from common.config_preflight import (
     compute_file_fingerprint,
     assert_required,
-    print_fingerprint
+    print_fingerprint,
+    reset_usage_tracker,
+    get_usage_report,
+    print_usage_report
 )
 from common.config_required import REQUIRED_DOTPATHS
 
@@ -161,6 +164,9 @@ def main():
     # =====================================
     # 1. Config 로드 + Preflight 검증
     # =====================================
+    # Usage tracker 초기화 (이전 실행 영향 제거)
+    reset_usage_tracker()
+    
     config_path = project_root / "configs" / "phase35" / "phase35_2_iter3_ssot.yaml"
     logger.info(f"📁 Config Source: {config_path.absolute()}")
     
@@ -326,7 +332,19 @@ def main():
     logger.info("=" * 80)
     
     # =====================================
-    # 9. 정상 종료
+    # 9. Config Usage Report (ITER6)
+    # =====================================
+    usage_report = get_usage_report(REQUIRED_DOTPATHS)
+    usage_report_path = run_dir / "config_usage_report.json"
+    
+    with open(usage_report_path, "w", encoding="utf-8") as f:
+        json.dump(usage_report, f, indent=2, ensure_ascii=False)
+    
+    logger.info(f"✅ Config Usage Report 저장: {usage_report_path}")
+    print_usage_report(usage_report)
+    
+    # =====================================
+    # 10. 정상 종료
     # =====================================
     sys.exit(0)
 
