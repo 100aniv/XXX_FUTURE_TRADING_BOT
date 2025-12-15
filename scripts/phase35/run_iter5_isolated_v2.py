@@ -139,9 +139,12 @@ def ensure_required_keys(config: Dict[str, Any]) -> None:
     if "max" not in config["leverage"]:
         config["leverage"]["max"] = 1
     
-    # backtest (output_file은 나중에 설정)
-    if "backtest" not in config:
-        config["backtest"] = {}
+    # ITER7: Backtest 기간은 YAML에서 설정 (1D 또는 7D)
+    # start_date/end_date가 YAML에 정의되어 있으면 그대로 사용
+    if "start_date" not in config:
+        config["start_date"] = "2024-12-01"
+    if "end_date" not in config:
+        config["end_date"] = "2024-12-08"
 
 
 def main():

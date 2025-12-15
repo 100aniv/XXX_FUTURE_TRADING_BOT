@@ -111,7 +111,12 @@ risk:
   max_positions: 3  # Maximum concurrent positions
   max_exposure_per_symbol: 0.3  # 30% max exposure per symbol
   max_position_value_pct: 0.95
-  max_trades_per_day: 10
+  
+  # ITER7: 런타임 리스크 가드 (Hard Limits)
+  max_trades_per_day: 10  # 일일 트레이드 상한 (백테스트/페이퍼 공통)
+  max_drawdown_pct: 30.0  # 최대 낙폭 경고선 (30%)
+  extreme_loss_cutoff_pct: 45.0  # 킬스위치 발동선 (45% 손실 시 중단)
+  
   cooldown_after_loss: 4
 
 # Capital Management
@@ -156,7 +161,7 @@ decision_trace:
 
 # Backtest Settings (will be overridden by runner)
 start_date: "2024-12-01"
-end_date: "2024-12-08"
+end_date: "2024-12-02"  # 1D for ITER7 micro smoke
 symbol: "BTCUSDT"
 timeframe: "15m"
 initial_capital: 10000

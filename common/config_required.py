@@ -26,6 +26,9 @@ REQUIRED_DOTPATHS = [
     "risk.per_trade",               # position_sizer.py: 거래당 리스크 비율
     "risk.max_positions",           # portfolio_manager.py: 최대 동시 포지션 수
     "risk.max_exposure_per_symbol", # risk_manager.py: 심볼당 최대 노출
+    "risk.max_trades_per_day",      # ITER7: 일일 트레이드 상한 (엔진/리스크매니저)
+    "risk.max_drawdown_pct",        # ITER7: 최대 낙폭 경고선
+    "risk.extreme_loss_cutoff_pct", # ITER7: 킬스위치 발동 손실률
     
     # === 자본 관리 ===
     "capital.initial",              # position_sizer.py: 초기 자본

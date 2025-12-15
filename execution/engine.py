@@ -785,6 +785,16 @@ def run(feed, broker, clock, strategies: dict, ensemble_module, config: dict, sy
     trade_count = 0
     closed_count = 0
 
+    # ⭐ ITER7: 일일 트레이드 카운터 (날짜별)
+    daily_trade_count = {}  # {date_str: count}
+    max_trades_per_day = config['risk']['max_trades_per_day']
+    
+    # ⭐ ITER7: 킬스위치 기준값
+    initial_equity = equity
+    extreme_loss_cutoff_pct = config['risk']['extreme_loss_cutoff_pct']
+    max_drawdown_pct = config['risk']['max_drawdown_pct']
+    killswitch_triggered = False
+
     # 활성 포지션 dict {position_id: position_info}
     active_positions = {}
 
@@ -1393,6 +1403,21 @@ def run(feed, broker, clock, strategies: dict, ensemble_module, config: dict, sy
         # ============================================================================
         # 메인 루프: 캔들 순회
         # ============================================================================
+        # ⭐ ITER7: 킬스위치 체크 (매 캔들마다)
+        current_equity = portfolio.get_equity() if hasattr(portfolio, 'get_equity') else initial_equity
+        loss_pct = ((current_equity - initial_equity) / initial_equity * 100) if initial_equity > 0 else 0
+        
+        if loss_pct <= -extreme_loss_cutoff_pct:
+            logger.critical(f"🛑🔴 [ITER7 KILLSWITCH] 극단 손실 차단: {loss_pct:.2f}% 손실 (기준: -{extreme_loss_cutoff_pct:.1f}%)")
+            logger.critical(f"   초기 자본: ${initial_equity:,.2f} → 현재: ${current_equity:,.2f}")
+            killswitch_triggered = True
+            # 모든 포지션 청산 시도
+            for pos_id in list(active_positions.keys()):
+                logger.warning(f"⚠️  킬스위치 발동: 포지션 {pos_id} 강제 청산 시도")
+            break  # 백테스트/페이퍼 즉시 중단
+        elif loss_pct <= -max_drawdown_pct:
+            logger.warning(f"⚠️  [ITER7 DD WARNING] 최대 낙폭 경고: {loss_pct:.2f}% (기준: -{max_drawdown_pct:.1f}%)")
+        
         # ⭐ PR11: Drawdown Guard 체크 (메인 루프 종료)
         if drawdown_guard_triggered:
             logger.error(f"🔴 Drawdown Guard 트리거됨 - 메인 루프 종료")
@@ -2452,8 +2477,21 @@ def run(feed, broker, clock, strategies: dict, ensemble_module, config: dict, sy
             "position_number": position_number,  # ⭐ P2: 포지션 번호 추가
         }
         
+        # ⭐ ITER7: 일일 트레이드 상한 체크
+        current_date = datetime.fromtimestamp(ts / 1000).strftime('%Y-%m-%d')
+        daily_count = daily_trade_count.get(current_date, 0)
+        
+        if daily_count >= max_trades_per_day:
+            logger.warning(
+                f"⚠️  [ITER7 DAILY LIMIT] 일일 트레이드 상한 도달: {daily_count}/{max_trades_per_day} (날짜: {current_date})"
+            )
+            continue  # 이 신호는 스킵
+        
         # ⭐ PHASE9-1 CRITICAL FIX: 진입 거래 카운트 증가
         trade_count += 1
+        daily_trade_count[current_date] = daily_count + 1
+        
+        logger.info(f"✅ [ITER7 DAILY COUNT] 일일 트레이드: {daily_trade_count[current_date]}/{max_trades_per_day} (날짜: {current_date})")
         
         # ⭐ PR10: SL 서버 등록 (Option C + workingType + priceProtect)
         if mode in ["paper", "live"]:
