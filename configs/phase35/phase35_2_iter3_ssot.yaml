@@ -159,9 +159,8 @@ database:
 decision_trace:
   enabled: true
 
-# Backtest Settings (will be overridden by runner)
-start_date: "2024-12-01"
-end_date: "2024-12-02"  # 1D for ITER7 micro smoke
+# Backtest Settings (ITER8: runner --range로 제어)
+# start_date/end_date는 runner에서 --range 1d 또는 7d로 지정
 symbol: "BTCUSDT"
 timeframe: "15m"
 initial_capital: 10000

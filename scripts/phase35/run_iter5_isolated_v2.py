@@ -139,28 +139,65 @@ def ensure_required_keys(config: Dict[str, Any]) -> None:
     if "max" not in config["leverage"]:
         config["leverage"]["max"] = 1
     
-    # ITER7: Backtest 기간은 YAML에서 설정 (1D 또는 7D)
-    # start_date/end_date가 YAML에 정의되어 있으면 그대로 사용
-    if "start_date" not in config:
-        config["start_date"] = "2024-12-01"
-    if "end_date" not in config:
-        config["end_date"] = "2024-12-08"
+    # backtest (output_file은 나중에 설정)
+    if "backtest" not in config:
+        config["backtest"] = {}
+
+
+def apply_date_range(config: Dict[str, Any], range_override: str = None) -> None:
+    """
+    ITER8: 날짜 범위 적용 (YAML 존중 원칙)
+    
+    규칙:
+    1. YAML에 start_date, end_date가 모두 있으면 절대 덮어쓰지 않음
+    2. YAML에 없고 --range가 지정되면 그 범위로 설정
+    3. YAML에도 없고 --range도 없으면 디폴트 7d
+    """
+    yaml_has_dates = "start_date" in config and "end_date" in config
+    
+    if yaml_has_dates:
+        logger.info(f"📅 [DATE SSOT] YAML 날짜 사용: {config['start_date']} ~ {config['end_date']}")
+        return
+    
+    # YAML에 날짜가 없으면 range_override 또는 디폴트 적용
+    if range_override == '1d':
+        config['start_date'] = '2024-12-01'
+        config['end_date'] = '2024-12-02'
+        logger.warning(f"⚠️  [DATE OVERRIDE] --range 1d 적용: {config['start_date']} ~ {config['end_date']}")
+    elif range_override == '7d':
+        config['start_date'] = '2024-12-01'
+        config['end_date'] = '2024-12-08'
+        logger.warning(f"⚠️  [DATE OVERRIDE] --range 7d 적용: {config['start_date']} ~ {config['end_date']}")
+    else:
+        # 디폴트: 7d
+        config['start_date'] = '2024-12-01'
+        config['end_date'] = '2024-12-08'
+        logger.warning(f"⚠️  [DATE DEFAULT] 7d 디폴트 적용: {config['start_date']} ~ {config['end_date']}")
 
 
 def main():
-    """메인 실행 함수"""
-    # Run number (기본값: 1)
-    run_number = int(sys.argv[1]) if len(sys.argv) > 1 else 1
+    """메인 실행 함수 (ITER8: --range 파라미터 지원)"""
+    import argparse
+    
+    parser = argparse.ArgumentParser(description='PHASE35-2 Runner')
+    parser.add_argument('run_number', type=int, nargs='?', default=1, help='Run number')
+    parser.add_argument('--range', type=str, choices=['1d', '7d'], default=None, help='Date range override (1d or 7d)')
+    args = parser.parse_args()
+    
+    run_number = args.run_number
+    range_override = args.range
     
     # Timestamp
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     
-    # Run ID (ITER5 표준)
-    run_id = f"phase35_2_iter5_run{run_number}_{timestamp}"
+    # Run ID (ITER8)
+    run_id = f"phase35_2_iter8_run{run_number}_{timestamp}"
     
     logger.info("=" * 80)
-    logger.info(f"🚀 PHASE35-2 ITER5.5 - 7D Smoke Test Run #{run_number}")
+    logger.info(f"🚀 PHASE35-2 ITER8 - Risk Guard Validation Run #{run_number}")
     logger.info(f"📋 Run ID: {run_id}")
+    if range_override:
+        logger.info(f"📅 Range Override: {range_override}")
     logger.info(f"🕐 Start Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     logger.info("=" * 80)
     
@@ -185,6 +222,9 @@ def main():
     
     # 필수 키 자동 보장 (backtest.output_file 제외)
     ensure_required_keys(config)
+    
+    # ITER8: 날짜 범위 적용 (YAML 존중)
+    apply_date_range(config, range_override)
     
     # Git commit & Seed
     git_commit = get_git_commit()
