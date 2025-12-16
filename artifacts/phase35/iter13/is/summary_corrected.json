@@ -1,0 +1,29 @@
+{
+  "note": "ITER13 IS: Summary corrected using backtest_report.json metrics",
+  "run_id": "phase35_3_iter13_is_2024nov",
+  "window": {
+    "start_date": "2024-11-01",
+    "end_date": "2024-11-30",
+    "label": "2024_Nov"
+  },
+  "kpi": {
+    "trades": 10498,
+    "win_rate": 0.28414936178319678,
+    "profit_factor": 0.5667332988512346,
+    "max_drawdown": -1516.156444039129,
+    "pnl": -1510.9265018548092,
+    "roi": -15.109265018548092,
+    "risk_reward": 1.4277575396805322,
+    "consecutive_losses": 40
+  },
+  "config": {
+    "initial_capital": 10000,
+    "git_commit": "a6e6d5c69a1c5efdcb22f4c22ff3dcd9bb8b1571",
+    "config_hash": "a99b6c9d"
+  },
+  "runtime_sec": 53.7,
+  "source": {
+    "backtest_report": "artifacts/phase35/iter5/phase35_2_iter9_run13001_20251216_213704/backtest_report.json",
+    "original_summary": "artifacts/phase35/iter5/phase35_2_iter9_run13001_20251216_213704/summary.json"
+  }
+}

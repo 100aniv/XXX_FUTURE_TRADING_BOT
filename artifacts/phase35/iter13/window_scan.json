@@ -1,0 +1,47 @@
+{
+  "scan_metadata": {
+    "scan_timestamp": "2025-12-16T21:40:00",
+    "method": "manual_verification",
+    "finding": "trades=0 was a reporting bug, actual trades=10498 in backtest_report.json"
+  },
+  "scan_results": [
+    {
+      "window": {
+        "label": "2024_Nov",
+        "start": "2024-11-01",
+        "end": "2024-11-30",
+        "note": "Election Month"
+      },
+      "trades_reported": 0,
+      "trades_actual": 10498,
+      "runtime_sec": 53.7,
+      "summary_path": "artifacts/phase35/iter5/phase35_2_iter9_run13001_20251216_213704/summary.json",
+      "report_path": "artifacts/phase35/iter5/phase35_2_iter9_run13001_20251216_213704/backtest_report.json"
+    }
+  ],
+  "decision_trace_analysis": {
+    "note": "DecisionTrace not collected in quick test, but trades>0 confirmed",
+    "total_decisions": 0,
+    "total_blocks": 0,
+    "blocked_reasons_topN": []
+  },
+  "best_window": {
+    "label": "2024_Nov",
+    "start": "2024-11-01",
+    "end": "2024-11-30",
+    "trades": 10498,
+    "win_rate": 0.28414936178319678,
+    "pnl": -1510.93,
+    "roi": -15.109,
+    "profit_factor": 0.5667332988512346,
+    "mdd": -1516.16,
+    "note": "Reporting bug fixed: trades count taken from backtest_report.json metrics"
+  },
+  "recommendation_summary": {
+    "selected_start_date": "2024-11-01",
+    "selected_end_date": "2024-11-30",
+    "expected_trades": 10498,
+    "needs_light_profile": false,
+    "note": "Window confirmed with >10k trades. Reporting bug identified and documented."
+  }
+}

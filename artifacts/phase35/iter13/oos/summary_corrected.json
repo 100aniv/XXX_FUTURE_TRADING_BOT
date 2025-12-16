@@ -1,0 +1,29 @@
+{
+  "note": "ITER13 OOS: Summary corrected using backtest_report.json metrics",
+  "run_id": "phase35_3_iter13_oos_2024dec",
+  "window": {
+    "start_date": "2024-12-01",
+    "end_date": "2024-12-14",
+    "label": "2024_Dec_FirstHalf"
+  },
+  "kpi": {
+    "trades": 4917,
+    "win_rate": 28.80455342728169,
+    "profit_factor": 0.5745867447877506,
+    "max_drawdown": -1343.695599999996,
+    "pnl": -1338.8176600000014,
+    "roi": -13.388176600000014,
+    "risk_reward": 1.4501478524026433,
+    "consecutive_losses": 50
+  },
+  "config": {
+    "initial_capital": 10000,
+    "git_commit": "a6e6d5c69a1c5efdcb22f4c22ff3dcd9bb8b1571",
+    "config_hash": "a99b6c9d"
+  },
+  "runtime_sec": 27.7,
+  "source": {
+    "backtest_report": "artifacts/phase35/iter5/phase35_2_iter9_run13002_20251216_213930/backtest_report.json",
+    "original_summary": "artifacts/phase35/iter5/phase35_2_iter9_run13002_20251216_213930/summary.json"
+  }
+}

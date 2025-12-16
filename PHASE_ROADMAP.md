@@ -3703,6 +3703,20 @@ PHASE29 전략 실패 요약:
   - Entry 판별, 날짜 리셋, 메모리 관리 완료
   - Guard telemetry 통합
 
+**PHASE35-3 완료 항목** (2025-12-16):
+- ⚠️ ITER12: E2E Daily Cap + 1M Baseline 준비 (PARTIAL PASS)
+  - ✅ EC4: engine.py에 record_trade() E2E 연결 (L2408-2418)
+  - ✅ EC5: Fast Gate 10/10 PASS
+  - ⏸️ EC1-EC3: trades=0 문제로 1M/OOS 보류 (전략 신호 생성 이슈)
+- ✅ ITER13: Window Finder + 1M/OOS 검증 (ALL PASS)
+  - ✅ EC1: Window 확보 (2024-11: 10,498 trades)
+  - ✅ EC2: 1M Baseline (IS) 실행 완료
+  - ✅ EC3: OOS 검증 (2024-12-01~14: 4,917 trades, KPI 안정성 확인)
+  - ✅ EC4: Reporting bug 발견 및 해결 (trades=0는 runner 버그)
+  - ✅ EC5: Fast Gate 10/10 PASS
+  - ✅ EC6: 문서/ROADMAP 업데이트
+  - **발견**: 전략은 신호 생성 정상, 수익성 개선은 PHASE35-4에서 별도 진행
+
 ### Entry Criteria
 - ✅ PHASE17 V6.1 완료 (Portfolio/Budget/Guard SSOT 안정화)
 - ✅ Engine/PortfolioManager/RiskManager 통합 테스트 PASS

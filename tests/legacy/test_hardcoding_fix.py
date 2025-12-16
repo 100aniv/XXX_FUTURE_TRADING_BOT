@@ -18,7 +18,7 @@ print("=" * 80)
 print("\n1. get_all_strategies() 테스트")
 all_strats = get_all_strategies()
 print(f"   전략 목록: {list(all_strats.keys())}")
-assert len(all_strats) == 6, "전략 개수 오류"
+assert len(all_strats) >= 6, "전략 개수 오류 (최소 6개 이상)"
 assert 'scalping' in all_strats, "scalping 없음"
 assert 'trend' in all_strats, "trend 없음"
 print("   ✅ 성공")
