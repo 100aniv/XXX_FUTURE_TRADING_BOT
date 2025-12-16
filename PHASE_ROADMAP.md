@@ -3752,7 +3752,16 @@ PHASE29 전략 실패 요약:
   - ✅ AC5-7: 문서/ROADMAP/Git 완료
   - **버그 수정**: `_ensemble_vote`에서 `self._min_votes`, `self._confidence_threshold` 사용
   - **결론**: Config override 정상 작동, 파라미터가 현재 로직에서 영향 없음
-  - **다음 ITER18**: 극단적 파라미터(min_votes=1, confidence=0.99) 테스트
+
+- ⚠️ ITER18: 극단적 파라미터 테스트 - 전략 반응성 검증 (PARTIAL PASS)
+  - ✅ AC1: 극단적 후보 4개 추가 (C6_min_votes1, C7_conf_threshold99, C8_ultra_permissive, C9_ultra_strict)
+  - ❌ AC2: Metrics 차이 없음 (모든 후보 trades=10498, PF=0.567 동일)
+  - ✅ AC3: 결과 분석 문서화 완료
+  - ✅ AC4: Fast Gate + Regression 42/42 PASS
+  - ✅ AC5-6: 문서/ROADMAP/Git 완료
+  - **핵심 발견**: ensemble 파라미터가 거래에 영향 없음 → engine 레벨에서 다른 로직이 거래 지배
+  - **가설**: sub-model이 신호 미생성 또는 ensemble voting 결과가 engine에서 미사용
+  - **다음 ITER19**: Engine 흐름 디버깅 (compute_signal 호출/사용 경로 추적)
 
 ### Entry Criteria
 - ✅ PHASE17 V6.1 완료 (Portfolio/Budget/Guard SSOT 안정화)
