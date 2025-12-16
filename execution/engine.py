@@ -2405,6 +2405,18 @@ def run(feed, broker, clock, strategies: dict, ensemble_module, config: dict, sy
         position_id = str(uuid.uuid4())
         entry_time = ts
         
+        # ⭐ PHASE35-3 ITER12: Daily Cap E2E - 체결 후 record_trade 호출
+        # Entry 거래만 카운트 (reduce_only 제외, close/exit 제외)
+        if hasattr(risk, 'record_trade'):
+            is_entry = not decision.get('reduce_only', False) and decision.get('side') not in ['close', 'exit']
+            if is_entry:
+                risk.record_trade(
+                    trade_id=position_id,
+                    timestamp=entry_time,
+                    is_entry=True
+                )
+                logger.debug(f"[ITER12] record_trade 호출: trade_id={position_id[:8]}, ts={entry_time}")
+        
         # DB 저장 (trial_id 포함)
         save_trade_to_db(
             position_id=position_id,
