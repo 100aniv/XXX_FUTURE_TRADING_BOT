@@ -484,8 +484,37 @@ def main():
         kpi_source = "trades_array (fallback)"
     
     # =====================================
-    # 7. Summary 생성 (ITER14: metrics SSOT 우선)
+    # 7. Summary 생성 (ITER15: KPI 스키마/단위 SSOT 계약)
     # =====================================
+    # ITER15: KPI 단위/의미 계약 (Contract)
+    # - metrics["roi"]는 레거시 네이밍으로 PnL 절대값이 들어있음
+    # - metrics["mdd"]는 MDD 절대값 (음수)
+    # - 계약: pnl=절대값, roi=%, mdd=절대값, mdd_pct=%
+    
+    # A) PnL 절대값 (SSOT: metrics["pnl"] 우선, 없으면 metrics["roi"] 사용)
+    if "pnl" in final_kpi:
+        pnl_abs = final_kpi["pnl"]
+    elif "net_pnl" in final_kpi:
+        pnl_abs = final_kpi["net_pnl"]
+    else:
+        # 레거시: metrics["roi"]가 실제로는 PnL 절대값
+        pnl_abs = final_kpi.get("roi", 0.0)
+    
+    # B) ROI % 계산
+    roi_pct = (pnl_abs / initial_capital) * 100 if initial_capital > 0 else 0.0
+    
+    # C) MDD 절대값 (SSOT: metrics["mdd_abs"] 우선, 없으면 metrics["mdd"])
+    if "mdd_abs" in final_kpi:
+        mdd_abs = final_kpi["mdd_abs"]
+    else:
+        mdd_abs = final_kpi.get("mdd", final_kpi.get("max_drawdown", 0.0))
+    
+    # D) MDD % 계산
+    mdd_pct = (abs(mdd_abs) / initial_capital) * 100 if initial_capital > 0 else 0.0
+    
+    # E) Total Trades (SSOT)
+    total_trades_ssot = final_kpi.get("total_trades", 0)
+    
     summary = {
         "run_number": run_number,
         "run_id": run_id,
@@ -495,16 +524,21 @@ def main():
         "seed": seed,
         "start_date": config.get("start_date", "unknown"),
         "end_date": config.get("end_date", "unknown"),
-        "initial_capital": config.get("initial_capital", 10000),
-        "total_trades": final_kpi.get("total_trades", 0),  # ITER14: metrics SSOT
+        "initial_capital": initial_capital,
+        # ITER15: trades alias 역호환 (trades == total_trades)
+        "trades": total_trades_ssot,
+        "total_trades": total_trades_ssot,
         "win_rate": final_kpi.get("winrate", 0.0),
         "profit_factor": final_kpi.get("pf", final_kpi.get("profit_factor", 0.0)),
-        "max_drawdown": final_kpi.get("mdd", final_kpi.get("max_drawdown", 0.0)),
-        "pnl": final_kpi.get("roi", 0.0) * initial_capital / 100,  # ROI → PnL
-        "roi": final_kpi.get("roi", 0.0),
+        # ITER15: KPI 단위 계약 (pnl=절대값, roi=%, mdd=절대값, mdd_pct=%)
+        "pnl": round(pnl_abs, 2),
+        "roi": round(roi_pct, 2),
+        "max_drawdown": round(mdd_abs, 2),
+        "mdd_pct": round(mdd_pct, 2),
         "report_path": str(report_path),
         "effective_config_path": str(effective_config_path),
-        "kpi_source": kpi_source,  # ITER14: 출처 명시
+        "kpi_source": kpi_source,
+        "kpi_contract": "pnl_abs + roi_pct + mdd_abs + mdd_pct",  # ITER15: 계약 표식
     }
     
     # ITER10: repro.json 저장 (AC0)
@@ -532,11 +566,13 @@ def main():
     logger.info(f"✅ Run #{run_number} 완료")
     logger.info("=" * 80)
     logger.info(f"📊 Summary: {summary_path}")
-    logger.info(f"   Total Trades: {summary['total_trades']}")
+    logger.info(f"   Trades: {summary['trades']} (alias: total_trades={summary['total_trades']})")
     logger.info(f"   Win Rate: {summary['win_rate']:.2f}%")
-    logger.info(f"   PnL: ${summary['pnl']:.2f}")
-    logger.info(f"   ROI: {summary['roi']:.2f}%")
+    logger.info(f"   PnL: ${summary['pnl']:.2f} (절대값)")
+    logger.info(f"   ROI: {summary['roi']:.2f}% (백분율)")
+    logger.info(f"   MDD: ${summary['max_drawdown']:.2f} ({summary['mdd_pct']:.2f}%)")
     logger.info(f"   KPI Source: {summary['kpi_source']}")
+    logger.info(f"   KPI Contract: {summary['kpi_contract']}")
     logger.info("=" * 80)
     logger.info(f"🕐 End Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     logger.info("=" * 80)

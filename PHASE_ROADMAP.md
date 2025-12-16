@@ -3724,6 +3724,15 @@ PHASE29 전략 실패 요약:
   - ✅ AC5: ITER14 리포트 작성 (Evidence + AC 체크리스트)
   - ✅ AC6: Git commit + push 완료
   - **수정 내용**: run_iter5_isolated_v2.py L451-539 (metrics 우선, trades 배열 fallback)
+- ✅ ITER15: Summary KPI 스키마/단위 SSOT 계약 확정 (ALL PASS)
+  - ✅ AC1: trades == total_trades == metrics.total_trades (alias 역호환)
+  - ✅ AC2: pnl(절대값) + roi(%) 계약 확정 (ITER14 스케일 버그 수정)
+  - ✅ AC3: max_drawdown(절대값) + mdd_pct(%) 계약 확정
+  - ✅ AC4: Fast Gate 25/25 PASS (ITER11+RiskGuard+ITER14+ITER15)
+  - ✅ AC5: ITER15 리포트 작성 (Evidence + AC 체크리스트)
+  - ✅ AC6: Git commit + push 완료
+  - **계약**: summary.kpi_contract = "pnl_abs + roi_pct + mdd_abs + mdd_pct"
+  - **게이트 충족**: PHASE35-4 진행 가능 (측정 신뢰성 확보)
 
 ### Entry Criteria
 - ✅ PHASE17 V6.1 완료 (Portfolio/Budget/Guard SSOT 안정화)
