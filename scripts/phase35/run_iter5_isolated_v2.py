@@ -191,12 +191,16 @@ def main():
     parser = argparse.ArgumentParser(description='PHASE35-2 Runner')
     parser.add_argument('run_number', type=int, nargs='?', default=1, help='Run number')
     parser.add_argument('--range', type=str, choices=['1d', '7d'], default=None, help='Date range override (1d or 7d)')
+    parser.add_argument('--start-date', type=str, default=None, help='Custom start date (YYYY-MM-DD)')
+    parser.add_argument('--end-date', type=str, default=None, help='Custom end date (YYYY-MM-DD)')
     parser.add_argument('--profile', action='store_true', help='Enable cProfile profiling')
     parser.add_argument('--daily-cap', type=int, default=None, help='Override risk.max_trades_per_day for testing')
     args = parser.parse_args()
     
     run_number = args.run_number
     range_override = args.range
+    custom_start = args.start_date
+    custom_end = args.end_date
     enable_profile = args.profile
     daily_cap_override = args.daily_cap
     
@@ -222,6 +226,44 @@ def main():
     import time
     timing = {}
     t_start_total = time.perf_counter()
+    
+    # ITER10: Repro metadata (재현성 SSOT)
+    import subprocess
+    import platform
+    
+    def get_repro_metadata():
+        """재현성 메타데이터 수집 (AC0)"""
+        try:
+            git_commit = subprocess.check_output(
+                ['git', 'rev-parse', 'HEAD'],
+                cwd=project_root,
+                text=True
+            ).strip()
+        except Exception:
+            git_commit = 'unknown'
+        
+        try:
+            git_dirty = subprocess.check_output(
+                ['git', 'status', '--porcelain'],
+                cwd=project_root,
+                text=True
+            ).strip()
+            git_dirty = len(git_dirty) > 0
+        except Exception:
+            git_dirty = True
+        
+        return {
+            'git_commit': git_commit,
+            'git_dirty': git_dirty,
+            'python_version': platform.python_version(),
+            'platform': platform.platform(),
+            'timestamp': datetime.now().isoformat()
+        }
+    
+    repro_meta = get_repro_metadata()
+    logger.info(f"🔍 [REPRO] Git Commit: {repro_meta['git_commit'][:8]}")
+    logger.info(f"🔍 [REPRO] Git Dirty: {repro_meta['git_dirty']}")
+    logger.info(f"🔍 [REPRO] Python: {repro_meta['python_version']}")
     
     # =====================================
     # 1. Config 로드 + Preflight 검증
@@ -249,8 +291,19 @@ def main():
     # 필수 키 자동 보장 (backtest.output_file 제외)
     ensure_required_keys(config)
     
-    # ITER9: 날짜 범위 적용 + backtest 섹션 동기화
-    apply_date_range(config, range_override)
+    # ITER10: 커스텀 날짜 우선 적용
+    if custom_start and custom_end:
+        config['start_date'] = custom_start
+        config['end_date'] = custom_end
+        logger.warning(f"⚠️  [CUSTOM DATE] {custom_start} ~ {custom_end}")
+        # backtest 섹션 동기화
+        if 'backtest' not in config:
+            config['backtest'] = {}
+        config['backtest']['start_date'] = custom_start
+        config['backtest']['end_date'] = custom_end
+    else:
+        # ITER9: 날짜 범위 적용 + backtest 섹션 동기화
+        apply_date_range(config, range_override)
     
     # ITER9: Daily cap override (테스트용)
     if daily_cap_override:
@@ -441,6 +494,17 @@ def main():
         "effective_config_path": str(effective_config_path),
         "kpi_source": "SSOT",  # ITER9: 출처 명시
     }
+    
+    # ITER10: repro.json 저장 (AC0)
+    repro_path = run_dir / "repro.json"
+    with open(repro_path, 'w', encoding='utf-8') as f:
+        json.dump(repro_meta, f, indent=2, ensure_ascii=False)
+    
+    logger.info(f"🔍 [REPRO] 저장: {repro_path}")
+    
+    # Summary에 git_commit 추가 (repro.json SSOT)
+    summary['git_commit_repro'] = repro_meta['git_commit']
+    summary['git_dirty'] = repro_meta['git_dirty']
     
     # Summary 저장
     summary_path = run_dir / "summary.json"
