@@ -23,9 +23,11 @@ Pre-Trade Risk Check 및 포지션 관리
 """
 import os
 import time
-from typing import Dict, Tuple, NamedTuple
+from typing import Dict, Tuple, NamedTuple, Set
 from dataclasses import dataclass
 
+from collections import defaultdict
+from datetime import datetime, timedelta
 from common.logger import setup_logger
 from common.messaging import tg
 
@@ -99,13 +101,13 @@ class RiskManager:
             # 1순위: 프로파일의 값
             if key in _profile:
                 return _profile[key]
-            # 2순위: risk 섭션의 기본값
+            # 2순위: risk 섹션의 기본값
             if key in _risk:
                 return _risk[key]
             # 3순위: 하드코딩 기본값
             return default
         
-        # ⭐ PHASE28-13: Daily Loss Guard Modes (off/soft/hard)
+        # PHASE28-13: Daily Loss Guard Modes (off/soft/hard)
         _daily_loss_cfg = get_value('daily_loss', {})
         
         # Backwards compatibility: max_daily_loss_pct → soft_limit_pct
@@ -237,6 +239,14 @@ class RiskManager:
         _eq_stop = get_value('equity_stop_pct', None)
         self.equity_stop_pct = None if _eq_stop is None else float(_eq_stop)
         self.equity_stop_limit = None if self.equity_stop_pct is None else (self.equity_stop_pct / 100.0 * self.equity)
+        
+        # ⭐ PHASE35-3 ITER11: Daily trade cap (일일 거래 상한)
+        self.max_trades_per_day = get_value('max_trades_per_day', None)
+        if self.max_trades_per_day is not None:
+            self.max_trades_per_day = int(self.max_trades_per_day)
+        self._daily_trades: Dict[str, Set[str]] = defaultdict(set)
+        self._daily_trade_blocks = 0
+        self._current_day = None
         
         # 로그 출력
         daily_info = "OFF" if self.daily_loss_limit is None else f"${self.daily_loss_limit:,.0f}"
@@ -385,6 +395,41 @@ class RiskManager:
             else:
                 # 쿨다운 OFF 모드
                 self.in_cooldown = False
+        
+        # 0-3) ⭐ PHASE35-3 ITER11: Daily trade cap (일일 거래 상한)
+        if self.max_trades_per_day is not None:
+            # Entry 주문만 카운트 (reduce_only/close/exit 제외)
+            is_entry = not signal.get('reduce_only', False) and signal.get('side') not in ['close', 'exit']
+            
+            if is_entry:
+                # 현재 날짜 계산 (signal timestamp 우선)
+                if 'timestamp' in signal and signal['timestamp']:
+                    trade_dt = datetime.fromtimestamp(signal['timestamp'] / 1000.0)
+                else:
+                    trade_dt = datetime.now()
+                
+                current_date = trade_dt.strftime('%Y-%m-%d')
+                
+                # 날짜 변경 시 이전 날짜 정리 (메모리 관리)
+                if self._current_day and self._current_day != current_date:
+                    # 오늘 기준 7일 이전 데이터 삭제
+                    cutoff = (trade_dt - timedelta(days=7)).strftime('%Y-%m-%d')
+                    old_dates = [d for d in self._daily_trades.keys() if d < cutoff]
+                    for old_date in old_dates:
+                        del self._daily_trades[old_date]
+                
+                self._current_day = current_date
+                
+                # 오늘 거래 수 확인
+                today_count = len(self._daily_trades[current_date])
+                
+                if today_count >= self.max_trades_per_day:
+                    # 차단
+                    self._daily_trade_blocks += 1
+                    self._notify_guard(f"Daily trade cap: {today_count}/{self.max_trades_per_day} on {current_date}")
+                    if self.activity_tracker:
+                        self.activity_tracker.record_guard_block(symbol, "GUARD_MAX_TRADES_PER_DAY")
+                    return False, f"일일 거래 상한 도달: {today_count}/{self.max_trades_per_day} (날짜: {current_date})"
         
         # 1) ⭐ PHASE28-13: Daily Loss Guard (off/soft/hard)
         if self.daily_loss_mode != 'off' and self.portfolio is not None:
@@ -757,3 +802,19 @@ class RiskManager:
             if abs(self.equity - old_equity) > 0.01:
                 change_pct = ((self.equity - old_equity) / old_equity * 100) if old_equity > 0 else 0
                 logger.info(f"💰 Equity 업데이트: ${old_equity:,.2f} → ${self.equity:,.2f} ({change_pct:+.2f}%)")
+    
+    def record_trade(self, trade_id: str, timestamp: float = None, is_entry: bool = True):
+        """거래 기록 (엔진에서 체결 후 호출)"""
+        if not self.max_trades_per_day or not is_entry:
+            return
+        if timestamp:
+            trade_dt = datetime.fromtimestamp(timestamp / 1000.0)
+        else:
+            trade_dt = datetime.now()
+        date = trade_dt.strftime('%Y-%m-%d')
+        self._daily_trades[date].add(trade_id)
+    
+    def get_daily_trade_stats(self) -> Dict[str, any]:
+        """일일 거래 통계 조회"""
+        per_day = {date: len(trades) for date, trades in self._daily_trades.items()}
+        return {'per_day_trades': per_day, 'total_blocks': self._daily_trade_blocks, 'max_trades_per_day': self.max_trades_per_day}

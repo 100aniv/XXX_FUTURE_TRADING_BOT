@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Test PHASE35-2 ITER10: RiskGuard max_trades_per_day enforcement
-AC2 verification via unit test
+Test PHASE35-2 ITER11: RiskGuard max_trades_per_day enforcement
+AC2 verification via unit test (UPDATED FOR ITER11)
 """
 import sys
 from pathlib import Path
@@ -24,142 +24,129 @@ def test_riskguard_daily_cap_enforcement():
             'per_trade': 0.01,
             'max_positions': 3,
             'max_exposure_per_symbol': 0.1,
-            'max_trades_per_day': 10,  # AC2 목표
+            'max_trades_per_day': 10,
+        }
+    }
+    
+    rm = RiskManager(config)
+    today_ts = int(datetime.now().timestamp() * 1000)
+    
+    # 1~10번 거래는 통과
+    for i in range(1, 11):
+        signal = {'symbol': 'BTCUSDT', 'side': 'long', 'entry_price': 50000, 'timestamp': today_ts, 'reduce_only': False}
+        result = rm.check_order(signal, qty=0.002, position_value=100)
+        assert result[0], f"{i}번째 거래가 차단됨: {result[1]}"
+        rm.record_trade(f'trade_{i}', timestamp=today_ts, is_entry=True)
+    
+    # 11번째는 차단
+    signal_11 = {'symbol': 'BTCUSDT', 'side': 'long', 'entry_price': 50000, 'timestamp': today_ts, 'reduce_only': False}
+    result = rm.check_order(signal_11, qty=0.002, position_value=100)
+    assert not result[0], "11번째 거래가 승인됨"
+    assert '거래 상한' in result[1] or 'daily' in result[1].lower(), f"차단 이유 확인: {result[1]}"
+
+
+def test_riskguard_daily_cap_reset_next_day():
+    """AC2-B: 날짜가 바뀌면 카운터 리셋"""
+    config = {
+        'mode': 'backtest',
+        'capital': {'initial': 10000},
+        'risk': {
+            'per_trade': 0.01,
+            'max_positions': 3,
+            'max_exposure_per_symbol': 0.1,
+            'max_trades_per_day': 5,
         }
     }
     
     rm = RiskManager(config)
     
-    # 오늘 날짜로 10개 거래 시뮬레이션
-    today = datetime.now().strftime('%Y-%m-%d')
-    
-    for i in range(10):
-        trade_id = f"trade_{i+1}"
-        rm._daily_trades[today].add(trade_id)
-    
-    # 11번째 거래 시도
-    result = rm.check_risk(
-        signal='long',
-        equity=10000,
-        active_position_count=0,
-        total_exposure=0,
-        symbol='BTCUSDT',
-        price=50000
-    )
-    
-    # AC2: 차단되어야 함
-    assert not result['approved'], "11번째 거래가 승인되면 안 됨"
-    assert 'max_trades_per_day' in result['reason'].lower() or 'daily' in result['reason'].lower(), \
-        f"차단 이유에 daily cap 언급 필요: {result['reason']}"
-
-
-def test_riskguard_daily_cap_reset_next_day():
-    """일자 변경 시 카운터 리셋 확인"""
-    risk_cfg = {
-        'per_trade': 0.01,
-        'max_positions': 3,
-        'max_exposure_per_symbol': 0.1,
-        'max_trades_per_day': 5,
-    }
-    
-    rm = RiskManager(risk_cfg)
-    
     # 오늘 5개 거래
-    today = datetime.now().strftime('%Y-%m-%d')
-    for i in range(5):
-        rm._daily_trades[today].add(f"trade_today_{i+1}")
+    today = datetime.now()
+    today_ts = int(today.timestamp() * 1000)
+    for i in range(1, 6):
+        signal = {'symbol': 'BTCUSDT', 'side': 'long', 'entry_price': 50000, 'timestamp': today_ts, 'reduce_only': False}
+        result = rm.check_order(signal, qty=0.002, position_value=100)
+        assert result[0], f"오늘 {i}번째가 차단됨"
+        rm.record_trade(f'today_{i}', timestamp=today_ts, is_entry=True)
     
-    # 다음날로 가정 (실제로는 내부 로직이 날짜 체크)
-    tomorrow = (datetime.now() + timedelta(days=1)).strftime('%Y-%m-%d')
+    # 오늘 6번째는 차단
+    signal_6 = {'symbol': 'BTCUSDT', 'side': 'long', 'entry_price': 50000, 'timestamp': today_ts, 'reduce_only': False}
+    result = rm.check_order(signal_6, qty=0.002, position_value=100)
+    assert not result[0], "오늘 6번째가 승인됨"
     
-    # 내일 거래는 승인되어야 함
-    result = rm.check_risk(
-        signal='long',
-        equity=10000,
-        active_position_count=0,
-        total_exposure=0,
-        symbol='BTCUSDT',
-        price=50000
-    )
-    
-    # 내일 첫 거래는 승인 (카운터 리셋 가정)
-    # 주의: 실제 RiskManager가 날짜 변경을 자동으로 감지하는지 확인 필요
-    # 이 테스트는 로직 존재 검증 목적
-    assert result['approved'] or 'daily' in result['reason'].lower()
+    # 내일 첫 거래는 승인
+    tomorrow = today + timedelta(days=1)
+    tomorrow_ts = int(tomorrow.timestamp() * 1000)
+    signal_tomorrow = {'symbol': 'BTCUSDT', 'side': 'long', 'entry_price': 50000, 'timestamp': tomorrow_ts, 'reduce_only': False}
+    result = rm.check_order(signal_tomorrow, qty=0.002, position_value=100)
+    assert result[0], f"내일 첫 거래가 차단됨: {result[1]}".lower()
 
 
 def test_riskguard_7d_total_cap():
-    """AC2: 7일간 총 거래 수 상한 (10/day * 7 = 70)"""
-    risk_cfg = {
-        'per_trade': 0.01,
-        'max_positions': 3,
-        'max_exposure_per_symbol': 0.1,
-        'max_trades_per_day': 10,
+    """AC2-C: 7일 누적 체크 (일별 10개씩 허용)"""
+    config = {
+        'mode': 'backtest',
+        'capital': {'initial': 10000},
+        'risk': {
+            'per_trade': 0.01,
+            'max_positions': 3,
+            'max_exposure_per_symbol': 0.1,
+            'max_trades_per_day': 10,
+        }
     }
     
-    rm = RiskManager(risk_cfg)
+    rm = RiskManager(config)
     
-    # 7일간 시뮬레이션
-    total_trades = 0
+    # 7일간 각각 10개씩 (총 70개)
     for day_offset in range(7):
-        date = (datetime.now() + timedelta(days=day_offset)).strftime('%Y-%m-%d')
-        
-        for i in range(10):  # 하루 10개
-            trade_id = f"trade_d{day_offset}_t{i+1}"
-            rm._daily_trades[date].add(trade_id)
-            total_trades += 1
+        day_date = datetime.now() + timedelta(days=day_offset)
+        day_ts = int(day_date.timestamp() * 1000)
+        for i in range(1, 11):
+            signal = {'symbol': 'BTCUSDT', 'side': 'long', 'entry_price': 50000, 'timestamp': day_ts, 'reduce_only': False}
+            result = rm.check_order(signal, qty=0.002, position_value=100)
+            assert result[0], f"Day{day_offset} {i}번째 차단됨"
+            rm.record_trade(f'day{day_offset}_trade{i}', timestamp=day_ts, is_entry=True)
     
-    # 총 70개 거래
-    assert total_trades == 70, f"7일 * 10 = 70 거래 예상, 실제 {total_trades}"
-    
-    # 8일째 첫 거래 시도 (이미 70개 도달)
-    # 날짜가 바뀌었으므로 승인되어야 함 (일별 카운터)
-    # 하지만 max_trades_per_day는 일별 제한이므로, 8일째도 10개까지 가능
-    date_8 = (datetime.now() + timedelta(days=7)).strftime('%Y-%m-%d')
-    
-    result = rm.check_risk(
-        signal='long',
-        equity=10000,
-        active_position_count=0,
-        total_exposure=0,
-        symbol='BTCUSDT',
-        price=50000
-    )
-    
-    # 8일째 첫 거래는 승인되어야 함 (새로운 날)
-    assert result['approved'], "새로운 날 첫 거래는 승인되어야 함"
+    # 8일째 첫 거래 (일별 리셋되므로 승인)
+    day_8 = datetime.now() + timedelta(days=7)
+    day_8_ts = int(day_8.timestamp() * 1000)
+    signal_8 = {'symbol': 'BTCUSDT', 'side': 'long', 'entry_price': 50000, 'timestamp': day_8_ts, 'reduce_only': False}
+    result = rm.check_order(signal_8, qty=0.002, position_value=100)
+    assert result[0], f"8일째 첫 거래가 차단됨 (일별 리셋되어야 함): {result[1]}"
 
 
 def test_riskguard_metadata_tracking():
-    """AC2: RiskGuard 차단 카운트 추적 가능 여부"""
-    risk_cfg = {
-        'per_trade': 0.01,
-        'max_positions': 3,
-        'max_exposure_per_symbol': 0.1,
-        'max_trades_per_day': 3,
+    """AC2-D: 거래 메타데이터 추적 (trade_id 기반)"""
+    config = {
+        'mode': 'backtest',
+        'capital': {'initial': 10000},
+        'risk': {
+            'per_trade': 0.01,
+            'max_positions': 3,
+            'max_exposure_per_symbol': 0.1,
+            'max_trades_per_day': 3,
+        }
     }
     
-    rm = RiskManager(risk_cfg)
+    rm = RiskManager(config)
     
-    today = datetime.now().strftime('%Y-%m-%d')
+    today = datetime.now()
+    today_ts = int(today.timestamp() * 1000)
     
-    # 3개 거래 추가
-    for i in range(3):
-        rm._daily_trades[today].add(f"trade_{i+1}")
+    # trade_id 기반 중복 방지
+    signal = {'symbol': 'BTCUSDT', 'side': 'long', 'entry_price': 50000, 'timestamp': today_ts, 'reduce_only': False}
+    rm.check_order(signal, qty=0.002, position_value=100)
+    rm.record_trade('trade_A', timestamp=today_ts, is_entry=True)
+    rm.record_trade('trade_A', timestamp=today_ts, is_entry=True)  # 중복
+    rm.record_trade('trade_B', timestamp=today_ts, is_entry=True)
     
-    # 4번째 거래 차단 확인
-    result = rm.check_risk(
-        signal='long',
-        equity=10000,
-        active_position_count=0,
-        total_exposure=0,
-        symbol='BTCUSDT',
-        price=50000
-    )
+    # 아직 2개만 카운트되었으므로 3번째는 승인
+    result = rm.check_order(signal, qty=0.002, position_value=100)
+    assert result[0], "3번째가 차단됨"
+    rm.record_trade('trade_C', timestamp=today_ts, is_entry=True)
     
-    assert not result['approved'], "4번째 거래 차단 필요"
-    
-    # 차단 메타데이터 존재 확인
-    # RiskManager에 블록 카운터가 있는지 확인
-    # (없으면 추가 필요)
-    assert 'reason' in result, "차단 이유 필드 존재 확인"
+    # 4번째는 차단 (cap=3)
+    result = rm.check_order(signal, qty=0.002, position_value=100)
+    assert not result[0], "4번째가 승인됨 (차단되어야 함)"
+    assert len(result) == 2, "check_order는 (bool, str) tuple 반환"
+    assert isinstance(result[1], str), "차단 이유는 문자열"

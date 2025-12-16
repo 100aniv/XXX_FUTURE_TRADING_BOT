@@ -3688,22 +3688,29 @@ PHASE29 전략 실패 요약:
 
 ---
 
-## PHASE36: Production Launch & Live Testing
+## PHASE35: 앙상블 V1 백테스트 기반선 수립 (7D Smoke → 1M Baseline)
 
-**Status**: 🟦 PLANNED (PHASE35 완료 후 시작 가능)
+**상태**: 🟢 IN PROGRESS (PHASE35-2 완료, PHASE35-3 진입)  
+**목표**: 앙상블 전략 V1의 안정적인 백테스트 실행 + 7일 스모크 테스트 + 1개월 기반선 확립  
+**우선순위**: ⭐⭐⭐ (PHASE17 완료 후 즉시 착수)
 
-**Objective**: 검증된 앙상블 전략을 실제 자본으로 라이브 배포 및 운영 검증
+**PHASE35-2 완료 항목** (2025-12-16):
+- ✅ ITER9: SSOT repro.json 생성 + 날짜 범위 동기화
+- ✅ ITER10: max_trades_per_day Config 존재 확인 (CONDITIONAL PASS)
+- ✅ ITER11: max_trades_per_day 차단 로직 완전 구현 + 단위 테스트 (FULL PASS)
+  - check_order() 차단 로직 추가 (L399-432)
+  - 10/10 테스트 통과 (ITER10 회귀 4개 + ITER11 신규 6개)
+  - Entry 판별, 날짜 리셋, 메모리 관리 완료
+  - Guard telemetry 통합
 
-**Entry Criteria** (Gating):
-- ✅ PHASE35-5 Paper Trading 완료
-- ✅ 모든 PHASE35 AC 충족
-- ✅ Strategy Performance: WR ≥ 38%, PF ≥ 1.10 (3M Backtest + Paper)
-- ✅ Infrastructure: 크래시 0건, 안정성 확인
+### Entry Criteria
+- ✅ PHASE17 V6.1 완료 (Portfolio/Budget/Guard SSOT 안정화)
+- ✅ Engine/PortfolioManager/RiskManager 통합 테스트 PASS
+- ✅ FlowGuardian 정상 작동 확인
+- ✅ RiskGuard max_trades_per_day 구현 완료 (ITER11)
+- ✅ PHASE35-2 ITER11 완료
 
-**Objectives**:
-1. **Limited Capital Deployment**: 소액 실전 자본 투입 (예: 초기 $100-$500)
-2. **Live Performance Monitoring**: 실시간 성과 추적 (1주 → 1개월 → 3개월)
-3. **Backtest-Live Alignment**: 백테스트 예측과 실전 결과 일치성 검증
+### PHASE35-3: 1-Month Baseline Backtest
 4. **Operational Stability**: 24/7 무중단 운영, 자동 재시작, 장애 복구
 
 **Acceptance Criteria**:
