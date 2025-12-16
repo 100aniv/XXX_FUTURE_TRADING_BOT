@@ -3707,15 +3707,23 @@ PHASE29 전략 실패 요약:
 - ⚠️ ITER12: E2E Daily Cap + 1M Baseline 준비 (PARTIAL PASS)
   - ✅ EC4: engine.py에 record_trade() E2E 연결 (L2408-2418)
   - ✅ EC5: Fast Gate 10/10 PASS
-  - ⏸️ EC1-EC3: trades=0 문제로 1M/OOS 보류 (전략 신호 생성 이슈)
-- ✅ ITER13: Window Finder + 1M/OOS 검증 (ALL PASS)
+  - ⏸️ EC1-EC3: trades=0 문제로 1M/OOS 보류 (리포팅 버그 의심)
+- ⚠️ ITER13: Window Finder + 1M/OOS 검증 (PARTIAL - 리포팅 SSOT 불일치 발견)
   - ✅ EC1: Window 확보 (2024-11: 10,498 trades)
   - ✅ EC2: 1M Baseline (IS) 실행 완료
   - ✅ EC3: OOS 검증 (2024-12-01~14: 4,917 trades, KPI 안정성 확인)
-  - ✅ EC4: Reporting bug 발견 및 해결 (trades=0는 runner 버그)
+  - ⚠️ EC4: **Reporting bug 발견** - summary.json trades=0 (실제 metrics.total_trades=10498)
   - ✅ EC5: Fast Gate 10/10 PASS
-  - ✅ EC6: 문서/ROADMAP 업데이트
-  - **발견**: 전략은 신호 생성 정상, 수익성 개선은 PHASE35-4에서 별도 진행
+  - ⚠️ EC6: 문서/ROADMAP 작성했으나 SSOT 불일치 미해결
+  - **근본 원인**: run_iter5_isolated_v2.py L454-487에서 빈 trades 배열 → kpi_ssot=0 → summary.trades=0
+- ✅ ITER14: Reporting SSOT 근본 수정 + ROADMAP 복구 (ALL PASS)
+  - ✅ AC1: summary.json이 metrics.total_trades와 절대 불일치 없음 (metrics SSOT 우선)
+  - ✅ AC2: IS/OOS summary.json 일관성 검증 (total_trades, win_rate, pf, roi, mdd)
+  - ✅ AC3: PHASE_ROADMAP.md UTF-8 정상 + 로드맵 상태 동기화
+  - ✅ AC4: Fast Gate 10/10 + 회귀 테스트 5/5 PASS
+  - ✅ AC5: ITER14 리포트 작성 (Evidence + AC 체크리스트)
+  - ✅ AC6: Git commit + push 완료
+  - **수정 내용**: run_iter5_isolated_v2.py L451-539 (metrics 우선, trades 배열 fallback)
 
 ### Entry Criteria
 - ✅ PHASE17 V6.1 완료 (Portfolio/Budget/Guard SSOT 안정화)

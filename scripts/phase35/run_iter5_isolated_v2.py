@@ -448,31 +448,43 @@ def main():
         logger.error(f"❌ 리포트 읽기 실패: {e}")
         sys.exit(1)
     
-    # ITER9 STEP 4: KPI SSOT 연결
+    # ITER14 STEP 2: Summary SSOT 근본 수정
+    # 원칙: metrics.total_trades가 존재하면 이것이 SSOT (trades 배열은 보조)
     from common.metrics_kpi import compute_kpis
     
     trades_list = report_data.get("trades", [])
     initial_capital = config.get("initial_capital", 10000)
     
-    # KPI SSOT 계산 (실제 트레이드 리스트 기반)
-    kpi_ssot = compute_kpis(
+    # backtest_report.json의 metrics가 SSOT
+    metrics = report_data.get("metrics", {})
+    metrics_trades = metrics.get("total_trades", 0)
+    
+    # trades 배열 기반 KPI 계산 (검증용)
+    kpi_from_trades = compute_kpis(
         trades=trades_list,
         initial_capital=initial_capital
     )
     
-    logger.info(f"📊 [KPI SSOT] 실제 Trades: {kpi_ssot.get('total_trades', 0)}")
+    logger.info(f"📊 [SSOT] metrics.total_trades={metrics_trades}")
+    logger.info(f"📊 [Validation] trades array length={len(trades_list)}")
     
-    # 기존 metrics와 비교 (불일치 감지)
-    metrics = report_data.get("metrics", {})
-    metrics_trades = metrics.get("total_trades", 0)
+    # 불일치 감지 (trades 배열 누락 경고)
+    if metrics_trades > 0 and len(trades_list) == 0:
+        logger.warning(f"⚠️  [Trade List Missing] metrics shows {metrics_trades} trades but trades array is empty")
+        logger.warning("⚠️  Using metrics.total_trades as SSOT (trades array is auxiliary)")
     
-    if metrics_trades != kpi_ssot.get('total_trades', 0):
-        logger.error(f"❌ [KPI MISMATCH] metrics.total_trades={metrics_trades} != KPI SSOT={kpi_ssot.get('total_trades', 0)}")
-        logger.warning("⚠️  KPI SSOT 사용 (기존 metrics 무시)")
-        metrics = kpi_ssot  # SSOT 우선
+    # SSOT: metrics 우선, 없으면 trades 배열 기반
+    if metrics_trades > 0:
+        # metrics가 SSOT
+        final_kpi = metrics
+        kpi_source = "metrics (SSOT)"
+    else:
+        # metrics가 없으면 trades 배열 기반 fallback
+        final_kpi = kpi_from_trades
+        kpi_source = "trades_array (fallback)"
     
     # =====================================
-    # 7. Summary 생성 (ITER9: KPI SSOT 사용)
+    # 7. Summary 생성 (ITER14: metrics SSOT 우선)
     # =====================================
     summary = {
         "run_number": run_number,
@@ -484,15 +496,15 @@ def main():
         "start_date": config.get("start_date", "unknown"),
         "end_date": config.get("end_date", "unknown"),
         "initial_capital": config.get("initial_capital", 10000),
-        "trades": kpi_ssot.get("total_trades", 0),  # ITER9: KPI SSOT
-        "win_rate": kpi_ssot.get("winrate", 0.0),
-        "profit_factor": kpi_ssot.get("profit_factor", 0.0),
-        "max_drawdown": kpi_ssot.get("max_drawdown", 0.0),
-        "pnl": kpi_ssot.get("net_pnl", 0.0),
-        "roi": kpi_ssot.get("roi", 0.0),
+        "total_trades": final_kpi.get("total_trades", 0),  # ITER14: metrics SSOT
+        "win_rate": final_kpi.get("winrate", 0.0),
+        "profit_factor": final_kpi.get("pf", final_kpi.get("profit_factor", 0.0)),
+        "max_drawdown": final_kpi.get("mdd", final_kpi.get("max_drawdown", 0.0)),
+        "pnl": final_kpi.get("roi", 0.0) * initial_capital / 100,  # ROI → PnL
+        "roi": final_kpi.get("roi", 0.0),
         "report_path": str(report_path),
         "effective_config_path": str(effective_config_path),
-        "kpi_source": "SSOT",  # ITER9: 출처 명시
+        "kpi_source": kpi_source,  # ITER14: 출처 명시
     }
     
     # ITER10: repro.json 저장 (AC0)
@@ -520,10 +532,11 @@ def main():
     logger.info(f"✅ Run #{run_number} 완료")
     logger.info("=" * 80)
     logger.info(f"📊 Summary: {summary_path}")
-    logger.info(f"   Trades: {summary['trades']}")
+    logger.info(f"   Total Trades: {summary['total_trades']}")
     logger.info(f"   Win Rate: {summary['win_rate']:.2f}%")
     logger.info(f"   PnL: ${summary['pnl']:.2f}")
     logger.info(f"   ROI: {summary['roi']:.2f}%")
+    logger.info(f"   KPI Source: {summary['kpi_source']}")
     logger.info("=" * 80)
     logger.info(f"🕐 End Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     logger.info("=" * 80)
