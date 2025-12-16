@@ -62,10 +62,53 @@ class Phase35EnsembleV1(BaseStrategy):
         self._min_votes = ensemble_cfg.get("min_votes", 2)
         self._confidence_threshold = ensemble_cfg.get("confidence_threshold", 0.5)
 
+        # ITER17: effective params 소스 추적
+        self._effective_params_source = self._resolve_config_source()
+        
         if self._diag_enabled and config.get("mode") == "backtest":
             logger.info(
-                f"ITER3 CONFIG: cooldown={self._cooldown_bars}, min_votes={self._min_votes}, threshold={self._confidence_threshold}"
+                f"ITER17 CONFIG: cooldown={self._cooldown_bars}, min_votes={self._min_votes}, threshold={self._confidence_threshold}, source={self._effective_params_source}"
             )
+
+    def _resolve_config_source(self) -> str:
+        """Config가 어느 경로에서 왔는지 추적 (ITER17 SSOT)"""
+        path_variants = [
+            "ensemble",
+            "strategy.ensemble",
+            "strategies.phase35_ensemble_v1.params.ensemble",
+        ]
+        for path in path_variants:
+            parts = path.split(".")
+            value = self.config
+            for part in parts:
+                if isinstance(value, dict):
+                    value = value.get(part)
+                else:
+                    value = None
+                    break
+            if value is not None and isinstance(value, dict):
+                if "min_votes" in value or "confidence_threshold" in value or "cooldown_bars" in value:
+                    return path
+        return "defaults"
+
+    def get_effective_params(self) -> Dict[str, Any]:
+        """
+        ITER17 SSOT: 실제 사용되는 ensemble params 반환
+        
+        Returns:
+            {
+                'min_votes': int,
+                'confidence_threshold': float,
+                'cooldown_bars': int,
+                'source': str,  # 'ensemble' | 'strategy.ensemble' | 'strategies.phase35_ensemble_v1.params.ensemble' | 'defaults'
+            }
+        """
+        return {
+            "min_votes": self._min_votes,
+            "confidence_threshold": self._confidence_threshold,
+            "cooldown_bars": self._cooldown_bars,
+            "source": self._effective_params_source,
+        }
 
     def _get_cfg(self, path_variants: List[str], default: Any) -> Any:
         for path in path_variants:
@@ -435,7 +478,7 @@ class Phase35EnsembleV1(BaseStrategy):
 
     def _ensemble_vote(self, sub_votes: Dict[str, Dict[str, Any]]) -> Dict[str, Any]:
         """
-        2-out-of-3 Majority Vote
+        N-out-of-3 Majority Vote (ITER17: self._min_votes 사용)
 
         Returns:
             {
@@ -445,19 +488,13 @@ class Phase35EnsembleV1(BaseStrategy):
                 'vote_counts': dict
             }
         """
-        # Load ensemble config (support both root-level and strategy-nested paths)
-        # Path 1: strategy.ensemble (original YAML structure)
-        strategy_cfg = self.config.get("strategy", {})
-        if isinstance(strategy_cfg, dict):
-            ensemble_cfg = strategy_cfg.get("ensemble", {})
-        else:
-            ensemble_cfg = {}
-
-        # Path 2: root-level ensemble (engine-merged structure)
-        if not ensemble_cfg:
-            ensemble_cfg = self.config.get("ensemble", {})
-
-        confidence_threshold = ensemble_cfg.get("confidence_threshold", 0.5)
+        # ITER17 FIX: __init__에서 설정된 인스턴스 변수 사용 (SSOT)
+        min_votes = self._min_votes
+        confidence_threshold = self._confidence_threshold
+        
+        # 디버그 로그 (첫 호출 시에만)
+        if self._diag_enabled and self._total_signals_checked <= 1:
+            logger.info(f"🔧 [ITER17] _ensemble_vote using: min_votes={min_votes}, confidence_threshold={confidence_threshold}")
 
         # Count votes
         vote_counts = {"LONG": 0, "SHORT": 0, "FLAT": 0}
@@ -473,16 +510,16 @@ class Phase35EnsembleV1(BaseStrategy):
                 vote_counts[direction] += 1
                 confidence_sum[direction] += confidence
 
-        # 2-out-of-3 Decision
-        if vote_counts["LONG"] >= 2:
+        # N-out-of-3 Decision (ITER17: min_votes 사용)
+        if vote_counts["LONG"] >= min_votes:
             direction = "LONG"
             avg_confidence = confidence_sum["LONG"] / vote_counts["LONG"]
-            reason = f"majority_long_{vote_counts['LONG']}/3"
+            reason = f"majority_long_{vote_counts['LONG']}/3_min{min_votes}"
 
-        elif vote_counts["SHORT"] >= 2:
+        elif vote_counts["SHORT"] >= min_votes:
             direction = "SHORT"
             avg_confidence = confidence_sum["SHORT"] / vote_counts["SHORT"]
-            reason = f"majority_short_{vote_counts['SHORT']}/3"
+            reason = f"majority_short_{vote_counts['SHORT']}/3_min{min_votes}"
 
         else:
             return {

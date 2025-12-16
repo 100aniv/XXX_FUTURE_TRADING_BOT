@@ -3743,7 +3743,16 @@ PHASE29 전략 실패 요약:
   - ✅ AC5: Fast Gate 35/35 PASS
   - ✅ AC6: Git commit + push 완료
   - **발견**: Config override가 전략에 반영되지 않음 (구조적 이슈)
-  - **다음 ITER17**: Config 전달 경로 디버깅 + 전략 파라미터 SSOT 확정
+
+- ⚠️ ITER17: Effective Ensemble Params SSOT + Override Injection Contract (PARTIAL PASS)
+  - ✅ AC1: 후보별 effective_ensemble_params가 다름 (5개 후보 baseline과 다름)
+  - ✅ AC2: Config 경로 SSOT를 코드+테스트로 확정 (11/11 tests)
+  - ❌ AC3: Metrics 차이 없음 (모든 후보 trades=10498, PF=0.567 동일)
+  - ✅ AC4: Fast Gate + Regression 42/42 PASS
+  - ✅ AC5-7: 문서/ROADMAP/Git 완료
+  - **버그 수정**: `_ensemble_vote`에서 `self._min_votes`, `self._confidence_threshold` 사용
+  - **결론**: Config override 정상 작동, 파라미터가 현재 로직에서 영향 없음
+  - **다음 ITER18**: 극단적 파라미터(min_votes=1, confidence=0.99) 테스트
 
 ### Entry Criteria
 - ✅ PHASE17 V6.1 완료 (Portfolio/Budget/Guard SSOT 안정화)
