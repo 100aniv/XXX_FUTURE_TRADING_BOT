@@ -3734,6 +3734,17 @@ PHASE29 전략 실패 요약:
   - **계약**: summary.kpi_contract = "pnl_abs + roi_pct + mdd_abs + mdd_pct"
   - **게이트 충족**: PHASE35-4 진행 가능 (측정 신뢰성 확보)
 
+**PHASE35-4 완료 항목** (2025-12-17):
+- ⚠️ ITER16: Candidate Sweep 파이프라인 구축 (PARTIAL PASS)
+  - ✅ AC1: Candidate Sweep Runner 구현 (6개 후보)
+  - ✅ AC2: IS/OOS 비교 리포트 자동 생성
+  - ✅ AC3: 과최적화 방지 장치 (OOS 검증)
+  - ❌ AC4: PF 상승/거래 수 감소 미달 (모든 후보 동일 결과)
+  - ✅ AC5: Fast Gate 35/35 PASS
+  - ✅ AC6: Git commit + push 완료
+  - **발견**: Config override가 전략에 반영되지 않음 (구조적 이슈)
+  - **다음 ITER17**: Config 전달 경로 디버깅 + 전략 파라미터 SSOT 확정
+
 ### Entry Criteria
 - ✅ PHASE17 V6.1 완료 (Portfolio/Budget/Guard SSOT 안정화)
 - ✅ Engine/PortfolioManager/RiskManager 통합 테스트 PASS
