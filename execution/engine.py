@@ -2769,8 +2769,9 @@ def run(feed, broker, clock, strategies: dict, ensemble_module, config: dict, sy
                     logger.info(f"📝 [PHASE29-2C-R] 자동 생성 경로 사용: {output_path}")
 
                 # analytics 모듈로 리포트 생성 (PostgreSQL 기반, TUNING_VIBLE 포함)
+                # ITER20 FIX: trial_id로 필터링하여 run 격리 보장
                 result = generate_backtest_report(
-                    trial_id=None,  # 전체 백테스트 결과
+                    trial_id=trial_id,  # ITER20: run_id 기반 격리
                     output_file=str(output_path),  # PHASE29-2C-R: JSON/HTML 공통 경로
                     sinks=["log", "html", "json"],
                 )
@@ -2808,8 +2809,9 @@ def run(feed, broker, clock, strategies: dict, ensemble_module, config: dict, sy
                     output_path = report_dir / f"backtest_{timestamp}.json"
                     logger.info(f"📝 [PHASE29-2C-R] 자동 생성 경로 사용: {output_path}")
                 
+                # ITER20 FIX: trial_id로 필터링하여 run 격리 보장
                 result = generate_backtest_report(
-                    trial_id=None,
+                    trial_id=trial_id,  # ITER20: run_id 기반 격리
                     output_file=str(output_path),
                     sinks=["log", "json"]  # PHASE29-2C-R: JSON 포함
                 )

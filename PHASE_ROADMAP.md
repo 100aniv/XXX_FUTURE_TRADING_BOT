@@ -3771,6 +3771,17 @@ PHASE29 전략 실패 요약:
   - **결론**: ensemble 파라미터 정상 작동, 하지만 sub-model 조건이 너무 엄격
   - **다음 ITER20**: Sub-model 조건 완화 (ADX, RSI, Volume 임계값 조정)
 
+- ⚠️ ITER20: Run Isolation SSOT + Sub-model Activation (PARTIAL PASS)
+  - ✅ AC1: DB Isolation (trial_id 기반 격리) 구현 완료
+  - ✅ AC2: No Cross Contamination (교차 오염 방지) 확인
+  - ✅ AC3: Signal→Trade Evidence (signal_flow.json) 생성
+  - ❌ AC4: Metrics Differ - 두 후보 모두 trades=0 (sub-model 신호 미생성)
+  - ✅ AC5: ITER20 Contract Tests 10/10 PASS
+  - ✅ AC6-7: 문서/Git 완료
+  - **핵심 성과**: engine.py에서 generate_backtest_report에 trial_id 전달 수정
+  - **문제**: Sub-model 조건이 여전히 너무 엄격 (90.5% FLAT)
+  - **다음 ITER21**: 전략 기본값 직접 완화 (adx_threshold 15, rsi 40/60)
+
 ### Entry Criteria
 - ✅ PHASE17 V6.1 완료 (Portfolio/Budget/Guard SSOT 안정화)
 - ✅ Engine/PortfolioManager/RiskManager 통합 테스트 PASS
