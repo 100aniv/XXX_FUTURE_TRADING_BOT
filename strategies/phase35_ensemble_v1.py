@@ -45,7 +45,9 @@ class Phase35EnsembleV1(BaseStrategy):
 
     def __init__(self, config: Dict[str, Any]):
         super().__init__(config)
-        self._diag_enabled = config.get("decision_trace", {}).get("enabled", True)
+        # decision_trace can be bool or dict
+        dt = config.get("decision_trace", False)
+        self._diag_enabled = dt if isinstance(dt, bool) else dt.get("enabled", False)
         self._diag_counters = {}
         self._total_signals_checked = 0
         self._last_signal_bar_index = -999

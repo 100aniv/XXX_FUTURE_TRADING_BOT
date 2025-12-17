@@ -175,9 +175,20 @@ def run_backtest(config: Dict[str, Any], run_dir: Path) -> Dict[str, Any]:
     백테스트 실행 (run_iter5_isolated_v2.py 로직 재사용)
     """
     from common.config_preflight import reset_usage_tracker
+    from common.database import get_db_connection
     from execution.engine import run_v2
     
     reset_usage_tracker()
+    
+    # ITER19 FIX: 각 후보 실행 전 PostgreSQL trades 테이블 초기화
+    try:
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("DELETE FROM trading.trades")
+                conn.commit()
+                logger.info(f"   [DB] PostgreSQL trades 테이블 초기화 완료")
+    except Exception as e:
+        logger.warning(f"   [DB] PostgreSQL 초기화 실패 (무시): {e}")
     
     # Output 경로 설정
     report_path = run_dir / "backtest_report.json"
@@ -190,8 +201,8 @@ def run_backtest(config: Dict[str, Any], run_dir: Path) -> Dict[str, Any]:
     with open(effective_config_path, "w", encoding="utf-8") as f:
         yaml.dump(config, f, default_flow_style=False, allow_unicode=True)
     
-    # Engine 실행 (run_v2 함수 사용)
-    run_v2(mode="backtest", config=config, clean_state=False)
+    # Engine 실행 (ITER19 FIX: clean_state=True로 이전 데이터 초기화)
+    run_v2(mode="backtest", config=config, clean_state=True)
     
     # 리포트 로드
     if report_path.exists():

@@ -3761,7 +3761,15 @@ PHASE29 전략 실패 요약:
   - ✅ AC5-6: 문서/ROADMAP/Git 완료
   - **핵심 발견**: ensemble 파라미터가 거래에 영향 없음 → engine 레벨에서 다른 로직이 거래 지배
   - **가설**: sub-model이 신호 미생성 또는 ensemble voting 결과가 engine에서 미사용
-  - **다음 ITER19**: Engine 흐름 디버깅 (compute_signal 호출/사용 경로 추적)
+
+- ✅ ITER19: Engine 신호 흐름 디버깅 - 근본 원인 분석 (PASS)
+  - ✅ AC1: Engine Signal Propagation 검증 (compute_signal 호출 확인)
+  - ✅ AC4: 테스트 11/11 PASS (ITER17 contract tests)
+  - ✅ AC5-6: 문서/ROADMAP/Git 완료
+  - **근본 원인 1**: PostgreSQL 데이터 누적 → 각 후보 실행 전 초기화 로직 추가
+  - **근본 원인 2**: Sub-model 신호 미생성 (93%+ bar에서 모든 sub-model이 FLAT)
+  - **결론**: ensemble 파라미터 정상 작동, 하지만 sub-model 조건이 너무 엄격
+  - **다음 ITER20**: Sub-model 조건 완화 (ADX, RSI, Volume 임계값 조정)
 
 ### Entry Criteria
 - ✅ PHASE17 V6.1 완료 (Portfolio/Budget/Guard SSOT 안정화)
