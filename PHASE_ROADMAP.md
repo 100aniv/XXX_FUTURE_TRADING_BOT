@@ -3782,6 +3782,16 @@ PHASE29 전략 실패 요약:
   - **문제**: Sub-model 조건이 여전히 너무 엄격 (90.5% FLAT)
   - **다음 ITER21**: 전략 기본값 직접 완화 (adx_threshold 15, rsi 40/60)
 
+- ⚠️ ITER21: Sub-models Config SSOT + Signal Activation (PARTIAL PASS)
+  - ✅ DoD1: sub_models config 멀티패스 리졸브 구현 완료 (effective_params.json 확인)
+  - ❌ DoD2: trades 여전히 0 (lookback 설정 오류 - 30 캔들로 해석됨)
+  - ❌ DoD3: Metrics Differ 실패 (데이터 부족)
+  - ✅ DoD4: DB trial_id 격리 정상 작동
+  - ✅ 테스트: ITER21 Contract Tests 10/10 PASS
+  - **핵심 성과**: phase35_ensemble_v1.py에 `_resolve_sub_models_cfg()` 추가
+  - **문제**: lookback=30이 30일이 아닌 30개 캔들로 해석됨 (7.5시간)
+  - **다음 ITER22**: lookback을 캔들 개수로 수정 (30일 = 2880 캔들)
+
 ### Entry Criteria
 - ✅ PHASE17 V6.1 완료 (Portfolio/Budget/Guard SSOT 안정화)
 - ✅ Engine/PortfolioManager/RiskManager 통합 테스트 PASS

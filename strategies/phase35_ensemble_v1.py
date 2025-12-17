@@ -67,10 +67,60 @@ class Phase35EnsembleV1(BaseStrategy):
         # ITER17: effective params 소스 추적
         self._effective_params_source = self._resolve_config_source()
         
+        # ITER21: sub_models config SSOT - 멀티패스 리졸브
+        self._sub_models_cfg = self._resolve_sub_models_cfg()
+        self._sub_models_source = self._resolve_sub_models_source()
+        
         if self._diag_enabled and config.get("mode") == "backtest":
             logger.info(
                 f"ITER17 CONFIG: cooldown={self._cooldown_bars}, min_votes={self._min_votes}, threshold={self._confidence_threshold}, source={self._effective_params_source}"
             )
+            # ITER21: sub_models resolved 값 로깅
+            logger.info(
+                f"ITER21 SUB_MODELS: source={self._sub_models_source}, "
+                f"trend.adx={self._sub_models_cfg.get('trend', {}).get('adx_threshold', 'N/A')}, "
+                f"reversion.rsi_oversold={self._sub_models_cfg.get('reversion', {}).get('rsi_oversold', 'N/A')}"
+            )
+
+    def _resolve_sub_models_cfg(self) -> Dict[str, Any]:
+        """
+        ITER21 SSOT: sub_models config 멀티패스 리졸브
+        
+        우선순위:
+        1. config["sub_models"]
+        2. config["strategy"]["sub_models"]
+        3. config["strategies"][<selector>]["params"]["sub_models"]
+        4. config["strategy_params"]["sub_models"]
+        5. {} (기본값)
+        """
+        path_variants = [
+            "sub_models",
+            "strategy.sub_models",
+            "strategies.phase35_ensemble_v1.params.sub_models",
+            "strategy_params.sub_models",
+        ]
+        return self._get_cfg(path_variants, {})
+    
+    def _resolve_sub_models_source(self) -> str:
+        """ITER21: sub_models config가 어느 경로에서 왔는지 추적"""
+        path_variants = [
+            "sub_models",
+            "strategy.sub_models",
+            "strategies.phase35_ensemble_v1.params.sub_models",
+            "strategy_params.sub_models",
+        ]
+        for path in path_variants:
+            parts = path.split(".")
+            value = self.config
+            for part in parts:
+                if isinstance(value, dict):
+                    value = value.get(part)
+                else:
+                    value = None
+                    break
+            if value is not None and isinstance(value, dict):
+                return path
+        return "defaults"
 
     def _resolve_config_source(self) -> str:
         """Config가 어느 경로에서 왔는지 추적 (ITER17 SSOT)"""
@@ -110,6 +160,9 @@ class Phase35EnsembleV1(BaseStrategy):
             "confidence_threshold": self._confidence_threshold,
             "cooldown_bars": self._cooldown_bars,
             "source": self._effective_params_source,
+            # ITER21: sub_models resolved 값 포함
+            "sub_models": self._sub_models_cfg,
+            "sub_models_source": self._sub_models_source,
         }
 
     def _get_cfg(self, path_variants: List[str], default: Any) -> Any:
@@ -282,7 +335,8 @@ class Phase35EnsembleV1(BaseStrategy):
                 'breakout': {...}
             }
         """
-        sub_cfg = self.config.get("sub_models", {})
+        # ITER21: SSOT - self._sub_models_cfg 사용 (멀티패스 리졸브된 값)
+        sub_cfg = self._sub_models_cfg
 
         votes = {
             "trend": self._sub_model_trend(df, regime, sub_cfg.get("trend", {})),
