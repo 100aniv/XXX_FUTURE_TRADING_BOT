@@ -3808,7 +3808,18 @@ PHASE29 전략 실패 요약:
   - ✅ 테스트: ITER23 Contract Tests 14/14 PASS
   - **핵심 해결**: ITER22의 output_path→output_file, DB port/pw 문제 수정
   - **결론**: trades=0은 착시가 아닌 실제. 앙상블 전략이 신호를 생성하지 않음
-  - **다음 ITER24**: 앙상블 전략 신호 생성 실패 원인 분석 (DecisionTrace/block_reason)
+
+- ⚠️ ITER24: trades=0 근본원인 확정 + UltraDebug 신호 생성 (PARTIAL PASS)
+  - ✅ G1: L4 SignalProbe 신호 생성 → **LONG=372, SHORT=251** (100% 신호)
+  - ❌ G2: L4 DB trades>0 → DB 테이블 부재
+  - ❌ G3: L0 또는 L3 trades>0 → 신호 자체 0
+  - ✅ G4: trades=0 근본원인 수치 확정 → Diag TopN 수집
+  - ✅ 테스트: ITER24 Contract Tests 7/7 PASS
+  - **핵심 해결**: regime_filter.enabled를 sub-model에 실제 적용 + DIAG 추가
+  - **근본원인**: ITER23까지는 `regime_filter.enabled=False` 설정이 코드에 반영 안됨
+  - **증명**: L4_ultra_debug (모든 필터 off)에서 623 bars 중 623개 신호 생성 (100%)
+  - **인프라 문제**: DB `trades` 테이블 부재로 E2E 미완료
+  - **다음 ITER25**: DB schema 초기화 + L4 재실행으로 E2E trades>0 달성
 
 ### Entry Criteria
 - ✅ PHASE17 V6.1 완료 (Portfolio/Budget/Guard SSOT 안정화)

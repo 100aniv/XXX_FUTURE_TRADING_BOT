@@ -359,9 +359,15 @@ class Phase35EnsembleV1(BaseStrategy):
         Logic:
         - LONG: fast_ema > slow_ema AND adx > threshold
         - SHORT: fast_ema < slow_ema AND adx > threshold
-        - Regime Filter: TREND만 허용
+        - Regime Filter: TREND만 허용 (regime_filter.enabled가 True일 때만)
         """
-        if regime != "TREND":
+        # ITER24: regime_filter.enabled 실제 적용
+        rf_cfg = self.config.get("regime_filter", {})
+        rf_enabled = rf_cfg.get("enabled", True)
+        
+        if rf_enabled and regime != "TREND":
+            if self._diag_enabled:
+                self._diag_inc("SUB_TREND_REGIME_NOT_TREND")
             return {
                 "direction": None,
                 "confidence": 0.0,
@@ -392,6 +398,8 @@ class Phase35EnsembleV1(BaseStrategy):
 
         # ADX 체크
         if adx < adx_threshold:
+            if self._diag_enabled:
+                self._diag_inc("SUB_TREND_ADX_WEAK")
             return {"direction": None, "confidence": 0.0, "reasons": ["adx_weak"]}
 
         # EMA Cross
@@ -404,6 +412,8 @@ class Phase35EnsembleV1(BaseStrategy):
             confidence = min(1.0, (slow_ema - fast_ema) / fast_ema * 100)
             reasons.append("ema_bearish_cross")
         else:
+            if self._diag_enabled:
+                self._diag_inc("SUB_TREND_EMA_FLAT")
             return {"direction": None, "confidence": 0.0, "reasons": ["ema_flat"]}
 
         reasons.append(f"adx_{adx:.1f}")
@@ -423,9 +433,15 @@ class Phase35EnsembleV1(BaseStrategy):
         Logic:
         - LONG: rsi < oversold AND close < lower_bb
         - SHORT: rsi > overbought AND close > upper_bb
-        - Regime Filter: RANGE 선호
+        - Regime Filter: RANGE 선호 (regime_filter.enabled가 True일 때만)
         """
-        if regime == "CHOP":
+        # ITER24: regime_filter.enabled 실제 적용
+        rf_cfg = self.config.get("regime_filter", {})
+        rf_enabled = rf_cfg.get("enabled", True)
+        
+        if rf_enabled and regime == "CHOP":
+            if self._diag_enabled:
+                self._diag_inc("SUB_REVERSION_REGIME_CHOP")
             return {"direction": None, "confidence": 0.0, "reasons": ["regime_chop"]}
 
         rsi_period = cfg.get("rsi_period", 14)
@@ -462,6 +478,8 @@ class Phase35EnsembleV1(BaseStrategy):
             reasons.extend(["rsi_overbought", "bb_upper_breach"])
 
         else:
+            if self._diag_enabled:
+                self._diag_inc("SUB_REVERSION_NO_EXTREME")
             return {"direction": None, "confidence": 0.0, "reasons": ["no_extreme"]}
 
         # Regime 보정: RANGE에서 더 강한 신뢰도
@@ -484,9 +502,15 @@ class Phase35EnsembleV1(BaseStrategy):
         Logic:
         - LONG: close > high_lookback AND volume > volume_ma * threshold
         - SHORT: close < low_lookback AND volume > volume_ma * threshold
-        - Regime Filter: TREND 선호
+        - Regime Filter: TREND 선호 (regime_filter.enabled가 True일 때만)
         """
-        if regime == "CHOP":
+        # ITER24: regime_filter.enabled 실제 적용
+        rf_cfg = self.config.get("regime_filter", {})
+        rf_enabled = rf_cfg.get("enabled", True)
+        
+        if rf_enabled and regime == "CHOP":
+            if self._diag_enabled:
+                self._diag_inc("SUB_BREAKOUT_REGIME_CHOP")
             return {"direction": None, "confidence": 0.0, "reasons": ["regime_chop"]}
 
         lookback = cfg.get("lookback", 20)
@@ -507,6 +531,8 @@ class Phase35EnsembleV1(BaseStrategy):
 
         # Volume 체크
         if volume < volume_ma * volume_threshold:
+            if self._diag_enabled:
+                self._diag_inc("SUB_BREAKOUT_VOLUME_LOW")
             return {"direction": None, "confidence": 0.0, "reasons": ["volume_low"]}
 
         # Breakout
@@ -519,6 +545,8 @@ class Phase35EnsembleV1(BaseStrategy):
             confidence = (low_lookback - close) / close
             reasons.extend(["breakout_low", "volume_spike"])
         else:
+            if self._diag_enabled:
+                self._diag_inc("SUB_BREAKOUT_NO_BREAKOUT")
             return {"direction": None, "confidence": 0.0, "reasons": ["no_breakout"]}
 
         # Regime 보정: TREND에서 더 강한 신뢰도
@@ -745,5 +773,5 @@ class Phase35EnsembleV1(BaseStrategy):
             if self._total_signals_checked > 0
             else 0.0,
             "top_blockers": sorted_reasons[:10],
-            "all_counters": self._diag_counters,
+            "counters": self._diag_counters,  # ITER24: "counters" 키로 통일 (SignalProbe SSOT)
         }
