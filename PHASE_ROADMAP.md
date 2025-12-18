@@ -3790,7 +3790,16 @@ PHASE29 전략 실패 요약:
   - ✅ 테스트: ITER21 Contract Tests 10/10 PASS
   - **핵심 성과**: phase35_ensemble_v1.py에 `_resolve_sub_models_cfg()` 추가
   - **문제**: lookback=30이 30일이 아닌 30개 캔들로 해석됨 (7.5시간)
-  - **다음 ITER22**: lookback을 캔들 개수로 수정 (30일 = 2880 캔들)
+
+- ⚠️ ITER22: Backtest Data Window SSOT (PARTIAL PASS)
+  - ✅ G1: backtest.days SSOT 구현 완료 (HistoricalFeed가 사용하는 파라미터)
+  - ❌ G2: trades 여전히 0 (metrics 수집 문제)
+  - ❌ G3: Metrics Differ 실패 (metrics 수집 문제)
+  - ✅ G4: trial_id 기반 격리 정상
+  - ✅ 테스트: ITER22 Contract Tests 16/16 PASS
+  - **핵심 발견**: HistoricalFeed는 `lookback`이 아닌 `days` 파라미터 사용
+  - **문제**: backtest_report.json 경로 불일치로 metrics 수집 실패
+  - **다음 ITER23**: 엔진의 실제 report 경로 확인 및 metrics 수집 로직 수정
 
 ### Entry Criteria
 - ✅ PHASE17 V6.1 완료 (Portfolio/Budget/Guard SSOT 안정화)
