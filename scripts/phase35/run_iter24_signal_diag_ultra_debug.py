@@ -317,29 +317,29 @@ def collect_db_evidence(trial_id: str) -> Dict[str, Any]:
         with get_db_connection() as conn:
             cur = conn.cursor()
             
-            # Total trades
+            # Total trades (ITER25: qualified query)
             cur.execute(
-                "SELECT COUNT(*) FROM trades WHERE trial_id = %s",
+                "SELECT COUNT(*) FROM trading.trades WHERE trial_id = %s",
                 (trial_id,)
             )
             total_trades = cur.fetchone()[0]
             
-            # Closed trades
+            # Closed trades (ITER25: qualified query)
             cur.execute(
-                "SELECT COUNT(*) FROM trades WHERE trial_id = %s AND status = 'CLOSED'",
+                "SELECT COUNT(*) FROM trading.trades WHERE trial_id = %s AND status = 'CLOSED'",
                 (trial_id,)
             )
             closed_trades = cur.fetchone()[0]
             
-            # Long/Short
+            # Long/Short (ITER25: qualified query)
             cur.execute(
-                "SELECT COUNT(*) FROM trades WHERE trial_id = %s AND side = 'LONG'",
+                "SELECT COUNT(*) FROM trading.trades WHERE trial_id = %s AND side = 'LONG'",
                 (trial_id,)
             )
             long_trades = cur.fetchone()[0]
             
             cur.execute(
-                "SELECT COUNT(*) FROM trades WHERE trial_id = %s AND side = 'SHORT'",
+                "SELECT COUNT(*) FROM trading.trades WHERE trial_id = %s AND side = 'SHORT'",
                 (trial_id,)
             )
             short_trades = cur.fetchone()[0]

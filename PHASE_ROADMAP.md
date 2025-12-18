@@ -3819,7 +3819,18 @@ PHASE29 전략 실패 요약:
   - **근본원인**: ITER23까지는 `regime_filter.enabled=False` 설정이 코드에 반영 안됨
   - **증명**: L4_ultra_debug (모든 필터 off)에서 623 bars 중 623개 신호 생성 (100%)
   - **인프라 문제**: DB `trades` 테이블 부재로 E2E 미완료
-  - **다음 ITER25**: DB schema 초기화 + L4 재실행으로 E2E trades>0 달성
+
+- ⚠️ ITER25: DB 스키마 문제 해결 완료 (PARTIAL PASS)
+  - ✅ G1: "relation 'trades' does not exist" 근본 원인 제거 → qualified query 통일
+  - ❌ G2: L4 DB trades>0 → 신호 생성 실패 (데이터 기간 차이)
+  - ❌ G3: Report 생성 → trades=0으로 미생성
+  - ✅ G4: 실행 증거 저장 완료
+  - ✅ 테스트: ITER25 Contract Tests 10/10 PASS
+  - **핵심 해결**: search_path에 trading 미포함 확정 → 모든 쿼리를 `trading.trades` (qualified)로 통일
+  - **근본 원인**: unqualified 쿼리 ("FROM trades") + search_path="$user, public" (trading 미포함)
+  - **재발 방지**: Contract Tests로 qualified query 검증, ensure_trading_schema() 추가
+  - **DB 에러 0건**: "relation 'trades' does not exist" 완전 해결
+  - **다음 ITER26**: ITER24 SignalProbe와 동일 데이터 기간으로 백테스트 재실행
 
 ### Entry Criteria
 - ✅ PHASE17 V6.1 완료 (Portfolio/Budget/Guard SSOT 안정화)
