@@ -1,8 +1,9 @@
 # PHASE35-4 ITER21 REPORT: Sub-models Config SSOT + Signal Activation
 
-**작성일**: 2025-12-18  
+**작성일**: 2025-12-18 (Updated)  
 **담당**: Cascade AI  
 **결과**: ⚠️ **PARTIAL PASS** (DoD1,DoD4 PASS / DoD2,DoD3 FAIL)
+**Commit**: b252949b → 최신
 
 ---
 

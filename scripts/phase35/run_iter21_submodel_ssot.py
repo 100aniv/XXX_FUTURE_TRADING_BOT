@@ -177,8 +177,10 @@ def run_backtest_with_trial_id(
     config["trial_id"] = trial_id
     config["run_id"] = trial_id
     
-    # Lookback 설정 (짧은 구간)
-    config["lookback"] = lookback_days
+    # Lookback 설정 - 일수를 캔들 개수로 변환 (15분 타임프레임 기준)
+    # 1일 = 24시간 * 4 (15분 캔들) = 96 캔들
+    lookback_candles = lookback_days * 96
+    config["lookback"] = lookback_candles
     
     # Output 경로 설정
     report_path = run_dir / "backtest_report.json"
@@ -192,7 +194,7 @@ def run_backtest_with_trial_id(
     # Mode 설정
     config["mode"] = "backtest"
     
-    logger.info(f"🚀 Running backtest: {candidate_id} (trial_id={trial_id}, lookback={lookback_days}d)")
+    logger.info(f"🚀 Running backtest: {candidate_id} (trial_id={trial_id}, lookback={lookback_days}d = {lookback_candles} candles)")
     
     # Effective params 로깅
     effective_sub_models = config.get("sub_models", {})
@@ -376,7 +378,7 @@ def run_iter21():
     
     # 후보 목록 (계단식)
     candidates = ["L0_baseline", "L1_mild"]  # 먼저 2개만
-    lookback_days = 30  # 30일 구간
+    lookback_days = 7  # 7일 구간 (빠른 검증용)
     
     found_trades = False
     
