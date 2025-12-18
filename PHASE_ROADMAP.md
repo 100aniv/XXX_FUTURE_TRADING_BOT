@@ -3830,7 +3830,17 @@ PHASE29 전략 실패 요약:
   - **근본 원인**: unqualified 쿼리 ("FROM trades") + search_path="$user, public" (trading 미포함)
   - **재발 방지**: Contract Tests로 qualified query 검증, ensure_trading_schema() 추가
   - **DB 에러 0건**: "relation 'trades' does not exist" 완전 해결
-  - **다음 ITER26**: ITER24 SignalProbe와 동일 데이터 기간으로 백테스트 재실행
+
+- ⚠️ ITER26: SignalProbe ↔ Engine 캔들 구간 SSOT 통합 (PARTIAL PASS)
+  - ✅ G1: SignalProbe와 Engine 동일 캔들 구간 사용 → df에서 start/end 추출 → config 주입
+  - ❌ G2: E2E trades>0 → 신호 생성되지만 DB 저장 안됨
+  - ✅ G3: 기존 모듈 최대 재사용 (signal_probe_iter24.load_candles)
+  - ✅ 테스트: ITER26 Contract Tests 9/9 PASS
+  - **핵심 해결**: df.timestamp min/max에서 start_date/end_date 추출 → config 주입
+  - **발견된 문제들**: 전략 params 미적용, Engine cooldown, RiskManager 연속손실 쿨다운
+  - **신호 생성 확인**: 로그에서 LONG/SHORT 신호 생성 확인
+  - **미해결**: backtest 모드에서 broker fill → DB 저장 경로 디버깅 필요
+  - **다음 ITER27**: E2E trades>0 달성 (SimBroker fill 로직 확인)
 
 ### Entry Criteria
 - ✅ PHASE17 V6.1 완료 (Portfolio/Budget/Guard SSOT 안정화)
