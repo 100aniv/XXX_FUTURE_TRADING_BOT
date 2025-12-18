@@ -3799,7 +3799,16 @@ PHASE29 전략 실패 요약:
   - ✅ 테스트: ITER22 Contract Tests 16/16 PASS
   - **핵심 발견**: HistoricalFeed는 `lookback`이 아닌 `days` 파라미터 사용
   - **문제**: backtest_report.json 경로 불일치로 metrics 수집 실패
-  - **다음 ITER23**: 엔진의 실제 report 경로 확인 및 metrics 수집 로직 수정
+
+- ⚠️ ITER23: Report & Metrics SSOT + DB Evidence Fix (PARTIAL PASS)
+  - ✅ G1: Report 경로 SSOT 확정 (`config["backtest"]["output_file"]`)
+  - ✅ G2: DB 연결 SSOT (`database.postgres.get_db_connection()`, port=5433, pw=trading_pw_2024)
+  - ✅ G3: trades=0 착시 vs 실제 확정 → **실제 0**
+  - ❌ G4: L0 vs L3 지표 차이 실패 (둘 다 0)
+  - ✅ 테스트: ITER23 Contract Tests 14/14 PASS
+  - **핵심 해결**: ITER22의 output_path→output_file, DB port/pw 문제 수정
+  - **결론**: trades=0은 착시가 아닌 실제. 앙상블 전략이 신호를 생성하지 않음
+  - **다음 ITER24**: 앙상블 전략 신호 생성 실패 원인 분석 (DecisionTrace/block_reason)
 
 ### Entry Criteria
 - ✅ PHASE17 V6.1 완료 (Portfolio/Budget/Guard SSOT 안정화)
