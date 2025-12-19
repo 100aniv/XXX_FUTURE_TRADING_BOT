@@ -3852,6 +3852,25 @@ PHASE29 전략 실패 요약:
   - **재발 방지**: numpy 타입 변환 계약 테스트 8개 추가
   - **PHASE35-4 E2E trades=0 문제 종결**
 
+- ✅ **PHASE35-5: Validation Pack (7D/1M/3M) - PASS** ⭐
+  - ✅ G1: 단일 SSOT runner 구현 → run_phase35_5_validation_pack.py
+  - ✅ G2: 7D/1M/3M 결과팩 생성 → **3/3 windows PASS**
+  - ✅ G3: 재발방지 계약 테스트 → **36/36 PASS**
+  - ✅ G4: ITER27 SSOT 재사용 → persist_trace, to_native(), DB evidence
+  - **실행 결과**:
+    - 7D Smoke: trades=19, elapsed=24s ✅
+    - 1M Baseline: trades=88, elapsed=109s ✅
+    - 3M Validation: trades=96, elapsed=291s ✅
+    - **Total: 203 trades, 100% DB persist 성공률**
+  - **산출물**:
+    - Runner: scripts/phase35/run_phase35_5_validation_pack.py
+    - Contracts: tests/test_phase35_5_validation_pack_contract.py (19개)
+    - Artifacts: artifacts/phase35/phase35_5/ (results + runs + preflight)
+    - Reports: 3개 윈도우 JSON (reports/backtest/)
+    - Docs: docs/PHASE35/PHASE35_5_VALIDATION_PACK_REPORT.md
+  - **핵심 성과**: Backtest Baseline → Validation Pack 구축 완료
+  - **PHASE35 앙상블 전략 검증 완료** → Paper Trading 준비 완료
+
 ### Entry Criteria
 - ✅ PHASE17 V6.1 완료 (Portfolio/Budget/Guard SSOT 안정화)
 - ✅ Engine/PortfolioManager/RiskManager 통합 테스트 PASS
