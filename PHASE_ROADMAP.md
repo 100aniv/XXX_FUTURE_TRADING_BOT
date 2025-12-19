@@ -3840,7 +3840,17 @@ PHASE29 전략 실패 요약:
   - **발견된 문제들**: 전략 params 미적용, Engine cooldown, RiskManager 연속손실 쿨다운
   - **신호 생성 확인**: 로그에서 LONG/SHORT 신호 생성 확인
   - **미해결**: backtest 모드에서 broker fill → DB 저장 경로 디버깅 필요
-  - **다음 ITER27**: E2E trades>0 달성 (SimBroker fill 로직 확인)
+
+- ✅ ITER27: E2E Trades DB Persist Fix (PASS)
+  - ✅ G1: trade DB persist 파이프라인 근본 원인 확정 → **numpy 타입 변환 문제**
+  - ✅ G2: trading.trades > 0 → **88건 달성!**
+  - ✅ G3: persist_trace 계측 → db_persist_called=88, db_insert_success=88
+  - ✅ G4: Report 생성 → backtest_20251219_130931.json
+  - ✅ 테스트: ITER27 Contract Tests 8/8 PASS + ITER26 9/9 = 17/17 PASS
+  - **근본 원인**: numpy.float64가 PostgreSQL에 전달 시 문자열로 변환되어 SQL 에러
+  - **해결**: save_trade_to_db에서 to_native() 함수로 numpy → Python native 변환
+  - **재발 방지**: numpy 타입 변환 계약 테스트 8개 추가
+  - **PHASE35-4 E2E trades=0 문제 종결**
 
 ### Entry Criteria
 - ✅ PHASE17 V6.1 완료 (Portfolio/Budget/Guard SSOT 안정화)

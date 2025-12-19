@@ -2925,6 +2925,21 @@ def save_trade_to_db(
 ):
     """거래를 DB에 저장 (PostgreSQL 단일화)"""
     try:
+        # ⭐ ITER27 FIX: numpy 타입을 Python native 타입으로 변환
+        # np.float64 등이 SQL에 문자열로 전달되는 문제 해결
+        def to_native(val):
+            if val is None:
+                return None
+            if hasattr(val, 'item'):  # numpy scalar
+                return val.item()
+            return float(val) if isinstance(val, (int, float)) else val
+        
+        entry_price = to_native(entry_price)
+        qty = to_native(qty)
+        sl_price = to_native(sl_price)
+        tp_price = to_native(tp_price)
+        leverage = int(leverage) if leverage is not None else 1
+        
         # 백테스트/Paper/Live 모두 PostgreSQL 사용 (trial_id는 DB 스키마에 없으므로 제외)
         with get_db_connection() as conn:
             with conn.cursor() as cur:
