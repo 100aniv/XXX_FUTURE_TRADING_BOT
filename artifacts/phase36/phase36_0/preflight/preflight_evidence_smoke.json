@@ -1,0 +1,37 @@
+{
+  "timestamp": "2025-12-20T23:56:57.653600",
+  "stage": "smoke",
+  "docker": {
+    "status": "PASS",
+    "trading_db_postgres": "Up 5 days (healthy)",
+    "trading_redis": "Up 5 days"
+  },
+  "db_before": {
+    "status": "PASS",
+    "connection": "SUCCESS",
+    "trades_count_before": 96,
+    "tables": [
+      "decisions",
+      "executions",
+      "portfolio_state",
+      "positions",
+      "risk_state",
+      "trades"
+    ]
+  },
+  "db_cleanup": {
+    "status": "PASS",
+    "cleanup": "SUCCESS",
+    "trades_count_after": 0
+  },
+  "redis_cleanup": {
+    "status": "PASS",
+    "cooldown_keys_deleted": 0,
+    "portfolio_keys_deleted": 0,
+    "guard_keys_deleted": 0
+  },
+  "binance_api": {
+    "status": "SKIP",
+    "reason": "No API key (Paper mode OK)"
+  }
+}
