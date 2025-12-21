@@ -1,4 +1,4 @@
-﻿?� Future Alarm Bot ??黖𨰰� ?�鹻 貒��篧嵸? ?�眼 諢嶅�諤?
+?� Future Alarm Bot ??黖𨰰� ?�鹻 貒��篧嵸? ?�眼 諢嶅�諤?
 
 諈拗� ??鴗??䇹烄
 ?嶅𡆀???䇹�(backtest/paper/live 窸蛙鹻)??篣圉�??
@@ -3916,15 +3916,16 @@ PHASE29 전략 실패 요약:
   - → PHASE35 재검토 (백테스트 과적합 의심)
   - → 또는 전략 일시 중단 및 Post-Mortem
 
-**🟡 PHASE36-0: Initial Paper Validation - CONDITIONAL PASS (2025-12-21)**
-- **Status**: ⚠️ RECOVERY COMPLETE (P0-1/P0-3/P0-5 PASS, P0-2 PENDING)
-- **Recovery**: Duration auto-termination ✅, Artifact generation ✅, Encoding ✅
-- **Test**: 20m smoke (22:20~22:41), auto-terminated at 20.4min ✅
-- **Pending**: P0-2 (Strategy signature) validation requires trades > 0
+**🔴 PHASE36-0: Initial Paper Validation - FAIL (2025-12-22)**
+- **Status**: ❌ FAILED (0 trades across all runs)
+- **Night Run**: 3-stage validation (SMOKE 20m + BASELINE 1h + LONGRUN 3h) = 4.36h total
+- **Result**: AC1/AC2/AC3 FAIL (trades=0 in all stages)
+- **Infrastructure**: ✅ PASS (duration, artifacts, encoding all working)
+- **Root Cause**: Strategy signature logic not generating any trades
 - **Evidence**: 
-  - Failure: `docs/PHASE36/PHASE36_0_SMOKE_RUN_FAILURE_ANALYSIS.md`
+  - Night Run: `docs/PHASE36/PHASE36_0_NIGHT_RUN_FINAL_REPORT.md`
   - Recovery: `docs/PHASE36/PHASE36_0_RECOVERY_REPORT.md`
-- **Next Step**: Monitor next run for P0-2 validation → PHASE36-0-1
+- **Next Step**: Root cause analysis + strategy signal debugging → PHASE36-0-1
 
 **Deliverables**:
 - `docs/PHASE36/PHASE36_LIVE_DEPLOYMENT_PLAN.md`
