@@ -789,10 +789,19 @@ def run(feed, broker, clock, strategies: dict, ensemble_module, config: dict, sy
     daily_trade_count = {}  # {date_str: count}
     max_trades_per_day = config['risk']['max_trades_per_day']
     
-    # ⭐ ITER7: 킬스위치 기준값
+    # ⭐ ITER7: 킬스위치 기준값 (PHASE36-0: 정규화)
     initial_equity = equity
-    extreme_loss_cutoff_pct = config['risk']['extreme_loss_cutoff_pct']
-    max_drawdown_pct = config['risk']['max_drawdown_pct']
+    risk_cfg = config.get('risk', {})
+    
+    # PHASE36-0: 항상 음수로 정규화
+    extreme_loss_cutoff_pct = risk_cfg.get('extreme_loss_cutoff_pct', -20.0)
+    if extreme_loss_cutoff_pct > 0:
+        extreme_loss_cutoff_pct = -abs(extreme_loss_cutoff_pct)
+    
+    max_drawdown_pct = risk_cfg.get('max_drawdown_pct', -10.0)
+    if max_drawdown_pct > 0:
+        max_drawdown_pct = -abs(max_drawdown_pct)
+    
     killswitch_triggered = False
 
     # 활성 포지션 dict {position_id: position_info}
@@ -1407,16 +1416,16 @@ def run(feed, broker, clock, strategies: dict, ensemble_module, config: dict, sy
         current_equity = portfolio.get_equity() if hasattr(portfolio, 'get_equity') else initial_equity
         loss_pct = ((current_equity - initial_equity) / initial_equity * 100) if initial_equity > 0 else 0
         
-        if loss_pct <= -extreme_loss_cutoff_pct:
-            logger.critical(f"🛑🔴 [ITER7 KILLSWITCH] 극단 손실 차단: {loss_pct:.2f}% 손실 (기준: -{extreme_loss_cutoff_pct:.1f}%)")
+        if trade_count > 0 and loss_pct <= extreme_loss_cutoff_pct:
+            logger.critical(f"🛑🔴 [ITER7 KILLSWITCH] 극단 손실 차단: {loss_pct:.2f}% 손실 (기준: {extreme_loss_cutoff_pct:.1f}%)")
             logger.critical(f"   초기 자본: ${initial_equity:,.2f} → 현재: ${current_equity:,.2f}")
             killswitch_triggered = True
             # 모든 포지션 청산 시도
             for pos_id in list(active_positions.keys()):
                 logger.warning(f"⚠️  킬스위치 발동: 포지션 {pos_id} 강제 청산 시도")
             break  # 백테스트/페이퍼 즉시 중단
-        elif loss_pct <= -max_drawdown_pct:
-            logger.warning(f"⚠️  [ITER7 DD WARNING] 최대 낙폭 경고: {loss_pct:.2f}% (기준: -{max_drawdown_pct:.1f}%)")
+        elif loss_pct <= max_drawdown_pct:
+            logger.warning(f"⚠️  [ITER7 DD WARNING] 최대 낙폭 경고: {loss_pct:.2f}% (기준: {max_drawdown_pct:.1f}%)")
         
         # ⭐ PR11: Drawdown Guard 체크 (메인 루프 종료)
         if drawdown_guard_triggered:
@@ -2554,8 +2563,8 @@ def run(feed, broker, clock, strategies: dict, ensemble_module, config: dict, sy
             )  # 청산 후 포지션 수 (pop 이후 길이 사용)
             max_pos = config.get("risk", {}).get("max_positions", 20)
 
-            # 포지션 번호 (청산되는 포지션)
-            position_number = position.get("position_number", 1)
+            # 포지션 번호 (진입 포지션)
+            position_number = active_positions.get(position_id, {}).get("position_number", 1)
 
             # 청산 알람 생성 (P2 최종 확정 포맷)
             msg = format_signal_alert(
