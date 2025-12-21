@@ -5,7 +5,7 @@
 **목표**: PHASE36-0 Smoke 20m AC2-4 검증 (persist_trace, DB insert, report JSON 생성)  
 **결과**: ✅ **ALL PASS** - AC1-5 전체 통과  
 **기간**: 2025-12-21 16:24 ~ 17:02 (실행 20분)  
-**상태**: PHASE36-0-D1 완료
+**상태**: PHASE36-0-AC2-4 완료
 
 ---
 
@@ -66,19 +66,27 @@ with open(report_json_path, "w", encoding="utf-8") as f:
     json.dump(report_json_data, f, indent=2, ensure_ascii=False)
 ```
 
-### 버그 3: AC 체크 순서 문제
-**위치**: `scripts/phase36/run_phase36_0_paper_validation_pack.py:568-572`  
-**증상**: AC 체크 → Artifacts 저장 순서로 인해 AC4가 report_files=[] 판정  
-**수정**: Artifacts 저장 → AC 체크 순서로 변경 + report_json_path 인자 전달
+### 버그 3: AC 체크 순서 및 report JSON 생성 위치
+**위치**: `scripts/phase36/run_phase36_0_paper_validation_pack.py`  
+**증상**: AC 체크 시점에 report JSON 파일이 아직 생성되지 않음  
+**근본 원인**: report JSON 생성이 save_artifacts() 내부에 있어 AC 체크 후에 생성됨
+
+**수정 (SSOT 구현)**:
+1. Report JSON 생성을 메인 플로우(STEP 3.5)로 이동
+2. AC 체크(STEP 4) 전에 report JSON을 먼저 생성
+3. check_acceptance_criteria()에 report_json_path를 명시적으로 전달
 
 ```python
 # Before
-ac_results = check_acceptance_criteria(...)  # AC4: report_files=[]
-trace_path, results_path = save_artifacts(..., ac_results)
+STEP 3: DB Evidence 수집
+STEP 4: AC 체크 (report JSON 없음)
+STEP 5: save_artifacts() → report JSON 생성
 
-# After
-trace_path, results_path, report_json_path = save_artifacts(..., {})  # 먼저 저장
-ac_results = check_acceptance_criteria(..., report_json_path=report_json_path)  # 경로 전달
+# After (SSOT)
+STEP 3: DB Evidence 수집
+STEP 3.5: Report JSON 생성 (메인 플로우)
+STEP 4: AC 체크 (report_json_path 전달)
+STEP 5: Trace/Results 저장
 ```
 
 ---
@@ -88,12 +96,12 @@ ac_results = check_acceptance_criteria(..., report_json_path=report_json_path)  
 ### 수정 파일 (5개)
 
 1. **scripts/phase36/run_phase36_0_paper_validation_pack.py**
-   - L99-106: persist_trace import 경로 수정 (database.postgres → execution.engine)
-   - L346: check_acceptance_criteria() 시그니처에 report_json_path 인자 추가
-   - L367-376: AC4 체크 로직 개선 (report_json_path 우선 체크)
-   - L461-486: report JSON 생성 로직 추가
-   - L488: save_artifacts() return 값에 report_json_path 추가
-   - L568-572: Artifacts 저장 → AC 체크 순서 변경
+   - L99-103: persist_trace import 경로 수정 (database.postgres → execution.engine)
+   - L340: check_acceptance_criteria() 시그니처에 report_json_path 인자 추가 (SSOT)
+   - L361-369: AC4 체크 로직 개선 (report_json_path.exists() SSOT, fallback 글롭)
+   - L539-571: Report JSON 생성 로직 (STEP 3.5, 메인 플로우로 이동)
+   - L574: AC 체크에 report_json_path 명시적 전달
+   - L589: FINAL RESULT에 Report 경로 출력 추가
 
 2. **requirements-dev.txt**
    - L10: `pytest-timeout>=2.1.0` 추가 (HANG 방지)
@@ -167,13 +175,16 @@ AC5 (run complete): PASS → ✅ PASS
 - ❌ `database.postgres.save_trade_to_db` (존재하지 않음)
 - ✅ `execution.engine.save_trade_to_db` (L2921, 실제 위치)
 
-### 2. Paper 모드 Report JSON 생성 강제
+### 2. Paper 모드 Report JSON 생성 SSOT
 - Backtest: engine에서 자동 생성
-- Paper: runner에서 명시적 생성 필요 (save_artifacts에 포함)
+- Paper: runner 메인 플로우(STEP 3.5)에서 AC 체크 전에 생성
+- 경로: reports/paper/paper_<run_id>.json
+- AC4 판정: report_json_path.exists() (명시적 경로, SSOT)
 
-### 3. AC 체크 순서 표준화
-- **원칙**: Artifacts 생성 → AC 체크 (생성된 파일 경로 전달)
-- **이유**: AC 체크 시점에 모든 artifacts가 존재해야 정확한 판정 가능
+### 3. AC 체크 순서 및 Report 생성 SSOT
+- **원칙**: Report 생성(STEP 3.5) → AC 체크(STEP 4) → Trace/Results 저장(STEP 5)
+- **이유**: AC4 판정 시점에 report JSON이 이미 존재해야 SSOT 보장
+- **구현**: check_acceptance_criteria()에 report_json_path 명시적 전달
 
 ### 4. pytest-timeout 표준화
 - **설정**: 180s, thread method

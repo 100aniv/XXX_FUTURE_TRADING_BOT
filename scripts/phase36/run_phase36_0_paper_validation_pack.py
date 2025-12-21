@@ -234,7 +234,7 @@ def prepare_config(profile: str, symbol: str, timeframe: str, duration_hours: fl
             
             config = deep_merge(config, profile_config)
     
-    # Override for Paper mode
+    # Override for Paper mode (최우선)
     config['mode'] = 'paper'
     config['env'] = 'paper'
     config['symbol'] = symbol
@@ -246,10 +246,25 @@ def prepare_config(profile: str, symbol: str, timeframe: str, duration_hours: fl
     run_id = generate_run_id()
     config['run_id'] = run_id
     
-    # database.enabled 강제 (PHASE35-5 재발 방지)
-    config.setdefault('database', {})['enabled'] = True
+    # 환경변수 치환 (Redis/Postgres)
+    import os
+    config.setdefault('redis', {})['host'] = os.getenv('REDIS_HOST', 'localhost')
+    config['redis']['port'] = int(os.getenv('REDIS_PORT', '6379'))
     
-    # feed.base_timeframe 동기화
+    config.setdefault('database', {})['host'] = os.getenv('DB_HOST', 'localhost')
+    config['database']['port'] = int(os.getenv('DB_PORT', '5432'))
+    config['database']['enabled'] = True
+    
+    # Guard/Risk 강제 설정 (engine 요구사항)
+    config.setdefault('guard', {})['max_trades_per_day'] = 999
+    config['guard']['daily_loss_limit'] = 1000000.0
+    
+    config.setdefault('risk', {})['max_trades_per_day'] = 999
+    config['risk']['daily_loss_limit'] = 1000000.0
+    config['risk']['max_position_size'] = 0.1
+    config['risk']['risk_per_trade'] = 0.01
+    
+    # feed 설정
     config.setdefault('feed', {})['base_timeframe'] = timeframe
     
     logger.info(f"✅ Config 준비 완료: profile={profile}, symbol={symbol}, timeframe={timeframe}, duration={duration_hours}h")
