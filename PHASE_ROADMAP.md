@@ -3916,6 +3916,16 @@ PHASE29 전략 실패 요약:
   - → PHASE35 재검토 (백테스트 과적합 의심)
   - → 또는 전략 일시 중단 및 Post-Mortem
 
+**🟡 PHASE36-0: Initial Paper Validation - CONDITIONAL PASS (2025-12-21)**
+- **Status**: ⚠️ RECOVERY COMPLETE (P0-1/P0-3/P0-5 PASS, P0-2 PENDING)
+- **Recovery**: Duration auto-termination ✅, Artifact generation ✅, Encoding ✅
+- **Test**: 20m smoke (22:20~22:41), auto-terminated at 20.4min ✅
+- **Pending**: P0-2 (Strategy signature) validation requires trades > 0
+- **Evidence**: 
+  - Failure: `docs/PHASE36/PHASE36_0_SMOKE_RUN_FAILURE_ANALYSIS.md`
+  - Recovery: `docs/PHASE36/PHASE36_0_RECOVERY_REPORT.md`
+- **Next Step**: Monitor next run for P0-2 validation → PHASE36-0-1
+
 **Deliverables**:
 - `docs/PHASE36/PHASE36_LIVE_DEPLOYMENT_PLAN.md`
 - `docs/PHASE36/PHASE36_LIVE_PERFORMANCE_REPORT.md` (주간/월간)

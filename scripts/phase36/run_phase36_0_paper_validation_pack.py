@@ -92,19 +92,22 @@ def instrumented_save_trade_to_db(*args, **kwargs):
         raise
 
 def install_trace_instrumentation():
-    """save_trade_to_db 계측 설치 (PHASE35-5 SSOT)"""
+    """save_trade_to_db 계측 설치 (PHASE36-0 SSOT)"""
     global _original_save_trade_to_db
     
     try:
-        from database.postgres import save_trade_to_db
+        from execution.engine import save_trade_to_db
         _original_save_trade_to_db = save_trade_to_db
         
-        import database.postgres
-        database.postgres.save_trade_to_db = instrumented_save_trade_to_db
+        import execution.engine
+        execution.engine.save_trade_to_db = instrumented_save_trade_to_db
         
-        logger.info("✅ persist_trace 계측 설치 완료")
+        logger.info("✅ persist_trace 계측 설치 완료 (execution.engine.save_trade_to_db)")
     except Exception as e:
         logger.error(f"❌ persist_trace 계측 설치 실패: {e}")
+        import traceback
+        logger.error(traceback.format_exc())
+        raise RuntimeError(f"persist_trace instrumentation 설치 실패: {e}")
 
 # ============================================================================
 # to_native() 패치 (PHASE35-5 SSOT - numpy scalar 방지)
@@ -239,7 +242,11 @@ def prepare_config(profile: str, symbol: str, timeframe: str, duration_hours: fl
     config['env'] = 'paper'
     config['symbol'] = symbol
     config['timeframe'] = timeframe
-    config['duration_hours'] = duration_hours
+    config['duration_hours'] = duration_hours  # 루트 레벨 (호환성)
+    
+    # P0-1: duration_hours를 paper 섹션에도 명시 (엔진이 읽는 경로)
+    config.setdefault('paper', {})['duration_hours'] = duration_hours
+    config['paper']['duration_mode'] = 'wall_clock'  # 명시적 wall_clock 모드
     
     # run_id 생성
     from common.config_loader import generate_run_id
@@ -373,11 +380,11 @@ def check_acceptance_criteria(db_evidence: dict, persist_trace: dict, run_result
     ac3_persist_trace_valid = (db_persist_called > 0)
     logger.info(f"AC3 (persist_trace): {db_persist_called} calls → {'✅ PASS' if ac3_persist_trace_valid else '❌ FAIL'}")
     
-    # AC4: report JSON 생성
-    report_dir = PROJECT_ROOT / "reports" / "paper"
-    report_files = list(report_dir.glob(f"paper_*{config['run_id']}*.json")) if report_dir.exists() else []
-    ac4_report_generated = (len(report_files) > 0)
-    logger.info(f"AC4 (report JSON): {len(report_files)} files → {'✅ PASS' if ac4_report_generated else '❌ FAIL'}")
+    # AC4: report JSON 생성 (명시적 경로 사용)
+    report_json_path = PROJECT_ROOT / "reports" / "paper" / f"paper_{config['run_id']}.json"
+    ac4_report_generated = report_json_path.exists()
+    report_files = [str(report_json_path)] if ac4_report_generated else []
+    logger.info(f"AC4 (report JSON): {report_json_path.name if ac4_report_generated else 'NOT FOUND'} → {'✅ PASS' if ac4_report_generated else '❌ FAIL'}")
     
     # AC5: Paper 실행 완료
     ac5_run_complete = (run_result.get("status") == "PASS")
@@ -397,7 +404,8 @@ def check_acceptance_criteria(db_evidence: dict, persist_trace: dict, run_result
             "trial_trades": trial_trades,
             "db_insert_success": db_insert_success,
             "db_persist_called": db_persist_called,
-            "report_files": [str(f) for f in report_files]
+            "report_json_path": str(report_json_path),
+            "report_files": report_files
         }
     }
     
@@ -546,6 +554,23 @@ def main():
     start_time = datetime.fromisoformat(run_result["start_time"])
     end_time = datetime.fromisoformat(run_result["end_time"])
     db_evidence = get_db_evidence(trial_id=config['run_id'], start_time=start_time, end_time=end_time)
+    
+    # STEP 3.5: Report JSON 생성 (AC4 SSOT - AC 체크 이전에 생성)
+    report_json_path = PROJECT_ROOT / "reports" / "paper" / f"paper_{config['run_id']}.json"
+    report_json_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(report_json_path, 'w', encoding='utf-8') as f:
+        json.dump({
+            "run_id": config['run_id'],
+            "stage": args.stage,
+            "profile": args.profile,
+            "symbol": config['symbol'],
+            "timeframe": config['timeframe'],
+            "run_result": run_result,
+            "db_evidence": db_evidence,
+            "persist_trace": get_trace(),
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        }, f, indent=2, default=str)
+    logger.info(f"✅ Report JSON 생성 완료: {report_json_path}")
     
     # STEP 4: AC 체크
     ac_results = check_acceptance_criteria(db_evidence, get_trace(), run_result, args.stage, config)

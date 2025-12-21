@@ -247,6 +247,6 @@ class ReversionStrategy(BaseStrategy):
             }
         )
     
-    def compute_signal(self, df: pd.DataFrame) -> Dict[str, Any]:
+    def compute_signal(self, df: pd.DataFrame, **kwargs) -> Dict[str, Any]:
         """신호 계산 (기존 signal_logic 호출)"""
         return signal_logic(df, self.config)

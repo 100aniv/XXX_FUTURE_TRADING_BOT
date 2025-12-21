@@ -169,5 +169,5 @@ class TrendStrategy(BaseStrategy):
             }
         )
     
-    def compute_signal(self, df: pd.DataFrame) -> Dict[str, Any]:
+    def compute_signal(self, df: pd.DataFrame, **kwargs) -> Dict[str, Any]:
         return signal_logic(df, self.config)

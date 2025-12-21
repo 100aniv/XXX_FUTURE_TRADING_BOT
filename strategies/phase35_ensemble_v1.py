@@ -190,7 +190,7 @@ class Phase35EnsembleV1(BaseStrategy):
             description="PHASE35 Ensemble V1: 3 Sub-Models + 2/3 Vote + ATR Regime",
         )
 
-    def compute_signal(self, df: pd.DataFrame) -> Dict[str, Any]:
+    def compute_signal(self, df: pd.DataFrame, **kwargs) -> Dict[str, Any]:
         """
         Compute ensemble signal
 

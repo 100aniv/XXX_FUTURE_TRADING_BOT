@@ -61,13 +61,15 @@ class BaseStrategy(ABC):
         pass
     
     @abstractmethod
-    def compute_signal(self, df: pd.DataFrame) -> Dict[str, Any]:
+    def compute_signal(self, df: pd.DataFrame, **kwargs) -> Dict[str, Any]:
         """
         신호 계산 (필수 구현)
         
         Args:
             df: OHLCV + 지표가 포함된 DataFrame
                 기존 signal_logic(df, config)의 df와 동일
+            **kwargs: 하위 호환성 위한 키워드 인자 (config= 등)
+                      실제로는 self.config 사용 권장
         
         Returns:
             dict: 신호 정보
@@ -83,6 +85,7 @@ class BaseStrategy(ABC):
         **참고**:
         - 기존 signal_logic() 함수를 호출하는 래퍼로 구현 가능
         - 예: `return signal_logic(df, self.config)`
+        - **kwargs는 하위 호환성을 위한 것으로, self.config 사용 권장
         """
         pass
     
