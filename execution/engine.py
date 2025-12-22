@@ -18,6 +18,7 @@ import json
 
 from common.logger import setup_logger
 from common.namespace import build_redis_key  # PHASE18-2: run_id 네임스페이스
+from common.signal_telemetry import get_signal_telemetry  # PHASE36-1 D1: Signal Telemetry
 from common.messaging import (
     tg,
     log_status,
@@ -1914,6 +1915,10 @@ def run(feed, broker, clock, strategies: dict, ensemble_module, config: dict, sy
                                     )
                              
                             signal = strategy_instance.compute_signal(df_tf)
+                            
+                            # PHASE36-1 D1: Signal evaluated telemetry
+                            telemetry = get_signal_telemetry()
+                            telemetry.signal_evaluated()
                              
                             # PHASE32-1: success 
                             strategy_call_counters[strategy_id]['success'] += 1
@@ -1978,6 +1983,9 @@ def run(feed, broker, clock, strategies: dict, ensemble_module, config: dict, sy
                         if signal_gen.validate_signal(
                             candle_symbol, signal, df_tf
                         ):  # ⭐ 멀티 심볼 수정
+                            # PHASE36-1 D1: Signal passed telemetry
+                            telemetry = get_signal_telemetry()
+                            telemetry.signal_passed()
                             # ⭐⭐⭐ 신호 DB 저장 (monitoring.signals 테이블) - 수정됨 2025-10-23
                             # 백테스트 모드에서는 기본적으로 외부 DB 신호 저장을 비활성화하여 속도와 안정성 향상
                             # config.backtest.persist_signals=true 일 때만 저장 수행
@@ -2100,6 +2108,9 @@ def run(feed, broker, clock, strategies: dict, ensemble_module, config: dict, sy
 
         if qty <= 0:
             logger.warning(f"❌ [ENTRY BLOCK] symbol={candle_symbol} side={decision.get('side')} reason=position_size_zero qty={qty}")
+            # PHASE36-1 D1: Block reason telemetry
+            telemetry = get_signal_telemetry()
+            telemetry.signal_blocked(reason="position_size_zero")
             # ⭐ PHASE28-10: Guard Telemetry
             if activity_tracker:
                 activity_tracker.record_guard_block(candle_symbol, "GUARD_POSITION_SIZE_ZERO")
@@ -2247,6 +2258,9 @@ def run(feed, broker, clock, strategies: dict, ensemble_module, config: dict, sy
                     except Exception as e:
                         logger.warning(f"⚠️  Redis 쿨다운 설정 실패: {e}")
                 reject_cooldown[cooldown_key] = time.time()
+            # PHASE36-1 D1: Block reason telemetry
+            telemetry = get_signal_telemetry()
+            telemetry.signal_blocked(reason="exposure_guard_block")
             logger.warning(
                 f"❌ [ENTRY BLOCK] symbol={candle_symbol} side={decision.get('side')} strategy={strategy_id} "
                 f"reason=exposure_guard_block detail=\"{exposure_decision.reason}\" cooldown={strategy_cooldown}s"
@@ -2287,6 +2301,9 @@ def run(feed, broker, clock, strategies: dict, ensemble_module, config: dict, sy
                     except Exception as e:
                         logger.warning(f"⚠️  Redis 쿨다운 설정 실패: {e}")
                 reject_cooldown[cooldown_key] = time.time()  # Fallback
+            # PHASE36-1 D1: Block reason telemetry
+            telemetry = get_signal_telemetry()
+            telemetry.signal_blocked(reason="risk_check_failed")
             logger.warning(
                 f"❌ [ENTRY BLOCK] symbol={candle_symbol} side={decision.get('side')} strategy={strategy_id} "
                 f"reason=risk_check_failed detail=\"{reason}\" cooldown={strategy_cooldown}s"
@@ -2320,6 +2337,9 @@ def run(feed, broker, clock, strategies: dict, ensemble_module, config: dict, sy
                     except Exception as e:
                         logger.warning(f"⚠️  Redis 쿨다운 설정 실패: {e}")
                 reject_cooldown[cooldown_key] = time.time()  # Fallback
+            # PHASE36-1 D1: Block reason telemetry
+            telemetry = get_signal_telemetry()
+            telemetry.signal_blocked(reason="portfolio_check_failed")
             logger.warning(
                 f"❌ [ENTRY BLOCK] symbol={candle_symbol} side={decision.get('side')} strategy={strategy_id} "
                 f"reason=portfolio_check_failed detail=\"{portfolio_reason}\" cooldown={strategy_cooldown}s"
@@ -2392,6 +2412,10 @@ def run(feed, broker, clock, strategies: dict, ensemble_module, config: dict, sy
         if not fill.get("success"):
             logger.error(f"❌ 거래 실행 실패: {candle_symbol}")
             continue
+        
+        # PHASE36-1 D1: Order submitted telemetry
+        telemetry = get_signal_telemetry()
+        telemetry.order_submitted()
         
         # ⭐ PHASE27-0: Order Submission Hook
         if activity_tracker:
@@ -2473,6 +2497,10 @@ def run(feed, broker, clock, strategies: dict, ensemble_module, config: dict, sy
 
         # 포지션 번호 계산 (현재 활성 포지션 수 + 1)
         position_number = len(active_positions) + 1
+
+        # PHASE36-1 D1: Order filled telemetry
+        telemetry = get_signal_telemetry()
+        telemetry.order_filled()
 
         # 활성 포지션 저장 (⭐ position_value + tp_levels 포함)
         active_positions[position_id] = {

@@ -1,0 +1,38 @@
+{
+  "timestamp": "2025-12-23T00:26:40.522623",
+  "stage": "smoke",
+  "profile": "L4",
+  "config_summary": {
+    "run_id": "20251223_000639_ubmh",
+    "symbol": "BTCUSDT",
+    "timeframe": "3m",
+    "duration_hours": 0.33
+  },
+  "ac_results": {
+    "ac1_trades_gt_zero": true,
+    "ac2_db_persist_valid": true,
+    "ac3_persist_trace_valid": true,
+    "ac4_report_generated": true,
+    "ac5_run_complete": true,
+    "all_pass": true,
+    "details": {
+      "trial_trades": 8,
+      "db_insert_success": 8,
+      "db_persist_called": 8,
+      "report_json_path": "C:\\work\\XXX_FUTURE_TRADING_BOT\\reports\\paper\\paper_20251223_000639_ubmh.json",
+      "report_files": [
+        "C:\\work\\XXX_FUTURE_TRADING_BOT\\reports\\paper\\paper_20251223_000639_ubmh.json"
+      ]
+    }
+  },
+  "summary": {
+    "trades": 8,
+    "db_insert_success": 8,
+    "actual_duration_hours": 0.33362596944444445,
+    "status": "PASS"
+  },
+  "extended_telemetry": {
+    "telemetry_available": false,
+    "error": "column \"equity\" does not exist\nLINE 2:                     SELECT MIN(equity), MAX(equity)\n                                       ^\n"
+  }
+}

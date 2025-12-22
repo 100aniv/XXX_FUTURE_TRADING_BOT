@@ -36,8 +36,9 @@ from collections import defaultdict
 PROJECT_ROOT = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from common.database import get_db_connection
+from common.database.db_pool import get_db_connection
 from common.logger import setup_logger
+from common.signal_telemetry import get_signal_telemetry, reset_signal_telemetry
 
 logger = setup_logger("phase36_0_runner")
 
@@ -64,6 +65,9 @@ PERSIST_TRACE = defaultdict(int)
 def reset_trace():
     global PERSIST_TRACE
     PERSIST_TRACE = defaultdict(int)
+    # PHASE36-1 D1: Signal telemetry reset
+    reset_signal_telemetry()
+    logger.info("✅ persist_trace + signal_telemetry reset 완료")
 
 def inc_trace(key: str, amount: int = 1):
     PERSIST_TRACE[key] += amount
@@ -135,16 +139,39 @@ def install_to_native_patch():
 # ============================================================================
 # DB 유틸리티 (PHASE35-5 SSOT)
 # ============================================================================
+def get_signal_telemetry_counters() -> dict:
+    """신호 레벨 Telemetry 카운터 수집 (PHASE36-1 D1)"""
+    try:
+        telemetry = get_signal_telemetry()
+        counters = telemetry.get_counters()
+        top_reasons = telemetry.get_top_block_reasons(top_n=10)
+        
+        return {
+            "signal_evaluated_total": counters.get("signal_evaluated_total", 0),
+            "signal_passed_total": counters.get("signal_passed_total", 0),
+            "order_submitted_total": counters.get("order_submitted_total", 0),
+            "order_filled_total": counters.get("order_filled_total", 0),
+            "block_reasons": dict(counters.get("block_reasons", {})),
+            "top_block_reasons": top_reasons,
+            "telemetry_available": True
+        }
+    except Exception as e:
+        logger.warning(f"Signal telemetry 수집 실패: {e}")
+        return {
+            "telemetry_available": False,
+            "error": str(e)
+        }
+
 def get_extended_telemetry(trial_id: str = None, start_time: datetime = None, end_time: datetime = None) -> dict:
-    """확장 Telemetry 수집 (PHASE36-1 Goal B)"""
+    """확장 Telemetry 수집 (PHASE36-1 Goal B + D1)"""
     try:
         with get_db_connection() as conn:
             with conn.cursor() as cur:
-                # Equity 정보
+                # Equity 정보 (final_equity 측럼 사용)
                 cur.execute("""
-                    SELECT MIN(equity), MAX(equity)
+                    SELECT MIN(final_equity), MAX(final_equity)
                     FROM trading.trades
-                    WHERE ts_open >= %s AND ts_open <= %s
+                    WHERE ts_open >= %s AND ts_open <= %s AND final_equity IS NOT NULL
                 """, (start_time, end_time))
                 equity_row = cur.fetchone()
                 equity_start = float(equity_row[0]) if equity_row and equity_row[0] else 50000.0
@@ -168,7 +195,7 @@ def get_extended_telemetry(trial_id: str = None, start_time: datetime = None, en
                 # Max drawdown (간단 계산)
                 max_drawdown_pct = ((equity_start - equity_end) / equity_start * 100) if equity_start > 0 else 0.0
                 
-                return {
+                result = {
                     "equity_start": equity_start,
                     "equity_end": equity_end,
                     "equity_change": equity_end - equity_start,
@@ -179,6 +206,12 @@ def get_extended_telemetry(trial_id: str = None, start_time: datetime = None, en
                     "total_closed": total,
                     "telemetry_available": True
                 }
+                
+                # PHASE36-1 D1: Signal telemetry 추가
+                signal_telemetry = get_signal_telemetry_counters()
+                result["signal_telemetry"] = signal_telemetry
+                
+                return result
     except Exception as e:
         logger.warning(f"Extended telemetry 수집 실패: {e}")
         return {
@@ -531,6 +564,21 @@ def save_artifacts(stage: str, profile: str, config: dict, run_result: dict, db_
         logger.info(f"  - Equity: ${extended_telemetry['equity_start']:.2f} → ${extended_telemetry['equity_end']:.2f}")
         logger.info(f"  - Win Rate: {extended_telemetry['win_rate_pct']:.1f}% ({extended_telemetry['wins']}W / {extended_telemetry['losses']}L)")
         logger.info(f"  - Max DD: {extended_telemetry['max_drawdown_pct']:.2f}%")
+        
+        # PHASE36-1 D1: Signal telemetry 로깅
+        signal_tel = extended_telemetry.get("signal_telemetry", {})
+        if signal_tel.get("telemetry_available"):
+            logger.info(f"📡 Signal Telemetry:")
+            logger.info(f"  - Evaluated: {signal_tel.get('signal_evaluated_total', 0)}")
+            logger.info(f"  - Passed: {signal_tel.get('signal_passed_total', 0)}")
+            logger.info(f"  - Submitted: {signal_tel.get('order_submitted_total', 0)}")
+            logger.info(f"  - Filled: {signal_tel.get('order_filled_total', 0)}")
+            
+            top_reasons = signal_tel.get('top_block_reasons', [])
+            if top_reasons:
+                logger.info(f"  - Top Block Reasons:")
+                for reason, count in top_reasons[:5]:
+                    logger.info(f"    • {reason}: {count}회")
     
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     

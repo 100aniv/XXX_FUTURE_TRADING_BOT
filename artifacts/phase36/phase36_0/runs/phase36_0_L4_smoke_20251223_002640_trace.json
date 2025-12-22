@@ -1,0 +1,106 @@
+{
+  "timestamp": "2025-12-23T00:26:40.521700",
+  "stage": "smoke",
+  "profile": "L4",
+  "config": {
+    "run_id": "20251223_000639_ubmh",
+    "symbol": "BTCUSDT",
+    "timeframe": "3m",
+    "timeframes": [
+      "15m"
+    ],
+    "feed_base_timeframe": "15m",
+    "duration_hours": 0.33,
+    "paper_duration_hours": 0.33,
+    "paper_duration_mode": "wall_clock",
+    "enabled_strategies": [
+      "scalping"
+    ],
+    "use_ensemble": false,
+    "selector": "scalping"
+  },
+  "persist_trace": {
+    "db_persist_called": 8,
+    "db_insert_success": 8
+  },
+  "db_evidence": {
+    "total_trades": 8,
+    "trial_trades": 8,
+    "latest_trades": [
+      {
+        "trade_id": "6193156c...",
+        "symbol": "BTCUSDT",
+        "side": "SHORT",
+        "entry_price": 89748.20345000002,
+        "quantity": 0.111,
+        "status": "CLOSED",
+        "created_at": "2025-12-23T00:07:40.609714+09:00"
+      },
+      {
+        "trade_id": "8a094f85...",
+        "symbol": "BTCUSDT",
+        "side": "LONG",
+        "entry_price": 90155.35515,
+        "quantity": 0.111,
+        "status": "CLOSED",
+        "created_at": "2025-12-23T00:07:38.214768+09:00"
+      },
+      {
+        "trade_id": "3d13f34e...",
+        "symbol": "BTCUSDT",
+        "side": "LONG",
+        "entry_price": 90144.0495,
+        "quantity": 0.111,
+        "status": "CLOSED",
+        "created_at": "2025-12-23T00:07:35.589715+09:00"
+      },
+      {
+        "trade_id": "8f18286d...",
+        "symbol": "BTCUSDT",
+        "side": "SHORT",
+        "entry_price": 89704.22545000001,
+        "quantity": 0.111,
+        "status": "CLOSED",
+        "created_at": "2025-12-23T00:07:32.570526+09:00"
+      },
+      {
+        "trade_id": "5ccddedd...",
+        "symbol": "BTCUSDT",
+        "side": "LONG",
+        "entry_price": 88894.12485,
+        "quantity": 0.113,
+        "status": "CLOSED",
+        "created_at": "2025-12-23T00:07:14.691949+09:00"
+      }
+    ],
+    "db_connection": "SUCCESS"
+  },
+  "run_result": {
+    "status": "PASS",
+    "start_time": "2025-12-22T15:06:39.368244+00:00",
+    "end_time": "2025-12-22T15:26:40.421734+00:00",
+    "actual_duration_sec": 1201.05349,
+    "actual_duration_hours": 0.33362596944444445
+  },
+  "ac_results": {
+    "ac1_trades_gt_zero": true,
+    "ac2_db_persist_valid": true,
+    "ac3_persist_trace_valid": true,
+    "ac4_report_generated": true,
+    "ac5_run_complete": true,
+    "all_pass": true,
+    "details": {
+      "trial_trades": 8,
+      "db_insert_success": 8,
+      "db_persist_called": 8,
+      "report_json_path": "C:\\work\\XXX_FUTURE_TRADING_BOT\\reports\\paper\\paper_20251223_000639_ubmh.json",
+      "report_files": [
+        "C:\\work\\XXX_FUTURE_TRADING_BOT\\reports\\paper\\paper_20251223_000639_ubmh.json"
+      ]
+    }
+  },
+  "extended_telemetry": {
+    "telemetry_available": false,
+    "error": "column \"equity\" does not exist\nLINE 2:                     SELECT MIN(equity), MAX(equity)\n                                       ^\n"
+  }
+}

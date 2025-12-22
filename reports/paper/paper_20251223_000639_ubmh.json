@@ -1,0 +1,71 @@
+{
+  "run_id": "20251223_000639_ubmh",
+  "stage": "smoke",
+  "profile": "L4",
+  "symbol": "BTCUSDT",
+  "timeframe": "3m",
+  "run_result": {
+    "status": "PASS",
+    "start_time": "2025-12-22T15:06:39.368244+00:00",
+    "end_time": "2025-12-22T15:26:40.421734+00:00",
+    "actual_duration_sec": 1201.05349,
+    "actual_duration_hours": 0.33362596944444445
+  },
+  "db_evidence": {
+    "total_trades": 8,
+    "trial_trades": 8,
+    "latest_trades": [
+      {
+        "trade_id": "6193156c...",
+        "symbol": "BTCUSDT",
+        "side": "SHORT",
+        "entry_price": 89748.20345000002,
+        "quantity": 0.111,
+        "status": "CLOSED",
+        "created_at": "2025-12-23T00:07:40.609714+09:00"
+      },
+      {
+        "trade_id": "8a094f85...",
+        "symbol": "BTCUSDT",
+        "side": "LONG",
+        "entry_price": 90155.35515,
+        "quantity": 0.111,
+        "status": "CLOSED",
+        "created_at": "2025-12-23T00:07:38.214768+09:00"
+      },
+      {
+        "trade_id": "3d13f34e...",
+        "symbol": "BTCUSDT",
+        "side": "LONG",
+        "entry_price": 90144.0495,
+        "quantity": 0.111,
+        "status": "CLOSED",
+        "created_at": "2025-12-23T00:07:35.589715+09:00"
+      },
+      {
+        "trade_id": "8f18286d...",
+        "symbol": "BTCUSDT",
+        "side": "SHORT",
+        "entry_price": 89704.22545000001,
+        "quantity": 0.111,
+        "status": "CLOSED",
+        "created_at": "2025-12-23T00:07:32.570526+09:00"
+      },
+      {
+        "trade_id": "5ccddedd...",
+        "symbol": "BTCUSDT",
+        "side": "LONG",
+        "entry_price": 88894.12485,
+        "quantity": 0.113,
+        "status": "CLOSED",
+        "created_at": "2025-12-23T00:07:14.691949+09:00"
+      }
+    ],
+    "db_connection": "SUCCESS"
+  },
+  "persist_trace": {
+    "db_persist_called": 8,
+    "db_insert_success": 8
+  },
+  "timestamp": "2025-12-22T15:26:40.470401+00:00"
+}
