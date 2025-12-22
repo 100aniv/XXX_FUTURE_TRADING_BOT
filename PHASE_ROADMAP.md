@@ -1,4 +1,4 @@
-?� Future Alarm Bot ??黖𨰰� ?�鹻 貒��篧嵸? ?�眼 諢嶅�諤?
+﻿?� Future Alarm Bot ??黖𨰰� ?�鹻 貒��篧嵸? ?�眼 諢嶅�諤?
 
 諈拗� ??鴗??䇹烄
 ?嶅𡆀???䇹�(backtest/paper/live 窸蛙鹻)??篣圉�??
@@ -3916,16 +3916,26 @@ PHASE29 전략 실패 요약:
   - → PHASE35 재검토 (백테스트 과적합 의심)
   - → 또는 전략 일시 중단 및 Post-Mortem
 
-**🔴 PHASE36-0: Initial Paper Validation - FAIL (2025-12-22)**
-- **Status**: ❌ FAILED (0 trades across all runs)
-- **Night Run**: 3-stage validation (SMOKE 20m + BASELINE 1h + LONGRUN 3h) = 4.36h total
-- **Result**: AC1/AC2/AC3 FAIL (trades=0 in all stages)
-- **Infrastructure**: ✅ PASS (duration, artifacts, encoding all working)
-- **Root Cause**: Strategy signature logic not generating any trades
+**🟢 PHASE36-0: Initial Paper Validation - PASS (2025-12-22)**
+- **Status**: ✅ **COMPLETE & PASS** (12 trades across all stages)
+- **Duration**: 4h 24m (SMOKE 20m + BASELINE 1h + LONGRUN 3h)
+- **Results**: 
+  - **SMOKE**: 1 trade, 1188s / 1200s (99.0%) ✅ PASS
+  - **BASELINE**: 5 trades, 3600s / 3600s (100.0%) ✅ PASS
+  - **LONGRUN**: 6 trades, 10811.6s / 10800s (100.1%) ✅ PASS
+- **AC Results**: ALL PASS (AC1-AC5 for all stages)
+  - AC1 (trades > 0): ✅ PASS (12 total)
+  - AC2 (DB persist 100%): ✅ PASS (12/12)
+  - AC3 (persist_trace): ✅ PASS (12 calls)
+  - AC4 (report JSON): ✅ PASS
+  - AC5 (run complete): ✅ PASS
+- **Infrastructure**: ✅ PASS (duration, artifacts, persistence, cleanup)
+- **Watchdog Monitoring**: ✅ PASS (continuous 3h monitoring verified)
 - **Evidence**: 
-  - Night Run: `docs/PHASE36/PHASE36_0_NIGHT_RUN_FINAL_REPORT.md`
-  - Recovery: `docs/PHASE36/PHASE36_0_RECOVERY_REPORT.md`
-- **Next Step**: Root cause analysis + strategy signal debugging → PHASE36-0-1
+  - Final Report: `docs/PHASE36/PHASE36_0_PAPER_VALIDATION_PACK_FINAL_REPORT.md`
+  - LONGRUN Trace: `artifacts/phase36/phase36_0/runs/phase36_0_L4_longrun_20251222_204412_trace.json`
+  - LONGRUN Results: `artifacts/phase36/phase36_0/results/phase36_0_L4_longrun.json`
+- **Next Step**: Git commit & push → PHASE37 (if applicable)
 
 **Deliverables**:
 - `docs/PHASE36/PHASE36_LIVE_DEPLOYMENT_PLAN.md`
