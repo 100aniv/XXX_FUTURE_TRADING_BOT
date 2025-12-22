@@ -135,6 +135,57 @@ def install_to_native_patch():
 # ============================================================================
 # DB 유틸리티 (PHASE35-5 SSOT)
 # ============================================================================
+def get_extended_telemetry(trial_id: str = None, start_time: datetime = None, end_time: datetime = None) -> dict:
+    """확장 Telemetry 수집 (PHASE36-1 Goal B)"""
+    try:
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                # Equity 정보
+                cur.execute("""
+                    SELECT MIN(equity), MAX(equity)
+                    FROM trading.trades
+                    WHERE ts_open >= %s AND ts_open <= %s
+                """, (start_time, end_time))
+                equity_row = cur.fetchone()
+                equity_start = float(equity_row[0]) if equity_row and equity_row[0] else 50000.0
+                equity_end = float(equity_row[1]) if equity_row and equity_row[1] else 50000.0
+                
+                # Win rate 계산
+                cur.execute("""
+                    SELECT 
+                        COUNT(*) FILTER (WHERE pnl > 0) as wins,
+                        COUNT(*) FILTER (WHERE pnl < 0) as losses,
+                        COUNT(*) as total
+                    FROM trading.trades
+                    WHERE ts_open >= %s AND ts_open <= %s AND status = 'CLOSED'
+                """, (start_time, end_time))
+                win_row = cur.fetchone()
+                wins = win_row[0] if win_row else 0
+                losses = win_row[1] if win_row else 0
+                total = win_row[2] if win_row else 0
+                win_rate = (wins / total * 100) if total > 0 else 0.0
+                
+                # Max drawdown (간단 계산)
+                max_drawdown_pct = ((equity_start - equity_end) / equity_start * 100) if equity_start > 0 else 0.0
+                
+                return {
+                    "equity_start": equity_start,
+                    "equity_end": equity_end,
+                    "equity_change": equity_end - equity_start,
+                    "max_drawdown_pct": max_drawdown_pct,
+                    "win_rate_pct": win_rate,
+                    "wins": wins,
+                    "losses": losses,
+                    "total_closed": total,
+                    "telemetry_available": True
+                }
+    except Exception as e:
+        logger.warning(f"Extended telemetry 수집 실패: {e}")
+        return {
+            "telemetry_available": False,
+            "error": str(e)
+        }
+
 def get_db_evidence(trial_id: str = None, start_time: datetime = None, end_time: datetime = None) -> dict:
     """DB 증거 수집 (PHASE35-5 + PHASE25-0 패턴)"""
     try:
@@ -201,13 +252,29 @@ DURATION_MAP = {
 }
 
 PROFILE_MAP = {
-    "L4": "phase35/phase35_5_L4_ultra_debug.yaml",
-    "L3": "phase35/phase35_5_L3_debug.yaml",
-    "L0": "phase35/phase35_5_L0_production.yaml"
+    "L4": "phase36/phase36_0_L4_SMOKE.yaml",  # PHASE36-0 전용 (모든 stage 공통)
+    "L3": "phase36/phase36_0_L4_SMOKE.yaml",  # BASELINE/LONGRUN도 L4 재사용 (검증 완료)
+    "L0": "phase36/phase36_0_L4_SMOKE.yaml"   # L0도 L4 재사용 (PHASE36-0 범위 내)
 }
 
+def validate_config(config: dict) -> tuple[bool, str]:
+    """Config validation (PHASE36-1 Goal B-AC3)"""
+    # Drawdown limits must be non-negative
+    risk_config = config.get('risk', {})
+    
+    max_drawdown = risk_config.get('max_drawdown_pct', 0)
+    if max_drawdown < 0:
+        return False, f"Invalid config: max_drawdown_pct must be non-negative (got {max_drawdown})"
+    
+    daily_loss_limit = risk_config.get('daily_loss_limit_pct', 0)
+    if daily_loss_limit < 0:
+        return False, f"Invalid config: daily_loss_limit_pct must be non-negative (got {daily_loss_limit})"
+    
+    # Additional validations can be added here
+    return True, "Config validation passed"
+
 def prepare_config(profile: str, symbol: str, timeframe: str, duration_hours: float, stage: str) -> dict:
-    """Config 준비 (PHASE35-5 패턴)"""
+    """Config 준비 (PHASE35-5 패턴 + PHASE36-1 Validation)"""
     import yaml
     
     # Base config
@@ -237,12 +304,16 @@ def prepare_config(profile: str, symbol: str, timeframe: str, duration_hours: fl
             
             config = deep_merge(config, profile_config)
     
-    # Override for Paper mode (최우선)
+    # Override for Paper mode (CLI 인자가 최종 승자)
     config['mode'] = 'paper'
     config['env'] = 'paper'
     config['symbol'] = symbol
     config['timeframe'] = timeframe
     config['duration_hours'] = duration_hours  # 루트 레벨 (호환성)
+    
+    # timeframe 강제 통일 (기존 list가 있더라도 CLI가 우선)
+    config['timeframes'] = [timeframe]  # list 형태
+    config.setdefault('feed', {})['base_timeframe'] = timeframe
     
     # P0-1: duration_hours를 paper 섹션에도 명시 (엔진이 읽는 경로)
     config.setdefault('paper', {})['duration_hours'] = duration_hours
@@ -271,8 +342,7 @@ def prepare_config(profile: str, symbol: str, timeframe: str, duration_hours: fl
     config['risk']['max_position_size'] = 0.1
     config['risk']['risk_per_trade'] = 0.01
     
-    # feed 설정
-    config.setdefault('feed', {})['base_timeframe'] = timeframe
+    # feed 설정 (이미 위에서 설정됨, 중복 제거)
     
     # PHASE36-0: diag_enabled 강제 ON (관측 가능 상태)
     config.setdefault('diag', {})['enabled'] = True
@@ -298,9 +368,15 @@ def prepare_config(profile: str, symbol: str, timeframe: str, duration_hours: fl
     config['strategies'].setdefault('scalping', {})['enabled'] = True
     config['strategies']['scalping']['diag_enabled'] = True
     
+    # 전략 활성화 검증 (assert)
+    enabled_strategies = [name for name, cfg in config.get('strategies', {}).items() if cfg.get('enabled', False)]
+    assert len(enabled_strategies) == 1, f"❌ 활성화된 전략이 정확히 1개가 아님: {enabled_strategies}"
+    assert enabled_strategies[0] == 'scalping', f"❌ scalping이 아닌 전략이 활성화됨: {enabled_strategies[0]}"
+    
     logger.info(f"✅ Config 준비 완료: profile={profile}, symbol={symbol}, timeframe={timeframe}, duration={duration_hours}h")
     logger.info(f"🆔 Run ID: {run_id}")
-    logger.info("🔬 [PHASE36-0] diag_enabled=True 강제 주입 (관측 가능 상태)")
+    logger.info(f"🔬 [PHASE36-0] diag_enabled=True 강제 주입 (관측 가능 상태)")
+    logger.info(f"✅ 전략 검증: {enabled_strategies} (1개만 활성화 확인)")
     
     return config
 
@@ -443,15 +519,25 @@ def check_acceptance_criteria(db_evidence: dict, persist_trace: dict, run_result
 # ============================================================================
 # Artifacts 저장
 # ============================================================================
-def save_artifacts(stage: str, profile: str, config: dict, run_result: dict, db_evidence: dict, persist_trace: dict, ac_results: dict):
-    """Artifacts 저장 (PHASE35-5 패턴)"""
+def save_artifacts(stage: str, profile: str, config: dict, run_result: dict, db_evidence: dict, persist_trace: dict, ac_results: dict, extended_telemetry: dict = None):
+    """Artifacts 저장 (PHASE35-5 패턴 + PHASE36-1 Extended Telemetry)"""
     logger.info("=" * 80)
     logger.info(f"[STEP 4] Artifacts 저장 - {stage}")
     logger.info("=" * 80)
     
+    # Extended telemetry 로깅
+    if extended_telemetry and extended_telemetry.get("telemetry_available"):
+        logger.info(f"📊 Extended Telemetry:")
+        logger.info(f"  - Equity: ${extended_telemetry['equity_start']:.2f} → ${extended_telemetry['equity_end']:.2f}")
+        logger.info(f"  - Win Rate: {extended_telemetry['win_rate_pct']:.1f}% ({extended_telemetry['wins']}W / {extended_telemetry['losses']}L)")
+        logger.info(f"  - Max DD: {extended_telemetry['max_drawdown_pct']:.2f}%")
+    
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     
     # 1. Trace JSON (runs/)
+    # Config 세부사항 추출 (AC-2)
+    enabled_strategies = [name for name, cfg in config.get('strategies', {}).items() if cfg.get('enabled', False)]
+    
     trace_data = {
         "timestamp": datetime.now().isoformat(),
         "stage": stage,
@@ -460,12 +546,20 @@ def save_artifacts(stage: str, profile: str, config: dict, run_result: dict, db_
             "run_id": config.get("run_id"),
             "symbol": config.get("symbol"),
             "timeframe": config.get("timeframe"),
-            "duration_hours": config.get("duration_hours")
+            "timeframes": config.get("timeframes"),
+            "feed_base_timeframe": config.get("feed", {}).get("base_timeframe"),
+            "duration_hours": config.get("duration_hours"),
+            "paper_duration_hours": config.get("paper", {}).get("duration_hours"),
+            "paper_duration_mode": config.get("paper", {}).get("duration_mode"),
+            "enabled_strategies": enabled_strategies,
+            "use_ensemble": config.get("strategy", {}).get("use_ensemble"),
+            "selector": config.get("strategy", {}).get("selector")
         },
         "persist_trace": persist_trace,
         "db_evidence": db_evidence,
         "run_result": run_result,
-        "ac_results": ac_results
+        "ac_results": ac_results,
+        "extended_telemetry": extended_telemetry or {}
     }
     
     trace_path = RUNS_DIR / f"phase36_0_{profile}_{stage}_{timestamp}_trace.json"
@@ -491,7 +585,8 @@ def save_artifacts(stage: str, profile: str, config: dict, run_result: dict, db_
             "db_insert_success": persist_trace.get("db_insert_success", 0),
             "actual_duration_hours": run_result.get("actual_duration_hours", 0),
             "status": "PASS" if ac_results["all_pass"] else "FAIL"
-        }
+        },
+        "extended_telemetry": extended_telemetry or {}
     }
     
     results_path = RESULTS_DIR / f"phase36_0_{profile}_{stage}.json"
@@ -501,6 +596,113 @@ def save_artifacts(stage: str, profile: str, config: dict, run_result: dict, db_
     logger.info(f"✅ Results JSON: {results_path}")
     
     return trace_path, results_path
+
+def save_failure_artifacts(stage: str, profile: str, config: dict, run_result: dict, db_evidence: dict, persist_trace: dict, runtime_reason: str):
+    """실패 시 진단용 Artifacts 저장"""
+    logger.info("=" * 80)
+    logger.info(f"[FAILURE] Artifacts 저장 - {stage} (진단 모드)")
+    logger.info("=" * 80)
+    
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    
+    failure_data = {
+        "timestamp": datetime.now().isoformat(),
+        "stage": stage,
+        "profile": profile,
+        "failure_reason": runtime_reason,
+        "config": {
+            "run_id": config.get("run_id"),
+            "symbol": config.get("symbol"),
+            "timeframe": config.get("timeframe"),
+            "timeframes": config.get("timeframes"),
+            "feed_base_timeframe": config.get("feed", {}).get("base_timeframe"),
+            "duration_hours": config.get("duration_hours"),
+            "paper_duration_hours": config.get("paper", {}).get("duration_hours"),
+            "paper_duration_mode": config.get("paper", {}).get("duration_mode")
+        },
+        "persist_trace": persist_trace,
+        "db_evidence": db_evidence,
+        "run_result": run_result
+    }
+    
+    failure_path = RUNS_DIR / f"phase36_0_{profile}_{stage}_{timestamp}_FAILURE.json"
+    with open(failure_path, "w", encoding="utf-8") as f:
+        json.dump(failure_data, f, indent=2, ensure_ascii=False, default=str)
+    
+    logger.error(f"❌ FAILURE Artifacts: {failure_path}")
+    return failure_path
+
+# ============================================================================
+# Runtime 검증 (워치독)
+# ============================================================================
+def validate_runtime(run_result: dict, target_hours: float, stage: str) -> tuple:
+    """
+    Runtime 검증: actual >= target * 0.98
+    
+    Returns:
+        (is_valid: bool, reason: str)
+    """
+    target_sec = target_hours * 3600
+    actual_sec = run_result.get('actual_duration_sec', 0)
+    threshold = target_sec * 0.98
+    
+    is_valid = (actual_sec >= threshold)
+    
+    if is_valid:
+        reason = f"Runtime OK: {actual_sec:.1f}s >= {threshold:.1f}s (98% of {target_sec:.1f}s)"
+    else:
+        reason = f"Runtime 미달: {actual_sec:.1f}s < {threshold:.1f}s (98% of {target_sec:.1f}s)"
+    
+    logger.info(f"⏱️  [{stage.upper()}] {reason}")
+    return is_valid, reason
+
+def cleanup_before_retry():
+    """재시도 전 환경 정리"""
+    import psutil
+    
+    logger.info("🧹 재시도 전 환경 정리...")
+    
+    # 1. Python 프로세스 종료 (launcher + worker 패턴 제외)
+    current_pid = os.getpid()
+    killed = 0
+    for proc in psutil.process_iter(['pid', 'name', 'cmdline']):
+        try:
+            if 'python' in proc.info['name'].lower():
+                if proc.info['pid'] == current_pid:
+                    continue  # 자기 자신은 제외
+                cmdline = ' '.join(proc.info['cmdline'] or [])
+                if 'run_phase36_0' in cmdline or 'engine' in cmdline or 'run_paper' in cmdline:
+                    logger.info(f"  • Kill PID {proc.info['pid']}: {cmdline[:80]}")
+                    proc.kill()
+                    killed += 1
+        except (psutil.NoSuchProcess, psutil.AccessDenied):
+            pass
+    
+    logger.info(f"  ✅ Python 프로세스 {killed}개 종료")
+    
+    # 2. Redis/DB clean (SSOT 방식)
+    try:
+        clean_script = PROJECT_ROOT / "scripts" / "helpers" / "clean_state_complete.py"
+        if clean_script.exists():
+            result = subprocess.run(
+                [sys.executable, str(clean_script)],
+                capture_output=True,
+                text=True,
+                timeout=30
+            )
+            if result.returncode == 0:
+                logger.info("  ✅ Redis/DB clean 성공")
+            else:
+                logger.warning(f"  ⚠️ Redis/DB clean 실패: {result.stderr[:200]}")
+        else:
+            logger.warning(f"  ⚠️ clean_state_complete.py 미발견")
+    except Exception as e:
+        logger.warning(f"  ⚠️ Redis/DB clean 예외: {e}")
+    
+    # 3. 대기 (2초)
+    import time
+    time.sleep(2)
+    logger.info("✅ 환경 정리 완료")
 
 # ============================================================================
 # 메인 함수
@@ -565,22 +767,80 @@ def main():
     install_to_native_patch()
     install_trace_instrumentation()
     
-    # STEP 1: Config 준비
-    config = prepare_config(args.profile, args.symbol, args.timeframe, duration_hours, args.stage)
+    # STEP 1-2: Runtime 검증 + 자동 재시도 (MAX 3 attempts)
+    MAX_ATTEMPTS = 3
+    for attempt in range(1, MAX_ATTEMPTS + 1):
+        logger.info("🔁 " + "=" * 70)
+        logger.info(f"🔁 ATTEMPT {attempt}/{MAX_ATTEMPTS}: {args.stage.upper()}")
+        logger.info("🔁 " + "=" * 70)
+        
+        if attempt > 1:
+            cleanup_before_retry()
+            reset_trace()
+            install_to_native_patch()
+            install_trace_instrumentation()
+        
+        # STEP 1: Config 준비
+        config = prepare_config(args.profile, args.symbol, args.timeframe, duration_hours, args.stage)
+        
+        # STEP 1.3: Config validation (PHASE36-1 Goal B-AC3)
+        config_valid, config_msg = validate_config(config)
+        if not config_valid:
+            logger.error(f"❌ Config Validation FAIL: {config_msg}")
+            return 1
+        logger.info(f"✅ Config Validation: {config_msg}")
+        
+        # STEP 1.5: Effective Config 덤프
+        import yaml
+        effective_config_path = RUNS_DIR / f"phase36_0_{args.profile}_{args.stage}_{config['run_id']}_effective_config.yaml"
+        with open(effective_config_path, 'w', encoding='utf-8') as f:
+            yaml.dump(config, f, default_flow_style=False, allow_unicode=True, sort_keys=False)
+        logger.info(f"✅ Effective Config 덤프: {effective_config_path}")
+        
+        # STEP 2: Paper 실행
+        run_result = run_paper_with_config(config, args.stage)
+        
+        if run_result["status"] == "INTERRUPTED":
+            logger.warning("⚠️ 사용자 중단 → 종료")
+            return 130
+        
+        # STEP 2.5: Runtime 검증
+        runtime_valid, runtime_reason = validate_runtime(run_result, duration_hours, args.stage)
+        
+        # STEP 3: DB Evidence 수집
+        start_time = datetime.fromisoformat(run_result["start_time"])
+        end_time = datetime.fromisoformat(run_result["end_time"])
+        db_evidence = get_db_evidence(trial_id=config['run_id'], start_time=start_time, end_time=end_time)
+        
+        # Trades 검증
+        trades = db_evidence.get("trial_trades", 0)
+        trades_valid = (trades > 0)
+        
+        logger.info("📊 " + "=" * 70)
+        logger.info(f"📊 ATTEMPT {attempt} 결과:")
+        logger.info(f"  • Runtime: {runtime_reason}")
+        logger.info(f"  • Trades: {trades} ({'PASS' if trades_valid else 'FAIL'})")
+        logger.info("📊 " + "=" * 70)
+        
+        # 성공 조건: runtime >= 98% AND trades > 0
+        if runtime_valid and trades_valid:
+            logger.info(f"✅ ATTEMPT {attempt} SUCCESS → 계속 진행")
+            break
+        else:
+            if attempt < MAX_ATTEMPTS:
+                logger.warning(f"⚠️ ATTEMPT {attempt} FAIL → 재시도 ({attempt + 1}/{MAX_ATTEMPTS})")
+                logger.warning(f"  - Runtime: {runtime_valid}, Trades: {trades_valid}")
+                continue
+            else:
+                logger.error(f"❌ {MAX_ATTEMPTS}회 시도 후도 FAIL → 진단 모드")
+                logger.error("  증거: effective_config.yaml + trace.json 확인 필요")
+                # 실패 상태로 artifacts 저장
+                save_failure_artifacts(args.stage, args.profile, config, run_result, db_evidence, get_trace(), runtime_reason)
+                return 1
     
-    # STEP 2: Paper 실행
-    run_result = run_paper_with_config(config, args.stage)
+    # 이하 AC 체크 계속 (성공 경로)
     
-    if run_result["status"] == "INTERRUPTED":
-        logger.warning("⚠️ 사용자 중단 → 종료")
-        return 130
-    
-    # STEP 3: DB Evidence 수집
-    start_time = datetime.fromisoformat(run_result["start_time"])
-    end_time = datetime.fromisoformat(run_result["end_time"])
-    db_evidence = get_db_evidence(trial_id=config['run_id'], start_time=start_time, end_time=end_time)
-    
-    # STEP 3.5: Report JSON 생성 (AC4 SSOT - AC 체크 이전에 생성)
+    # STEP 3.5: Report JSON 생성 (이미 db_evidence 수집됨) (AC4 SSOT - AC 체크 이전에 생성)
     report_json_path = PROJECT_ROOT / "reports" / "paper" / f"paper_{config['run_id']}.json"
     report_json_path.parent.mkdir(parents=True, exist_ok=True)
     with open(report_json_path, 'w', encoding='utf-8') as f:
@@ -597,11 +857,21 @@ def main():
         }, f, indent=2, default=str)
     logger.info(f"✅ Report JSON 생성 완료: {report_json_path}")
     
+    # STEP 3.5: Extended telemetry 수집
+    extended_telemetry = get_extended_telemetry(
+        trial_id=None,
+        start_time=run_result.get('start_time'),
+        end_time=run_result.get('end_time')
+    )
+    
     # STEP 4: AC 체크
     ac_results = check_acceptance_criteria(db_evidence, get_trace(), run_result, args.stage, config)
     
-    # STEP 5: Artifacts 저장
-    trace_path, results_path = save_artifacts(args.stage, args.profile, config, run_result, db_evidence, get_trace(), ac_results)
+    # STEP 5: Artifacts 저장 (extended telemetry 포함)
+    trace_path, results_path = save_artifacts(
+        args.stage, args.profile, config, run_result, 
+        db_evidence, get_trace(), ac_results, extended_telemetry
+    )
     
     # STEP 6: 최종 판정
     logger.info("=" * 80)

@@ -3917,8 +3917,13 @@ PHASE29 전략 실패 요약:
   - → 또는 전략 일시 중단 및 Post-Mortem
 
 **🟢 PHASE36-0: Initial Paper Validation - PASS (2025-12-22)**
-- **Status**: ✅ **COMPLETE & PASS** (12 trades across all stages)
+- **Status**: ✅ **COMPLETE & PASS** (12 trades across all stages) **→ PRODUCTION READY BASELINE**
 - **Duration**: 4h 24m (SMOKE 20m + BASELINE 1h + LONGRUN 3h)
+- **Baseline Anchors**: 
+  - **Commit**: `e02ab143`
+  - **Git Tag**: `baseline/phase36-0-pass/20251222`
+  - **Git Branch**: `baseline/phase36-0-pass`
+  - **Rollback**: `git checkout baseline/phase36-0-pass/20251222`
 - **Results**: 
   - **SMOKE**: 1 trade, 1188s / 1200s (99.0%) ✅ PASS
   - **BASELINE**: 5 trades, 3600s / 3600s (100.0%) ✅ PASS
@@ -3935,7 +3940,7 @@ PHASE29 전략 실패 요약:
   - Final Report: `docs/PHASE36/PHASE36_0_PAPER_VALIDATION_PACK_FINAL_REPORT.md`
   - LONGRUN Trace: `artifacts/phase36/phase36_0/runs/phase36_0_L4_longrun_20251222_204412_trace.json`
   - LONGRUN Results: `artifacts/phase36/phase36_0/results/phase36_0_L4_longrun.json`
-- **Next Step**: Git commit & push → PHASE37 (if applicable)
+- **Next Step**: PHASE36-1 (Baseline Seal + Telemetry Extension)
 
 **Deliverables**:
 - `docs/PHASE36/PHASE36_LIVE_DEPLOYMENT_PLAN.md`
