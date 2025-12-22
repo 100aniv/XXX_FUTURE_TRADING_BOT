@@ -1,0 +1,137 @@
+# ========================================
+# PHASE36-0: L4_SMOKE Profile
+# ========================================
+# 목적: Smoke 20m에서 Trades>=1 달성
+# 전략: scalping (고빈도) + 신호 게이트 최소화
+# 리스크: 안전 유지 (소액/1포지션/낮은 손실컷)
+# ========================================
+
+# Smoke 전용 설정 (base.yml override)
+mode: paper
+
+capital:
+  initial: 50000
+
+symbols:
+  - BTCUSDT
+
+# ⭐ Smoke 전용: 5m timeframe (PROJECT_VISION_TOBE 권장)
+timeframes:
+  - 5m
+
+# ⭐ PHASE36-0: 단일 전략 모드 (scalping)
+strategy:
+  use_ensemble: false
+  selector: scalping
+
+# ⭐ Smoke 전용: scalping만 활성화 (가장 고빈도)
+strategy:
+  use_ensemble: false
+  selector: scalping
+
+strategies:
+  scalping:
+    enabled: true
+  
+  # 다른 모든 전략 비활성화
+  swing_bb:
+    enabled: false
+  daytrade:
+    enabled: false
+  swing:
+    enabled: false
+  trend:
+    enabled: false
+  reversion:
+    enabled: false
+  breakout:
+    enabled: false
+  scalping_v3:
+    enabled: false
+  volatility_breakout_v2:
+    enabled: false
+  mean_reversion_v2:
+    enabled: false
+  trend_follow_v2:
+    enabled: false
+  volume_based_v2:
+    enabled: false
+  btc5m_baseline_v1:
+    enabled: false
+  btc5m_baseline_v2:
+    enabled: false
+  btc5m_baseline_v4:
+    enabled: false
+  btc15m_core_v1:
+    enabled: false
+  btc15m_core_v2:
+    enabled: false
+  phase35_ensemble_v1:
+    enabled: false
+    # 신호 게이트 완화
+    min_confidence: 0.1      # 낮춤 (base: 0.25)
+    cooldown_candles: 0      # 쿨다운 제거
+    rr: 1.3
+    atr_mult_sl: 1.2
+    risk_per_trade: 0.002    # 0.2% (안전)
+    max_hold_minutes: 30
+    
+    # ⭐ 패턴 A-F 모두 활성화 (신호 최대화)
+    patterns:
+      A_enabled: true  # EMA+RSI
+      B_enabled: true  # EMA+Volume
+      C_enabled: true  # RSI alone
+      D_enabled: true  # Volume alone
+      E_enabled: true  # RSI+Volume
+      F_enabled: true  # All patterns
+    
+    # RSI 임계값 완화
+    rsi_oversold: 35         # 낮춤 (base: 30)
+    rsi_overbought: 65       # 높임 (base: 70)
+    
+    # 볼륨 임계값 완화
+    volume_spike_mult: 1.3   # 낮춤 (base: 1.5)
+
+# 다른 전략 비활성화
+daytrade:
+  enabled: false
+swing:
+  enabled: false
+trend:
+  enabled: false
+breakout:
+  enabled: false
+swing_bb:
+  enabled: false
+reversion:
+  enabled: false
+
+# 리스크 관리 (안전)
+risk:
+  max_positions: 1                    # 1개만 (Smoke 테스트용)
+  max_trades_per_day: 10              # 충분한 여유
+  extreme_loss_cutoff_pct: -200.0    # 킬스위치 안전
+  max_drawdown_pct: -50.0            # DD 경고 안전
+  daily_loss_limit_pct: -30.0        # 일일 손실 안전
+
+# Guard 게이트 완화 (Smoke 전용)
+guards:
+  slippage:
+    enabled: false  # Smoke에서는 스킵
+  flux:
+    enabled: false
+  price_sanity:
+    enabled: false
+
+# 포트폴리오 예산 (Smoke 전용)
+portfolio_budget:
+  total_capital_pct: 100
+  strategy_allocation:
+    scalping: 100  # scalping에 전액 할당
+
+# DB 강제 활성화
+database:
+  enabled: true
+
+# Duration은 runner에서 설정 (20m)
+duration_mode: realtime

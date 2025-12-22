@@ -274,8 +274,33 @@ def prepare_config(profile: str, symbol: str, timeframe: str, duration_hours: fl
     # feed 설정
     config.setdefault('feed', {})['base_timeframe'] = timeframe
     
+    # PHASE36-0: diag_enabled 강제 ON (관측 가능 상태)
+    config.setdefault('diag', {})['enabled'] = True
+    config['diag']['signal_count'] = True
+    config['diag']['guard_block_reasons'] = True
+    
+    # PHASE36-0: 단일 전략 모드 강제 (scalping만 활성화)
+    config.setdefault('strategy', {})['use_ensemble'] = False
+    config['strategy']['selector'] = 'scalping'
+    
+    # 다른 전략들 명시적 비활성화 (중요!)
+    all_strategies = [
+        'swing_bb', 'daytrade', 'swing', 'trend', 'reversion', 'breakout',
+        'scalping_v3', 'volatility_breakout_v2', 'mean_reversion_v2',
+        'trend_follow_v2', 'volume_based_v2', 'btc5m_baseline_v1',
+        'btc5m_baseline_v2', 'btc5m_baseline_v4', 'btc15m_core_v1',
+        'btc15m_core_v2', 'phase35_ensemble_v1'
+    ]
+    for strat_name in all_strategies:
+        config.setdefault('strategies', {}).setdefault(strat_name, {})['enabled'] = False
+    
+    # scalping만 명시적 활성화
+    config['strategies'].setdefault('scalping', {})['enabled'] = True
+    config['strategies']['scalping']['diag_enabled'] = True
+    
     logger.info(f"✅ Config 준비 완료: profile={profile}, symbol={symbol}, timeframe={timeframe}, duration={duration_hours}h")
     logger.info(f"🆔 Run ID: {run_id}")
+    logger.info("🔬 [PHASE36-0] diag_enabled=True 강제 주입 (관측 가능 상태)")
     
     return config
 
