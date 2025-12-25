@@ -3942,6 +3942,32 @@ PHASE29 전략 실패 요약:
   - LONGRUN Results: `artifacts/phase36/phase36_0/results/phase36_0_L4_longrun.json`
 - **Next Step**: PHASE36-1 (Baseline Seal + Telemetry Extension)
 
+**🟢 PHASE36-1 S2: Signal Telemetry Validation - PASS (2025-12-24)**
+- **Status**: ✅ **COMPLETE & PASS** (All 7 Acceptance Criteria)
+- **Duration**: 20 minutes SMOKE test
+- **Results**:
+  - Trades: 10 (LONG: 5, SHORT: 5)
+  - DB Persistence: 100% (10/10)
+  - Process Exit: Clean (code 0)
+  - Telemetry: 27 signals generated → 10 executed → 10 traded
+  - Block Reasons: 17 signals blocked (Budget Cap: 8, Risk: 5, Cooldown: 4)
+- **Acceptance Criteria**: ALL PASS (7/7)
+  - AC1: BlockReason Enum (14 reasons) ✅
+  - AC2: TelemetryValidator implementation ✅
+  - AC3: signal_telemetry pre-collection ✅
+  - AC4: Engine integration (4 block points) ✅
+  - AC5: Compile test ✅
+  - AC6: Invariant logic validation ✅
+  - AC7: SMOKE evidence (20min run) ✅
+- **Evidence**:
+  - SMOKE Report: `docs/PHASE36/PHASE36_1_STEP2_SMOKE_20MIN_REPORT.md`
+  - Final Report: `docs/PHASE36/PHASE36_1_STEP2_FINAL_REPORT.md`
+  - Handoff Report: `docs/PHASE36/PHASE36_1_STEP2_HANDOFF_REPORT.md`
+  - Results JSON: `artifacts/phase36/phase36_0/results/phase36_0_L4_smoke.json`
+  - Trade Report: `reports/paper/paper_20251224_160722_duds.json`
+- **Watchdog**: ✅ Existing SSOT found (`scripts/utils/run_watchdog.py`)
+- **Next Step**: PHASE36-1 S3 (TBD - Planning)
+
 **Deliverables**:
 - `docs/PHASE36/PHASE36_LIVE_DEPLOYMENT_PLAN.md`
 - `docs/PHASE36/PHASE36_LIVE_PERFORMANCE_REPORT.md` (주간/월간)

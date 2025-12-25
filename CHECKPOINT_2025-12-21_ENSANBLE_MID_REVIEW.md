@@ -19,9 +19,10 @@
 - ✅ PHASE28: Strategy Performance Baseline
 - ✅ PHASE29-35: Strategy Improvement & Ensemble Tuning
 - ✅ **PHASE36-0: Paper Trading Validation Pack** (12 trades, 100% DB persist, 4h 24m)
+- ✅ **PHASE36-1 S2: Signal Telemetry Validation** (COMPLETE & PASS, 2025-12-24)
 
 ## Next PHASE
-- 🔄 **PHASE36-1**: Baseline Seal + Telemetry Extension (IN PROGRESS)
+- 🔄 **PHASE36-1 S3**: (Planning - Next Step)
 - 🔜 PHASE36-2+: Live Trading Deployment (if applicable)
 - 🔜 PHASE37+: Future Roadmap (Multi-Asset, Advanced ML, etc.)
 
