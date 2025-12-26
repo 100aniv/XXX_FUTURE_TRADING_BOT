@@ -141,11 +141,9 @@ class TestIndicatorsContract:
         pd.testing.assert_frame_equal(sample_df, original)
     
     def test_add_indicators_complete(self, sample_df):
-        """add_indicators: 전체 지표 추가 및 NaN 제거"""
-        result = add_indicators(sample_df)
-        
-        # NaN 제거됨
-        assert not result.isna().any().any()
+        """add_indicators: 전체 지표 추가 (PHASE27-7: drop_nan=False 기본값)"""
+        # drop_nan=False (기본값): NaN 유지
+        result = add_indicators(sample_df.copy(), drop_nan=False)
         
         # 필수 컬럼 존재
         expected_cols = [
@@ -160,8 +158,13 @@ class TestIndicatorsContract:
         for col in expected_cols:
             assert col in result.columns
         
-        # 행 개수 감소 (NaN 제거로 인해)
-        assert len(result) < len(sample_df)
+        # 행 개수 유지 (NaN 미제거)
+        assert len(result) == len(sample_df)
+        
+        # drop_nan=True 테스트 (immutability 보장을 위해 .copy() 사용)
+        result_clean = add_indicators(sample_df.copy(), drop_nan=True)
+        assert not result_clean.isna().any().any()
+        assert len(result_clean) < len(sample_df)
     
     def test_regime_output(self, sample_df):
         """regime: 출력 스키마 검증"""
