@@ -22,7 +22,10 @@
 - ✅ **PHASE36-1 S2: Signal Telemetry Validation** (COMPLETE & PASS, 2025-12-24)
 
 ## Next PHASE
-- 🔄 **PHASE36-1 S3**: (Planning - Next Step)
+- ✅ **PHASE36-1 S3**: SSOT Gate Workflow + LONGRUN (COMPLETE & PASS, 2025-12-26)
+  - Smoke Gate: 8 trades, 100% DB persist (20분)
+  - LONGRUN: 4 trades, 100% DB persist (180분)
+  - Evidence: `docs/PHASE36/PHASE36_1_S3_*_REPORT.md`
 - 🔜 PHASE36-2+: Live Trading Deployment (if applicable)
 - 🔜 PHASE37+: Future Roadmap (Multi-Asset, Advanced ML, etc.)
 
