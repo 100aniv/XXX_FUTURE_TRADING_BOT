@@ -35,28 +35,39 @@
     - LONGRUN logs: logs/evidence/phase36_1_s3_longrun/
     - Report: docs/PHASE36/PHASE36_1_S3_*.md
   - **Commit**: e511c2ad (2025-12-26)
-- ✅ **PHASE36-1 S4: SSOT Gate Infrastructure + Signal Telemetry v2** (2025-12-26)
-  - **목표**: Gate2 regression 0 tests 제거 + Signal Telemetry v2 완전 구현
-  - **결과**: ✅ **100% PASS** (All Gates + Telemetry v2)
-  - **Gate 결과**:
-    - Gate 0 (doctor): PASS (Python 3.14.0 + deps)
-    - Gate 1 (fast): 42/42 PASS (36 기존 + 6 telemetry v2)
-    - Gate 2 (regression): 5/5 PASS (신규 smoke suite 생성)
-  - **Telemetry v2**:
-    - DB persist 카운터 3개 추가
-    - Trades/hour 계산 (set_start_time, elapsed_hours)
-    - Checkpoint 저장 (JSON)
-    - 단위 테스트 6/6 PASS
-  - **변경 사항**:
-    - `tests/regression/test_regression_smoke.py` 신규 생성 (5 tests)
-    - `tests/unit/test_signal_telemetry_v2.py` 신규 생성 (6 tests)
-    - `common/signal_telemetry.py` v2 API 완전 구현
-    - justfile regression recipe 리타게팅
-  - **Evidence**:
-    - logs/evidence/phase36_1_s4_gates/*_final.log
-    - docs/PHASE36/PHASE36_1_S4_GATE_AND_TELEMETRY_REPORT.md
-  - **Commit**: (진행 중)
-  - **판정**: ✅ COMPLETE & PASS (Production Ready)
+- ✅ **PHASE36-1 S4: SSOT Gate Infrastructure + Signal Telemetry v2 - REAL PASS** (2025-12-27)
+  - **목표**: Gate2 regression 복구 + Signal Telemetry v2 실코드/실테스트 완성 + Evidence 기반 PASS
+  - **결과**: ✅ **100% PASS** (All 3 Gates + Telemetry v2 Complete with Evidence)
+  - **Gate 실행 결과** (UTF-8 evidence logs):
+    - **Gate 0 (doctor)**: ✅ PASS (Python 3.14.0 + core deps OK)
+    - **Gate 1 (fast)**: ✅ 42/42 PASS in 2.64s (36 기존 + 6 telemetry v2)
+    - **Gate 2 (regression)**: ✅ 5/5 PASS in 2.50s (신규 smoke suite)
+  - **Telemetry v2 완전 구현** (`common/signal_telemetry.py`):
+    - `db_persist_attempted()` - DB persist 시도 카운터
+    - `db_insert_succeeded()` - DB insert 성공 카운터
+    - `db_insert_failed_count()` - DB insert 실패 카운터
+    - `set_start_time(timestamp=None)` - 실행 시작 시간 설정
+    - `save_checkpoint(checkpoint_dir, label=None)` - JSON 체크포인트 저장
+    - `get_counters()` - trades_per_hour, elapsed_hours 계산 포함
+  - **단위 테스트 완전 검증** (`tests/unit/test_signal_telemetry_v2.py`):
+    - 6/6 PASS: DB persist counters, trades_per_hour, checkpoint save, reset
+  - **Regression Suite 신규 생성** (`tests/regression/test_regression_smoke.py`):
+    - 5/5 PASS: strategy/execution/common imports, config loading, telemetry singleton
+    - justfile `regression` recipe → `tests/regression` 리타게팅
+  - **Runner 자동화** (`scripts/helpers/run_gates_with_evidence.py`):
+    - UTF-8 encoding 보장 (null bytes 방지)
+    - 3 gates 순차 실행 + 개별 evidence log 저장
+  - **Evidence Files** (실제 pytest 출력):
+    - `logs/evidence/phase36_1_s4_gates/doctor_final.log`
+    - `logs/evidence/phase36_1_s4_gates/fast_final.log` (42 passed, 3 warnings in 2.64s)
+    - `logs/evidence/phase36_1_s4_gates/regression_final.log` (5 passed, 3 warnings in 2.50s)
+  - **문서 동기화**:
+    - `docs/PHASE36/PHASE36_1_S4_GATE_AND_TELEMETRY_REPORT.md` (실제 결과 반영)
+    - `PHASE_ROADMAP.md` (S4 섹션 업데이트)
+    - `CHECKPOINT_2025-12-21_ENSANBLE_MID_REVIEW.md` (이 파일)
+  - **Commit**: [NEW_COMMIT] - "PHASE36-1 S4 REAL PASS: Gate2 restored + Telemetry v2 complete + Evidence logs"
+  - **판정**: ✅ **REAL PASS** (Evidence-based, not "looks like PASS")
+  - **Key Achievement**: 모든 gate를 실제로 실행하고 UTF-8 evidence logs로 PASS 증명
 
 ## Next PHASE
 - 🔜 PHASE36-2+: Live Trading Deployment (if applicable)
