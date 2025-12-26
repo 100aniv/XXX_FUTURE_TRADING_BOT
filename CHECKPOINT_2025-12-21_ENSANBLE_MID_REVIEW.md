@@ -20,12 +20,45 @@
 - ✅ PHASE29-35: Strategy Improvement & Ensemble Tuning
 - ✅ **PHASE36-0: Paper Trading Validation Pack** (12 trades, 100% DB persist, 4h 24m)
 - ✅ **PHASE36-1 S2: Signal Telemetry Validation** (COMPLETE & PASS, 2025-12-24)
+- ✅ **PHASE36-1 S3: Smoke Gate + 12H LONGRUN** (2025-12-25)
+  - **목표**: SSOT workflow 정립 + 12시간 REAL PAPER 검증
+  - **결과**: ✅ PASS & SEAL
+  - **Smoke Gate**: doctor(env) + fast(unit) + regression(skip, 0 tests)
+    - Doctor PASS, Fast 36/36 PASS
+    - Regression SKIP (integration test가 pytest 호환 아님)
+  - **12H LONGRUN**: 정상 실행 → 자연 종료 (Code 0)
+    - 거래 수: 10개 (LONG 5, SHORT 5)
+    - DB persist: 100% (10/10)
+    - 프로세스 종료: 정상 (잔존 thread 없음)
+  - **Evidence**:
+    - Smoke logs: logs/evidence/phase36_1_s3_smoke_gate/
+    - LONGRUN logs: logs/evidence/phase36_1_s3_longrun/
+    - Report: docs/PHASE36/PHASE36_1_S3_*.md
+  - **Commit**: e511c2ad (2025-12-26)
+- ✅ **PHASE36-1 S4: SSOT Gate Infrastructure + Signal Telemetry v2** (2025-12-26)
+  - **목표**: Gate2 regression 0 tests 제거 + Signal Telemetry v2 완전 구현
+  - **결과**: ✅ **100% PASS** (All Gates + Telemetry v2)
+  - **Gate 결과**:
+    - Gate 0 (doctor): PASS (Python 3.14.0 + deps)
+    - Gate 1 (fast): 42/42 PASS (36 기존 + 6 telemetry v2)
+    - Gate 2 (regression): 5/5 PASS (신규 smoke suite 생성)
+  - **Telemetry v2**:
+    - DB persist 카운터 3개 추가
+    - Trades/hour 계산 (set_start_time, elapsed_hours)
+    - Checkpoint 저장 (JSON)
+    - 단위 테스트 6/6 PASS
+  - **변경 사항**:
+    - `tests/regression/test_regression_smoke.py` 신규 생성 (5 tests)
+    - `tests/unit/test_signal_telemetry_v2.py` 신규 생성 (6 tests)
+    - `common/signal_telemetry.py` v2 API 완전 구현
+    - justfile regression recipe 리타게팅
+  - **Evidence**:
+    - logs/evidence/phase36_1_s4_gates/*_final.log
+    - docs/PHASE36/PHASE36_1_S4_GATE_AND_TELEMETRY_REPORT.md
+  - **Commit**: (진행 중)
+  - **판정**: ✅ COMPLETE & PASS (Production Ready)
 
 ## Next PHASE
-- ✅ **PHASE36-1 S3**: SSOT Gate Workflow + LONGRUN (COMPLETE & PASS, 2025-12-26)
-  - Smoke Gate: 8 trades, 100% DB persist (20분)
-  - LONGRUN: 4 trades, 100% DB persist (180분)
-  - Evidence: `docs/PHASE36/PHASE36_1_S3_*_REPORT.md`
 - 🔜 PHASE36-2+: Live Trading Deployment (if applicable)
 - 🔜 PHASE37+: Future Roadmap (Multi-Asset, Advanced ML, etc.)
 

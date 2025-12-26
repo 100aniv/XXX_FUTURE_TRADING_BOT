@@ -19,10 +19,10 @@ fast:
     pytest tests/unit --tb=short -v --maxfail=3
     @echo "✅ Fast PASS"
 
-# Gate 2: Regression Tests (통합 테스트)
+# Gate 2: Regression Tests (회귀 테스트)
 regression:
-    @echo "🔄 SSOT Gate 2: Regression (integration tests)"
-    pytest tests/integration --tb=short -v --maxfail=5
+    @echo "🔄 SSOT Gate 2: Regression (regression smoke tests)"
+    pytest tests/regression --tb=short -v --maxfail=5
     @echo "✅ Regression PASS"
 
 # Gate 3: Full Tests (전체 테스트, 느림)

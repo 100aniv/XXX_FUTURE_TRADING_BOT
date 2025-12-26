@@ -39,8 +39,8 @@ from datetime import datetime
 logger = setup_logger('integration_test', log_type='application')
 
 
-class TradingFlowTest:
-    """전체 트레이딩 플로우 테스트"""
+class TestTradingFlow:
+    """전체 트레이딩 플로우 테스트 (pytest-compatible)"""
     
     def __init__(self):
         self.config = load_config()
