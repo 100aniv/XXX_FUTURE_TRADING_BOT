@@ -1037,16 +1037,26 @@ def run(feed, broker, clock, strategies: dict, ensemble_module, config: dict, sy
     telemetry.set_start_time()
     logger.info(f"📊 [TELEMETRY] start_time 초기화 완료")
     
-    # PHASE36-1 S5: Checkpoint 자동 저장 (로그/메트릭 추가)
+    # PHASE36-1 S5 + PHASE36-2 S6: Checkpoint 자동 저장 SSOT Fix
     from pathlib import Path as PathLib
     checkpoint_interval_minutes = config.get('signal_telemetry', {}).get('checkpoint_interval_minutes', 60)
     checkpoint_interval_seconds = checkpoint_interval_minutes * 60
     last_checkpoint_time = start_wall_time
     checkpoint_count = 0
-    checkpoint_dir = PathLib("logs/checkpoints/phase36_1_s5")
+    
+    # PHASE36-2 S6: Config 기반 checkpoint_dir (하드코딩 제거)
+    checkpoint_dir_str = config.get('signal_telemetry', {}).get('checkpoint_dir', None)
+    if checkpoint_dir_str:
+        checkpoint_dir = PathLib(checkpoint_dir_str)
+    else:
+        # Fallback: run_id 기반 경로
+        run_id = config.get('run_id', 'default_run')
+        checkpoint_dir = PathLib(f"logs/checkpoints/{run_id}")
+    
     if checkpoint_interval_minutes > 0:
         checkpoint_dir.mkdir(parents=True, exist_ok=True)
         logger.info(f"📊 [CHECKPOINT] 자동 저장 활성화: {checkpoint_interval_minutes}분 간격")
+        logger.info(f"📊 [CHECKPOINT] 저장 경로: {checkpoint_dir}")
     
     if duration_mode == 'wall_clock':
         logger.info(f"⏱️  [WALL-CLOCK] Duration 모드 시작: {duration_hours:.2f}시간 ({duration_seconds:.0f}초)")
@@ -1109,6 +1119,17 @@ def run(feed, broker, clock, strategies: dict, ensemble_module, config: dict, sy
                 logger.info(f"    - 설정: {duration_hours:.2f}시간 ({duration_seconds:.0f}초)")
                 logger.info(f"    - 경과: {elapsed_wall:.1f}초 ({elapsed_wall/60:.1f}분)")
                 logger.info(f"    - 초과: {elapsed_wall - duration_seconds:.1f}초)")
+                
+                # PHASE36-2 S6: 종료 시 Final Checkpoint 저장
+                if checkpoint_interval_minutes > 0:
+                    try:
+                        telemetry = get_signal_telemetry()
+                        label = f"checkpoint_final_{int(elapsed_wall/60)}min"
+                        checkpoint_path = telemetry.save_checkpoint(checkpoint_dir, label)
+                        logger.info(f"📊 [CHECKPOINT] Final flush 저장 완료: {checkpoint_path}")
+                    except Exception as e:
+                        logger.warning(f"⚠️  [CHECKPOINT] Final flush 실패: {e}")
+                
                 logger.info(f"✅ [WALL-CLOCK] 엔진 정상 종료 (Duration 만료)")
                 break
         

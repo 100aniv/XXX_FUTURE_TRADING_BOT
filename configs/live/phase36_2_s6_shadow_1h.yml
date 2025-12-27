@@ -29,9 +29,9 @@ live:
   duration_mode: wall_clock
   duration_hours: 1.0  # 1시간
 
-# ⭐ Checkpoint 설정 (60분 단위)
+# ⭐ Checkpoint 설정 (10분 간격 → 최소 6개 + final flush)
 signal_telemetry:
-  checkpoint_interval_minutes: 60
+  checkpoint_interval_minutes: 10
   checkpoint_dir: logs/checkpoints/phase36_2_s6_shadow_1h
 
 # ⭐ PHASE36-2 S6: 단일 전략 모드 (scalping)

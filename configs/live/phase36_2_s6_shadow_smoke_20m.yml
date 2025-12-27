@@ -29,10 +29,10 @@ live:
   duration_mode: wall_clock
   duration_hours: 0.3333  # 20분
 
-# ⭐ Checkpoint 설정 (20분 단위, 최소 1개)
+# ⭐ Checkpoint 설정 (5분 간격 → 최소 3~4개 생성)
 signal_telemetry:
-  checkpoint_interval_minutes: 20
-  checkpoint_dir: logs/checkpoints/phase36_2_s6_shadow_smoke
+  checkpoint_interval_minutes: 5
+  checkpoint_dir: logs/checkpoints/phase36_2_s6_shadow_smoke_20m
 
 # ⭐ PHASE36-2 S6: 단일 전략 모드 (scalping)
 strategy:
