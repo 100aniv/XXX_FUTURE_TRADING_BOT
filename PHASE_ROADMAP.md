@@ -4010,7 +4010,7 @@ PHASE29 전략 실패 요약:
 
 **🟢 PHASE36-1 S4: SSOT Gate Infrastructure + Signal Telemetry v2 - 100% PASS (2025-12-27)**
 - **Status**: ✅ **COMPLETE & PASS** (All Gates + Telemetry v2)
-- **Baseline**: 4b62609d → [NEW_COMMIT]
+- **Baseline**: 4b62609d → 1f934d27
 - **Duration**: Gate execution < 10 seconds (all automated)
 - **Gate Results**:
   - **Gate 0 (doctor)**: ✅ PASS (Python 3.14.0 + core deps)

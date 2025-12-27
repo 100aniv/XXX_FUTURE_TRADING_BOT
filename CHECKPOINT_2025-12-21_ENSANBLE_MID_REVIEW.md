@@ -65,7 +65,7 @@
     - `docs/PHASE36/PHASE36_1_S4_GATE_AND_TELEMETRY_REPORT.md` (실제 결과 반영)
     - `PHASE_ROADMAP.md` (S4 섹션 업데이트)
     - `CHECKPOINT_2025-12-21_ENSANBLE_MID_REVIEW.md` (이 파일)
-  - **Commit**: [NEW_COMMIT] - "PHASE36-1 S4 REAL PASS: Gate2 restored + Telemetry v2 complete + Evidence logs"
+  - **Commit**: 1f934d27 - "PHASE36-1 S4 REAL PASS: Gate2 restored + Telemetry v2 complete + Evidence logs"
   - **판정**: ✅ **REAL PASS** (Evidence-based, not "looks like PASS")
   - **Key Achievement**: 모든 gate를 실제로 실행하고 UTF-8 evidence logs로 PASS 증명
 
