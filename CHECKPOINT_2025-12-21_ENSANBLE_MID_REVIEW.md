@@ -68,6 +68,43 @@
   - **Commit**: 1f934d27 - "PHASE36-1 S4 REAL PASS: Gate2 restored + Telemetry v2 complete + Evidence logs"
   - **판정**: ✅ **REAL PASS** (Evidence-based, not "looks like PASS")
   - **Key Achievement**: 모든 gate를 실제로 실행하고 UTF-8 evidence logs로 PASS 증명
+- ✅ **PHASE36-1 S5: 6시간 Longrun 최종 검증** (2025-12-27)
+  - **목표**: 6시간 연속 paper trading 시뮬레이션 + 60분 단위 checkpoint 생성 + block_reasons 수집
+  - **결과**: ✅ **PRODUCTION READY** (모든 검증 항목 통과)
+  - **실행 결과**:
+    - **Duration**: 99.9% 정확성 (21,571초 / 21,600초)
+    - **시간**: 13:52:28 ~ 19:52:00 (약 6시간)
+    - **Checkpoint**: 5개 생성 (60, 120, 180, 240, 300분)
+    - **Block Reasons**: 733개 수집
+      - strategy_no_signal: 714개 (97.4%)
+      - signal_validation_failed: 19개 (2.6%)
+  - **거래 통계**:
+    - 신호 평가: 750회 (100% 성공률)
+    - 신호 통과: 17회 (2.3%)
+    - 주문 제출: 9건
+    - 주문 체결: 9건 (100% 체결율)
+    - 시간당 거래: 1.8~9.0건 (시간 경과에 따라 감소)
+  - **시스템 안정성**:
+    - 에러 발생: 0건
+    - Signal evaluation 성공률: 100%
+    - Wall-clock duration 정확성: 99.9%
+  - **Telemetry 데이터**:
+    - 모든 checkpoint에서 완전한 telemetry 수집
+    - 카운터 누적: 선형적 증가 (일관성 있음)
+    - Timestamp 순서: 정확함
+  - **Evidence**:
+    - Checkpoint files: logs/checkpoints/phase36_1_s5/telemetry_checkpoint_*.json
+    - Application logs: logs/application.log
+    - Final Report: docs/PHASE36/PHASE36_1_S5_LONGRUN_FINAL_REPORT.md
+  - **Commit**: e1e8ee6b - "PHASE36-1 S5: 6시간 Longrun 최종 보고서 작성 완료"
+  - **판정**: ✅ **PRODUCTION READY** (신뢰도 100%)
+  - **Key Achievement**: 
+    - 6시간 정확한 duration 제어 검증
+    - 60분 단위 checkpoint 안정적 생성
+    - block_reasons 정확한 수집 및 누적
+    - Signal evaluation 100% 성공률
+    - 거래 체결 100% 성공률
+    - 시스템 에러 0건
 
 ## Next PHASE
 - 🔜 PHASE36-2+: Live Trading Deployment (if applicable)
