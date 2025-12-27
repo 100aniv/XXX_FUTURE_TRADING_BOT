@@ -69,9 +69,15 @@ def _init_duration_state(config: dict, mode: str) -> dict:
             'start_wall_time': time.time()
         }
     
-    # Paper/Live 모드는 기존 로직 유지
-    duration_mode = config.get('paper', {}).get('duration_mode', 'market_time')
-    duration_hours = config.get('paper', {}).get('duration_hours', 1)
+    # Paper/Live 모드는 각 모드별 섹션에서 읽기
+    # PHASE36-2 S6: Live 모드는 'live' 섹션 우선, 없으면 top-level duration_hours
+    if mode == 'live':
+        duration_mode = config.get('live', {}).get('duration_mode', config.get('duration_mode', 'wall_clock'))
+        duration_hours = config.get('live', {}).get('duration_hours', config.get('duration_hours', 0))
+    else:  # paper
+        duration_mode = config.get('paper', {}).get('duration_mode', 'market_time')
+        duration_hours = config.get('paper', {}).get('duration_hours', 1)
+    
     duration_seconds = duration_hours * 3600
     
     # Duration 설정 검증
