@@ -11,6 +11,7 @@ from collections import deque
 from typing import Dict
 from uuid import uuid4
 from datetime import datetime
+from pathlib import Path
 import pandas as pd
 import redis
 import hashlib
@@ -995,6 +996,22 @@ def run(feed, broker, clock, strategies: dict, ensemble_module, config: dict, sy
     start_wall_time = duration_state['start_wall_time']
     last_logged_interval = -1  # Duration 로그 출력 추적
     
+    # PHASE36-1 S5: Telemetry start_time 초기화 (로그/메트릭 추가)
+    telemetry = get_signal_telemetry()
+    telemetry.set_start_time()
+    logger.info(f"📊 [TELEMETRY] start_time 초기화 완료")
+    
+    # PHASE36-1 S5: Checkpoint 자동 저장 (로그/메트릭 추가)
+    from pathlib import Path as PathLib
+    checkpoint_interval_minutes = config.get('signal_telemetry', {}).get('checkpoint_interval_minutes', 60)
+    checkpoint_interval_seconds = checkpoint_interval_minutes * 60
+    last_checkpoint_time = start_wall_time
+    checkpoint_count = 0
+    checkpoint_dir = PathLib("logs/checkpoints/phase36_1_s5")
+    if checkpoint_interval_minutes > 0:
+        checkpoint_dir.mkdir(parents=True, exist_ok=True)
+        logger.info(f"📊 [CHECKPOINT] 자동 저장 활성화: {checkpoint_interval_minutes}분 간격")
+    
     if duration_mode == 'wall_clock':
         logger.info(f"⏱️  [WALL-CLOCK] Duration 모드 시작: {duration_hours:.2f}시간 ({duration_seconds:.0f}초)")
         logger.info(f"⏱️  [WALL-CLOCK] 시작 시각: {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(start_wall_time))}")
@@ -1036,6 +1053,21 @@ def run(feed, broker, clock, strategies: dict, ensemble_module, config: dict, sy
             if elapsed_interval > last_logged_interval and elapsed_wall > 0:
                 logger.info(f"⏱️  [WALL-CLOCK] 경과: {elapsed_wall:.0f}s / {duration_seconds:.0f}s ({elapsed_wall/duration_seconds*100:.1f}%)")
                 last_logged_interval = elapsed_interval
+            
+            # PHASE36-1 S5: Checkpoint 자동 저장 (로그/메트릭 추가)
+            if checkpoint_interval_minutes > 0:
+                elapsed_since_checkpoint = time.time() - last_checkpoint_time
+                if elapsed_since_checkpoint >= checkpoint_interval_seconds:
+                    try:
+                        telemetry = get_signal_telemetry()
+                        label = f"checkpoint_{checkpoint_count:03d}_{int(elapsed_wall/60)}min"
+                        checkpoint_path = telemetry.save_checkpoint(checkpoint_dir, label)
+                        checkpoint_count += 1
+                        last_checkpoint_time = time.time()
+                        logger.info(f"📊 [CHECKPOINT] 저장 완료: {checkpoint_path}")
+                    except Exception as e:
+                        logger.warning(f"⚠️  [CHECKPOINT] 저장 실패: {e}")
+            
             if elapsed_wall >= duration_seconds:
                 logger.info(f"⏱️  [WALL-CLOCK] Duration 종료 조건 도달!")
                 logger.info(f"    - 설정: {duration_hours:.2f}시간 ({duration_seconds:.0f}초)")

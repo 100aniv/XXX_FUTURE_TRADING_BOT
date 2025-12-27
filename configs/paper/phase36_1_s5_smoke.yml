@@ -1,0 +1,50 @@
+# PHASE36-1 S5: Smoke Test (5분)
+# Longrun 실행 전 구성 검증용
+
+mode: paper
+env: paper
+run_id: "phase36_1_s5_smoke"
+
+symbol: BTCUSDT
+timeframe: 15m
+lookback: 200
+equity: 10000.0
+
+duration_hours: 0.083  # 5분 (5/60 = 0.083)
+
+strategy:
+  selector: scalping
+  use_ensemble: false
+
+strategies:
+  scalping:
+    enabled: true
+
+risk:
+  max_position_size_pct: 5.0
+  max_drawdown_pct: 10.0
+  max_loss_per_trade_pct: 2.0
+  max_trades_per_day: 100
+  max_consecutive_losses: 15
+  max_daily_loss_pct: 0.20
+  
+position:
+  size_pct: 3.0
+  min_size_usd: 10.0
+
+portfolio:
+  budget_cap_per_symbol_pct: 30.0
+
+signal_telemetry:
+  enabled: true
+  checkpoint_interval_minutes: 2
+
+paper:
+  duration_mode: wall_clock  # 2분마다 (스모크 테스트용)
+
+monitoring:
+  enabled: false
+
+logging:
+  level: INFO
+  file: logs/application.log

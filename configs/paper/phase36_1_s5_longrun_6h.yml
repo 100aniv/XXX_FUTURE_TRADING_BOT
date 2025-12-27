@@ -1,0 +1,76 @@
+# ========================================
+# PHASE36-1 S5: LONGRUN Funnel Analysis (6H)
+# 목표: 6시간 PAPER 실행 → Telemetry checkpoint (1h 간격) → Funnel TOP 확정
+# ========================================
+
+mode: paper
+env: paper
+run_id: "phase36_1_s5_longrun"
+
+# ========================================
+# 심볼 & Timeframe (S3/S4 baseline 유지)
+# ========================================
+symbol: BTCUSDT
+timeframe: 15m
+lookback: 200
+equity: 10000.0
+
+# ========================================
+# Duration (6시간 wall-clock)
+# ========================================
+duration_hours: 6.0
+
+# ========================================
+# Strategy (단일 전략: scalping)
+# ========================================
+strategy:
+  selector: scalping
+  use_ensemble: false
+
+strategies:
+  scalping:
+    enabled: true
+
+# ========================================
+# Risk & Position (S3/S4 baseline)
+# ========================================
+risk:
+  max_position_size_pct: 5.0
+  max_drawdown_pct: 10.0
+  max_loss_per_trade_pct: 2.0
+  max_trades_per_day: 100
+  max_consecutive_losses: 15
+  max_daily_loss_pct: 0.20
+  
+position:
+  size_pct: 3.0
+  min_size_usd: 10.0
+
+# ========================================
+# Portfolio (Budget Cap 적용)
+# ========================================
+portfolio:
+  budget_cap_per_symbol_pct: 30.0
+
+# ========================================
+# Signal Telemetry (v2 활성화)
+# ========================================
+signal_telemetry:
+  enabled: true
+  checkpoint_interval_minutes: 60
+
+paper:
+  duration_mode: wall_clock  # 1시간마다 checkpoint 저장
+
+# ========================================
+# Monitoring (최소화)
+# ========================================
+monitoring:
+  enabled: false
+
+# ========================================
+# Logging (표준)
+# ========================================
+logging:
+  level: INFO
+  file: logs/application.log
