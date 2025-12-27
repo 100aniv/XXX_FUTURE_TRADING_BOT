@@ -366,15 +366,45 @@ def _create_backtest_adapters(config: dict, symbols: list) -> dict:
 
 def _create_live_adapters(config: dict, clean_state: bool, symbols: list) -> dict:
     """
-    LIVE 모드 adapters 생성
+    LIVE 모드 adapters 생성 (PHASE36-2 S6: Shadow Mode)
     
     Args:
         config: 전체 설정
         clean_state: Redis/DB 상태 초기화 여부
         symbols: 심볼 리스트 (PHASE26-1)
+    
+    Design:
+        - Feed: 실시간 websocket (Binance)
+        - Broker: Paper 브로커 재사용 (주문 제출은 Shadow Mode에서 차단)
+        - Clock: 실시간 시계
+        - Shadow Mode에서 주문 차단은 engine.py SSOT 지점에서 처리
     """
-    # TODO: LIVE 구현은 PHASE32에서
-    raise NotImplementedError("LIVE 모드는 PHASE32에서 구현 예정")
+    from execution.adapters import create_adapters
+    
+    # PHASE36-2 S6: Live는 Paper adapter 재사용 (websocket feed + paper broker)
+    # 실제 주문 제출은 Shadow Mode 플래그로 engine.py에서 차단
+    logger.info("🔧 [PHASE36-2 S6] Live Shadow Mode: Paper adapters 재사용 (주문 차단은 SSOT에서)")
+    
+    feed, broker, clock = create_adapters(
+        mode='paper',  # Paper adapter 재사용 (실시간 websocket)
+        symbols=symbols,
+        config=config,
+        logger=logger
+    )
+    
+    # Shadow Mode 경고
+    shadow_mode = config.get('execution', {}).get('shadow_mode', False)
+    if shadow_mode:
+        logger.warning("🔇 [SHADOW MODE] 활성화됨 - 주문 제출은 engine SSOT 지점에서 차단")
+    else:
+        logger.error("⚠️  [LIVE MODE] Shadow Mode 비활성화 - 실거래 주의!")
+    
+    # Clean state (if requested)
+    if clean_state and hasattr(broker, 'open_positions'):
+        broker.open_positions.clear()
+        logger.info("✅ Portfolio 상태 초기화")
+    
+    return {'feed': feed, 'broker': broker, 'clock': clock}
 
 
 def _convert_ensemble_decision_to_signal(ensemble_decision) -> dict:

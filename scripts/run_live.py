@@ -126,9 +126,18 @@ def main():
         logger.error(traceback.format_exc())
         return 1
     
-    # 2. Duration 설정 (CLI 우선)
+    # 2. Duration 정규화 (PHASE36-2 S6: live.duration_hours → duration_hours)
+    # 우선순위: CLI > live.duration_hours > duration_hours
     if args.duration_hours is not None:
         config['duration_hours'] = args.duration_hours
+        logger.info(f"⏱️  Duration 설정 (CLI 우선): {args.duration_hours}h")
+    elif 'live' in config and 'duration_hours' in config['live']:
+        config['duration_hours'] = config['live']['duration_hours']
+        logger.info(f"⏱️  Duration 설정 (live.duration_hours): {config['duration_hours']}h")
+    elif 'duration_hours' not in config:
+        logger.warning("⚠️  Duration 설정 없음 - 무제한 실행 모드")
+    else:
+        logger.info(f"⏱️  Duration 설정 (기본): {config.get('duration_hours')}h")
     
     # 3. Engine 호출
     from execution.engine import run_v2
