@@ -1,0 +1,113 @@
+# ========================================
+# PHASE36-2 S6: Live Shadow Smoke (20m)
+# ========================================
+# 목적: Live 연결/안정성/텔레메트리 검증 (주문 0)
+# 전략: scalping (고빈도) + Shadow Mode
+# Duration: 20분 (wall-clock)
+# ========================================
+
+mode: live
+env: live
+
+capital:
+  initial: 50000
+
+symbols:
+  - BTCUSDT
+
+# ⭐ Shadow 전용: 15m timeframe (안정성)
+timeframe: 15m
+timeframes:
+  - 15m
+
+# ⭐ PHASE36-2 S6: Shadow Mode (주문 제출 차단)
+execution:
+  shadow_mode: true
+
+# ⭐ Live 전용: Duration 설정
+live:
+  duration_mode: wall_clock
+  duration_hours: 0.3333  # 20분
+
+# ⭐ Checkpoint 설정 (20분 단위, 최소 1개)
+signal_telemetry:
+  checkpoint_interval_minutes: 20
+  checkpoint_dir: logs/checkpoints/phase36_2_s6_shadow_smoke
+
+# ⭐ PHASE36-2 S6: 단일 전략 모드 (scalping)
+strategy:
+  use_ensemble: false
+  selector: scalping
+
+strategies:
+  scalping:
+    enabled: true
+  
+  # 다른 모든 전략 비활성화
+  swing_bb:
+    enabled: false
+  daytrade:
+    enabled: false
+  swing:
+    enabled: false
+  trend:
+    enabled: false
+  reversion:
+    enabled: false
+  breakout:
+    enabled: false
+  scalping_v3:
+    enabled: false
+  volatility_breakout_v2:
+    enabled: false
+  mean_reversion_v2:
+    enabled: false
+  trend_follow_v2:
+    enabled: false
+  volume_based_v2:
+    enabled: false
+  btc5m_baseline_v1:
+    enabled: false
+  btc5m_baseline_v2:
+    enabled: false
+  btc5m_baseline_v4:
+    enabled: false
+  btc15m_core_v1:
+    enabled: false
+  btc15m_core_v2:
+    enabled: false
+  phase35_ensemble_v1:
+    enabled: false
+
+# 리스크 관리 (안전)
+risk:
+  max_positions: 1
+  max_trades_per_day: 10
+  extreme_loss_cutoff_pct: -200.0
+  max_drawdown_pct: -50.0
+  daily_loss_limit_pct: -30.0
+
+# Guard 게이트 완화 (Shadow 전용)
+guards:
+  slippage:
+    enabled: false
+  flux:
+    enabled: false
+  price_sanity:
+    enabled: false
+
+# 포트폴리오 예산
+portfolio_budget:
+  total_capital_pct: 100
+  strategy_allocation:
+    scalping: 100
+
+# DB 강제 활성화
+database:
+  enabled: true
+
+# Feed 설정
+feed:
+  source: binance
+  mode: websocket
+  base_timeframe: 15m

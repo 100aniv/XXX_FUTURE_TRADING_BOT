@@ -2457,6 +2457,14 @@ def run(feed, broker, clock, strategies: dict, ensemble_module, config: dict, sy
                 position_value = position.get("position_value", position["qty"] * position["entry"])
                 portfolio.remove_position(symbol=position["symbol"], position_id=pos_id)
         
+        # PHASE36-2 S6: Shadow Mode 체크 (Live 모드 전용)
+        shadow_mode = config.get('execution', {}).get('shadow_mode', False)
+        if shadow_mode:
+            logger.info(f"🔇 [SHADOW MODE] 주문 제출 차단: symbol={candle_symbol} side={decision.get('side')} qty={qty:.4f}")
+            telemetry = get_signal_telemetry()
+            telemetry.signal_blocked(reason="live_shadow_mode_order_blocked")
+            continue
+        
         # ⭐ CRITICAL FIX: Broker 실행 (Paper/Live/Sim 모두)
         fill = broker.execute(decision, qty)
         
