@@ -10,8 +10,6 @@ timeframe: 15m
 lookback: 200
 equity: 10000.0
 
-duration_hours: 0.083  # 5분 (5/60 = 0.083)
-
 strategy:
   selector: scalping
   use_ensemble: false
@@ -40,7 +38,8 @@ signal_telemetry:
   checkpoint_interval_minutes: 2
 
 paper:
-  duration_mode: wall_clock  # 2분마다 (스모크 테스트용)
+  duration_mode: wall_clock
+  duration_hours: 0.083  # 5분 (5/60 = 0.083)
 
 monitoring:
   enabled: false

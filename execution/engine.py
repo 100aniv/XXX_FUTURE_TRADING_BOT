@@ -1991,6 +1991,22 @@ def run(feed, broker, clock, strategies: dict, ensemble_module, config: dict, sy
                             regime=regime
                         )
 
+                    # PHASE36-1 S5: Strategy rejection reason 기록
+                    if not signal or not signal.get("side"):
+                        # Strategy가 신호를 생성하지 않음
+                        telemetry = get_signal_telemetry()
+                        rejection_reason = "strategy_no_signal"
+                        if signal and isinstance(signal, dict):
+                            # Strategy가 reason을 제공한 경우
+                            reason_value = signal.get("reason")
+                            if reason_value:
+                                if isinstance(reason_value, list):
+                                    rejection_reason = f"strategy_{reason_value[0]}" if reason_value else "strategy_no_signal"
+                                else:
+                                    rejection_reason = f"strategy_{reason_value}"
+                        telemetry.signal_blocked(reason=rejection_reason)
+                        continue  # 다음 전략으로
+                    
                     if signal and signal.get("side"):
                         signal["strategy_id"] = strategy_id
                         signal["df"] = df_tf  # ⭐ PHASE22-3: Ensemble에 df 전달
@@ -2047,6 +2063,9 @@ def run(feed, broker, clock, strategies: dict, ensemble_module, config: dict, sy
                                     logger.debug(f"신호 저장 실패: {e}")
                             signals.append(signal)
                         else:
+                            # PHASE36-1 S5: Signal validation 실패 시 block reason 기록
+                            telemetry = get_signal_telemetry()
+                            telemetry.signal_blocked(reason="signal_validation_failed")
                             logger.debug(
                                 f"⏸ [{strategy_id}] 신호 검증 실패 (MTF/쿨다운/거래량)"
                             )

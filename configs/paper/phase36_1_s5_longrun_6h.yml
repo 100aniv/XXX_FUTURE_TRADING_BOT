@@ -17,8 +17,8 @@ equity: 10000.0
 
 # ========================================
 # Duration (6시간 wall-clock)
+# ⚠️ duration_hours는 paper 섹션에 위치해야 함!
 # ========================================
-duration_hours: 6.0
 
 # ========================================
 # Strategy (단일 전략: scalping)
@@ -60,7 +60,8 @@ signal_telemetry:
   checkpoint_interval_minutes: 60
 
 paper:
-  duration_mode: wall_clock  # 1시간마다 checkpoint 저장
+  duration_mode: wall_clock
+  duration_hours: 6.0  # 6시간 wall-clock (실제 6시간 실행)
 
 # ========================================
 # Monitoring (최소화)
