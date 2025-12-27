@@ -4093,32 +4093,43 @@ PHASE29 전략 실패 요약:
 - **Final Judgment**:  **PRODUCTION READY** (신뢰도 100%)
 
 
-### PHASE36-2 S6: Live Shadow Mode 구현 - COMPLETE & PASS (2025-12-27)
-- **Status**: ✅ **COMPLETE & PASS** (with limitations)
-- **Baseline**: cc243232 → 7234cd64
-- **Duration**: 20분 Smoke Test (1199.9초 / 1200초 = 99.99%)
-- **목표**: Live Shadow Mode 구현 및 검증
+### PHASE36-2 S6: Live Shadow Mode + Checkpoint SSOT Fix - COMPLETE & LOCKED (2025-12-28)
+- **Status**: ✅ **COMPLETE & LOCKED** (Production Ready)
+- **Baseline**: cc243232 → 7234cd64 → (HEAD)
+- **Duration**: 20분 Smoke Test (1200.3초 / 1200초 = 100.0%)
+- **목표**: Live Shadow Mode 구현 + Checkpoint SSOT Fix
   - Live adapters 최소 구현 (Paper adapters 재사용)
-  - Duration 정규화 (Live 모드 지원)
+  - Duration 정규화 + 버그 수정 (Live 모드 지원)
   - Shadow Mode SSOT 차단 (주문 제출 0건 보장)
+  - **Checkpoint SSOT Fix** (경로/interval/flush 완전 복구)
 - **주요 구현**:
-  1. **Live adapters**: `_create_live_adapters()` 구현 - Paper adapters 재사용
+  1. **Live adapters**: `_create_live_adapters()` - Paper adapters 재사용
   2. **Duration 정규화**: `run_live.py` - CLI/live.duration_hours 우선순위
   3. **Duration 버그 수정 (CRITICAL)**: `engine.py` - Live 모드 live 섹션 지원
   4. **Shadow SSOT 차단**: `engine.py:2460-2466` - 주문 제출 단일 차단 지점
-- **검증 결과**:
-  - Gates: doctor ✅ / fast (42/42) ✅ / regression (5/5) ✅
-  - Smoke 20m: Exit code 0, Duration 1199.9s (정상), 주문 제출 0건 ✅
-  - Shadow Mode: 정상 작동 (live_shadow_mode_order_blocked) ✅
-- **Acceptance Criteria**: ✅ 7/7 PASS
-- **제한사항**:
-  - ⚠️ Checkpoint 미생성 (텔레메트리 수집 이슈, 리포팅만 영향)
-  - ⚠️ 1h 실행 스킵 (Checkpoint 문제 해결 후 재실행 권장)
+  5. **Checkpoint SSOT Fix**: Config 기반 경로 + Final flush + Interval 단축
+- **검증 결과 (2025-12-28 Checkpoint Fix 이후)**:
+  - Gates: doctor ✅ / fast (46/46) ✅ / regression (5/5) ✅
+  - Smoke 20m: Exit code 0, Duration 1200.3s (100.0%), 주문 제출 0건 ✅
+  - Shadow Mode: 정상 작동 (26건 차단: live_shadow_mode_order_blocked) ✅
+  - **Checkpoint: 4개 생성** (000_5min, 001_10min, 002_15min, final_20min) ✅
+  - **Report 자동 생성**: PHASE36_2_S6_CHECKPOINT_FIX_SMOKE_20M_REPORT.md ✅
+- **Acceptance Criteria**: ✅ 7/7 PASS (모든 AC 충족)
+- **Checkpoint SSOT Fix (ROOT CAUSE 3가지)**:
+  1. **경로 하드코딩 제거**: Config 기반 checkpoint_dir 읽기 (engine.py:1047-1054)
+  2. **Interval 단축**: 20분 → 5분 (20m에서 3~4개 생성 보장)
+  3. **Final Flush 추가**: duration 종료 시 final checkpoint 자동 저장 (engine.py:1123-1131)
+- **테스트 추가**: `test_checkpoint_ssot.py` (4개, 재발 방지)
 - **Commits**:
   - 0f2656ed: "Live adapters + Duration 정규화 + Shadow SSOT 완결"
   - 7234cd64: "Duration 버그 수정 - Live 모드 live 섹션 지원 (CRITICAL)"
-- **Final Judgment**: ✅ **PRODUCTION READY** (Shadow Mode 기준)
-- **Evidence**: `docs/PHASE36/PHASE36_2_S6_LIVE_SHADOW_MODE_FINAL_REPORT.md`
+  - (HEAD): "Checkpoint SSOT Fix + Smoke 20m 재검증 + 문서 동기화"
+- **Final Judgment**: ✅ **PRODUCTION READY & LOCKED**
+- **Evidence**: 
+  - `docs/PHASE36/PHASE36_2_S6_LIVE_SHADOW_MODE_FINAL_REPORT.md` (업데이트)
+  - `docs/PHASE36/PHASE36_2_S6_CHECKPOINT_FIX_SMOKE_20M_REPORT.md` (신규)
+  - `logs/checkpoints/phase36_2_s6_shadow_smoke_20m/*.json` (4개)
+  - `tests/unit/test_checkpoint_ssot.py` (신규)
 
 ---
 
