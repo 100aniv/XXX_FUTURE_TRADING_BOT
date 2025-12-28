@@ -105,9 +105,65 @@
     - Signal evaluation 100% 성공률
     - 거래 체결 100% 성공률
     - 시스템 에러 0건
+- ✅ **PHASE36-2 S6: Live Shadow Mode + Checkpoint SSOT Fix** (2025-12-28)
+  - **목표**: LIVE Shadow Mode 구현 + Checkpoint SSOT 완전 복구
+  - **결과**: ✅ **COMPLETE & LOCKED** (Production Ready)
+  - **주요 구현**:
+    - Live adapters 최소 구현 (Paper adapters 재사용)
+    - Duration 정규화 + 버그 수정 (Live 모드 지원)
+    - Shadow Mode SSOT 차단 (주문 제출 0건 보장)
+    - Checkpoint SSOT Fix (경로/interval/flush 완전 복구)
+  - **검증 결과** (Smoke 20m):
+    - Exit Code: 0, Duration: 1200.3s (100.0%)
+    - Shadow Mode: 26건 차단 (live_shadow_mode_order_blocked)
+    - Checkpoint: 4개 생성 (5min interval)
+    - Report 자동 생성: PHASE36_2_S6_CHECKPOINT_FIX_SMOKE_20M_REPORT.md
+  - **Evidence**:
+    - `docs/PHASE36/PHASE36_2_S6_LIVE_SHADOW_MODE_FINAL_REPORT.md`
+    - `logs/checkpoints/phase36_2_s6_shadow_smoke_20m/*.json` (4개)
+    - `tests/unit/test_checkpoint_ssot.py` (재발 방지 테스트)
+  - **Commit**: 7234cd64 + (HEAD)
+  - **판정**: ✅ **PRODUCTION READY & LOCKED**
+- ✅ **PHASE36-2 S7: 6H Shadow Longrun Test** (2025-12-28)
+  - **목표**: LIVE Shadow Mode 6시간 장시간 안정성 검증
+  - **결과**: ✅ **COMPLETE & PASS** (Production Ready)
+  - **실행 결과**:
+    - **Duration**: 21,600.7s (99.997% 정확도)
+    - **Exit Code**: 0 (정상 종료)
+    - **Shadow Mode**: 26개 신호 → 0건 주문 제출 (100% 차단)
+    - **Checkpoint**: 24개 생성 (15min interval) + 1개 final
+    - **WebSocket**: 6시간 무중단 (2,024개 캔들 수신)
+    - **에러**: 0건 (ERROR/CRITICAL 없음)
+  - **Log Analysis** (logs/application/2025-12-28.log):
+    - Total Lines: 14,353
+    - ERROR: 0, CRITICAL: 0
+    - Reconnect: 0, RateLimit 429: 0
+  - **Telemetry**:
+    - Signal Evaluated: 1,764
+    - Signal Passed: 26
+    - Order Submitted: 0 (Shadow Mode 차단)
+    - Block Reasons: strategy_no_signal (93.8%), signal_validation_failed (4.7%), live_shadow_mode_order_blocked (1.5%)
+  - **Monitoring**:
+    - 총 사이클: 66회 (실시간 모니터링)
+    - Checkpoint 확인: 24/24 정상
+    - 사용자 개입: 0회 (완전 자동)
+  - **Evidence**:
+    - Final Report: `docs/PHASE36/PHASE36_2_S7_SHADOW_LONGRUN_6H_REPORT.md`
+    - Checkpoint Report: `docs/PHASE36/PHASE36_2_S7_CHECKPOINT_REPORT.md`
+    - Evidence JSON: `logs/evidence/phase36_2_s7_6h_shadow_longrun_evidence.json`
+    - Checkpoint Files: `logs/checkpoints/phase36_2_s7_shadow_longrun_6h/*.json` (24개)
+    - Config: `configs/live/phase36_2_s7_shadow_longrun_6h.yml`
+  - **Acceptance Criteria**: ✅ 7/7 PASS (100%)
+  - **Commit**: 0b9924fd
+  - **판정**: ✅ **PRODUCTION READY**
+  - **Gaps & Limitations**:
+    - 거래 체결 미검증 (Shadow Mode로 주문 차단됨)
+    - 수수료/슬리피지 실제 발생 없음
+    - PnL/리스크 실전 검증 필요
+    - Backoff 로직 실전 미검증 (429 발생 없음)
 
 ## Next PHASE
-- 🔜 PHASE36-2+: Live Trading Deployment (if applicable)
+- 🔜 **PHASE36-2 S8: LIVE Mode Final Validation (Shadow OFF)** - 1~2시간, 1~5건 거래, 실제 주문 제출 테스트
 - 🔜 PHASE37+: Future Roadmap (Multi-Asset, Advanced ML, etc.)
 
 ## Rollback Instructions
