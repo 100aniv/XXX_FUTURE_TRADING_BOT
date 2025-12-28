@@ -372,7 +372,7 @@ def _create_backtest_adapters(config: dict, symbols: list) -> dict:
 
 def _create_live_adapters(config: dict, clean_state: bool, symbols: list) -> dict:
     """
-    LIVE 모드 adapters 생성 (PHASE36-2 S6: Shadow Mode)
+    LIVE 모드 adapters 생성 (PHASE36-2 S8-FIX: Real Live Order Path SSOT)
     
     Args:
         config: 전체 설정
@@ -381,29 +381,36 @@ def _create_live_adapters(config: dict, clean_state: bool, symbols: list) -> dic
     
     Design:
         - Feed: 실시간 websocket (Binance)
-        - Broker: Paper 브로커 재사용 (주문 제출은 Shadow Mode에서 차단)
+        - Broker: shadow_mode=true → PaperBroker (차단)
+                 shadow_mode=false → LiveBroker (실거래)
         - Clock: 실시간 시계
-        - Shadow Mode에서 주문 차단은 engine.py SSOT 지점에서 처리
+        - PHASE36-2 S8-FIX: shadow_mode 플래그에 따라 실제 주문 경로 분기
     """
     from execution.adapters import create_adapters
     
-    # PHASE36-2 S6: Live는 Paper adapter 재사용 (websocket feed + paper broker)
-    # 실제 주문 제출은 Shadow Mode 플래그로 engine.py에서 차단
-    logger.info("🔧 [PHASE36-2 S6] Live Shadow Mode: Paper adapters 재사용 (주문 차단은 SSOT에서)")
-    
-    feed, broker, clock = create_adapters(
-        mode='paper',  # Paper adapter 재사용 (실시간 websocket)
-        symbols=symbols,
-        config=config,
-        logger=logger
-    )
-    
-    # Shadow Mode 경고
+    # Shadow Mode 확인
     shadow_mode = config.get('execution', {}).get('shadow_mode', False)
+    
     if shadow_mode:
+        # PHASE36-2 S6/S7: Shadow Mode ON → Paper adapters (주문 차단)
+        logger.info("🔧 [PHASE36-2 S6/S7] Live Shadow Mode: Paper adapters 사용 (주문 차단)")
+        feed, broker, clock = create_adapters(
+            mode='paper',  # Paper adapter (실시간 websocket + 가상 주문)
+            symbols=symbols,
+            config=config,
+            logger=logger
+        )
         logger.warning("🔇 [SHADOW MODE] 활성화됨 - 주문 제출은 engine SSOT 지점에서 차단")
     else:
-        logger.error("⚠️  [LIVE MODE] Shadow Mode 비활성화 - 실거래 주의!")
+        # PHASE36-2 S8-FIX: Shadow Mode OFF → Live adapters (실거래)
+        logger.info("🔧 [PHASE36-2 S8-FIX] Live Real Order Mode: Live adapters 사용 (실거래)")
+        feed, broker, clock = create_adapters(
+            mode='live',  # Live adapter (실시간 websocket + Binance API)
+            symbols=symbols,
+            config=config,
+            logger=logger
+        )
+        logger.error("🔴 [LIVE MODE] Shadow Mode 비활성화 - 실제 Binance API 주문 활성화!")
     
     # Clean state (if requested)
     if clean_state and hasattr(broker, 'open_positions'):

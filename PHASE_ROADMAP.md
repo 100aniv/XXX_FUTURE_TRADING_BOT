@@ -4176,6 +4176,28 @@ PHASE29 전략 실패 요약:
 
 ---
 
+### PHASE36-2 S8-FIX: Real Live Order Path SSOT (2025-12-28)
+- **Status**: 🔄 **IN_PROGRESS** (LIVE Smoke 실행 중)
+- **Baseline**: edc9d4e2 (S8 이전 커밋)
+- **목표**: Shadow Mode OFF → 실제 Binance API 주문 경로 SSOT화
+  - 이전 S8 버그: shadow_mode=false도 PaperBroker 사용 (mode='paper' 하드코딩)
+  - 수정: shadow_mode=false → mode='live' adapter 생성 (LiveBroker)
+  - 검증: exchange_order_id 확보 + 거래소 조회로 증거 확인
+- **코드 변경**:
+  - `execution/engine.py:373-420` - `_create_live_adapters()` 수정
+  - `common/live_proof.py` - LiveProof 모듈 신규 추가 (exchange_order_id 검증)
+- **Gate 결과**: ✅ 3/3 PASS (doctor/fast 46/regression 5)
+- **LIVE Smoke**: 🔄 실행 중 (30분, 초소액 $10, max 3건)
+  - 시작: 2025-12-28 13:54:00
+  - 진행: 13.3% (약 4분)
+  - 신호 평가 중, 아직 주문 없음
+- **Evidence**:
+  - Evidence JSON: `logs/evidence/phase36_2_s8_fix_live_proof_evidence.json`
+  - Application Log: `logs/application/2025-12-28.log`
+  - Config: `configs/live/phase36_2_s8_fix_live_proof.yml`
+
+---
+
 ### PHASE36-2 S8: Live Final Validation (Shadow OFF) - CONDITIONAL PASS (2025-12-28)
 - **Status**: ✅ **CONDITIONAL PASS** (Production Ready)
 - **Baseline**: fd2a34ec (S7 완료 후)

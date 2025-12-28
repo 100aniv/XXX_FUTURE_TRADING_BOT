@@ -198,8 +198,24 @@
     - 수수료/슬리피지 명시적 측정 없음
     - Backoff 로직 미검증 (429 미발생)
     - 장시간 안정성 미검증 (3분 실행)
+- 🔄 **PHASE36-2 S8-FIX: Real Live Order Path SSOT** (2025-12-28)
+  - **목표**: Shadow Mode OFF → 실제 Binance API 주문 경로 SSOT화
+  - **이전 S8 버그**: shadow_mode=false도 PaperBroker 사용 (mode='paper' 하드코딩)
+  - **수정 내용**:
+    - `execution/engine.py:373-420` - `_create_live_adapters()` 수정
+    - `common/live_proof.py` - LiveProof 모듈 신규 추가
+  - **Gate 결과**: ✅ 3/3 PASS (doctor/fast 46/regression 5)
+  - **LIVE Smoke**: 🔄 실행 중 (30분, 초소액 $10, max 3건)
+    - 시작: 2025-12-28 13:54:00
+    - 진행: 13.3% (약 4분)
+    - 신호 평가 중, 아직 주문 없음
+  - **Evidence**:
+    - Evidence JSON: `logs/evidence/phase36_2_s8_fix_live_proof_evidence.json`
+    - Config: `configs/live/phase36_2_s8_fix_live_proof.yml`
+  - **상태**: IN_PROGRESS (LIVE Smoke 실행 중)
 
 ## Next PHASE
+- 🔜 **LIVE Smoke 완료 대기** (30분, exchange_order_id 검증)
 - 🔜 **1개월 Live Trading 운영** (Operational Track, 새 PHASE 진입 금지)
 - 🔜 PHASE37+: Future Roadmap (PHASE36 완료 후 검토)
 
