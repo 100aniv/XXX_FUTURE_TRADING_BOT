@@ -1,0 +1,136 @@
+# ========================================
+# PHASE36-2 S8: Live Final Validation (Shadow OFF)
+# ========================================
+# 목적: 실제 주문 제출 검증 (1~5건)
+# 전략: scalping (검증된 전략)
+# Duration: 1.5시간 (wall-clock)
+# Shadow Mode: FALSE (실주문 활성화)
+# Checkpoint: 30분 간격 (3개 + final 예상)
+# 안전장치: max_orders=5, 최소 포지션 사이즈
+# ========================================
+
+mode: live
+env: live
+
+capital:
+  initial: 50000
+
+symbols:
+  - BTCUSDT
+
+# ⭐ S8: 15m timeframe (안정성 + 신호 발생 가능성)
+timeframe: 15m
+timeframes:
+  - 15m
+
+# ⭐ PHASE36-2 S8: Shadow Mode OFF (실주문 활성화)
+execution:
+  shadow_mode: false  # ⚠️ 실제 주문 제출
+  max_orders_per_run: 5  # 안전장치: 최대 5건
+  
+# ⭐ Live Duration: 1.5시간 (충분한 신호 발생 기대)
+live:
+  duration_mode: wall_clock
+  duration_hours: 1.5
+
+# ⭐ Checkpoint 설정 (30분 간격 → 3개 + final)
+signal_telemetry:
+  checkpoint_interval_minutes: 30
+  checkpoint_dir: logs/checkpoints/phase36_2_s8_live_final_validation
+
+# ⭐ PHASE36-2 S8: 단일 전략 모드 (scalping)
+strategy:
+  use_ensemble: false
+  selector: scalping
+
+strategies:
+  scalping:
+    enabled: true
+  
+  # 다른 모든 전략 비활성화
+  swing_bb:
+    enabled: false
+  daytrade:
+    enabled: false
+  swing:
+    enabled: false
+  trend:
+    enabled: false
+  reversion:
+    enabled: false
+  breakout:
+    enabled: false
+  scalping_v3:
+    enabled: false
+  volatility_breakout_v2:
+    enabled: false
+  mean_reversion_v2:
+    enabled: false
+  trend_follow_v2:
+    enabled: false
+  volume_based_v2:
+    enabled: false
+  btc5m_baseline_v1:
+    enabled: false
+  btc5m_baseline_v2:
+    enabled: false
+  btc5m_baseline_v4:
+    enabled: false
+  btc15m_core_v1:
+    enabled: false
+  btc15m_core_v2:
+    enabled: false
+  phase35_ensemble_v1:
+    enabled: false
+
+# ⚠️ 리스크 관리 (운영급 안전장치)
+risk:
+  max_positions: 1  # 최대 1개 포지션
+  max_trades_per_day: 5  # 하루 최대 5건
+  extreme_loss_cutoff_pct: -10.0  # 10% 손실 시 중단
+  max_drawdown_pct: -5.0  # 5% 드로다운 시 중단
+  daily_loss_limit_pct: -5.0  # 일일 손실 5% 제한
+
+# ⚠️ Position Sizing (최소 크기)
+position_sizing:
+  method: fixed_notional
+  fixed_notional: 50  # $50 USDT (최소 리스크)
+  
+# Guard 게이트 활성화 (실주문 검증)
+guards:
+  slippage:
+    enabled: true
+    max_slippage_pct: 0.5  # 0.5% 슬리피지 허용
+  flux:
+    enabled: true
+  price_sanity:
+    enabled: true
+
+# 포트폴리오 예산 (최소)
+portfolio_budget:
+  total_capital_pct: 1.0  # 전체 자본의 1%만 사용
+  strategy_allocation:
+    scalping: 100
+
+# DB 강제 활성화
+database:
+  enabled: true
+
+# Feed 설정
+feed:
+  source: binance
+  mode: websocket
+  base_timeframe: 15m
+
+# ⚠️ 주문 설정 (실주문 검증)
+order:
+  type: MARKET  # 빠른 체결
+  time_in_force: GTC
+  
+# 수수료/슬리피지 로깅 활성화
+logging:
+  level: INFO
+  log_orders: true
+  log_fills: true
+  log_fees: true
+  log_slippage: true

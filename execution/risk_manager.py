@@ -718,13 +718,14 @@ class RiskManager:
             self.peak_equity = current_equity
             self.current_drawdown = 0.0
         else:
-            # 현재 낙폭 계산
-            self.current_drawdown = (self.peak_equity - current_equity) / self.peak_equity
+            # 현재 낙폭 계산 (음수로 표현: -0.03% 같은 형태)
+            self.current_drawdown = -((self.peak_equity - current_equity) / self.peak_equity)
         
-        # 최대 낙폭 초과 시 차단
-        if self.current_drawdown > self.max_drawdown_pct:
-            logger.error(f"🚨 최대 낙폭 초과: {self.current_drawdown*100:.2f}% > {self.max_drawdown_pct*100:.1f}%")
-            self._notify_guard(f"Drawdown guard triggered: {self.current_drawdown*100:.2f}% > {self.max_drawdown_pct*100:.1f}%")
+        # 최대 낙폭 초과 시 차단 (둘 다 음수, current가 더 작으면 낙폭 더 큼)
+        # 예: current_drawdown=-0.06 < max_drawdown_pct=-0.05 → 차단
+        if self.current_drawdown < self.max_drawdown_pct:
+            logger.error(f"🚨 최대 낙폭 초과: {self.current_drawdown*100:.2f}% < {self.max_drawdown_pct*100:.1f}%")
+            self._notify_guard(f"Drawdown guard triggered: {self.current_drawdown*100:.2f}% < {self.max_drawdown_pct*100:.1f}%")
             return False
         
         return True
