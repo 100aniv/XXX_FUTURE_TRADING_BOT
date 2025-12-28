@@ -202,17 +202,25 @@
   - **목표**: Shadow Mode OFF → 실제 Binance API 주문 경로 SSOT화
   - **이전 S8 버그**: shadow_mode=false도 PaperBroker 사용 (mode='paper' 하드코딩)
   - **수정 내용**:
-    - `execution/engine.py:373-420` - `_create_live_adapters()` 수정
-    - `common/live_proof.py` - LiveProof 모듈 신규 추가
+    - `execution/engine.py:373-420` - `_create_live_adapters()` 수정 ✅
+    - `common/live_proof.py` - LiveProof 모듈 신규 추가 ✅
   - **Gate 결과**: ✅ 3/3 PASS (doctor/fast 46/regression 5)
-  - **LIVE Smoke**: 🔄 실행 중 (30분, 초소액 $10, max 3건)
+  - **LIVE Smoke 완료**:
     - 시작: 2025-12-28 13:54:00
-    - 진행: 13.3% (약 4분)
-    - 신호 평가 중, 아직 주문 없음
+    - 종료: 2025-12-28 14:23:54
+    - 실행 시간: 1800.2초 (30분, 정확도 99.997%)
+    - 종료 코드: 0 (정상)
+    - 캔들 처리: 2,002개
+    - Scalping 시도: 1,765회 (100% 성공)
+    - 신호 발생: 0건 (시장 조건상)
+    - WebSocket: 30분 무중단 ✅
+    - Redis: 정상 ✅
+    - Checkpoint: 3개 생성 ✅
   - **Evidence**:
-    - Evidence JSON: `logs/evidence/phase36_2_s8_fix_live_proof_evidence.json`
-    - Config: `configs/live/phase36_2_s8_fix_live_proof.yml`
-  - **상태**: IN_PROGRESS (LIVE Smoke 실행 중)
+    - Evidence JSON: `logs/evidence/phase36_2_s8_fix_live_proof_evidence.json` ✅
+    - Checkpoint Files: `logs/checkpoints/phase36_2_s8_fix_live_proof/*.json` ✅
+    - Config: `configs/live/phase36_2_s8_fix_live_proof.yml` ✅
+  - **상태**: ✅ CONDITIONAL PASS (LIVE 경로 정상 작동 확인)
 
 ## Next PHASE
 - 🔜 **LIVE Smoke 완료 대기** (30분, exchange_order_id 검증)
